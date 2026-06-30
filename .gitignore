@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+.cache/
+
+# Local tool settings
+**/settings.local.json
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Build artifacts
+*.egg-info/
+
+# Logs
+*.log
+*.sqlite3
