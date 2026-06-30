@@ -1,4 +1,4 @@
-# CSIT321 Capstone — Monorepo
+# CSIT321 Capstone Monorepo
 
 This repository is organised as a monorepo. Each top-level directory is a self-contained service or workspace.
 
@@ -6,9 +6,9 @@ This repository is organised as a monorepo. Each top-level directory is a self-c
 
 ```
 /
-├── backend/     FastAPI backend — see backend/README.md for setup and API reference
-├── frontend/    Frontend (forthcoming)
-├── docs/        Project documentation (forthcoming)
+├── backend/     FastAPI backend- see backend/README.md for setup and API reference
+├── frontend/    Frontend
+├── docs/        Project documentation
 └── .github/     CI pipelines
 ```
 
