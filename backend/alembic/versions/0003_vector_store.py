@@ -17,7 +17,7 @@ def upgrade() -> None:
             id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             case_id       UUID REFERENCES intake_cases(id) ON DELETE SET NULL,
             document_text TEXT NOT NULL,
-            embedding     vector(768),
+            embedding     vector(512),
             metadata      JSONB NOT NULL DEFAULT '{}',
             created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
         )
