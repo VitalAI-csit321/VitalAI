@@ -1,0 +1,46 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+
+# Env
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+
+# Tests
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+.idea/
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+*.egg-info/
+build/
+dist/
+
+# Logs & local DB
+*.log
+*.sqlite3

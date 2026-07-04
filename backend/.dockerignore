@@ -1,0 +1,15 @@
+.git
+tests/
+.env
+.env.*
+*.md
+.vscode/
+.pytest_cache/
+__pycache__
+.github/
+alembic/versions/*.pyc
+.venv/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
