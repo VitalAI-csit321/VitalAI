@@ -2,6 +2,11 @@
 
 Uses DATABASE_URL from the environment — defaults to SQLite in-memory for local dev,
 Postgres in CI (where DATABASE_URL is set to the service container).
+
+FR-RAG-01 (vector/chunks retrieval) is the exception: SQLite has no pgvector, no
+cosine_distance, no HNSW, no SET LOCAL GUCs. Anything exercising app.rag.retrieval
+uses the `pg_session` / `seeded_chunks` fixtures below instead, which talk to a real
+Postgres+pgvector database (the docker-compose `db` service, migrated to head).
 """
 
 import os
@@ -17,6 +22,15 @@ from app.auth.security import create_access_token, hash_password  # noqa: E402
 from app.database import get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Base, User, UserRole  # noqa: E402
+from scripts.seed_synthetic_chunks import seed as seed_synthetic_corpus  # noqa: E402
+
+# Real Postgres+pgvector database for chunk/retrieval tests — never SQLite.
+# Defaults to the docker-compose `db` service exposed on localhost:5432 (the
+# same DATABASE_URL used to run `alembic upgrade head` and the seed script).
+_PG_TEST_URL = os.environ.get(
+    "RAG_TEST_DATABASE_URL",
+    "postgresql+asyncpg://vitalai:vitalai@localhost:5432/vitalai",
+)
 
 
 @pytest_asyncio.fixture
@@ -93,3 +107,35 @@ def admin_headers(admin_user: User) -> dict[str, str]:
 def front_desk_headers(front_desk_user: User) -> dict[str, str]:
     token = create_access_token(front_desk_user.id, front_desk_user.role)
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
+async def pg_session():
+    """A session bound to a real Postgres+pgvector connection.
+
+    Wraps each test in an outer transaction + SAVEPOINT
+    (join_transaction_mode="create_savepoint") so app.rag.retrieval's internal
+    session.commit() (for the GOV-RETRIEVE audit event) only releases the
+    savepoint — the outer rollback below discards everything the test wrote,
+    including seeded chunks, leaving the dev database as it was.
+    """
+    engine = create_async_engine(_PG_TEST_URL, echo=False)
+    async with engine.connect() as conn:
+        trans = await conn.begin()
+        async_session = async_sessionmaker(
+            bind=conn,
+            class_=AsyncSession,
+            expire_on_commit=False,
+            join_transaction_mode="create_savepoint",
+        )
+        async with async_session() as session:
+            yield session
+        await trans.rollback()
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def seeded_chunks(pg_session: AsyncSession) -> AsyncSession:
+    """pg_session pre-loaded with the FR-RAG-01 synthetic corpus (scripts/synthetic_corpus)."""
+    await seed_synthetic_corpus(pg_session)
+    return pg_session

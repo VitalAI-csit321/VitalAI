@@ -22,6 +22,12 @@ class NomicEmbedProvider:
     """sentence-transformers wrapper for nomic-embed-text (dev)."""
 
     MODEL_NAME = "nomic-ai/nomic-embed-text-v1"
+    # nomic-embed-text-v1 natively outputs 768-dim vectors; this project's
+    # schema commits to vector(512) (see 501a476). truncate_dim slices the
+    # output down to 512 at encode time so every caller gets what the column
+    # actually stores. This was never exercised end to end before FR-RAG-01 —
+    # a real bug fix, not a schema placeholder.
+    EMBED_DIM = 512
     _model: SentenceTransformer | None = None
 
     def _get_model(self) -> SentenceTransformer:
@@ -33,12 +39,12 @@ class NomicEmbedProvider:
 
     async def embed(self, text: str) -> list[float]:
         model = self._get_model()
-        result: list[float] = model.encode(text).tolist()
+        result: list[float] = model.encode(text, truncate_dim=self.EMBED_DIM).tolist()
         return result
 
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         model = self._get_model()
-        result: list[list[float]] = model.encode(texts).tolist()
+        result: list[list[float]] = model.encode(texts, truncate_dim=self.EMBED_DIM).tolist()
         return result
 
 
