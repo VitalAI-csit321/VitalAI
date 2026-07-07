@@ -6,7 +6,7 @@ from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.routing import RoutingAction, RoutingDecision
 from app.models.triage import TriageCategory, TriageResult
 from app.models.user import User, UserRole
-
+from app.models.appointment import Appointment, AppointmentStatus
 __all__ = [
     "Base",
     "User",
@@ -23,4 +23,6 @@ __all__ = [
     "HumanReviewTask",
     "TaskType",
     "TaskStatus",
+    "Appointment",
+    "AppointmentStatus",
 ]
