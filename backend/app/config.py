@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     embedding_provider: str = "nomic"  # nomic (dev) | bedrock (prod)
     embedding_model: str = "nomic-embed-text"
 
+    # RAG gating (FR-RAG-02 / FR-RAG-03)
+    sufficiency_floor: float = 0.50
+    confidence_threshold: float = 0.75
+    confidence_source: str = "retrieval_similarity"
+
     @model_validator(mode="after")
     def _require_runtime_secrets(self) -> "Settings":
         if not self.database_url:
