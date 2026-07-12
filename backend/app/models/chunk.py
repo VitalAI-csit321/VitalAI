@@ -33,6 +33,7 @@ class Chunk(Base):
     doc_type: Mapped[str] = mapped_column(Text, nullable=False)
     access_scope: Mapped[str] = mapped_column(Text, nullable=False)
     source_document_id: Mapped[UUID] = mapped_column(_pg_uuid, nullable=False)
+    citation_tag: Mapped[str | None] = mapped_column(Text, nullable=True)
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
     attachment_uri: Mapped[str | None] = mapped_column(Text, nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)

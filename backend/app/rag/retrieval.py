@@ -46,12 +46,15 @@ class RetrievalContext:
 @dataclass
 class RetrievedChunk:
     chunk_id: UUID
+    patient_id: UUID
+    access_scope: str
     source_document_id: UUID
     doc_type: str
     chunk_index: int
     attachment_uri: str | None
     content: str
     score: float
+    distance: float
 
 
 def _security_filter(stmt: Select[Any], ctx: RetrievalContext) -> Select[Any]:
@@ -173,12 +176,15 @@ async def retrieve(
     chunks = [
         RetrievedChunk(
             chunk_id=row.Chunk.id,
+            patient_id=row.Chunk.patient_id,
+            access_scope=row.Chunk.access_scope,
             source_document_id=row.Chunk.source_document_id,
             doc_type=row.Chunk.doc_type,
             chunk_index=row.Chunk.chunk_index,
             attachment_uri=row.Chunk.attachment_uri,
             content=row.Chunk.content,
             score=1.0 - row.distance,
+            distance=row.distance,
         )
         for row in rows
     ]

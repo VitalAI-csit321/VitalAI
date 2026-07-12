@@ -45,6 +45,7 @@ async def seed(session: AsyncSession) -> int:
                     doc_type=doc.doc_type,
                     access_scope=doc.access_scope,
                     source_document_id=doc.source_document_id,
+                    citation_tag=f"{str(doc.patient_id)[:8]}_{doc.doc_type}",
                     chunk_index=index,
                     attachment_uri=None,
                     content=paragraph,
