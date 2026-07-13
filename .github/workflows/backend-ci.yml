@@ -49,6 +49,7 @@ jobs:
 
       - name: Run migrations
         env:
+          JWT_SECRET_KEY: ci-test-secret
           DATABASE_URL: postgresql+asyncpg://vitalai:vitalai@localhost:5432/vitalai
         run: alembic upgrade head
 
