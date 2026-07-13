@@ -22,7 +22,7 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.auth.security import hash_password
-from app.models import IntakeCase, IntakeStatus, User, UserRole
+from app.models import Base, IntakeCase, IntakeStatus, User, UserRole
 from app.services.audit_service import record_event
 
 POSTGRES_TEST_URL = os.environ.get("POSTGRES_TEST_URL") or os.environ.get(
@@ -46,7 +46,46 @@ async def pg_engine():
         pytest.skip("No Postgres URL — skipping trigger tests")
 
     engine = create_async_engine(POSTGRES_TEST_URL, echo=False)
+    async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await conn.run_sync(Base.metadata.create_all)
+        # The append-only audit trigger lives in an Alembic migration
+        # (alembic/versions/0001_initial.py), not in the models, so
+        # create_all above does not create it. Recreate it here.
+        await conn.execute(
+            text(
+                """
+                CREATE OR REPLACE FUNCTION block_audit_modification()
+                RETURNS trigger AS $$
+                BEGIN
+                    RAISE EXCEPTION 'audit_events is append-only — % is not permitted', TG_OP;
+                END;
+                $$ LANGUAGE plpgsql;
+                """
+            )
+        )
+        await conn.execute(
+            text(
+                """
+                CREATE TRIGGER audit_events_no_update
+                BEFORE UPDATE ON audit_events
+                FOR EACH ROW EXECUTE FUNCTION block_audit_modification();
+                """
+            )
+        )
+        await conn.execute(
+            text(
+                """
+                CREATE TRIGGER audit_events_no_delete
+                BEFORE DELETE ON audit_events
+                FOR EACH ROW EXECUTE FUNCTION block_audit_modification();
+                """
+            )
+        )
     yield engine
+    async with engine.begin() as conn:
+        await conn.execute(text("DROP SCHEMA public CASCADE"))
+        await conn.execute(text("CREATE SCHEMA public"))
     await engine.dispose()
 
 
