@@ -30,6 +30,7 @@ exclude = ["alembic/versions"]
 
 [tool.coverage.run]
 source = ["app"]
+concurrency = ["greenlet"]
 omit = [
     "app/main.py",
     "app/database.py",

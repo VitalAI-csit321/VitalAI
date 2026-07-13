@@ -1,3 +1,5 @@
+import uuid
+
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -142,3 +144,13 @@ async def test_intake_create_requires_auth(client: AsyncClient):
         json={"patient_name": "x", "contact_reason": "y", "contact_channel": "phone"},
     )
     assert response.status_code == 401
+
+
+async def test_status_update_not_found_returns_404(client: AsyncClient, admin_headers: dict):
+    response = await client.patch(
+        f"/api/v1/intake/{uuid.uuid4()}/status",
+        json={"status": "consent_pending"},
+        headers=admin_headers,
+    )
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()

@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -149,6 +151,46 @@ async def test_triage_then_routing(client: AsyncClient, admin_headers: dict):
     assert routing.json()["action"] == "admin_workflow"
     assert routing.json()["case_id"] == case_id
     assert routing.json()["triage_id"] == triage_id
+
+
+async def test_routing_triage_not_found_returns_404(client: AsyncClient, admin_headers: dict):
+    response = await client.post(
+        "/api/v1/routing",
+        json={"triage_id": str(uuid.uuid4())},
+        headers=admin_headers,
+    )
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
+
+async def test_get_routing_decision_by_case(client: AsyncClient, admin_headers: dict):
+    case_id = await _case_with_consent(
+        client, admin_headers, "regular check up booking please thanks"
+    )
+    triage = await client.post(
+        "/api/v1/triage",
+        json={
+            "case_id": case_id,
+            "contact_reason": "regular check up booking please thanks",
+            "keywords": [],
+            "patient_priority_flags": [],
+        },
+        headers=admin_headers,
+    )
+    triage_id = triage.json()["triage_id"]
+    routing = await client.post(
+        "/api/v1/routing",
+        json={"triage_id": triage_id},
+        headers=admin_headers,
+    )
+
+    response = await client.get(f"/api/v1/routing/by-case/{case_id}", headers=admin_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["case_id"] == case_id
+    assert body["triage_id"] == triage_id
+    assert body["action"] == routing.json()["action"]
+    assert body["escalated"] == routing.json()["escalated"]
 
 
 # ---------------------------------------------------------------------------
