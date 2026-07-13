@@ -19,10 +19,10 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.auth.security import hash_password
-from app.models import Base, IntakeCase, IntakeStatus, User, UserRole
+from app.models import IntakeCase, IntakeStatus, User, UserRole
 from app.services.audit_service import record_event
 
 POSTGRES_TEST_URL = os.environ.get("POSTGRES_TEST_URL") or os.environ.get(
@@ -36,57 +36,24 @@ _needs_postgres = pytest.mark.skipif(
 
 
 # ---------------------------------------------------------------------------
-# Fixtures — a separate engine/session that talks to Postgres
+# Fixtures — these reuse conftest.py's test_engine rather than standing up a
+# second engine against the same physical database. test_engine now builds
+# the Postgres schema by running Alembic migrations to head (see
+# conftest.py), which is the same migration chain that installs
+# audit_events_no_update/_no_delete in production — so the trigger under
+# test here is never a hand-copied stand-in that can drift from migration
+# 0001. With only one fixture building/tearing down schema per test, there
+# is nothing left for these tests and the rest of the suite to race over,
+# and it no longer matters whether CI's separate "Run migrations" step ran
+# first: Alembic's upgrade-to-head is idempotent either way.
 # ---------------------------------------------------------------------------
 
 
 @pytest_asyncio.fixture
-async def pg_engine():
-    if not POSTGRES_TEST_URL or "postgresql" not in POSTGRES_TEST_URL:
+async def pg_engine(test_engine):
+    if test_engine.dialect.name != "postgresql":
         pytest.skip("No Postgres URL — skipping trigger tests")
-
-    engine = create_async_engine(POSTGRES_TEST_URL, echo=False)
-    async with engine.begin() as conn:
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        await conn.run_sync(Base.metadata.create_all)
-        # The append-only audit trigger lives in an Alembic migration
-        # (alembic/versions/0001_initial.py), not in the models, so
-        # create_all above does not create it. Recreate it here.
-        await conn.execute(
-            text(
-                """
-                CREATE OR REPLACE FUNCTION block_audit_modification()
-                RETURNS trigger AS $$
-                BEGIN
-                    RAISE EXCEPTION 'audit_events is append-only — % is not permitted', TG_OP;
-                END;
-                $$ LANGUAGE plpgsql;
-                """
-            )
-        )
-        await conn.execute(
-            text(
-                """
-                CREATE TRIGGER audit_events_no_update
-                BEFORE UPDATE ON audit_events
-                FOR EACH ROW EXECUTE FUNCTION block_audit_modification();
-                """
-            )
-        )
-        await conn.execute(
-            text(
-                """
-                CREATE TRIGGER audit_events_no_delete
-                BEFORE DELETE ON audit_events
-                FOR EACH ROW EXECUTE FUNCTION block_audit_modification();
-                """
-            )
-        )
-    yield engine
-    async with engine.begin() as conn:
-        await conn.execute(text("DROP SCHEMA public CASCADE"))
-        await conn.execute(text("CREATE SCHEMA public"))
-    await engine.dispose()
+    yield test_engine
 
 
 @pytest_asyncio.fixture
