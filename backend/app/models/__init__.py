@@ -1,3 +1,4 @@
+from app.models.appointment import Appointment, AppointmentStatus
 from app.models.audit import AuditEvent
 from app.models.base import Base
 from app.models.case import IntakeCase, IntakeStatus
@@ -25,4 +26,6 @@ __all__ = [
     "TaskType",
     "TaskStatus",
     "Chunk",
+    "Appointment",
+    "AppointmentStatus",
 ]
