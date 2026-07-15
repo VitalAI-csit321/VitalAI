@@ -4,11 +4,17 @@ Uses DATABASE_URL from the environment — defaults to SQLite in-memory for loca
 Postgres in CI (where DATABASE_URL is set to the service container).
 """
 
+import asyncio
 import os
+from pathlib import Path
 
 import pytest_asyncio
+from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from alembic import command
 
 _DB_URL = os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key")
@@ -18,15 +24,41 @@ from app.database import get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Base, User, UserRole  # noqa: E402
 
+_ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
+
+
+def _alembic_upgrade_head() -> None:
+    """Run off the event loop: alembic/env.py drives migrations with its own
+    asyncio.run(), which cannot be called from a loop that's already running.
+    Upgrading to head is idempotent (tracked via the alembic_version table),
+    so this is safe to call whether or not CI's separate "Run migrations"
+    step — or another fixture — already brought the database to head.
+    """
+    command.upgrade(Config(str(_ALEMBIC_INI)), "head")
+
 
 @pytest_asyncio.fixture
 async def test_engine():
     engine = create_async_engine(_DB_URL, echo=False)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    if engine.dialect.name == "postgresql":
+        # Alembic migrations are the single source of truth for the Postgres
+        # schema, including the audit_events_no_update/_no_delete triggers
+        # from migration 0001 — those live in raw trigger DDL that
+        # Base.metadata knows nothing about, so create_all can't produce them.
+        await asyncio.to_thread(_alembic_upgrade_head)
+    else:
+        # Migrations use Postgres-only SQL (JSONB, pgvector, raw trigger DDL)
+        # and cannot run against SQLite, so SQLite keeps building schema
+        # straight from the models.
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
     yield engine
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        if engine.dialect.name == "postgresql":
+            await conn.execute(text("DROP SCHEMA public CASCADE"))
+            await conn.execute(text("CREATE SCHEMA public"))
+        else:
+            await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
 
 
