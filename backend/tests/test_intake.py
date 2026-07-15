@@ -122,13 +122,15 @@ async def test_status_update_allowed_for_ops_manager(
     assert response.json()["status"] == "consent_pending"
 
 
-async def test_intake_create_allowed_for_front_desk(
-    client: AsyncClient, front_desk_headers: dict
-):
+async def test_intake_create_allowed_for_front_desk(client: AsyncClient, front_desk_headers: dict):
     """front_desk must be permitted to create intake cases."""
     response = await client.post(
         "/api/v1/intake",
-        json={"patient_name": "FD Patient", "contact_reason": "inquiry", "contact_channel": "phone"},
+        json={
+            "patient_name": "FD Patient",
+            "contact_reason": "inquiry",
+            "contact_channel": "phone",
+        },
         headers=front_desk_headers,
     )
     assert response.status_code == 201

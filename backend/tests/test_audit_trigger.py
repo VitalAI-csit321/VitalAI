@@ -19,7 +19,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.auth.security import hash_password
 from app.models import IntakeCase, IntakeStatus, User, UserRole
@@ -36,18 +36,24 @@ _needs_postgres = pytest.mark.skipif(
 
 
 # ---------------------------------------------------------------------------
-# Fixtures — a separate engine/session that talks to Postgres
+# Fixtures — these reuse conftest.py's test_engine rather than standing up a
+# second engine against the same physical database. test_engine now builds
+# the Postgres schema by running Alembic migrations to head (see
+# conftest.py), which is the same migration chain that installs
+# audit_events_no_update/_no_delete in production — so the trigger under
+# test here is never a hand-copied stand-in that can drift from migration
+# 0001. With only one fixture building/tearing down schema per test, there
+# is nothing left for these tests and the rest of the suite to race over,
+# and it no longer matters whether CI's separate "Run migrations" step ran
+# first: Alembic's upgrade-to-head is idempotent either way.
 # ---------------------------------------------------------------------------
 
 
 @pytest_asyncio.fixture
-async def pg_engine():
-    if not POSTGRES_TEST_URL or "postgresql" not in POSTGRES_TEST_URL:
+async def pg_engine(test_engine):
+    if test_engine.dialect.name != "postgresql":
         pytest.skip("No Postgres URL — skipping trigger tests")
-
-    engine = create_async_engine(POSTGRES_TEST_URL, echo=False)
-    yield engine
-    await engine.dispose()
+    yield test_engine
 
 
 @pytest_asyncio.fixture

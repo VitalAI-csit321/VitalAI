@@ -220,9 +220,7 @@ async def test_triage_blocked_when_consent_withdrawn(client: AsyncClient, admin_
     case_id = await _create_case(client, admin_headers)
 
     # Create consent, capture it, then withdraw.
-    create = await client.post(
-        "/api/v1/consent", json={"case_id": case_id}, headers=admin_headers
-    )
+    create = await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
     consent_id = create.json()["id"]
     await client.post(f"/api/v1/consent/{consent_id}/capture", headers=admin_headers)
     await client.post(f"/api/v1/consent/{consent_id}/withdraw", headers=admin_headers)
@@ -244,9 +242,7 @@ async def test_triage_blocked_when_consent_withdrawn(client: AsyncClient, admin_
 async def test_triage_blocked_when_consent_pending(client: AsyncClient, admin_headers: dict):
     """Triage must be rejected when consent is pending (not yet captured)."""
     case_id = await _create_case(client, admin_headers)
-    await client.post(
-        "/api/v1/consent", json={"case_id": case_id}, headers=admin_headers
-    )
+    await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
 
     response = await client.post(
         "/api/v1/triage",

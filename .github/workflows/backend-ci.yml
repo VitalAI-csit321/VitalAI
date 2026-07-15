@@ -50,6 +50,7 @@ jobs:
       - name: Run migrations
         env:
           DATABASE_URL: postgresql+asyncpg://vitalai:vitalai@localhost:5432/vitalai
+          JWT_SECRET_KEY: ci-test-secret
         run: alembic upgrade head
 
       - name: Ruff lint
