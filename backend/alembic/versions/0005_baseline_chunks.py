@@ -19,11 +19,11 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
     # No CHECK constraints on doc_type / access_scope: the vocab is placeholder
-    # (BASELINE, reconcile with Matthew's ingestion schema), not yet ratified.
-    # patient_id is a bare UUID, not a FK — there is no separate patient entity
+    # (BASELINE, reconcile with  ingestion schema), not yet ratified.
+    # patient_id is a bare UUID, not a FK, there is no separate patient entity
     # in this codebase yet (BASELINE, reconcile with Matthew's ingestion schema).
-    # source_document_id is likewise a bare UUID — no documents table exists to
-    # reference (BASELINE, reconcile with Matthew's ingestion schema).
+    # source_document_id is likewise a bare UUID, no documents table exists to
+    # reference (BASELINE, reconcile with ingestion schema).
     op.execute("""
         CREATE TABLE chunks (
             id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),

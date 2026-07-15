@@ -26,6 +26,14 @@ NOT_ENOUGH_INFO_ANSWER = (
     "I don't have enough information in this patient's records to answer that."
 )
 
+# Chunks scoring more than this below the top chunk are left out of the LLM
+# context, not out of the retrieved set. 0.15 matches this corpus's documented
+# score spread (see RAG_RETRIEVAL_TECHNICAL.md), so the margin adapts to the
+# query instead of using a fixed absolute cutoff. Sufficiency and confidence are
+# still computed on the full retrieved set in evaluate_retrieval(); this only
+# trims what the model reads.
+CONTEXT_SCORE_MARGIN = 0.15
+
 _PROMPT_TEMPLATE = """You are a clinical assistant. Answer the QUESTION using ONLY \
 the information in CONTEXT below. Do not use any outside knowledge. If CONTEXT does \
 not contain the answer, respond with EXACTLY this sentence and nothing else: \
@@ -60,7 +68,13 @@ async def answer_question(
             gate_outcome=gate_outcome,
         )
 
-    context_text = "\n\n".join(chunk.content for chunk in gate_outcome.chunks)
+    assert gate_outcome.top_score is not None  # sufficient=True always sets top_score
+    context_chunks = [
+        chunk
+        for chunk in gate_outcome.chunks
+        if chunk.score >= gate_outcome.top_score - CONTEXT_SCORE_MARGIN
+    ]
+    context_text = "\n\n".join(chunk.content for chunk in context_chunks)
     prompt = _PROMPT_TEMPLATE.format(
         refusal_sentinel=NOT_ENOUGH_INFO_ANSWER, context=context_text, question=question
     )

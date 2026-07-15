@@ -18,7 +18,7 @@ _embedding = Vector(512).with_variant(LargeBinary(), "sqlite")
 
 
 class Chunk(Base):
-    """BASELINE, reconcile with Matthew's ingestion schema.
+    """BASELINE, reconcile with ingestion schema.
 
     Every column shape here (patient_id as a bare UUID, doc_type/access_scope
     as unconstrained text, source_document_id with no documents table) is a

@@ -62,7 +62,7 @@ def _security_filter(stmt: Select[Any], ctx: RetrievalContext) -> Select[Any]:
 
     Every retrieval path (vector today, hybrid later) MUST filter through this
     function. Do not re-implement patient_id / access_scope filtering anywhere
-    else — a second copy is how a boundary check silently drifts out of sync.
+    else a second copy is how a boundary check silently drifts out of sync.
     """
     return stmt.where(
         Chunk.patient_id == ctx.patient_id,
@@ -154,7 +154,7 @@ async def retrieve(
         )
 
     provider = get_embedding_provider()
-    query_embedding = await provider.embed(query)
+    query_embedding = await provider.embed_query(query)
     if len(query_embedding) != EMBEDDING_DIM:
         raise ValueError(
             f"embedding provider returned a {len(query_embedding)}-dim vector, "

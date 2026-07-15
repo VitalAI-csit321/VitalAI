@@ -1,9 +1,8 @@
 """Seed the baseline `chunks` table with the FR-RAG-01 synthetic corpus.
 
-SYNTHETIC DATA ONLY — see scripts/synthetic_corpus/manifest.py. BASELINE,
+SYNTHETIC DATA ONLY: see scripts/synthetic_corpus/manifest.py. BASELINE,
 reconcile with Matthew's ingestion schema: this seeds the placeholder
-`chunks` table (alembic/versions/0005_baseline_chunks.py), not whatever
-ingestion pipeline eventually replaces it.
+`chunks` table (alembic/versions/0005_baseline_chunks.py)
 
 Usage (against the docker-compose db, migrated to head):
     DATABASE_URL=postgresql+asyncpg://vitalai:vitalai@localhost:5432/vitalai \\
@@ -21,23 +20,26 @@ from app.models.chunk import Chunk
 from app.rag.embeddings import get_embedding_provider
 from scripts.synthetic_corpus.manifest import DOCS
 
+SYNTHETIC_PATIENT_IDS = {doc.patient_id for doc in DOCS}
+
 
 async def seed(session: AsyncSession) -> int:
-    """Delete any existing chunks and re-insert the synthetic corpus fresh.
+    """Delete any existing synthetic chunks and re-insert the corpus fresh.
 
-    Idempotent regardless of what's already committed in `chunks` — this is
-    the only producer of that table today, so a full wipe-and-reload is safe.
-    Deleting first also matters for tests/conftest.py::seeded_chunks, which
-    calls this inside a per-test SAVEPOINT: without the delete, a chunks table
-    already populated by a prior manual `python -m scripts.seed_synthetic_chunks`
-    run would double up under every test.
+    Idempotent regardless of what's already committed in `chunks`. Scoped to
+    SYNTHETIC_PATIENT_IDS so this never touches real ingested data (e.g. from
+    scripts/ingest_matthew_corpus.py) sharing the same table. Deleting first
+    also matters for tests/conftest.py::seeded_chunks, which calls this
+    inside a per-test SAVEPOINT: without the delete, a chunks table already
+    populated by a prior manual `python -m scripts.seed_synthetic_chunks` run
+    would double up under every test.
     """
-    await session.execute(delete(Chunk))
+    await session.execute(delete(Chunk).where(Chunk.patient_id.in_(SYNTHETIC_PATIENT_IDS)))
     provider = get_embedding_provider()
     inserted = 0
     for doc in DOCS:
         paragraphs = doc.read_chunks()
-        embeddings = await provider.embed_batch(paragraphs)
+        embeddings = await provider.embed_documents(paragraphs)
         for index, (paragraph, embedding) in enumerate(zip(paragraphs, embeddings, strict=True)):
             session.add(
                 Chunk(

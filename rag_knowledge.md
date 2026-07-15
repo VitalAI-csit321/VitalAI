@@ -1,4 +1,4 @@
-# RAG Retrieval Subsystem — Technical Reference
+# RAG Retrieval Subsystem: Technical Reference
 
 Authoritative technical context for the RAG retrieval, gating, and answer-synthesis
 work (Amin's part of the sprint). Read this before touching anything under `app/rag/`,
@@ -24,7 +24,7 @@ query + RetrievalContext
 ```
 
 Each stage reads the previous stage's output. The gates are deterministic pure
-functions of the retrieval scores — no LLM is involved in deciding sufficiency or
+functions of the retrieval scores. No LLM is involved in deciding sufficiency or
 confidence. The LLM is only called to synthesize a final answer, and only when the
 gates allow it.
 
@@ -38,7 +38,7 @@ deliberately not built.
 
 ---
 
-## 2. Data model — the `chunks` table
+## 2. Data model: the `chunks` table
 
 Columns (see app/models/chunk.py, alembic 0005_baseline_chunks + 0006_chunk_citation_tag):
 
@@ -65,10 +65,10 @@ Indexes: PK on id; HNSW on embedding (vector_cosine_ops), name
 The single most important schema decision: **the machine key and the human citation
 are separate columns, never one overloaded column.**
 
-- `source_document_id` (UUID) — opaque, stable, meaningless on purpose. Used for
+- `source_document_id` (UUID): opaque, stable, meaningless on purpose. Used for
   joins, dedup, delete, and the GOV-RETRIEVE audit event. A surrogate key must stay
   stable even if business attributes change, so it never encodes doc_type or patient.
-- `citation_tag` (text) — legible, for display: e.g. `a1b2c3d4_pathology`. Derived at
+- `citation_tag` (text): legible, for display: e.g. `a1b2c3d4_pathology`. Derived at
   ingest from the first 8 chars of the patient UUID plus the normalized doc_type.
 - Chunk-level identity is `(source_document_id, chunk_index)`.
 
@@ -85,10 +85,10 @@ from this line." Don't promise finer.
 ### 2.2 Typed security columns (locked)
 
 `doc_type` and `access_scope` are typed TEXT columns, NOT JSONB. There is no CHECK
-constraint on either column yet (see 0005_baseline_chunks.py): the vocabulary is a
-placeholder, not ratified, so a constraint would lock in values before that
-reconciliation happens. Add the CHECK constraint once the vocab is ratified. Keep
-them typed in the meantime; do not switch to JSONB.
+constraint on either column yet (see 0005_baseline_chunks.py). The access_scope
+vocabulary is now ratified (see section 7), but adding the CHECK constraint is a
+separate, later decision, not made yet. Keep them typed in the meantime; do not
+switch to JSONB.
 
 ### 2.3 attachment_uri / scans
 
@@ -102,14 +102,21 @@ baseline fixture, so that path is untested.
 
 - **512 dimensions, everywhere.** Ingestion and query must use the same factory, same
   model, same 512 dims, or vectors don't match and every distance is meaningless.
-- Dev: nomic-embed-text via Ollama. It silently emitted 768 dims — a real bug — fixed
+- Dev: nomic-embed-text via Ollama. It silently emitted 768 dims, a real bug, fixed
   by truncating to 512.
 - Prod: Titan Text Embeddings V2, which cannot produce 768, so 512 is the only viable
   cross-environment dimension.
 - Distance: cosine. pgvector `<=>` operator, `vector_cosine_ops`, HNSW index.
-- Query embedding goes through `get_embedding_provider()` — the same factory the seed
+- Query embedding goes through `get_embedding_provider()`, the same factory the seed
   script uses at ingest. retrieve() asserts len(query_embedding) == 512 and raises
   otherwise.
+- **Asymmetric query/document prefixes.** NomicEmbedProvider prepends `search_query: `
+  before encoding a query and `search_document: ` before encoding a document
+  (EmbeddingProvider protocol: `embed_query` vs `embed_documents`). This is standard
+  for retrieval-tuned models, not a bug. Consequence: even an exact self-match, the
+  same text embedded once as a query and once as a document, never scores a perfect
+  1.0 similarity. Expect a strong score, not a perfect one, when asserting on
+  self-match behavior.
 
 If distances ever look plausible but wrong, suspect (a) wrong operator (`<->` L2 or
 `<#>` inner product instead of `<=>`), or (b) a dimension mismatch between ingest and
@@ -117,7 +124,7 @@ query. Both fail silently.
 
 ---
 
-## 4. FR-RAG-01 — retrieval (app/rag/retrieval.py)
+## 4. FR-RAG-01: retrieval (app/rag/retrieval.py)
 
 `retrieve(session, query, ctx, k=8, doc_type=None, strategy="vector")` returns
 `list[RetrievedChunk]`.
@@ -132,16 +139,16 @@ query. Both fail silently.
 - `score` is the number every downstream gate reads. distance is kept raw so gates can
   recompute if needed.
 - Hybrid strategy raises NotImplementedError; only vector search is implemented.
-- Emits a GOV-RETRIEVE audit event per call (Afra's audit consumes it — it references
+- Emits a GOV-RETRIEVE audit event per call (Afra's audit consumes it; it references
   source_document_id, which is UUID and settled).
 
 ---
 
-## 5. FR-RAG-02 / FR-RAG-03 — the gates (app/rag/gating.py)
+## 5. FR-RAG-02 / FR-RAG-03: the gates (app/rag/gating.py)
 
 Two deterministic gates, run in order, both pure functions of the top score.
 
-Config (pydantic Settings, app/config.py — configurable, not hardcoded):
+Config (pydantic Settings, app/config.py, configurable, not hardcoded):
 - `SUFFICIENCY_FLOOR = 0.50`
 - `CONFIDENCE_THRESHOLD = 0.75`
 - `CONFIDENCE_SOURCE = "retrieval_similarity"`
@@ -159,10 +166,10 @@ FR-RAG-03 confidence (only if sufficient):
 - else -> decision="proceed"
 
 Decisions and their meaning:
-- `manual_handling` — withhold, route to human. Gate said insufficient.
-- `escalate` — answer-and-flag. Sufficient but not confident; answer is produced AND
+- `manual_handling`: withhold, route to human. Gate said insufficient.
+- `escalate`: answer-and-flag. Sufficient but not confident; answer is produced AND
   flagged for review. NOT withheld.
-- `proceed` — answer clean.
+- `proceed`: answer clean.
 
 Outcome object carries: chunks, sufficient, reason, confidence, confidence_source,
 top_score, decision. These are the fields the GOV-RETRIEVE audit event reads.
@@ -171,7 +178,7 @@ Floor calibration: done against the baseline corpus. On-topic query ~0.59, off-t
 ~0.44, so 0.50 sits in the gap. The spread is narrow (~0.15), so the floor works but has
 little margin; recalibrate on a richer corpus. Note: with a 0.75 confidence threshold
 and best real scores ~0.59, most good queries currently `escalate` rather than
-`proceed` — that is the threshold doing its job on a weak-signal corpus, not a bug.
+`proceed`, that is the threshold doing its job on a weak-signal corpus, not a bug.
 
 Gates are pure functions of a number, so tests fabricate RetrievedChunk objects with
 set scores and never hit the DB. Four cases: proceed (high), escalate (mid, ~0.60),
@@ -187,7 +194,7 @@ Flow:
 1. chunks = retrieve(...)
 2. outcome = evaluate_retrieval(chunks)
 3. if outcome.decision == "manual_handling": return refusal WITHOUT calling the LLM
-   (refusal_source="gate"). The LLM is never invoked when the gate withholds — this is
+   (refusal_source="gate"). The LLM is never invoked when the gate withholds; this is
    the anti-hallucination guarantee.
 4. else: build a context-only prompt from the retrieved chunk content, call get_llm(),
    instruct it to answer strictly from context and emit the exact sentinel if the
@@ -203,13 +210,13 @@ gate_outcome (so decision proceed/escalate stays visible to callers/audit).
 One sentinel string, `NOT_ENOUGH_INFO_ANSWER`, is used in BOTH the gate short-circuit
 and the LLM prompt instruction. The code compares the LLM output to the sentinel with
 whitespace stripped (`result.strip() == SENTINEL.strip()`), because Ollama appends
-trailing whitespace/newlines and a bare `==` misses the refusal — this was a real bug
+trailing whitespace/newlines and a bare `==` misses the refusal. This was a real bug
 that mislabeled LLM refusals as real answers (refusal_source="none" when it should be
 "llm").
 
 Why the three-way outcome matters: GOV-RETRIEVE needs to distinguish a real answer, a
 gate refusal (retrieval found nothing sufficient), and an LLM refusal (context passed
-the gate but the model still couldn't answer — including RAG over-refusal on noisy
+the gate but the model still couldn't answer, including RAG over-refusal on noisy
 context). A boolean "grounded" flag conflates the last two; refusal_source keeps them
 separate. For a healthcare governance/audit trail this distinction is required.
 
@@ -219,7 +226,7 @@ get_llm() in app/llm/provider.py is the single abstraction point. Sync, zero-arg
 memoized. Generation is `await llm.ainvoke(prompt)`. Normalize output as
 `result if isinstance(result, str) else getattr(result, "content", str(result))`.
 Prod swap (Ollama -> Bedrock) is a config change, not a code refactor. Note: chat
-models may return content as a list of blocks — fine for Ollama dev, revisit before the
+models may return content as a list of blocks, fine for Ollama dev, revisit before the
 Bedrock swap.
 
 Live demo verified: "What is the patient LDL?" -> "LDL is 138 mg/dL" (grounded,
@@ -256,6 +263,10 @@ document class (mental health, sexual health, and similar) with a distinct filen
 stem before anything can route to sensitive. Until then the sensitive tier has no
 producer.
 
+scripts/ingest_matthew_corpus.py imports from `Rag Pipeline/`, Matthew's work, a
+sibling directory outside this repo's tracked tree. Until that lands, the script
+fails with ImportError for anyone who doesn't already have that directory locally.
+
 ---
 
 ## 8. Testing rules
@@ -275,6 +286,19 @@ producer.
 - Coverage: pyproject.toml sets `concurrency = ["greenlet"]` under [tool.coverage.run].
   Without it, async ORM code after the first flush/commit is misreported uncovered
   (this caused a false 51%; real services coverage ~100%).
+- Embedding provider test doubles must implement `embed_query`/`embed_documents`, the
+  actual EmbeddingProvider protocol methods, not `embed`/`embed_batch`. A stale mock
+  with the wrong names fails with AttributeError instead of exercising the intended
+  code path (e.g. a dimension-mismatch test never reaches the mismatch check).
+- Don't assert a self-match score of exactly 1.0 (see section 3, asymmetric query/
+  document prefixes). Assert a realistic high bound instead, e.g. `score > 0.85`.
+- Never let a generic (non-RAG) test fixture tear down schema with something like
+  DROP SCHEMA CASCADE or an unscoped drop_all. pg_session/seeded_chunks expect
+  `chunks` (and any other RAG tables) to stay populated for the whole test session,
+  not just for RAG-specific tests. A schema-nuking teardown anywhere in the suite
+  silently empties those tables for every RAG test that runs after it. Per-test
+  isolation for non-RAG tests must come from transaction rollback (see
+  tests/conftest.py::db_session, client), never from dropping shared schema.
 
 ---
 
@@ -283,7 +307,7 @@ producer.
 - DB from host: `DATABASE_URL="postgresql+asyncpg://vitalai:vitalai@localhost:5432/vitalai"`
   (.env uses Docker-internal `db`, unresolvable from host).
 - Ollama from host: `OLLAMA_BASE_URL="http://localhost:11434"` (.env uses `ollama`).
-- DB user is `vitalai`, model `gemma2:2b`.
+- DB user is `vitalai`, model `gemma2:9b`.
 - Reset DB clean: `docker compose down -v && docker compose up -d`.
 - Full local check before push (run what CI runs):
   `ruff check app tests && ruff format --check app tests && DATABASE_URL=... JWT_SECRET_KEY=ci-test-secret python -m pytest tests/`
