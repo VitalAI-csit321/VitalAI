@@ -33,7 +33,7 @@ async def test_get_audit_trail_for_case(client: AsyncClient, admin_headers: dict
 async def test_get_audit_trail_denied_for_non_admin(
     client: AsyncClient, admin_headers: dict, front_desk_headers: dict
 ):
-    """The audit trail is admin-only — front_desk must be denied."""
+    """The audit trail is admin-only, front_desk must be denied."""
     create = await client.post(
         "/api/v1/intake",
         json={

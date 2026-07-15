@@ -1,6 +1,8 @@
+from app.models.appointment import Appointment, AppointmentStatus
 from app.models.audit import AuditEvent
 from app.models.base import Base
 from app.models.case import IntakeCase, IntakeStatus
+from app.models.chunk import Chunk
 from app.models.consent import ConsentRecord, ConsentStatus
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.routing import RoutingAction, RoutingDecision
@@ -23,4 +25,7 @@ __all__ = [
     "HumanReviewTask",
     "TaskType",
     "TaskStatus",
+    "Chunk",
+    "Appointment",
+    "AppointmentStatus",
 ]
