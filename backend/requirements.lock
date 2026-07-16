@@ -298,7 +298,7 @@ rich==15.0.0
     # via typer
 rsa==4.9.1
     # via python-jose
-ruff==0.15.14
+ruff==0.15.21
     # via -r requirements.txt
 s3transfer==0.17.0
     # via boto3
