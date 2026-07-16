@@ -156,7 +156,9 @@ async def test_provider_dimension_mismatch_raises(
 
 
 async def test_audit_emits_one_gov_retrieve_event_per_call(seeded_chunks: AsyncSession) -> None:
-    count_stmt = select(func.count()).select_from(AuditEvent).where(AuditEvent.action == "GOV-RETRIEVE")
+    count_stmt = (
+        select(func.count()).select_from(AuditEvent).where(AuditEvent.action == "GOV-RETRIEVE")
+    )
     before_count = (await seeded_chunks.execute(count_stmt)).scalar_one()
 
     query = "annual physical exam"
@@ -183,7 +185,9 @@ async def test_audit_emits_one_gov_retrieve_event_per_call(seeded_chunks: AsyncS
     assert event.details["k"] == 3
     assert event.details["strategy"] == "vector"
     assert event.details["chunk_ids"] == [str(chunk.chunk_id) for chunk in results]
-    assert event.details["source_document_ids"] == [str(chunk.source_document_id) for chunk in results]
+    assert event.details["source_document_ids"] == [
+        str(chunk.source_document_id) for chunk in results
+    ]
     assert query not in str(event.details)  # raw query text must never be stored
 
 

@@ -22,9 +22,7 @@ from app.llm import get_llm
 from app.rag.gating import RetrievalGateOutcome, evaluate_retrieval
 from app.rag.retrieval import RetrievalContext, retrieve
 
-NOT_ENOUGH_INFO_ANSWER = (
-    "I don't have enough information in this patient's records to answer that."
-)
+NOT_ENOUGH_INFO_ANSWER = "I don't have enough information in this patient's records to answer that."
 
 # Chunks scoring more than this below the top chunk are left out of the LLM
 # context, not out of the retrieved set. 0.15 matches this corpus's documented
