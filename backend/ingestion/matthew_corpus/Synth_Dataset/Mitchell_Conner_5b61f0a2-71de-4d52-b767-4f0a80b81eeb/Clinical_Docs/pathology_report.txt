@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Mitchell Conner
+
+Haemoglobin:
+108.7 g/L
+
+Interpretation:
+Low. Recommend clinical correlation.

@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Krista Weiss
+
+Haemoglobin:
+136.9 g/L
+
+Interpretation:
+Normal.

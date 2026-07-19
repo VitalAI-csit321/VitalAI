@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Christopher Green
+
+Haemoglobin:
+152.3 g/L
+
+Interpretation:
+Normal.

@@ -1,0 +1,14 @@
+
+Patient: Marcus Nelson
+DOB: 1992-06-23
+
+Chief Complaint:
+Shortness of breath on exertion.
+
+Assessment:
+No acute findings on examination.
+
+Plan:
+- Prescribe symptomatic relief
+- Arrange follow-up imaging
+- Order blood tests

@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Scott Schroeder
+
+Haemoglobin:
+162.6 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

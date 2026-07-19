@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Marcus Nelson
+
+DOB:
+1992-06-23
+
+Phone:
+0469.794.042
+
+Email:
+kelly69@example.com
+
+Address:
+128 Yvonne Cul-de-sac, Brownfort, NSW, 2953
+
+Medicare:
+2877690794

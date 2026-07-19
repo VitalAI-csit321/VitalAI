@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Tracy Stephens
+
+Haemoglobin:
+115.4 g/L
+
+Interpretation:
+Low. Recommend clinical correlation.

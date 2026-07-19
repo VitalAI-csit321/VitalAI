@@ -1,0 +1,11 @@
+
+Prescription
+
+Patient:
+Desiree Henderson
+
+Medication:
+Amoxicillin 500mg
+
+Directions:
+Take 1 capsule three times a day for 7 days.

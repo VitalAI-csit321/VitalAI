@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+April Thompson
+
+DOB:
+2010-12-25
+
+Phone:
+6278.8958
+
+Email:
+lstevens@example.net
+
+Address:
+Suite 544 042 Benjamin Walkway, North Evelyn, WA, 2234
+
+Medicare:
+3288387283

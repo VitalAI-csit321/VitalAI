@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Steven Mills
+
+DOB:
+1975-10-18
+
+Phone:
++61.414.030.810
+
+Email:
+richmondtamara@example.com
+
+Address:
+150 Brenda Quadrant, Thomasport, NT, 2032
+
+Medicare:
+4346565656

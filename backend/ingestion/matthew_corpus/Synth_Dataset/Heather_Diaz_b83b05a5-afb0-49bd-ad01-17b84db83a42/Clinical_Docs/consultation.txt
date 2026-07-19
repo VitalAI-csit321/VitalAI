@@ -1,0 +1,15 @@
+
+Patient: Heather Diaz
+DOB: 1979-08-15
+
+Chief Complaint:
+Lower back pain after lifting.
+
+Assessment:
+Signs suggestive of mild anxiety disorder.
+
+Plan:
+- Arrange follow-up imaging
+- Monitor blood pressure at home
+- Refer for physiotherapy
+- Order blood tests

@@ -1,0 +1,13 @@
+
+Patient: Aaron Huff
+DOB: 1970-03-31
+
+Chief Complaint:
+Joint pain in the knees.
+
+Assessment:
+Consistent with musculoskeletal strain.
+
+Plan:
+- Follow up in one week
+- Increase fluid intake

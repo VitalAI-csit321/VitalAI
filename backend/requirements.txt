@@ -29,6 +29,12 @@ langchain-postgres>=0.0.6
 sentence-transformers>=3.0.0
 einops>=0.7.0  # required by nomic-embed-text-v1's remote modeling code
 
+# Matthew's ingestion pipeline (Loader/Cleaner/Chunker), pinned to what CI's
+# ruff drift already burned once (see requirements.lock note); floors only,
+# same class of risk as ruff until this repo installs from the lock file.
+ray>=2.56.0
+pypdf>=6.14.2
+
 # Testing
 pytest>=8.0.0
 pytest-asyncio>=0.23.0

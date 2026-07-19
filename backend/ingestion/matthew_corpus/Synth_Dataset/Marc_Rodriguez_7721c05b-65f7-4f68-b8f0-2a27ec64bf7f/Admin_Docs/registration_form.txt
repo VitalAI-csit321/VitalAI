@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Marc Rodriguez
+
+DOB:
+2010-06-14
+
+Phone:
+0431.499.659
+
+Email:
+cardenasangela@example.com
+
+Address:
+167 Scott Corner, Gutierrezville, ACT, 0944
+
+Medicare:
+7951113328

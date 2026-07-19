@@ -1,0 +1,15 @@
+
+Patient: Elizabeth Rodriguez
+DOB: 1941-02-19
+
+Chief Complaint:
+Dizziness and occasional palpitations.
+
+Assessment:
+Probable upper respiratory tract infection.
+
+Plan:
+- Increase fluid intake
+- Refer to specialist if symptoms persist
+- Rest
+- Monitor blood pressure at home

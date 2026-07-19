@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Bradley Avila
+
+DOB:
+1934-12-08
+
+Phone:
+08.5425.9297
+
+Email:
+andersonkelly@example.net
+
+Address:
+06 Ann Front, Adamsland, NT, 2963
+
+Medicare:
+9140641912

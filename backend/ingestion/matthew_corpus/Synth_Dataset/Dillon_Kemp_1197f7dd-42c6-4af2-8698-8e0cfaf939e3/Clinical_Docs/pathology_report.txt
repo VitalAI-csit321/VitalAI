@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Dillon Kemp
+
+Haemoglobin:
+166.4 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

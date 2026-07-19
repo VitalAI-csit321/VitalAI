@@ -28,7 +28,7 @@ async def seed(session: AsyncSession) -> int:
 
     Idempotent regardless of what's already committed in `chunks`. Scoped to
     SYNTHETIC_PATIENT_IDS so this never touches real ingested data (e.g. from
-    scripts/ingest_matthew_corpus.py) sharing the same table. Deleting first
+    scripts/ingest_corpus.py) sharing the same table. Deleting first
     also matters for tests/conftest.py::seeded_chunks, which calls this
     inside a per-test SAVEPOINT: without the delete, a chunks table already
     populated by a prior manual `python -m scripts.seed_synthetic_chunks` run

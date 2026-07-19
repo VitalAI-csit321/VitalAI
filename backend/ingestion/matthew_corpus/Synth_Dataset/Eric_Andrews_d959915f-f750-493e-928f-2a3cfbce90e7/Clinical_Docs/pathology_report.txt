@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Eric Andrews
+
+Haemoglobin:
+135.3 g/L
+
+Interpretation:
+Normal.

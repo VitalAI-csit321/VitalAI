@@ -1,0 +1,15 @@
+
+Patient: Christopher Green
+DOB: 1997-02-15
+
+Chief Complaint:
+Lower back pain after lifting.
+
+Assessment:
+Consistent with tension-type headache.
+
+Plan:
+- Advise on dietary changes
+- Order blood tests
+- Increase fluid intake
+- Monitor blood pressure at home

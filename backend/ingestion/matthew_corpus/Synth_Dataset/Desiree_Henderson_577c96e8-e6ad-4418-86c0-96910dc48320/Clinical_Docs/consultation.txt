@@ -1,0 +1,13 @@
+
+Patient: Desiree Henderson
+DOB: 2007-08-04
+
+Chief Complaint:
+Dizziness and occasional palpitations.
+
+Assessment:
+Consistent with tension-type headache.
+
+Plan:
+- Prescribe symptomatic relief
+- Rest

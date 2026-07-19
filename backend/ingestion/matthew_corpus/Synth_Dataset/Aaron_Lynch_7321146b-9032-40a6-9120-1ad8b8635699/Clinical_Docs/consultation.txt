@@ -1,0 +1,13 @@
+
+Patient: Aaron Lynch
+DOB: 1965-06-23
+
+Chief Complaint:
+Shortness of breath on exertion.
+
+Assessment:
+Consistent with tension-type headache.
+
+Plan:
+- Follow up in one week
+- Advise on dietary changes

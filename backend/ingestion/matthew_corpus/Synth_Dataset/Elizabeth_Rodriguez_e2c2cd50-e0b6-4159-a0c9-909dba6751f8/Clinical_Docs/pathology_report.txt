@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Elizabeth Rodriguez
+
+Haemoglobin:
+145.1 g/L
+
+Interpretation:
+Normal.

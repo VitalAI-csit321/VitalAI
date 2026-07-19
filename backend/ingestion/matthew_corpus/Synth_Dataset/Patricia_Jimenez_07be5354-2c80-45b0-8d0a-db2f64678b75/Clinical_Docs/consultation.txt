@@ -1,0 +1,13 @@
+
+Patient: Patricia Jimenez
+DOB: 1935-08-08
+
+Chief Complaint:
+Joint pain in the knees.
+
+Assessment:
+Likely soft tissue inflammation.
+
+Plan:
+- Order blood tests
+- Refer to specialist if symptoms persist

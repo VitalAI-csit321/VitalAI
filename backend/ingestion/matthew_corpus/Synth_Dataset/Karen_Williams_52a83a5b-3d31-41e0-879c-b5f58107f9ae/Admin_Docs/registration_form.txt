@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Karen Williams
+
+DOB:
+1938-05-01
+
+Phone:
+08 7598 8155
+
+Email:
+owensrobert@example.com
+
+Address:
+Unit 73 22 Wilson Expressway, West Sherryport, VIC, 0246
+
+Medicare:
+2574978754

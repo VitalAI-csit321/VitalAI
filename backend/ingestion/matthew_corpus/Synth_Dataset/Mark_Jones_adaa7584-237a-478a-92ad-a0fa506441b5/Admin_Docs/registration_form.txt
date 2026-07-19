@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Mark Jones
+
+DOB:
+1994-10-21
+
+Phone:
+0481-624-046
+
+Email:
+joseph08@example.net
+
+Address:
+Suite 786 6 Krueger Underpass, Port Laura, ACT, 2649
+
+Medicare:
+3415585575

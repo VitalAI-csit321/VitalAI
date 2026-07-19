@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Billy Nelson
+
+DOB:
+1931-09-15
+
+Phone:
++61.444.573.651
+
+Email:
+terryguy@example.net
+
+Address:
+05/73 Brown Lane, Lake Jacob, SA, 2920
+
+Medicare:
+5675710234

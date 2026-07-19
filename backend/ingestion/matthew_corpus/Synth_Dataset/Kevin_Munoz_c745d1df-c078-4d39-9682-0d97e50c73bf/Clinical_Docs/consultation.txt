@@ -1,0 +1,14 @@
+
+Patient: Kevin Munoz
+DOB: 2004-10-03
+
+Chief Complaint:
+Skin rash on both forearms.
+
+Assessment:
+Signs suggestive of mild anxiety disorder.
+
+Plan:
+- Monitor blood pressure at home
+- Increase fluid intake
+- Arrange follow-up imaging

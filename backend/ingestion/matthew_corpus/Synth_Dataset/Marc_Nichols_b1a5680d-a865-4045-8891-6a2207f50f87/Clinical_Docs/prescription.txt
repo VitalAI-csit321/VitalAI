@@ -1,0 +1,11 @@
+
+Prescription
+
+Patient:
+Marc Nichols
+
+Medication:
+Cetirizine 10mg
+
+Directions:
+Take 1 tablet once daily.

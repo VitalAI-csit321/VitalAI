@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Jason Ramirez
+
+DOB:
+1983-08-14
+
+Phone:
+0439 939 967
+
+Email:
+andreamartinez@example.net
+
+Address:
+272/4 Spencer Footway, Mcdanielland, ACT, 3657
+
+Medicare:
+5175511950

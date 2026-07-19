@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Jeffrey Ross
+
+DOB:
+2002-09-08
+
+Phone:
++61 406 348 320
+
+Email:
+amyhicks@example.com
+
+Address:
+6 Joseph Cutting, East Cynthia, ACT, 0263
+
+Medicare:
+6733489768

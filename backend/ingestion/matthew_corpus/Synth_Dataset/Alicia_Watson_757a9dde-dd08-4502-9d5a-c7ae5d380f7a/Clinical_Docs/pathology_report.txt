@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Alicia Watson
+
+Haemoglobin:
+169.8 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

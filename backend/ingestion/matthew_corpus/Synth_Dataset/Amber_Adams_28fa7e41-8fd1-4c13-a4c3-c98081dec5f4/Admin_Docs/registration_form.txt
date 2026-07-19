@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Amber Adams
+
+DOB:
+1934-12-07
+
+Phone:
+03 3557 9131
+
+Email:
+hillvictoria@example.net
+
+Address:
+03 Martinez Road, Singletonville, NSW, 2976
+
+Medicare:
+5188338862

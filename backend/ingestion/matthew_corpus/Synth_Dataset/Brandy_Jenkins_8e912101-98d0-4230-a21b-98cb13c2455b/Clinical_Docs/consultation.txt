@@ -1,0 +1,15 @@
+
+Patient: Brandy Jenkins
+DOB: 1935-06-18
+
+Chief Complaint:
+Headache and fatigue.
+
+Assessment:
+No acute findings on examination.
+
+Plan:
+- Monitor blood pressure at home
+- Advise on dietary changes
+- Prescribe symptomatic relief
+- Follow up in one week

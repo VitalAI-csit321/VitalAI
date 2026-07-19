@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Alicia Watson
+
+DOB:
+1971-06-04
+
+Phone:
+0454.840.179
+
+Email:
+smithlance@example.com
+
+Address:
+Level 6 3 Franklin Plateau, Lake Rachel, NT, 2619
+
+Medicare:
+1655638443

@@ -48,6 +48,14 @@ services:
   api:
     build: .
     env_file: .env
+    environment:
+      # .env's DATABASE_URL is set to 127.0.0.1 for the host-venv workflow
+      # (see .claude/skills/run-vitalai-backend). Inside this container that
+      # resolves to the container itself, not the db container, and every
+      # query fails with ConnectionRefusedError. Override with the compose
+      # service hostname so the container works regardless of how .env is
+      # currently set for host use.
+      DATABASE_URL: postgresql+asyncpg://vitalai:vitalai@db:5432/vitalai
     depends_on:
       db:
         condition: service_healthy

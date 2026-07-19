@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Jacob Kline
+
+DOB:
+1939-05-31
+
+Phone:
+0716828197
+
+Email:
+jeffery47@example.com
+
+Address:
+359 Cooper Rosebowl, South David, SA, 8678
+
+Medicare:
+2378243242

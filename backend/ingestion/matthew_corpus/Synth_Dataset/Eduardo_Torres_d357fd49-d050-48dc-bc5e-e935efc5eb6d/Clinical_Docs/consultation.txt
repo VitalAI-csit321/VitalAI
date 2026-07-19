@@ -1,0 +1,15 @@
+
+Patient: Eduardo Torres
+DOB: 1988-08-27
+
+Chief Complaint:
+Skin rash on both forearms.
+
+Assessment:
+Likely viral infection.
+
+Plan:
+- Arrange follow-up imaging
+- Follow up in one week
+- Rest
+- Advise on dietary changes

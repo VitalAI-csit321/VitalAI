@@ -1,0 +1,11 @@
+
+Prescription
+
+Patient:
+Michelle Meadows
+
+Medication:
+Salbutamol Inhaler 100mcg
+
+Directions:
+Inhale 2 puffs as needed for shortness of breath.

@@ -1,0 +1,13 @@
+
+Patient: John Dawson
+DOB: 1977-02-21
+
+Chief Complaint:
+Shortness of breath on exertion.
+
+Assessment:
+Likely viral infection.
+
+Plan:
+- Refer for physiotherapy
+- Refer to specialist if symptoms persist

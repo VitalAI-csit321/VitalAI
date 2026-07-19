@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Thomas Stanton
+
+Haemoglobin:
+132.2 g/L
+
+Interpretation:
+Normal.
