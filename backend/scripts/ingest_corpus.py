@@ -1,9 +1,9 @@
-"""Ingester: Matthew's loader/cleaner/chunker into the real chunks table.
+"""Ingester: loader/cleaner/chunker into the real chunks table.
 
-Walking-skeleton glue for FR-RAG-01. Reuses ingestion.Loader.load_document,
+Walking-skeleton for FR-RAG-01. Reuses ingestion.Loader.load_document,
 ingestion.Cleaner.clean_text, and ingestion.Chunker.chunk_text from "Rag Pipeline/"
 unchanged, then embeds through app.rag.embeddings.get_embedding_provider(), the same
-512-dim factory retrieve() uses, and inserts real Chunk rows. Matthew's own
+512-dim factory retrieve() uses, and inserts real Chunk rows. The corpus's own
 Embedding_Provider/Storage modules are not imported; this script is the only producer
 of vectors and the only writer to Postgres in this path.
 
@@ -23,7 +23,7 @@ allowed_scopes from this same constant, so ingest and query cannot drift apart.
 
 Usage (against the docker-compose db, migrated to head):
     DATABASE_URL=postgresql+asyncpg://vitalai:vitalai@localhost:5432/vitalai \
-        python -m scripts.ingest_matthew_corpus
+        python -m scripts.ingest_corpus
 """
 
 from __future__ import annotations
@@ -53,12 +53,12 @@ from app.models.chunk import Chunk
 from app.rag.embeddings import EmbeddingProvider, get_embedding_provider
 
 EMBEDDING_DIM = 512
-# 500 chars, not Matthew's 50. Still character-based, still Chunker.chunk_text
+# 500 chars, not the original driver's 50. Still character-based, still Chunker.chunk_text
 # unchanged, just a larger size argument so a short clinical fact (a label and
 # its value) lands in one chunk instead of splitting across two.
 CHUNK_SIZE = 500
 
-# Ratified access_scope vocabulary, keyed on doc_type (not folder label). Matthew's
+# Ratified access_scope vocabulary, keyed on doc_type (not folder label). The
 # generator emits exactly five doc_types, confirmed by listing the dataset on disk.
 # The sensitive tier stays defined in the vocabulary but no current doc_type maps to
 # it, because the generator emits no sensitive document class yet. An unknown or
@@ -78,7 +78,7 @@ _UUID_RE = re.compile(
 
 
 def _extract_patient_uuid(folder_name: str) -> uuid.UUID:
-    """Pull the UUID out of Matthew's "Name_UUID" folder name. Fails loud if absent."""
+    """Pull the UUID out of the corpus's "Name_UUID" folder name. Fails loud if absent."""
     match = _UUID_RE.search(folder_name)
     if match is None:
         raise ValueError(f"no UUID found in patient folder name: {folder_name!r}")
@@ -101,7 +101,7 @@ def _list_patient_files(patient_dir: Path) -> list[Path]:
 async def ingest_file(
     session: AsyncSession, file_path: Path, provider: EmbeddingProvider
 ) -> int:
-    """Run Matthew's loader/cleaner/chunker unchanged, then embed and insert for real."""
+    """Run the loader/cleaner/chunker unchanged, then embed and insert for real."""
     raw_ref = load_document.remote(str(file_path))
     clean_ref = clean_text.remote(raw_ref)
     chunked_ref = chunk_text.remote(clean_ref, CHUNK_SIZE)
@@ -161,7 +161,6 @@ async def main() -> None:
     from app.config import settings
 
     # ray.init(local_mode=True) is not available in ray 2.56 ("no longer supported").
-    # Plain init matches Matthew's own main.py invocation.
     ray.init(ignore_reinit_error=True, num_cpus=2)
 
     dataset_dir = _RAG_PIPELINE_DIR / "Synth_Dataset"

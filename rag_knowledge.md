@@ -78,6 +78,18 @@ a readable format lands on it. This is the standard production RAG pattern: a st
 document ID plus a separate source pointer. Do NOT put the readable string into
 source_document_id.
 
+**Not locked, and not addressed above: neither ID has a backing entity yet.**
+`patient_id` and `source_document_id` are both bare UUIDs with nothing to reference:
+no `Patient` table, no `documents` table. This was already flagged, before this file
+existed, in `backend/docs/FR-RAG-01_handoff.md`'s "Reconcile with Matthew" list, and
+independently rediscovered 2026-07-19 via a Figma-vs-backend gap analysis
+(`docs/backend_gap_analysis.md`) that hit the same gap from the Patients-page side.
+Two different angles landing on the same fact makes it a real one, not a one-off
+nitpick. What's locked above is the *shape* (separate machine key vs. citation);
+whether `patient_id` eventually becomes a real FK to a `patients` table, and
+`source_document_id` an FK to a future `documents` table, is not decided here and
+should not be assumed settled just because the column has existed since 0005.
+
 Attribution is document-set level, not sentence level. LLMs synthesize across chunks,
 so citation points to "these documents grounded this answer," not "this sentence came
 from this line." Don't promise finer.
@@ -242,7 +254,7 @@ access_scope is keyed off doc_type, not folder label. Matthew's generator emits
 exactly five doc_types, confirmed by listing the dataset on disk: consultation,
 pathology_report, and prescription are clinical; registration_form and
 appointment_history are admin. The mapping, defined as DOC_TYPE_TO_SCOPE in
-scripts/ingest_matthew_corpus.py:
+scripts/ingest_corpus.py:
 
 | doc_type | access_scope |
 |---|---|
@@ -263,9 +275,34 @@ document class (mental health, sexual health, and similar) with a distinct filen
 stem before anything can route to sensitive. Until then the sensitive tier has no
 producer.
 
-scripts/ingest_matthew_corpus.py imports from `Rag Pipeline/`, Matthew's work, a
-sibling directory outside this repo's tracked tree. Until that lands, the script
-fails with ImportError for anyone who doesn't already have that directory locally.
+scripts/ingest_corpus.py imports from `backend/ingestion/matthew_corpus/`, a
+directory that's now tracked in this repo (2026-07-19: moved in from an
+untracked sibling folder via `git mv`; `Storage.py` and the stale `Embedder.py`
+were deleted in the same pass, see below). Its transitive deps (ray, pypdf)
+are declared in requirements.txt/requirements.lock as of the same date, so
+both halves of the original ImportError-for-anyone-else problem are now fixed.
+
+**2026-07-19: full corpus run, not just the demo.** ingest_corpus.py's
+main() no longer hardcodes one patient; it loops every folder under Synth_Dataset,
+each patient in its own delete-then-insert (one bad patient can't roll back the
+rest). Ran for real against live Postgres: 100/100 patients landed after a retry
+(first pass hit 98/100, the 2 misses were host disk pressure destabilizing Docker
+mid-run, not a data or code bug, confirmed by retrying those 2 patients cleanly
+once Docker was back up). `chunks` now holds 104 distinct patients / 515 rows
+(100 Synth_Dataset + 4 from the original baseline seed corpus), embeddings
+verified 512-dim across the board, access_scope breakdown correct.
+
+**Embedder.py / Embedding_Provider.py, diffed against the canonical provider
+above (2026-07-19):** neither is safe to use as-is against the real schema.
+Both call `model.encode()` raw with no `truncate_dim=512` (native output is
+768-dim) and neither implements the asymmetric query/document prefix this
+file's docstring calls out as required, so routing ingestion through the
+canonical embedder (as ingest_corpus.py already does) isn't just
+preference, it's necessary. `Embedder.py` is a stale, pre-truncation-fix copy
+of this file with nothing unique in it. `Embedding_Provider.py` does have a
+real, working `boto3` Bedrock implementation this file's `BedrockTitanProvider`
+lacks (it's still a `NotImplementedError` stub here), worth porting before
+Phase 3 Bedrock work, not deleting unseen.
 
 ---
 
@@ -311,6 +348,16 @@ fails with ImportError for anyone who doesn't already have that directory locall
 - Reset DB clean: `docker compose down -v && docker compose up -d`.
 - Full local check before push (run what CI runs):
   `ruff check app tests && ruff format --check app tests && DATABASE_URL=... JWT_SECRET_KEY=ci-test-secret python -m pytest tests/`
+- **Containerized `api` service (docker-compose.yml), fixed 2026-07-19:** the `api`
+  service loads the same `.env` that host-venv work points at `127.0.0.1` for
+  `DATABASE_URL`. Inside a container `127.0.0.1` is the container itself, not the
+  `db` container, so every DB query failed with `ConnectionRefusedError` (the
+  server itself started fine and served `/health`, only real queries failed,
+  looks like a healthy container until you hit an endpoint that touches the DB).
+  Fixed with an explicit `environment: DATABASE_URL: ...@db:5432/...` override on
+  the `api` service, which takes precedence over the `.env` value regardless of
+  what host-mode has it set to. Verified live: full register → login → /me flow
+  against the built container succeeds now.
 
 ---
 
