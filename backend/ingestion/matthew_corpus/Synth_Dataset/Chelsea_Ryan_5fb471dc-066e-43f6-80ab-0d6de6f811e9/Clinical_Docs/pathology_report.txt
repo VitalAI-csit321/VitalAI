@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Chelsea Ryan
+
+Haemoglobin:
+159.3 g/L
+
+Interpretation:
+Normal.

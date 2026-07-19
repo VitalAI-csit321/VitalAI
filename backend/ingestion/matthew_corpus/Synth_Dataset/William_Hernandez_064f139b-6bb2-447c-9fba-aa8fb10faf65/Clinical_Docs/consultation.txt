@@ -1,0 +1,14 @@
+
+Patient: William Hernandez
+DOB: 1950-11-10
+
+Chief Complaint:
+Anxiety and difficulty sleeping.
+
+Assessment:
+Probable upper respiratory tract infection.
+
+Plan:
+- Monitor blood pressure at home
+- Refer for physiotherapy
+- Refer to specialist if symptoms persist

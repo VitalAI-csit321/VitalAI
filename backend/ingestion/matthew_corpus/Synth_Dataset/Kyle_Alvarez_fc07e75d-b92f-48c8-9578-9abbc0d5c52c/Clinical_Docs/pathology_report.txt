@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Kyle Alvarez
+
+Haemoglobin:
+146.4 g/L
+
+Interpretation:
+Normal.

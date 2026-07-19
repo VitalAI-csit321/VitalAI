@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Claudia Smith
+
+Haemoglobin:
+159.4 g/L
+
+Interpretation:
+Normal.

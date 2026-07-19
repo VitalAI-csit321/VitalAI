@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Annette Reyes
+
+Haemoglobin:
+166.6 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Erika Parker
+
+Haemoglobin:
+143.7 g/L
+
+Interpretation:
+Normal.

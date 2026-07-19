@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Amber Adams
+
+DOB:
+1945-01-19
+
+Phone:
++61363699960
+
+Email:
+byrdedward@example.org
+
+Address:
+288/2 Thompson Hill, St. Peter, TAS, 2605
+
+Medicare:
+7980474711

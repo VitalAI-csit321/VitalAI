@@ -1,0 +1,14 @@
+
+Patient: Alexander Brady
+DOB: 1988-03-05
+
+Chief Complaint:
+Headache and fatigue.
+
+Assessment:
+Probable seasonal allergic reaction.
+
+Plan:
+- Arrange follow-up imaging
+- Monitor blood pressure at home
+- Refer to specialist if symptoms persist

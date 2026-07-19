@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Karl Walton
+
+DOB:
+1957-09-28
+
+Phone:
+03-0217-8348
+
+Email:
+johnsonmartin@example.com
+
+Address:
+203 Galloway Drive, Amandaside, VIC, 2664
+
+Medicare:
+7825422125

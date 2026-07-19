@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Amber Adams
+
+Haemoglobin:
+109.1 g/L
+
+Interpretation:
+Low. Recommend clinical correlation.

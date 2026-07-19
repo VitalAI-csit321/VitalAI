@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Jeff Williams
+
+Haemoglobin:
+126.9 g/L
+
+Interpretation:
+Normal.

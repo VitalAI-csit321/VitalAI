@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+John Mejia
+
+DOB:
+1978-01-22
+
+Phone:
+07-4365-0064
+
+Email:
+tammy05@example.org
+
+Address:
+Suite 766 86 Santiago Mall, St. Allisonbury, NT, 2163
+
+Medicare:
+7503141976

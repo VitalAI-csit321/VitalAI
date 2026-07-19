@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Joshua Fox
+
+DOB:
+1995-05-14
+
+Phone:
++61-407-044-957
+
+Email:
+ujohnson@example.com
+
+Address:
+Suite 842 136 Warren Riverway, West Travis, TAS, 2520
+
+Medicare:
+4324018060

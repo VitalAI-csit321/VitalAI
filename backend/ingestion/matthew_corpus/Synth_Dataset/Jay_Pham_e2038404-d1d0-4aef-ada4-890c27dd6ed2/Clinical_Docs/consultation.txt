@@ -1,0 +1,13 @@
+
+Patient: Jay Pham
+DOB: 1959-05-12
+
+Chief Complaint:
+Abdominal pain and nausea.
+
+Assessment:
+Signs suggestive of mild anxiety disorder.
+
+Plan:
+- Advise on dietary changes
+- Increase fluid intake

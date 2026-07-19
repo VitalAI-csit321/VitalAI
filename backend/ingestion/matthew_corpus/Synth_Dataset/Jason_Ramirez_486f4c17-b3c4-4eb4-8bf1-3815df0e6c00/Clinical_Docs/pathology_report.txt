@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Jason Ramirez
+
+Haemoglobin:
+176.2 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

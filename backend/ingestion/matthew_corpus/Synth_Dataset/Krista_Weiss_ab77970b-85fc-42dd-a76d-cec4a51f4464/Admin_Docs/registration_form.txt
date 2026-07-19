@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Krista Weiss
+
+DOB:
+1993-08-07
+
+Phone:
+0269778321
+
+Email:
+rasmussenbradley@example.org
+
+Address:
+9 Robert Cross, New Rachelchester, NT, 6379
+
+Medicare:
+7107289826

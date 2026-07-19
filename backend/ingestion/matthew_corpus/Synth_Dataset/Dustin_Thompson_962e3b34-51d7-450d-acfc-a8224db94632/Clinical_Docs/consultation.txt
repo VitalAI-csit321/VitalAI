@@ -1,0 +1,13 @@
+
+Patient: Dustin Thompson
+DOB: 1991-07-01
+
+Chief Complaint:
+Anxiety and difficulty sleeping.
+
+Assessment:
+Consistent with musculoskeletal strain.
+
+Plan:
+- Refer to specialist if symptoms persist
+- Arrange follow-up imaging

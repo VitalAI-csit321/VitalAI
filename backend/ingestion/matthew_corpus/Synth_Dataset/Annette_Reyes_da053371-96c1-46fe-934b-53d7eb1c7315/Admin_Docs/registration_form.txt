@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Annette Reyes
+
+DOB:
+1957-06-30
+
+Phone:
+49122264
+
+Email:
+christensenkelly@example.org
+
+Address:
+585/732 Mary Esplanade, Reynoldsburgh, WA, 2850
+
+Medicare:
+6421287663

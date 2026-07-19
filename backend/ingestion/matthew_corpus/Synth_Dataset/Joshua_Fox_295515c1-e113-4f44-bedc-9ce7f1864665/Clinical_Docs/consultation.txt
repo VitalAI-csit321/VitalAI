@@ -1,0 +1,13 @@
+
+Patient: Joshua Fox
+DOB: 1995-05-14
+
+Chief Complaint:
+Joint pain in the knees.
+
+Assessment:
+Probable upper respiratory tract infection.
+
+Plan:
+- Arrange follow-up imaging
+- Prescribe symptomatic relief

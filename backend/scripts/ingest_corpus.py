@@ -1,4 +1,4 @@
-"""One-off demo ingester: Matthew's loader/cleaner/chunker into the real chunks table.
+"""Ingester: Matthew's loader/cleaner/chunker into the real chunks table.
 
 Walking-skeleton glue for FR-RAG-01. Reuses ingestion.Loader.load_document,
 ingestion.Cleaner.clean_text, and ingestion.Chunker.chunk_text from "Rag Pipeline/"
@@ -7,8 +7,9 @@ unchanged, then embeds through app.rag.embeddings.get_embedding_provider(), the 
 Embedding_Provider/Storage modules are not imported; this script is the only producer
 of vectors and the only writer to Postgres in this path.
 
-Scoped to one patient (Elizabeth Thomas) for the demo, not the full 101-patient
-corpus. Not a modification to any existing module, ingestion or app.rag.
+Runs the full Synth_Dataset corpus (100 patients), one patient at a time, each in
+its own delete-then-insert transaction so a single bad patient can't roll back
+everyone else's data. Not a modification to any existing module, ingestion or app.rag.
 
 doc_type is set to the filename stem verbatim (consultation, prescription,
 pathology_report, registration_form, appointment_history). It is not mapped onto the
@@ -41,7 +42,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 # "Rag Pipeline/" is a sibling directory with a space in its name, not an installed
 # package. Put it on sys.path so ingestion.* imports resolve without touching that
 # folder's contents.
-_RAG_PIPELINE_DIR = Path(__file__).resolve().parents[2] / "Rag Pipeline"
+_RAG_PIPELINE_DIR = Path(__file__).resolve().parents[1] / "ingestion" / "matthew_corpus"
 sys.path.insert(0, str(_RAG_PIPELINE_DIR))
 
 from ingestion.Chunker import chunk_text  # noqa: E402
@@ -56,8 +57,6 @@ EMBEDDING_DIM = 512
 # unchanged, just a larger size argument so a short clinical fact (a label and
 # its value) lands in one chunk instead of splitting across two.
 CHUNK_SIZE = 500
-
-PATIENT_FOLDER = "Elizabeth_Thomas_c5397397-c9b3-48cc-9413-09975f47bf14"
 
 # Ratified access_scope vocabulary, keyed on doc_type (not folder label). Matthew's
 # generator emits exactly five doc_types, confirmed by listing the dataset on disk.
@@ -154,6 +153,10 @@ async def ingest_patient(session: AsyncSession, patient_dir: Path) -> int:
     return total
 
 
+def _list_patient_dirs(dataset_dir: Path) -> list[Path]:
+    return sorted(p for p in dataset_dir.iterdir() if p.is_dir())
+
+
 async def main() -> None:
     from app.config import settings
 
@@ -161,15 +164,36 @@ async def main() -> None:
     # Plain init matches Matthew's own main.py invocation.
     ray.init(ignore_reinit_error=True, num_cpus=2)
 
-    patient_dir = _RAG_PIPELINE_DIR / "Synth_Dataset" / PATIENT_FOLDER
+    dataset_dir = _RAG_PIPELINE_DIR / "Synth_Dataset"
+    patient_dirs = _list_patient_dirs(dataset_dir)
 
     engine = create_async_engine(settings.database_url)
     async_session = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
+    total_chunks = 0
+    failures: list[tuple[str, str]] = []
     async with async_session() as session:
-        count = await ingest_patient(session, patient_dir)
+        for patient_dir in patient_dirs:
+            try:
+                count = await ingest_patient(session, patient_dir)
+            except Exception as exc:  # noqa: BLE001 - one bad patient must not abort the corpus
+                await session.rollback()
+                failures.append((patient_dir.name, str(exc)))
+                print(f"FAILED  {patient_dir.name}: {exc}")
+                continue
+            total_chunks += count
+            print(f"ingested {count} chunks for patient folder {patient_dir.name}")
     await engine.dispose()
 
-    print(f"ingested {count} chunks for patient folder {PATIENT_FOLDER}")
+    print()
+    print(
+        f"done: {len(patient_dirs) - len(failures)}/{len(patient_dirs)} patients ingested, "
+        f"{total_chunks} chunks total, {len(failures)} failed"
+    )
+    if failures:
+        print("failures:")
+        for name, err in failures:
+            print(f"  - {name}: {err}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,14 @@
+
+Patient: Jason Reid
+DOB: 1939-11-12
+
+Chief Complaint:
+Fever and chills for two days.
+
+Assessment:
+Consistent with musculoskeletal strain.
+
+Plan:
+- Monitor blood pressure at home
+- Refer for physiotherapy
+- Prescribe symptomatic relief

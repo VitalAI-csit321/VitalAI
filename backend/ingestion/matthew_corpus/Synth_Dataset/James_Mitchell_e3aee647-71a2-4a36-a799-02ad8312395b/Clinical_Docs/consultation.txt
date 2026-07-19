@@ -1,0 +1,15 @@
+
+Patient: James Mitchell
+DOB: 1926-07-31
+
+Chief Complaint:
+Shortness of breath on exertion.
+
+Assessment:
+Consistent with tension-type headache.
+
+Plan:
+- Prescribe symptomatic relief
+- Refer to specialist if symptoms persist
+- Increase fluid intake
+- Refer for physiotherapy

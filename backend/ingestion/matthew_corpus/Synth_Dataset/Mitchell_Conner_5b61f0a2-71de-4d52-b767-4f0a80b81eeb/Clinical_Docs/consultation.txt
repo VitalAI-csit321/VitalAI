@@ -1,0 +1,13 @@
+
+Patient: Mitchell Conner
+DOB: 1991-09-08
+
+Chief Complaint:
+Shortness of breath on exertion.
+
+Assessment:
+Signs suggestive of mild anxiety disorder.
+
+Plan:
+- Prescribe symptomatic relief
+- Order blood tests

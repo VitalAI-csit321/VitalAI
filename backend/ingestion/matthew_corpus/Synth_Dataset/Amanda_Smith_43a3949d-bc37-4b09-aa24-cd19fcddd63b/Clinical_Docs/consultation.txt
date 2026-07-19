@@ -1,0 +1,13 @@
+
+Patient: Amanda Smith
+DOB: 2007-07-10
+
+Chief Complaint:
+Fever and chills for two days.
+
+Assessment:
+Likely soft tissue inflammation.
+
+Plan:
+- Rest
+- Follow up in one week

@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Heather Benson
+
+Haemoglobin:
+161.6 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Deborah Guzman
+
+DOB:
+1972-03-21
+
+Phone:
++61.400.406.878
+
+Email:
+richard11@example.org
+
+Address:
+16 Benjamin Estate, Ericfurt, WA, 2617
+
+Medicare:
+8811267421

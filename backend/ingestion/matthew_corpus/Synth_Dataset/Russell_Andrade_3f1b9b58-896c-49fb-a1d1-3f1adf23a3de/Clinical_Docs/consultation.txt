@@ -1,0 +1,14 @@
+
+Patient: Russell Andrade
+DOB: 1994-05-03
+
+Chief Complaint:
+Skin rash on both forearms.
+
+Assessment:
+Probable upper respiratory tract infection.
+
+Plan:
+- Rest
+- Order blood tests
+- Increase fluid intake

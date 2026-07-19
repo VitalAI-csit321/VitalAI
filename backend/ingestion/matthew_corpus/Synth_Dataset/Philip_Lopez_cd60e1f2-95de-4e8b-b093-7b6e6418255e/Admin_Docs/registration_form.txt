@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Philip Lopez
+
+DOB:
+1993-07-23
+
+Phone:
++61 421 452 770
+
+Email:
+kelseydavis@example.com
+
+Address:
+235 Rhonda Laneway, Kathrynland, QLD, 2609
+
+Medicare:
+4259525327

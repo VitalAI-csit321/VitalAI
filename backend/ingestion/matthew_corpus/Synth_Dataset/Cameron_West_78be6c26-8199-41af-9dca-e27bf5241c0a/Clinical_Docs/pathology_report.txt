@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Cameron West
+
+Haemoglobin:
+133.6 g/L
+
+Interpretation:
+Normal.

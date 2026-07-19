@@ -1,0 +1,13 @@
+
+Patient: William Johnson
+DOB: 1947-08-04
+
+Chief Complaint:
+Headache and fatigue.
+
+Assessment:
+Probable seasonal allergic reaction.
+
+Plan:
+- Refer to specialist if symptoms persist
+- Advise on dietary changes

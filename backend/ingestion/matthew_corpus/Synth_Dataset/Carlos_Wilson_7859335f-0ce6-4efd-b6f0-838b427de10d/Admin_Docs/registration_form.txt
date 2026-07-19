@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Carlos Wilson
+
+DOB:
+1951-02-03
+
+Phone:
+(07) 5206 3108
+
+Email:
+bfrench@example.net
+
+Address:
+61 Welch Outlook, New Kevinmouth, SA, 8296
+
+Medicare:
+1844888278

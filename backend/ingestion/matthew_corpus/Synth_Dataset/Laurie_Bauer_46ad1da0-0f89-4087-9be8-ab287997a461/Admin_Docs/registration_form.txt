@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Laurie Bauer
+
+DOB:
+1944-07-18
+
+Phone:
+(07)-9948-5855
+
+Email:
+lori98@example.org
+
+Address:
+8 Bailey Key, Timothyville, NT, 2906
+
+Medicare:
+6202895715

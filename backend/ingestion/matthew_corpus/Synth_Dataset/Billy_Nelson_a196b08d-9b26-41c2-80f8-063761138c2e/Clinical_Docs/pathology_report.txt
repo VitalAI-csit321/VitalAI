@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Billy Nelson
+
+Haemoglobin:
+139.5 g/L
+
+Interpretation:
+Normal.

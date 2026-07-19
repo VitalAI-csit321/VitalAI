@@ -1,0 +1,15 @@
+
+Patient: Amber Adams
+DOB: 1945-01-19
+
+Chief Complaint:
+Lower back pain after lifting.
+
+Assessment:
+Likely viral infection.
+
+Plan:
+- Rest
+- Refer for physiotherapy
+- Advise on dietary changes
+- Order blood tests

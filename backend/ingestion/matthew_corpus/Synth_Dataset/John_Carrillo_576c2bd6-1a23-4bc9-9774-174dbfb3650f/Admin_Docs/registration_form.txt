@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+John Carrillo
+
+DOB:
+2022-01-26
+
+Phone:
++61 495 942 583
+
+Email:
+pcastaneda@example.net
+
+Address:
+708 Jeanette Court, Kyleland, TAS, 2639
+
+Medicare:
+9892204187

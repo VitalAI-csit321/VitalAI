@@ -1,0 +1,14 @@
+
+Patient: Gerald Small
+DOB: 2003-01-14
+
+Chief Complaint:
+Abdominal pain and nausea.
+
+Assessment:
+Likely gastro-oesophageal reflux.
+
+Plan:
+- Refer to specialist if symptoms persist
+- Increase fluid intake
+- Rest

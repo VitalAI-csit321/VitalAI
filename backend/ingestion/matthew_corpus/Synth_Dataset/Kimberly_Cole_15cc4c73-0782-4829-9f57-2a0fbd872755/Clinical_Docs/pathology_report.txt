@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Kimberly Cole
+
+Haemoglobin:
+160.9 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

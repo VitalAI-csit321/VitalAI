@@ -1,0 +1,14 @@
+
+Patient: Matthew Green
+DOB: 1990-05-19
+
+Chief Complaint:
+Skin rash on both forearms.
+
+Assessment:
+Likely soft tissue inflammation.
+
+Plan:
+- Prescribe symptomatic relief
+- Refer to specialist if symptoms persist
+- Follow up in one week

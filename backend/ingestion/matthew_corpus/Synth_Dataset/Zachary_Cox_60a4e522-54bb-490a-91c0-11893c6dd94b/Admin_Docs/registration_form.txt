@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Zachary Cox
+
+DOB:
+2016-01-07
+
+Phone:
+(07)85997986
+
+Email:
+stephen93@example.net
+
+Address:
+Apt. 428 785 Alexander Subway, Wrightside, NSW, 5992
+
+Medicare:
+2364975477

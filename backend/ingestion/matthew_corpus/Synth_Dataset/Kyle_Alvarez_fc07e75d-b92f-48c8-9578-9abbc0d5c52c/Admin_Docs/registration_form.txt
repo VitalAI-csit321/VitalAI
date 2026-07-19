@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Kyle Alvarez
+
+DOB:
+1939-08-27
+
+Phone:
+0491 022 975
+
+Email:
+jacobstammy@example.com
+
+Address:
+Level 7 69 Rebecca Entrance, Jonathonshire, TAS, 2920
+
+Medicare:
+5220931940

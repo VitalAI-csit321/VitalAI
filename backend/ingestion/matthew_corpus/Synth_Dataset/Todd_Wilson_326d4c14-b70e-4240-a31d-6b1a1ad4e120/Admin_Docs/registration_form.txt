@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Todd Wilson
+
+DOB:
+2021-06-20
+
+Phone:
+(08) 5715 6715
+
+Email:
+raymond23@example.com
+
+Address:
+Flat 74 304 Reilly Row, St. Adam, QLD, 2002
+
+Medicare:
+8431050086

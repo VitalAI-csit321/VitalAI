@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Steven Chavez
+
+Haemoglobin:
+114.0 g/L
+
+Interpretation:
+Low. Recommend clinical correlation.

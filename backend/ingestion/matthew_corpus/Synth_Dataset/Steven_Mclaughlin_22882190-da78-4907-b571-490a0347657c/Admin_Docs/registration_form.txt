@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Steven Mclaughlin
+
+DOB:
+1938-04-29
+
+Phone:
+7942-5453
+
+Email:
+joseph89@example.com
+
+Address:
+Flat 75 807 Andrew Retreat, Joelfurt, QLD, 2508
+
+Medicare:
+4699825728

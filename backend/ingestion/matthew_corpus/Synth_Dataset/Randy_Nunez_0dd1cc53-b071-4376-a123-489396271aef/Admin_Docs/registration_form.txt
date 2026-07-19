@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Randy Nunez
+
+DOB:
+1967-12-08
+
+Phone:
++61.429.013.193
+
+Email:
+lisa31@example.com
+
+Address:
+264 Chan Plateau, South Desiree, TAS, 2574
+
+Medicare:
+4864972140

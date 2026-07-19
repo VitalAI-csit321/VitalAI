@@ -1,0 +1,14 @@
+
+Patient: Steven Mills
+DOB: 1975-10-18
+
+Chief Complaint:
+Shortness of breath on exertion.
+
+Assessment:
+Consistent with musculoskeletal strain.
+
+Plan:
+- Prescribe symptomatic relief
+- Refer to specialist if symptoms persist
+- Advise on dietary changes

@@ -1,0 +1,14 @@
+
+Patient: Denise Steele
+DOB: 1953-07-22
+
+Chief Complaint:
+Anxiety and difficulty sleeping.
+
+Assessment:
+Probable upper respiratory tract infection.
+
+Plan:
+- Monitor blood pressure at home
+- Arrange follow-up imaging
+- Increase fluid intake

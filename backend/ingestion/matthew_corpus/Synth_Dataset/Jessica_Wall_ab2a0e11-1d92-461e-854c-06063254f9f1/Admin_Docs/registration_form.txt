@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Jessica Wall
+
+DOB:
+1961-07-07
+
+Phone:
+03.2898.7658
+
+Email:
+fitzgeraldnancy@example.com
+
+Address:
+6 Williams Brae, East Michelle, QLD, 2532
+
+Medicare:
+5148686860

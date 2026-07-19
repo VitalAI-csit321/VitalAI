@@ -1,0 +1,14 @@
+
+Patient: Randy Nunez
+DOB: 1967-12-08
+
+Chief Complaint:
+Headache and fatigue.
+
+Assessment:
+Signs suggestive of mild hypertension.
+
+Plan:
+- Arrange follow-up imaging
+- Refer to specialist if symptoms persist
+- Advise on dietary changes

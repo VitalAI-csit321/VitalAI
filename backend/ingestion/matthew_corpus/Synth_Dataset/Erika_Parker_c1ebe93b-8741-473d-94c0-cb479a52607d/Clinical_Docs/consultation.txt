@@ -1,0 +1,14 @@
+
+Patient: Erika Parker
+DOB: 2021-11-12
+
+Chief Complaint:
+Abdominal pain and nausea.
+
+Assessment:
+Signs suggestive of mild anxiety disorder.
+
+Plan:
+- Monitor blood pressure at home
+- Increase fluid intake
+- Refer for physiotherapy

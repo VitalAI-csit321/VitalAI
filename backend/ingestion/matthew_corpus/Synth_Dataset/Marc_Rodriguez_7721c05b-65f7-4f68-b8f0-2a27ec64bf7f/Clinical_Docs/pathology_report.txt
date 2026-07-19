@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Marc Rodriguez
+
+Haemoglobin:
+103.8 g/L
+
+Interpretation:
+Low. Recommend clinical correlation.

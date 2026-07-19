@@ -1,0 +1,13 @@
+
+Patient: Todd Wilson
+DOB: 2021-06-20
+
+Chief Complaint:
+Dizziness and occasional palpitations.
+
+Assessment:
+Signs suggestive of mild anxiety disorder.
+
+Plan:
+- Monitor blood pressure at home
+- Refer for physiotherapy

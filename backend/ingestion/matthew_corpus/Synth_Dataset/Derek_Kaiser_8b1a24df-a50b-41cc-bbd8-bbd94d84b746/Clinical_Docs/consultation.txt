@@ -1,0 +1,15 @@
+
+Patient: Derek Kaiser
+DOB: 1954-01-11
+
+Chief Complaint:
+Abdominal pain and nausea.
+
+Assessment:
+Signs suggestive of mild anxiety disorder.
+
+Plan:
+- Refer to specialist if symptoms persist
+- Prescribe symptomatic relief
+- Rest
+- Order blood tests

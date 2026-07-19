@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Rodney Hatfield
+
+Haemoglobin:
+159.6 g/L
+
+Interpretation:
+Normal.

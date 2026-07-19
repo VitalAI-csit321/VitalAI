@@ -1,0 +1,11 @@
+
+Prescription
+
+Patient:
+Jamie Martin
+
+Medication:
+Cetirizine 10mg
+
+Directions:
+Take 1 tablet once daily.

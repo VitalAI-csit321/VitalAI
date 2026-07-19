@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Philip Lopez
+
+Haemoglobin:
+145.2 g/L
+
+Interpretation:
+Normal.

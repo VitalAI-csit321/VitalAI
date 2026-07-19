@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Jason Reid
+
+Haemoglobin:
+163.4 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

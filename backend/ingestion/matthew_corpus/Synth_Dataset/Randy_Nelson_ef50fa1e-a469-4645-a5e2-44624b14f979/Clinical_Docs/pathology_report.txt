@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Randy Nelson
+
+Haemoglobin:
+136.5 g/L
+
+Interpretation:
+Normal.

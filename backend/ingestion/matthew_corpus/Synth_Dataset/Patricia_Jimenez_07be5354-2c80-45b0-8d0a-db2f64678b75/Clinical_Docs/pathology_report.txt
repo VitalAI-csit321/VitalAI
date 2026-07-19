@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Patricia Jimenez
+
+Haemoglobin:
+125.1 g/L
+
+Interpretation:
+Normal.

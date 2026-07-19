@@ -1,0 +1,14 @@
+
+Patient: Thomas Perez
+DOB: 1993-09-14
+
+Chief Complaint:
+Joint pain in the knees.
+
+Assessment:
+Likely soft tissue inflammation.
+
+Plan:
+- Monitor blood pressure at home
+- Refer for physiotherapy
+- Order blood tests

@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Joshua Fox
+
+Haemoglobin:
+116.7 g/L
+
+Interpretation:
+Low. Recommend clinical correlation.

@@ -1,0 +1,14 @@
+
+Patient: April Thompson
+DOB: 2010-12-25
+
+Chief Complaint:
+Abdominal pain and nausea.
+
+Assessment:
+Likely gastro-oesophageal reflux.
+
+Plan:
+- Advise on dietary changes
+- Arrange follow-up imaging
+- Refer for physiotherapy

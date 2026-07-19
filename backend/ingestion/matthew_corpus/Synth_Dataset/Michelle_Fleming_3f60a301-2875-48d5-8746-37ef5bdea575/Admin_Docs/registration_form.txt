@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Michelle Fleming
+
+DOB:
+2007-08-06
+
+Phone:
++61358254382
+
+Email:
+adamsstephen@example.org
+
+Address:
+Unit 25 14 James Cutting, Brownland, TAS, 2612
+
+Medicare:
+9082284090

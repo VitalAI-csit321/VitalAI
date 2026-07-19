@@ -1,0 +1,13 @@
+
+Patient: Charles Morgan
+DOB: 1940-12-03
+
+Chief Complaint:
+Shortness of breath on exertion.
+
+Assessment:
+No acute findings on examination.
+
+Plan:
+- Rest
+- Prescribe symptomatic relief
