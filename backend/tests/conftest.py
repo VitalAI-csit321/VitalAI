@@ -165,6 +165,46 @@ def front_desk_headers(front_desk_user: User) -> dict[str, str]:
 
 
 @pytest_asyncio.fixture
+async def operator_user(db_session: AsyncSession) -> User:
+    user = User(
+        email="operator@example.com",
+        hashed_password=hash_password("password123"),
+        full_name="Operator Tester",
+        role=UserRole.OPERATOR,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def doctor_user(db_session: AsyncSession) -> User:
+    user = User(
+        email="doctor@example.com",
+        hashed_password=hash_password("password123"),
+        full_name="Doctor Tester",
+        role=UserRole.DOCTOR,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+def operator_headers(operator_user: User) -> dict[str, str]:
+    token = create_access_token(operator_user.id, operator_user.role)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
+def doctor_headers(doctor_user: User) -> dict[str, str]:
+    token = create_access_token(doctor_user.id, doctor_user.role)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
 async def pg_session():
     """A session bound to a real Postgres+pgvector connection.
 
