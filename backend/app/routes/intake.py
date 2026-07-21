@@ -38,7 +38,7 @@ async def update_intake_status_endpoint(
     case_id: UUID,
     payload: IntakeStatusUpdate,
     db: AsyncSession = Depends(get_db),
-    actor: User = Depends(require_roles(UserRole.OPS_MANAGER, UserRole.ADMIN)),
+    actor: User = Depends(require_roles(UserRole.OPERATOR, UserRole.ADMIN)),
 ):
     case = await intake_service.update_case_status(db, case_id, payload.status, actor)
     if case is None:

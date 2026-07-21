@@ -99,11 +99,11 @@ async def test_admin_can_elevate_user_role(client: AsyncClient, admin_headers: d
 
     elevate = await client.post(
         f"/api/v1/auth/users/{user_id}/elevate",
-        json={"new_role": "ops_manager"},
+        json={"new_role": "operator"},
         headers=admin_headers,
     )
     assert elevate.status_code == 200
-    assert elevate.json()["role"] == "ops_manager"
+    assert elevate.json()["role"] == "operator"
 
 
 async def test_front_desk_cannot_elevate_role(client: AsyncClient, front_desk_headers: dict):

@@ -41,13 +41,13 @@ async def test_llm_status_returns_provider_info(client: AsyncClient, admin_heade
     assert isinstance(body["model"], str) and body["model"]
 
 
-async def test_llm_status_ops_manager_allowed(client: AsyncClient, db_session):
-    """ops_manager role must be permitted on /llm/status."""
+async def test_llm_status_operator_allowed(client: AsyncClient, db_session):
+    """operator role must be permitted on /llm/status."""
     user = User(
-        email="ops@llmtest.example.com",
+        email="operator@llmtest.example.com",
         hashed_password=hash_password("pass1234"),
-        full_name="Ops Manager",
-        role=UserRole.OPS_MANAGER,
+        full_name="Operator",
+        role=UserRole.OPERATOR,
     )
     db_session.add(user)
     await db_session.commit()

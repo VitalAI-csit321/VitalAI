@@ -8,8 +8,9 @@ from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 class UserRole(enum.StrEnum):
     FRONT_DESK = "front_desk"
-    OPS_MANAGER = "ops_manager"
+    OPERATOR = "operator"
     ADMIN = "admin"
+    DOCTOR = "doctor"
 
 
 class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):

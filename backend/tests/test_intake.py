@@ -90,15 +90,15 @@ async def test_status_update_allowed_for_admin(client: AsyncClient, admin_header
 # ---------------------------------------------------------------------------
 
 
-async def test_status_update_allowed_for_ops_manager(
+async def test_status_update_allowed_for_operator(
     client: AsyncClient, admin_headers: dict, db_session: AsyncSession
 ):
-    """ops_manager must be permitted to update intake status."""
+    """operator must be permitted to update intake status."""
     user = User(
-        email="opsmgr@intake-rbac.example.com",
+        email="operator@intake-rbac.example.com",
         hashed_password=hash_password("pass1234"),
-        full_name="Ops Manager",
-        role=UserRole.OPS_MANAGER,
+        full_name="Operator",
+        role=UserRole.OPERATOR,
     )
     db_session.add(user)
     await db_session.commit()
