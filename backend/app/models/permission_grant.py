@@ -11,7 +11,7 @@ class UserPermissionGrant(Base):
     """A per-user permission grant on top of the role's base permissions.
 
     Validated against GRANTABLE (app/auth/permissions.py) at the service
-    layer, not by a DB constraint — the grantable set is keyed by the
+    layer, not by a DB constraint, since the grantable set is keyed by the
     target user's role, which isn't expressible as a column-level CHECK.
     """
 

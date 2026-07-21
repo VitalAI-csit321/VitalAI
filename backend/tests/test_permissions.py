@@ -41,6 +41,6 @@ def test_operator_without_grant_lacks_read_audit():
 
 
 def test_front_desk_grant_attempt_is_ignored():
-    """FRONT_DESK has no GRANTABLE entry — a stray grant row must not leak a permission."""
+    """FRONT_DESK has no GRANTABLE entry, so a stray grant row must not leak a permission."""
     perms = effective_permissions(_user(UserRole.FRONT_DESK, granted=[VIEW_CLINICAL]))
     assert VIEW_CLINICAL not in perms

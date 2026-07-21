@@ -2,7 +2,7 @@
 
 See 'VitalAI RBAC Report - Audit Trail.md' (repo root) for the authoritative
 spec. Route handlers gate on permissions via require_permission()
-(app/auth/dependencies.py), never on UserRole directly — the sole documented
+(app/auth/dependencies.py), never on UserRole directly. The sole documented
 exception is app/routes/llm.py, infra/ops diagnostics outside this taxonomy.
 """
 
