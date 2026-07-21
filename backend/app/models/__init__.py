@@ -5,6 +5,7 @@ from app.models.case import IntakeCase, IntakeStatus
 from app.models.chunk import Chunk
 from app.models.consent import ConsentRecord, ConsentStatus
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
+from app.models.permission_grant import UserPermissionGrant
 from app.models.routing import RoutingAction, RoutingDecision
 from app.models.triage import TriageCategory, TriageResult
 from app.models.user import User, UserRole
@@ -25,6 +26,7 @@ __all__ = [
     "HumanReviewTask",
     "TaskType",
     "TaskStatus",
+    "UserPermissionGrant",
     "Chunk",
     "Appointment",
     "AppointmentStatus",
