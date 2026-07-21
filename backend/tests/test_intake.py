@@ -154,3 +154,22 @@ async def test_status_update_not_found_returns_404(client: AsyncClient, admin_he
     )
     assert response.status_code == 404
     assert "not found" in response.json()["detail"].lower()
+
+
+async def test_status_update_denied_for_doctor(
+    client: AsyncClient, admin_headers: dict, doctor_headers: dict
+):
+    """DOCTOR lacks MANAGE_CASES, must be denied."""
+    create = await client.post(
+        "/api/v1/intake",
+        json={"patient_name": "x", "contact_reason": "y", "contact_channel": "phone"},
+        headers=admin_headers,
+    )
+    case_id = create.json()["id"]
+
+    response = await client.patch(
+        f"/api/v1/intake/{case_id}/status",
+        json={"status": "consent_pending"},
+        headers=doctor_headers,
+    )
+    assert response.status_code == 403

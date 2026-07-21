@@ -123,3 +123,23 @@ async def test_front_desk_cannot_elevate_role(client: AsyncClient, front_desk_he
         headers=front_desk_headers,
     )
     assert response.status_code == 403
+
+
+async def test_operator_cannot_elevate_role(client: AsyncClient, operator_headers: dict):
+    """OPERATOR lacks MANAGE_USERS, must be denied."""
+    reg = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "elevatetarget@example.com",
+            "password": "password123",
+            "full_name": "Elevate Target",
+        },
+    )
+    user_id = reg.json()["id"]
+
+    response = await client.post(
+        f"/api/v1/auth/users/{user_id}/elevate",
+        json={"new_role": "admin"},
+        headers=operator_headers,
+    )
+    assert response.status_code == 403

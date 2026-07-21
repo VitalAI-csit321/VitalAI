@@ -5,7 +5,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import get_current_user, require_roles
+from app.auth.dependencies import get_current_user, require_permission
+from app.auth.permissions import MANAGE_USERS
 from app.auth.security import create_access_token, hash_password, verify_password
 from app.config import settings
 from app.database import get_db
@@ -39,7 +40,7 @@ async def elevate_user_role(
     user_id: UUID,
     payload: ElevateRoleRequest,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.ADMIN)),
+    _: User = Depends(require_permission(MANAGE_USERS)),
 ) -> User:
     """Change a user's role. Admin only."""
     user = await db.get(User, user_id)

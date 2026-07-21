@@ -47,3 +47,22 @@ async def test_get_audit_trail_denied_for_non_admin(
 
     response = await client.get(f"/api/v1/audit/by-case/{case_id}", headers=front_desk_headers)
     assert response.status_code == 403
+
+
+async def test_get_audit_trail_denied_for_operator_without_grant(
+    client: AsyncClient, admin_headers: dict, operator_headers: dict
+):
+    """OPERATOR without the READ_AUDIT grant must be denied."""
+    create = await client.post(
+        "/api/v1/intake",
+        json={
+            "patient_name": "Audit Tester",
+            "contact_reason": "Visit",
+            "contact_channel": "phone",
+        },
+        headers=admin_headers,
+    )
+    case_id = create.json()["id"]
+
+    response = await client.get(f"/api/v1/audit/by-case/{case_id}", headers=operator_headers)
+    assert response.status_code == 403
