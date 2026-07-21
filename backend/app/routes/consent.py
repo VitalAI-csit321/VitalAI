@@ -3,7 +3,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import require_permission
+from app.auth.permissions import CAPTURE_CONSENT, VIEW_RECORDS_GENERAL
 from app.database import get_db
 from app.models.user import User
 from app.schemas.consent import ConsentCreate, ConsentOut
@@ -17,7 +18,7 @@ router = APIRouter(prefix="/consent", tags=["consent"])
 async def create_consent_endpoint(
     payload: ConsentCreate,
     db: AsyncSession = Depends(get_db),
-    actor: User = Depends(get_current_user),
+    actor: User = Depends(require_permission(CAPTURE_CONSENT)),
 ):
     return await consent_service.create_consent_record(
         db, payload.case_id, actor, payload.consent_type, payload.notes
@@ -28,7 +29,7 @@ async def create_consent_endpoint(
 async def get_consent_by_case_endpoint(
     case_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(VIEW_RECORDS_GENERAL)),
 ):
     record = await consent_service.get_consent_for_case(db, case_id)
     if record is None:
@@ -42,7 +43,7 @@ async def get_consent_by_case_endpoint(
 async def capture_consent_endpoint(
     consent_id: UUID,
     db: AsyncSession = Depends(get_db),
-    actor: User = Depends(get_current_user),
+    actor: User = Depends(require_permission(CAPTURE_CONSENT)),
 ):
     try:
         record = await consent_service.capture_consent(db, consent_id, actor)
@@ -59,7 +60,7 @@ async def capture_consent_endpoint(
 async def withdraw_consent_endpoint(
     consent_id: UUID,
     db: AsyncSession = Depends(get_db),
-    actor: User = Depends(get_current_user),
+    actor: User = Depends(require_permission(CAPTURE_CONSENT)),
 ):
     try:
         record = await consent_service.withdraw_consent(db, consent_id, actor)

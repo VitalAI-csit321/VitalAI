@@ -272,3 +272,68 @@ async def test_triage_allowed_when_consent_captured(client: AsyncClient, admin_h
     )
     assert response.status_code == 200
     assert response.json()["case_id"] == case_id
+
+
+async def test_routing_post_denied_for_front_desk(
+    client: AsyncClient, admin_headers: dict, front_desk_headers: dict
+):
+    """FRONT_DESK lacks MANAGE_CASES, must be denied creating a routing decision."""
+    case_id = await _case_with_consent(
+        client, admin_headers, "regular check up booking please thanks"
+    )
+    triage = await client.post(
+        "/api/v1/triage",
+        json={
+            "case_id": case_id,
+            "contact_reason": "regular check up booking please thanks",
+            "keywords": [],
+            "patient_priority_flags": [],
+        },
+        headers=admin_headers,
+    )
+    triage_id = triage.json()["triage_id"]
+
+    response = await client.post(
+        "/api/v1/routing", json={"triage_id": triage_id}, headers=front_desk_headers
+    )
+    assert response.status_code == 403
+
+
+async def test_routing_get_allowed_for_front_desk(
+    client: AsyncClient, admin_headers: dict, front_desk_headers: dict
+):
+    """FRONT_DESK has VIEW_QUEUE, must be allowed to read a routing decision."""
+    case_id = await _case_with_consent(
+        client, admin_headers, "regular check up booking please thanks"
+    )
+    triage = await client.post(
+        "/api/v1/triage",
+        json={
+            "case_id": case_id,
+            "contact_reason": "regular check up booking please thanks",
+            "keywords": [],
+            "patient_priority_flags": [],
+        },
+        headers=admin_headers,
+    )
+    triage_id = triage.json()["triage_id"]
+    await client.post("/api/v1/routing", json={"triage_id": triage_id}, headers=admin_headers)
+
+    response = await client.get(f"/api/v1/routing/by-case/{case_id}", headers=front_desk_headers)
+    assert response.status_code == 200
+
+
+async def test_triage_denied_for_front_desk(client: AsyncClient, admin_headers: dict, front_desk_headers: dict):
+    """FRONT_DESK lacks MANAGE_CASES, must be denied running triage."""
+    case_id = await _case_with_consent(client, admin_headers)
+    response = await client.post(
+        "/api/v1/triage",
+        json={
+            "case_id": case_id,
+            "contact_reason": "routine inquiry",
+            "keywords": [],
+            "patient_priority_flags": [],
+        },
+        headers=front_desk_headers,
+    )
+    assert response.status_code == 403

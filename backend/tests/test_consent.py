@@ -90,3 +90,34 @@ async def test_consent_withdraw_twice_returns_409(client: AsyncClient, admin_hea
     second = await client.post(f"/api/v1/consent/{consent_id}/withdraw", headers=admin_headers)
     assert second.status_code == 409
     assert "withdraw" in second.json()["detail"].lower()
+
+
+async def test_consent_create_allowed_for_front_desk(
+    client: AsyncClient, admin_headers: dict, front_desk_headers: dict
+):
+    case_id = await _create_case(client, admin_headers)
+    response = await client.post(
+        "/api/v1/consent", json={"case_id": case_id}, headers=front_desk_headers
+    )
+    assert response.status_code == 201
+
+
+async def test_consent_create_denied_for_doctor(
+    client: AsyncClient, admin_headers: dict, doctor_headers: dict
+):
+    case_id = await _create_case(client, admin_headers)
+    response = await client.post(
+        "/api/v1/consent", json={"case_id": case_id}, headers=doctor_headers
+    )
+    assert response.status_code == 403
+
+
+async def test_consent_by_case_allowed_for_doctor(
+    client: AsyncClient, admin_headers: dict, doctor_headers: dict
+):
+    """DOCTOR has VIEW_RECORDS_GENERAL, must be allowed to read consent status."""
+    case_id = await _create_case(client, admin_headers)
+    await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
+
+    response = await client.get(f"/api/v1/consent/by-case/{case_id}", headers=doctor_headers)
+    assert response.status_code == 200
