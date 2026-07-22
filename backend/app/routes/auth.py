@@ -11,8 +11,16 @@ from app.auth.security import create_access_token, hash_password, verify_passwor
 from app.config import settings
 from app.database import get_db
 from app.limiter import limiter
+from app.models.permission_grant import UserPermissionGrant
 from app.models.user import User, UserRole
 from app.schemas.auth import ElevateRoleRequest, Token, UserOut, UserRegister
+from app.schemas.permission import PermissionGrantCreate, PermissionGrantOut
+from app.services import permission_service
+from app.services.permission_service import (
+    DuplicateGrantError,
+    GrantNotFoundError,
+    NotGrantableError,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -50,6 +58,46 @@ async def elevate_user_role(
     await db.commit()
     await db.refresh(user)
     return user
+
+
+@router.post(
+    "/users/{user_id}/grants",
+    response_model=PermissionGrantOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def grant_permission_endpoint(
+    user_id: UUID,
+    payload: PermissionGrantCreate,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(MANAGE_USERS)),
+) -> UserPermissionGrant:
+    target = await db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    try:
+        return await permission_service.grant_permission(db, target, payload.permission, actor)
+    except NotGrantableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
+    except DuplicateGrantError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.delete("/users/{user_id}/grants/{permission}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_permission_endpoint(
+    user_id: UUID,
+    permission: str,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(MANAGE_USERS)),
+) -> None:
+    target = await db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    try:
+        await permission_service.revoke_permission(db, target, permission, actor)
+    except GrantNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.post("/login", response_model=Token)
