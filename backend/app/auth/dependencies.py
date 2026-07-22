@@ -2,9 +2,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.auth.permissions import effective_permissions
 from app.auth.security import decode_access_token
@@ -38,12 +36,7 @@ async def get_current_user(
     except ValueError as exc:
         raise credentials_error from exc
 
-    # Expire the user from the session cache to ensure fresh load with relationships
-    db.expunge_all()
-    result = await db.execute(
-        select(User).where(User.id == user_id).options(selectinload(User.permission_grants))
-    )
-    user = result.scalar_one_or_none()
+    user = await db.get(User, user_id)
     if user is None or not user.is_active:
         raise credentials_error
 

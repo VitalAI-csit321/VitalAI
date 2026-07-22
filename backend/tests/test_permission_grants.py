@@ -63,7 +63,7 @@ async def test_operator_cannot_grant_permissions(
 
 
 async def test_grant_then_operator_can_read_audit(
-    client: AsyncClient, admin_headers: dict, operator_user: User
+    client: AsyncClient, admin_headers: dict, operator_user: User, db_session: AsyncSession
 ):
     """End-to-end: grant READ_AUDIT to an operator, then prove GET /audit/by-case works."""
     await client.post(
@@ -82,11 +82,14 @@ async def test_grant_then_operator_can_read_audit(
     )
     case_id = create.json()["id"]
 
+    db_session.expire_all()
     response = await client.get(f"/api/v1/audit/by-case/{case_id}", headers=target_headers)
     assert response.status_code == 200
 
 
-async def test_revoke_grant(client: AsyncClient, admin_headers: dict, operator_user: User):
+async def test_revoke_grant(
+    client: AsyncClient, admin_headers: dict, operator_user: User, db_session: AsyncSession
+):
     await client.post(
         f"/api/v1/auth/users/{operator_user.id}/grants",
         json={"permission": "read_audit"},
@@ -107,6 +110,7 @@ async def test_revoke_grant(client: AsyncClient, admin_headers: dict, operator_u
         headers=admin_headers,
     )
     case_id = create.json()["id"]
+    db_session.expire_all()
     audit_response = await client.get(f"/api/v1/audit/by-case/{case_id}", headers=target_headers)
     assert audit_response.status_code == 403
 

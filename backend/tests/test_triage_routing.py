@@ -323,7 +323,9 @@ async def test_routing_get_allowed_for_front_desk(
     assert response.status_code == 200
 
 
-async def test_triage_denied_for_front_desk(client: AsyncClient, admin_headers: dict, front_desk_headers: dict):
+async def test_triage_denied_for_front_desk(
+    client: AsyncClient, admin_headers: dict, front_desk_headers: dict
+):
     """FRONT_DESK lacks MANAGE_CASES, must be denied running triage."""
     case_id = await _case_with_consent(client, admin_headers)
     response = await client.post(
