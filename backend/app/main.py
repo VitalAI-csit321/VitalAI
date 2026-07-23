@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import RequestResponseEndpoint
@@ -10,7 +11,7 @@ from starlette.responses import Response
 
 from app.config import settings
 from app.limiter import limiter
-from app.routes import audit, auth, consent, health, intake, llm, routing, triage
+from app.routes import audit, auth, consent, health, intake, llm, rag, review, routing, triage
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,18 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
 
+# Must be added before the request-ID middleware below so that CORS headers are
+# attached to error responses too — otherwise a 401 from the API surfaces in the
+# browser as an opaque network error with no status code.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+    expose_headers=["X-Request-ID"],
+)
+
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next: RequestResponseEndpoint) -> Response:
@@ -75,6 +88,8 @@ app.include_router(intake.router, prefix=API_PREFIX)
 app.include_router(consent.router, prefix=API_PREFIX)
 app.include_router(triage.router, prefix=API_PREFIX)
 app.include_router(routing.router, prefix=API_PREFIX)
+app.include_router(review.router, prefix=API_PREFIX)
+app.include_router(rag.router, prefix=API_PREFIX)
 app.include_router(llm.router, prefix=API_PREFIX)
 app.include_router(audit.router, prefix=API_PREFIX)
 

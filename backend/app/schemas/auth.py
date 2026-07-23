@@ -1,16 +1,16 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from app.schemas.enums import UserRole
 
 
 class UserRegister(BaseModel):
-    email: str
+    email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     full_name: str = Field(min_length=1, max_length=255)
-    role: UserRole = UserRole.FRONT_DESK
+    role: UserRole = UserRole.FRONT_DESK  # ignored on register — always forced to FRONT_DESK
 
 
 class ElevateRoleRequest(BaseModel):
@@ -18,7 +18,7 @@ class ElevateRoleRequest(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 
@@ -28,14 +28,14 @@ class Token(BaseModel):
 
 
 class TokenPayload(BaseModel):
-    sub: str
+    sub: str  # user id
     role: UserRole
     exp: int
 
 
 class UserOut(BaseModel):
     id: UUID
-    email: str
+    email: EmailStr
     full_name: str
     role: UserRole
     is_active: bool

@@ -1,0 +1,3 @@
+Lipid panel results: total cholesterol 210 mg/dL, LDL 138 mg/dL, HDL 45 mg/dL, triglycerides 150 mg/dL. LDL is mildly elevated above the recommended target for this patient's risk profile.
+
+Recommendation: begin dietary modification focused on reducing saturated fat intake, increase soluble fiber, and repeat lipid panel in three months before considering statin therapy.

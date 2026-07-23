@@ -129,9 +129,7 @@ async def test_llm_ping_unauthenticated_denied(client: AsyncClient):
     assert response.status_code == 401
 
 
-async def test_llm_ping_bedrock_response_extracts_content(
-    client: AsyncClient, admin_headers: dict
-):
+async def test_llm_ping_bedrock_response_extracts_content(client: AsyncClient, admin_headers: dict):
     """When the LLM returns an AIMessage-like object, .content must be used."""
 
     class FakeAIMessage:

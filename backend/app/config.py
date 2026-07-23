@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     synthetic_only: bool = True
 
+    # CORS — comma-separated list of allowed frontend origins.
+    # Vite dev server defaults to 5173. Production origins must be set via env;
+    # a wildcard is never allowed because the API is credentialed.
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+
     # Database — required; populated from DATABASE_URL env var or .env file.
     # Empty string default only exists so mypy does not flag Settings() as
     # missing a required argument; the validator below rejects a missing value.
@@ -20,7 +25,7 @@ class Settings(BaseSettings):
     # Auth
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60
-    login_rate_limit: str = "100/minute"
+    login_rate_limit: str = "5/minute"
 
     # LLM
     llm_provider: str = "ollama"
@@ -42,6 +47,25 @@ class Settings(BaseSettings):
     # Embeddings
     embedding_provider: str = "nomic"  # nomic (dev) | bedrock (prod)
     embedding_model: str = "nomic-embed-text"
+
+    # RAG gating (FR-RAG-02 / FR-RAG-03)
+    sufficiency_floor: float = 0.50
+    confidence_threshold: float = 0.75
+    confidence_source: str = "retrieval_similarity"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @model_validator(mode="after")
+    def _reject_wildcard_cors(self) -> "Settings":
+        if "*" in self.cors_origins_list:
+            raise ValueError(
+                "CORS_ORIGINS must not contain '*'. The API sends Authorization "
+                "headers; a wildcard origin with credentials is rejected by browsers "
+                "and would be unsafe regardless. List frontend origins explicitly."
+            )
+        return self
 
     @model_validator(mode="after")
     def _require_runtime_secrets(self) -> "Settings":

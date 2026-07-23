@@ -1,3 +1,5 @@
+import uuid
+
 from httpx import AsyncClient
 
 
@@ -63,3 +65,28 @@ async def test_consent_withdraw_then_capture_blocked(client: AsyncClient, admin_
     await client.post(f"/api/v1/consent/{consent_id}/withdraw", headers=admin_headers)
     capture = await client.post(f"/api/v1/consent/{consent_id}/capture", headers=admin_headers)
     assert capture.status_code == 409
+
+
+async def test_consent_capture_not_found_returns_404(client: AsyncClient, admin_headers: dict):
+    response = await client.post(f"/api/v1/consent/{uuid.uuid4()}/capture", headers=admin_headers)
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
+
+async def test_consent_withdraw_not_found_returns_404(client: AsyncClient, admin_headers: dict):
+    response = await client.post(f"/api/v1/consent/{uuid.uuid4()}/withdraw", headers=admin_headers)
+    assert response.status_code == 404
+    assert "not found" in response.json()["detail"].lower()
+
+
+async def test_consent_withdraw_twice_returns_409(client: AsyncClient, admin_headers: dict):
+    case_id = await _create_case(client, admin_headers)
+    create = await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
+    consent_id = create.json()["id"]
+
+    first = await client.post(f"/api/v1/consent/{consent_id}/withdraw", headers=admin_headers)
+    assert first.status_code == 200
+
+    second = await client.post(f"/api/v1/consent/{consent_id}/withdraw", headers=admin_headers)
+    assert second.status_code == 409
+    assert "withdraw" in second.json()["detail"].lower()
