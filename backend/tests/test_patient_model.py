@@ -28,16 +28,22 @@ async def test_patient_persists_with_defaults(db_session: AsyncSession):
 async def test_patient_mrn_must_be_unique(db_session: AsyncSession):
     db_session.add(
         Patient(
-            mrn="MRN-DUP", name="A", dob=date(1990, 1, 1),
-            gender=Gender.MALE, status=PatientStatus.ACTIVE,
+            mrn="MRN-DUP",
+            name="A",
+            dob=date(1990, 1, 1),
+            gender=Gender.MALE,
+            status=PatientStatus.ACTIVE,
         )
     )
     await db_session.commit()
 
     db_session.add(
         Patient(
-            mrn="MRN-DUP", name="B", dob=date(1991, 1, 1),
-            gender=Gender.MALE, status=PatientStatus.ACTIVE,
+            mrn="MRN-DUP",
+            name="B",
+            dob=date(1991, 1, 1),
+            gender=Gender.MALE,
+            status=PatientStatus.ACTIVE,
         )
     )
     with pytest.raises(IntegrityError):
@@ -60,8 +66,11 @@ async def test_intake_case_patient_id_is_nullable(db_session: AsyncSession):
 
 async def test_intake_case_links_to_patient(db_session: AsyncSession):
     patient = Patient(
-        mrn="MRN-LINK01", name="Linked Patient", dob=date(1985, 5, 5),
-        gender=Gender.NON_BINARY, status=PatientStatus.ACTIVE,
+        mrn="MRN-LINK01",
+        name="Linked Patient",
+        dob=date(1985, 5, 5),
+        gender=Gender.NON_BINARY,
+        status=PatientStatus.ACTIVE,
     )
     db_session.add(patient)
     await db_session.flush()
