@@ -1,5 +1,6 @@
 from app.models.appointment import AppointmentStatus
 from app.models.case import IntakeStatus
+from app.models.clinical_document import ClinicalDocType
 from app.models.consent import ConsentStatus
 from app.models.patient import Gender, PatientStatus
 from app.models.routing import RoutingAction
@@ -15,4 +16,5 @@ __all__ = [
     "TriageCategory",
     "UserRole",
     "AppointmentStatus",
+    "ClinicalDocType",
 ]

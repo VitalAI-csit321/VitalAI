@@ -13,6 +13,7 @@ import asyncio
 import os
 from datetime import date
 from pathlib import Path
+from uuid import uuid4
 
 import pytest_asyncio
 from alembic.config import Config
@@ -251,3 +252,46 @@ async def seeded_chunks(pg_session: AsyncSession) -> AsyncSession:
     """pg_session pre-loaded with the FR-RAG-01 synthetic corpus (scripts/synthetic_corpus)."""
     await seed_synthetic_corpus(pg_session)
     return pg_session
+
+
+@pytest_asyncio.fixture
+async def pg_patient(pg_session: AsyncSession) -> Patient:
+    patient = Patient(
+        mrn=f"MRN-{uuid4().hex[:8].upper()}",
+        name="PG Test Patient",
+        dob=date(1990, 1, 1),
+        gender=Gender.FEMALE,
+        status=PatientStatus.ACTIVE,
+    )
+    pg_session.add(patient)
+    await pg_session.commit()
+    await pg_session.refresh(patient)
+    return patient
+
+
+@pytest_asyncio.fixture
+async def pg_make_user(pg_session: AsyncSession):
+    async def _make(role: UserRole, email: str) -> User:
+        user = User(
+            email=email,
+            hashed_password=hash_password("password123"),
+            full_name="PG Test User",
+            role=role,
+        )
+        pg_session.add(user)
+        await pg_session.commit()
+        await pg_session.refresh(user)
+        return user
+
+    return _make
+
+
+@pytest_asyncio.fixture
+async def pg_client(pg_session):
+    async def override_get_db():
+        yield pg_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()

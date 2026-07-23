@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     minio_endpoint: str = "http://minio:9000"
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"
+    minio_bucket: str = "clinical-documents"
 
     # Embeddings
     embedding_provider: str = "nomic"  # nomic (dev) | bedrock (prod)

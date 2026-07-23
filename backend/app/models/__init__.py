@@ -4,6 +4,7 @@ from app.models.audit import AuditEvent
 from app.models.base import Base
 from app.models.case import IntakeCase, IntakeStatus
 from app.models.chunk import Chunk
+from app.models.clinical_document import ClinicalDocType, ClinicalDocument
 from app.models.consent import ConsentRecord, ConsentStatus
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.patient import Gender, Patient, PatientStatus
@@ -36,4 +37,6 @@ __all__ = [
     "Appointment",
     "AppointmentStatus",
     "DoctorPatientAssignment",
+    "ClinicalDocument",
+    "ClinicalDocType",
 ]
