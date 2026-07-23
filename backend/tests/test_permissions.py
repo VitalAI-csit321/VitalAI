@@ -2,6 +2,7 @@ from app.auth.permissions import (
     CAPTURE_CONSENT,
     MANAGE_USERS,
     READ_AUDIT,
+    REGISTER_PATIENT,
     VIEW_CLINICAL,
     effective_permissions,
 )
@@ -44,3 +45,19 @@ def test_front_desk_grant_attempt_is_ignored():
     """FRONT_DESK has no GRANTABLE entry, so a stray grant row must not leak a permission."""
     perms = effective_permissions(_user(UserRole.FRONT_DESK, granted=[VIEW_CLINICAL]))
     assert VIEW_CLINICAL not in perms
+
+
+def test_front_desk_has_register_patient():
+    assert REGISTER_PATIENT in effective_permissions(_user(UserRole.FRONT_DESK))
+
+
+def test_operator_has_register_patient():
+    assert REGISTER_PATIENT in effective_permissions(_user(UserRole.OPERATOR))
+
+
+def test_admin_has_register_patient():
+    assert REGISTER_PATIENT in effective_permissions(_user(UserRole.ADMIN))
+
+
+def test_doctor_lacks_register_patient():
+    assert REGISTER_PATIENT not in effective_permissions(_user(UserRole.DOCTOR))

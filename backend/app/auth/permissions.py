@@ -22,6 +22,7 @@ MANAGE_OWN_CALENDAR = "manage_own_calendar"
 MANAGE_USERS = "manage_users"
 CONFIGURE_GOVERNANCE = "configure_governance"
 READ_AUDIT = "read_audit"
+REGISTER_PATIENT = "register_patient"
 
 ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
     UserRole.FRONT_DESK: {
@@ -30,6 +31,7 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         VIEW_RECORDS_GENERAL,
         UPLOAD_GENERAL,
         MANAGE_APPOINTMENTS_ALL,
+        REGISTER_PATIENT,
     },
     UserRole.OPERATOR: {
         VIEW_QUEUE,
@@ -41,6 +43,7 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         UPLOAD_CLINICAL,
         ASSIGN_PATIENTS,
         MANAGE_APPOINTMENTS_ALL,
+        REGISTER_PATIENT,
     },
     UserRole.ADMIN: {
         VIEW_QUEUE,
@@ -55,6 +58,7 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         MANAGE_USERS,
         CONFIGURE_GOVERNANCE,
         READ_AUDIT,
+        REGISTER_PATIENT,
     },
     UserRole.DOCTOR: {
         VIEW_CLINICAL,
