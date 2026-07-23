@@ -5,8 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_permission
 from app.auth.permissions import CAPTURE_CONSENT, VIEW_RECORDS_GENERAL
+from app.auth.scoping import is_assigned
 from app.database import get_db
-from app.models.user import User
+from app.models.case import IntakeCase
+from app.models.user import User, UserRole
 from app.schemas.consent import ConsentCreate, ConsentOut
 from app.services import consent_service
 from app.services.consent_service import ConsentStateError
@@ -29,8 +31,23 @@ async def create_consent_endpoint(
 async def get_consent_by_case_endpoint(
     case_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_permission(VIEW_RECORDS_GENERAL)),
+    actor: User = Depends(require_permission(VIEW_RECORDS_GENERAL)),
 ):
+    case = await db.get(IntakeCase, case_id)
+    if case is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Consent record not found"
+        )
+
+    if actor.role == UserRole.DOCTOR:
+        # Fail closed: an unlinked legacy case (patient_id is None) can't be
+        # checked against the doctor's assignment set, so it's treated the
+        # same as "not found" rather than distinguishing exists-but-forbidden.
+        if case.patient_id is None or not await is_assigned(db, actor.id, case.patient_id):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Consent record not found"
+            )
+
     record = await consent_service.get_consent_for_case(db, case_id)
     if record is None:
         raise HTTPException(

@@ -1,4 +1,5 @@
 from app.models.appointment import Appointment, AppointmentStatus
+from app.models.assignment import DoctorPatientAssignment
 from app.models.audit import AuditEvent
 from app.models.base import Base
 from app.models.case import IntakeCase, IntakeStatus
@@ -34,4 +35,5 @@ __all__ = [
     "Chunk",
     "Appointment",
     "AppointmentStatus",
+    "DoctorPatientAssignment",
 ]

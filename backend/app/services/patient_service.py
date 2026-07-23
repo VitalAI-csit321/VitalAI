@@ -1,8 +1,10 @@
 import secrets
+from uuid import UUID
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.scoping import assigned_patient_ids_subquery
 from app.models.patient import Patient, PatientStatus
 from app.models.user import User
 from app.schemas.patient import PatientCreate
@@ -49,6 +51,7 @@ async def list_patients(
     status: PatientStatus | None = None,
     limit: int = 20,
     offset: int = 0,
+    doctor_id: UUID | None = None,
 ) -> tuple[list[Patient], int, dict[str, int]]:
     filters = []
     if search:
@@ -57,8 +60,20 @@ async def list_patients(
     if status is not None:
         filters.append(Patient.status == status)
 
+    # Doctor scoping applies to the status-counts summary too (unlike search/status,
+    # which the counts intentionally ignore, per Phase 2): a doctor must never see
+    # a breakdown that includes patients they can't open via the list below it.
+    scope_filter = (
+        Patient.id.in_(assigned_patient_ids_subquery(doctor_id)) if doctor_id is not None else None
+    )
+    if scope_filter is not None:
+        filters.append(scope_filter)
+
     items_query = select(Patient)
     count_query = select(func.count()).select_from(Patient)
+    counts_query = select(Patient.status, func.count()).group_by(Patient.status)
+    if scope_filter is not None:
+        counts_query = counts_query.where(scope_filter)
     for condition in filters:
         items_query = items_query.where(condition)
         count_query = count_query.where(condition)
@@ -70,7 +85,7 @@ async def list_patients(
     total = (await db.execute(count_query)).scalar_one()
 
     counts = {s.value: 0 for s in PatientStatus}
-    counts_result = await db.execute(select(Patient.status, func.count()).group_by(Patient.status))
+    counts_result = await db.execute(counts_query)
     for status_value, count in counts_result.all():
         counts[status_value.value] = count
 
