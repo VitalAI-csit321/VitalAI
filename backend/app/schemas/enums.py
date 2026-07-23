@@ -1,3 +1,4 @@
+from app.models.appointment import AppointmentStatus
 from app.models.case import IntakeStatus
 from app.models.consent import ConsentStatus
 from app.models.patient import Gender, PatientStatus
@@ -13,4 +14,5 @@ __all__ = [
     "RoutingAction",
     "TriageCategory",
     "UserRole",
+    "AppointmentStatus",
 ]

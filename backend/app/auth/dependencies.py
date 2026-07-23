@@ -75,3 +75,23 @@ def require_permission(permission: str):
         return current_user
 
     return dep
+
+
+def require_any_permission(*permissions: str):
+    """Dependency factory: 403s unless at least one of `permissions` is held.
+
+    Used where a route accepts two different care-relationship scopes rather
+    than one permission (e.g. appointments: MANAGE_APPOINTMENTS_ALL or
+    MANAGE_OWN_CALENDAR). Row-level scoping between those cases still runs in
+    the handler, same as require_permission().
+    """
+
+    async def dep(current_user: User = Depends(get_current_user)) -> User:
+        if not set(permissions) & effective_permissions(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Missing one of required permissions: {permissions}",
+            )
+        return current_user
+
+    return dep
