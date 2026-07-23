@@ -19,7 +19,10 @@ async def create_intake_endpoint(
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(get_current_user),
 ):
-    return await intake_service.create_intake(db, payload, actor)
+    try:
+        return await intake_service.create_intake(db, payload, actor)
+    except intake_service.PatientNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.get("/{case_id}", response_model=IntakeCaseOut)

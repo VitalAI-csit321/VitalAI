@@ -11,6 +11,7 @@ Postgres+pgvector database (the docker-compose `db` service, migrated to head).
 
 import asyncio
 import os
+from datetime import date
 from pathlib import Path
 
 import pytest_asyncio
@@ -26,7 +27,8 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key")
 from app.auth.security import create_access_token, hash_password  # noqa: E402
 from app.database import get_db  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import Base, User, UserRole  # noqa: E402
+from app.models import Base, Patient, User, UserRole  # noqa: E402
+from app.models.patient import Gender, PatientStatus  # noqa: E402
 from scripts.seed_synthetic_chunks import seed as seed_synthetic_corpus  # noqa: E402
 
 # Real Postgres+pgvector database for chunk/retrieval tests — never SQLite.
@@ -105,6 +107,21 @@ async def db_session(test_engine):
         )
         async with async_session() as session:
             yield session
+
+
+@pytest_asyncio.fixture
+async def patient(db_session: AsyncSession) -> Patient:
+    p = Patient(
+        mrn="MRN-TESTFIX01",
+        name="Test Fixture Patient",
+        dob=date(1990, 1, 1),
+        gender=Gender.FEMALE,
+        status=PatientStatus.ACTIVE,
+    )
+    db_session.add(p)
+    await db_session.commit()
+    await db_session.refresh(p)
+    return p
 
 
 @pytest_asyncio.fixture

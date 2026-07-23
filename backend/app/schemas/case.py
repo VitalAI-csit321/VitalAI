@@ -7,7 +7,7 @@ from app.schemas.enums import IntakeStatus
 
 
 class IntakeCreate(BaseModel):
-    patient_name: str = Field(min_length=1, max_length=255)
+    patient_id: UUID
     contact_reason: str = Field(min_length=1)
     contact_channel: str = Field(min_length=1, max_length=50)
     notes: str | None = None
@@ -19,7 +19,8 @@ class IntakeStatusUpdate(BaseModel):
 
 class IntakeCaseOut(BaseModel):
     id: UUID
-    patient_name: str
+    patient_id: UUID | None
+    patient_name: str | None
     contact_reason: str
     contact_channel: str
     notes: str | None
