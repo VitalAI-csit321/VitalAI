@@ -1,5 +1,7 @@
 from httpx import AsyncClient
 
+from app.models import Patient
+
 
 async def test_register_then_login(client: AsyncClient):
     register_response = await client.post(
@@ -57,11 +59,11 @@ async def test_register_duplicate_email(client: AsyncClient):
     assert second.status_code == 409
 
 
-async def test_protected_endpoint_requires_token(client: AsyncClient):
+async def test_protected_endpoint_requires_token(client: AsyncClient, patient: Patient):
     response = await client.post(
         "/api/v1/intake",
         json={
-            "patient_name": "x",
+            "patient_id": str(patient.id),
             "contact_reason": "y",
             "contact_channel": "phone",
         },

@@ -1,12 +1,14 @@
 from httpx import AsyncClient
 
+from app.models import Patient
 
-async def test_get_audit_trail_for_case(client: AsyncClient, admin_headers: dict):
+
+async def test_get_audit_trail_for_case(client: AsyncClient, admin_headers: dict, patient: Patient):
     """GET /audit/by-case must return the actual recorded events, not just 200."""
     create = await client.post(
         "/api/v1/intake",
         json={
-            "patient_name": "Audit Tester",
+            "patient_id": str(patient.id),
             "contact_reason": "Visit",
             "contact_channel": "phone",
         },
@@ -31,13 +33,13 @@ async def test_get_audit_trail_for_case(client: AsyncClient, admin_headers: dict
 
 
 async def test_get_audit_trail_denied_for_non_admin(
-    client: AsyncClient, admin_headers: dict, front_desk_headers: dict
+    client: AsyncClient, admin_headers: dict, front_desk_headers: dict, patient: Patient
 ):
     """The audit trail is admin-only, front_desk must be denied."""
     create = await client.post(
         "/api/v1/intake",
         json={
-            "patient_name": "Audit Tester",
+            "patient_id": str(patient.id),
             "contact_reason": "Visit",
             "contact_channel": "phone",
         },
@@ -50,13 +52,13 @@ async def test_get_audit_trail_denied_for_non_admin(
 
 
 async def test_get_audit_trail_denied_for_operator_without_grant(
-    client: AsyncClient, admin_headers: dict, operator_headers: dict
+    client: AsyncClient, admin_headers: dict, operator_headers: dict, patient: Patient
 ):
     """OPERATOR without the READ_AUDIT grant must be denied."""
     create = await client.post(
         "/api/v1/intake",
         json={
-            "patient_name": "Audit Tester",
+            "patient_id": str(patient.id),
             "contact_reason": "Visit",
             "contact_channel": "phone",
         },

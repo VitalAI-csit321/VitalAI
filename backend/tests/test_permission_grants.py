@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.security import create_access_token
-from app.models import User
+from app.models import Patient, User
 from app.models.audit import AuditEvent
 
 
@@ -63,7 +63,11 @@ async def test_operator_cannot_grant_permissions(
 
 
 async def test_grant_then_operator_can_read_audit(
-    client: AsyncClient, admin_headers: dict, operator_user: User, db_session: AsyncSession
+    client: AsyncClient,
+    admin_headers: dict,
+    operator_user: User,
+    db_session: AsyncSession,
+    patient: Patient,
 ):
     """End-to-end: grant READ_AUDIT to an operator, then prove GET /audit/by-case works."""
     await client.post(
@@ -77,7 +81,7 @@ async def test_grant_then_operator_can_read_audit(
 
     create = await client.post(
         "/api/v1/intake",
-        json={"patient_name": "Grant Test", "contact_reason": "Visit", "contact_channel": "phone"},
+        json={"patient_id": str(patient.id), "contact_reason": "Visit", "contact_channel": "phone"},
         headers=admin_headers,
     )
     case_id = create.json()["id"]
@@ -88,7 +92,11 @@ async def test_grant_then_operator_can_read_audit(
 
 
 async def test_revoke_grant(
-    client: AsyncClient, admin_headers: dict, operator_user: User, db_session: AsyncSession
+    client: AsyncClient,
+    admin_headers: dict,
+    operator_user: User,
+    db_session: AsyncSession,
+    patient: Patient,
 ):
     await client.post(
         f"/api/v1/auth/users/{operator_user.id}/grants",
@@ -106,7 +114,7 @@ async def test_revoke_grant(
     }
     create = await client.post(
         "/api/v1/intake",
-        json={"patient_name": "Revoke Test", "contact_reason": "Visit", "contact_channel": "phone"},
+        json={"patient_id": str(patient.id), "contact_reason": "Visit", "contact_channel": "phone"},
         headers=admin_headers,
     )
     case_id = create.json()["id"]

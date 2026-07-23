@@ -2,12 +2,14 @@ import uuid
 
 from httpx import AsyncClient
 
+from app.models import Patient
 
-async def _create_case(client: AsyncClient, headers: dict) -> str:
+
+async def _create_case(client: AsyncClient, headers: dict, patient: Patient) -> str:
     response = await client.post(
         "/api/v1/intake",
         json={
-            "patient_name": "Consent Tester",
+            "patient_id": str(patient.id),
             "contact_reason": "Visit",
             "contact_channel": "phone",
         },
@@ -16,8 +18,8 @@ async def _create_case(client: AsyncClient, headers: dict) -> str:
     return response.json()["id"]
 
 
-async def test_consent_capture_flow(client: AsyncClient, admin_headers: dict):
-    case_id = await _create_case(client, admin_headers)
+async def test_consent_capture_flow(client: AsyncClient, admin_headers: dict, patient: Patient):
+    case_id = await _create_case(client, admin_headers, patient)
 
     create = await client.post(
         "/api/v1/consent",
@@ -34,8 +36,10 @@ async def test_consent_capture_flow(client: AsyncClient, admin_headers: dict):
     assert capture.json()["captured_at"] is not None
 
 
-async def test_consent_capture_twice_returns_409(client: AsyncClient, admin_headers: dict):
-    case_id = await _create_case(client, admin_headers)
+async def test_consent_capture_twice_returns_409(
+    client: AsyncClient, admin_headers: dict, patient: Patient
+):
+    case_id = await _create_case(client, admin_headers, patient)
     create = await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
     consent_id = create.json()["id"]
 
@@ -46,8 +50,10 @@ async def test_consent_capture_twice_returns_409(client: AsyncClient, admin_head
     assert second.status_code == 409
 
 
-async def test_consent_withdraw_after_capture(client: AsyncClient, admin_headers: dict):
-    case_id = await _create_case(client, admin_headers)
+async def test_consent_withdraw_after_capture(
+    client: AsyncClient, admin_headers: dict, patient: Patient
+):
+    case_id = await _create_case(client, admin_headers, patient)
     create = await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
     consent_id = create.json()["id"]
 
@@ -57,8 +63,10 @@ async def test_consent_withdraw_after_capture(client: AsyncClient, admin_headers
     assert withdraw.json()["status"] == "withdrawn"
 
 
-async def test_consent_withdraw_then_capture_blocked(client: AsyncClient, admin_headers: dict):
-    case_id = await _create_case(client, admin_headers)
+async def test_consent_withdraw_then_capture_blocked(
+    client: AsyncClient, admin_headers: dict, patient: Patient
+):
+    case_id = await _create_case(client, admin_headers, patient)
     create = await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
     consent_id = create.json()["id"]
 
@@ -79,8 +87,10 @@ async def test_consent_withdraw_not_found_returns_404(client: AsyncClient, admin
     assert "not found" in response.json()["detail"].lower()
 
 
-async def test_consent_withdraw_twice_returns_409(client: AsyncClient, admin_headers: dict):
-    case_id = await _create_case(client, admin_headers)
+async def test_consent_withdraw_twice_returns_409(
+    client: AsyncClient, admin_headers: dict, patient: Patient
+):
+    case_id = await _create_case(client, admin_headers, patient)
     create = await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
     consent_id = create.json()["id"]
 
@@ -93,9 +103,9 @@ async def test_consent_withdraw_twice_returns_409(client: AsyncClient, admin_hea
 
 
 async def test_consent_create_allowed_for_front_desk(
-    client: AsyncClient, admin_headers: dict, front_desk_headers: dict
+    client: AsyncClient, admin_headers: dict, front_desk_headers: dict, patient: Patient
 ):
-    case_id = await _create_case(client, admin_headers)
+    case_id = await _create_case(client, admin_headers, patient)
     response = await client.post(
         "/api/v1/consent", json={"case_id": case_id}, headers=front_desk_headers
     )
@@ -103,9 +113,9 @@ async def test_consent_create_allowed_for_front_desk(
 
 
 async def test_consent_create_denied_for_doctor(
-    client: AsyncClient, admin_headers: dict, doctor_headers: dict
+    client: AsyncClient, admin_headers: dict, doctor_headers: dict, patient: Patient
 ):
-    case_id = await _create_case(client, admin_headers)
+    case_id = await _create_case(client, admin_headers, patient)
     response = await client.post(
         "/api/v1/consent", json={"case_id": case_id}, headers=doctor_headers
     )
@@ -113,10 +123,10 @@ async def test_consent_create_denied_for_doctor(
 
 
 async def test_consent_by_case_allowed_for_doctor(
-    client: AsyncClient, admin_headers: dict, doctor_headers: dict
+    client: AsyncClient, admin_headers: dict, doctor_headers: dict, patient: Patient
 ):
     """DOCTOR has VIEW_RECORDS_GENERAL, must be allowed to read consent status."""
-    case_id = await _create_case(client, admin_headers)
+    case_id = await _create_case(client, admin_headers, patient)
     await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
 
     response = await client.get(f"/api/v1/consent/by-case/{case_id}", headers=doctor_headers)
