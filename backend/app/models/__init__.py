@@ -5,6 +5,7 @@ from app.models.case import IntakeCase, IntakeStatus
 from app.models.chunk import Chunk
 from app.models.consent import ConsentRecord, ConsentStatus
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
+from app.models.patient import Gender, Patient, PatientStatus
 from app.models.permission_grant import UserPermissionGrant
 from app.models.routing import RoutingAction, RoutingDecision
 from app.models.triage import TriageCategory, TriageResult
@@ -16,6 +17,9 @@ __all__ = [
     "UserRole",
     "IntakeCase",
     "IntakeStatus",
+    "Patient",
+    "Gender",
+    "PatientStatus",
     "ConsentRecord",
     "ConsentStatus",
     "TriageResult",

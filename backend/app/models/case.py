@@ -1,6 +1,7 @@
 import enum
+from uuid import UUID
 
-from sqlalchemy import Enum, String, Text
+from sqlalchemy import Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -23,7 +24,8 @@ class IntakeStatus(enum.StrEnum):
 class IntakeCase(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "intake_cases"
 
-    patient_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    patient_id: Mapped[UUID | None] = mapped_column(ForeignKey("patients.id"), nullable=True)
+    patient_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     contact_reason: Mapped[str] = mapped_column(Text, nullable=False)
     contact_channel: Mapped[str] = mapped_column(String(50), nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
