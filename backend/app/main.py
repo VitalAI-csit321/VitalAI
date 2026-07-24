@@ -19,6 +19,7 @@ from app.routes import (
     clinical_documents,
     consent,
     health,
+    human_review,
     intake,
     llm,
     patients,
@@ -98,6 +99,7 @@ app.include_router(rag.router, prefix=API_PREFIX)
 app.include_router(appointments.router, prefix=API_PREFIX)
 app.include_router(clinical_documents.router, prefix=API_PREFIX)
 app.include_router(approvals.router, prefix=API_PREFIX)
+app.include_router(human_review.router, prefix=API_PREFIX)
 
 
 @app.get("/")
