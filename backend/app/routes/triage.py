@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import require_permission
+from app.auth.permissions import MANAGE_CASES
 from app.database import get_db
 from app.models.user import User
 from app.schemas.triage import TriageRequest, TriageResponse
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/triage", tags=["triage"])
 async def triage_endpoint(
     request: TriageRequest,
     db: AsyncSession = Depends(get_db),
-    actor: User = Depends(get_current_user),
+    actor: User = Depends(require_permission(MANAGE_CASES)),
 ):
     try:
         return await triage_service.classify(db, request, actor)

@@ -11,7 +11,9 @@ Postgres+pgvector database (the docker-compose `db` service, migrated to head).
 
 import asyncio
 import os
+from datetime import date
 from pathlib import Path
+from uuid import uuid4
 
 import pytest_asyncio
 from alembic.config import Config
@@ -26,7 +28,8 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key")
 from app.auth.security import create_access_token, hash_password  # noqa: E402
 from app.database import get_db  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import Base, User, UserRole  # noqa: E402
+from app.models import Base, Patient, User, UserRole  # noqa: E402
+from app.models.patient import Gender, PatientStatus  # noqa: E402
 from scripts.seed_synthetic_chunks import seed as seed_synthetic_corpus  # noqa: E402
 
 # Real Postgres+pgvector database for chunk/retrieval tests — never SQLite.
@@ -108,6 +111,21 @@ async def db_session(test_engine):
 
 
 @pytest_asyncio.fixture
+async def patient(db_session: AsyncSession) -> Patient:
+    p = Patient(
+        mrn="MRN-TESTFIX01",
+        name="Test Fixture Patient",
+        dob=date(1990, 1, 1),
+        gender=Gender.FEMALE,
+        status=PatientStatus.ACTIVE,
+    )
+    db_session.add(p)
+    await db_session.commit()
+    await db_session.refresh(p)
+    return p
+
+
+@pytest_asyncio.fixture
 async def client(db_session):
     # Reuses db_session's own connection/transaction for every request
     # instead of opening a fresh session per call. Required so data written
@@ -165,6 +183,46 @@ def front_desk_headers(front_desk_user: User) -> dict[str, str]:
 
 
 @pytest_asyncio.fixture
+async def operator_user(db_session: AsyncSession) -> User:
+    user = User(
+        email="operator@example.com",
+        hashed_password=hash_password("password123"),
+        full_name="Operator Tester",
+        role=UserRole.OPERATOR,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+async def doctor_user(db_session: AsyncSession) -> User:
+    user = User(
+        email="doctor@example.com",
+        hashed_password=hash_password("password123"),
+        full_name="Doctor Tester",
+        role=UserRole.DOCTOR,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest_asyncio.fixture
+def operator_headers(operator_user: User) -> dict[str, str]:
+    token = create_access_token(operator_user.id, operator_user.role)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
+def doctor_headers(doctor_user: User) -> dict[str, str]:
+    token = create_access_token(doctor_user.id, doctor_user.role)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
 async def pg_session():
     """A session bound to a real Postgres+pgvector connection.
 
@@ -194,3 +252,46 @@ async def seeded_chunks(pg_session: AsyncSession) -> AsyncSession:
     """pg_session pre-loaded with the FR-RAG-01 synthetic corpus (scripts/synthetic_corpus)."""
     await seed_synthetic_corpus(pg_session)
     return pg_session
+
+
+@pytest_asyncio.fixture
+async def pg_patient(pg_session: AsyncSession) -> Patient:
+    patient = Patient(
+        mrn=f"MRN-{uuid4().hex[:8].upper()}",
+        name="PG Test Patient",
+        dob=date(1990, 1, 1),
+        gender=Gender.FEMALE,
+        status=PatientStatus.ACTIVE,
+    )
+    pg_session.add(patient)
+    await pg_session.commit()
+    await pg_session.refresh(patient)
+    return patient
+
+
+@pytest_asyncio.fixture
+async def pg_make_user(pg_session: AsyncSession):
+    async def _make(role: UserRole, email: str) -> User:
+        user = User(
+            email=email,
+            hashed_password=hash_password("password123"),
+            full_name="PG Test User",
+            role=role,
+        )
+        pg_session.add(user)
+        await pg_session.commit()
+        await pg_session.refresh(user)
+        return user
+
+    return _make
+
+
+@pytest_asyncio.fixture
+async def pg_client(pg_session):
+    async def override_get_db():
+        yield pg_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()

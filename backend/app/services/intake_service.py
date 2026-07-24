@@ -3,14 +3,23 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.case import IntakeCase, IntakeStatus
+from app.models.patient import Patient
 from app.models.user import User
 from app.schemas.case import IntakeCreate
 from app.services.audit_service import record_event
 
 
+class PatientNotFoundError(Exception):
+    """Raised when IntakeCreate.patient_id does not reference an existing patient."""
+
+
 async def create_intake(db: AsyncSession, payload: IntakeCreate, actor: User) -> IntakeCase:
+    patient = await db.get(Patient, payload.patient_id)
+    if patient is None:
+        raise PatientNotFoundError(f"Patient {payload.patient_id} not found")
+
     case = IntakeCase(
-        patient_name=payload.patient_name,
+        patient_id=payload.patient_id,
         contact_reason=payload.contact_reason,
         contact_channel=payload.contact_channel,
         notes=payload.notes,

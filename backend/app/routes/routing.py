@@ -3,7 +3,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import require_permission
+from app.auth.permissions import MANAGE_CASES, VIEW_QUEUE
 from app.database import get_db
 from app.models.user import User
 from app.schemas.routing import RoutingCreate, RoutingOut
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/routing", tags=["routing"])
 async def route_endpoint(
     payload: RoutingCreate,
     db: AsyncSession = Depends(get_db),
-    actor: User = Depends(get_current_user),
+    actor: User = Depends(require_permission(MANAGE_CASES)),
 ):
     decision = await routing_service.route_from_triage_id(db, payload.triage_id, actor)
     if decision is None:
@@ -31,7 +32,7 @@ async def route_endpoint(
 async def get_routing_endpoint(
     case_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(VIEW_QUEUE)),
 ):
     decision = await routing_service.get_decision_for_case(db, case_id)
     if decision is None:

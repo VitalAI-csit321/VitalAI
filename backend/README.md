@@ -81,11 +81,17 @@ Postgres service in `docker-compose.yml` is named `db`, not `postgres`:
 
 ```bash
 docker compose up -d db
+export DATABASE_URL="postgresql+asyncpg://vitalai:vitalai@localhost:5432/vitalai"
 export POSTGRES_TEST_URL="postgresql+asyncpg://vitalai:vitalai@localhost:5432/vitalai"
 pytest tests/test_audit_trigger.py -v
 ```
 
-Without `POSTGRES_TEST_URL` set, those three tests skip rather than fail. A skip is not
+`DATABASE_URL` has to be set too, not just `POSTGRES_TEST_URL`: conftest.py's
+`test_engine` fixture reads `DATABASE_URL` and defaults to SQLite when it is
+unset, and the Postgres-only fixtures in this file skip whenever the engine
+dialect isn't `postgresql`, regardless of `POSTGRES_TEST_URL`.
+
+Without both set, those three tests skip rather than fail. A skip is not
 a pass: if you're verifying the audit guarantee, confirm they actually ran.
 
 Coverage:
@@ -146,25 +152,34 @@ Everything under `/api/v1/*` needs a JWT except `POST /api/v1/auth/register` and
 `POST /api/v1/auth/login`. Registration always creates a `front_desk` user regardless of
 the `role` field in the request body. Use the elevate endpoint to promote a user.
 
-| Method | Path                                   | Auth | Roles               | Description                       |
-|--------|-----------------------------------------|------|----------------------|------------------------------------|
-| GET    | `/health`                               | No   | Public               | Health check                       |
-| POST   | `/api/v1/auth/register`                 | No   | Public               | Register user, role forced to front_desk |
-| POST   | `/api/v1/auth/login`                    | No   | Public               | Get JWT, 5 requests/min per IP    |
-| GET    | `/api/v1/auth/me`                       | Yes  | any                  | Current user                       |
-| POST   | `/api/v1/auth/users/{user_id}/elevate`  | Yes  | admin                | Change a user's role                |
-| POST   | `/api/v1/intake`                        | Yes  | any                  | Create intake case                  |
-| GET    | `/api/v1/intake/{id}`                   | Yes  | any                  | Get intake case                     |
-| PATCH  | `/api/v1/intake/{id}/status`            | Yes  | ops_manager, admin   | Update intake status                |
-| POST   | `/api/v1/consent`                       | Yes  | any                  | Create consent record               |
-| GET    | `/api/v1/consent/by-case/{case_id}`     | Yes  | any                  | Get consent for case                |
-| POST   | `/api/v1/consent/{id}/capture`          | Yes  | any                  | Capture consent (pending to captured) |
-| POST   | `/api/v1/consent/{id}/withdraw`         | Yes  | any                  | Withdraw consent                    |
-| POST   | `/api/v1/triage`                        | Yes  | any                  | Classify case urgency, blocked unless consent is captured |
-| POST   | `/api/v1/routing`                       | Yes  | any                  | Create routing decision             |
-| GET    | `/api/v1/routing/by-case/{case_id}`     | Yes  | any                  | Get latest routing decision         |
-| GET    | `/api/v1/llm/status`                    | Yes  | admin, ops_manager   | LLM provider config, no network call |
-| POST   | `/api/v1/llm/ping`                      | Yes  | admin, ops_manager   | Live LLM reachability check         |
+| Method | Path                                   | Auth | Permission (or Role)       | Description                       |
+|--------|-----------------------------------------|------|------------------------------|------------------------------------|
+| GET    | `/health`                               | No   | Public                       | Health check                       |
+| POST   | `/api/v1/auth/register`                 | No   | Public                       | Register user, role forced to front_desk |
+| POST   | `/api/v1/auth/login`                    | No   | Public                       | Get JWT, 5 requests/min per IP    |
+| GET    | `/api/v1/auth/me`                       | Yes  | any                          | Current user                       |
+| POST   | `/api/v1/auth/users/{user_id}/elevate`  | Yes  | MANAGE_USERS                 | Change a user's role                |
+| POST   | `/api/v1/auth/users/{user_id}/grants`   | Yes  | MANAGE_USERS                 | Grant a permission to a user        |
+| DELETE | `/api/v1/auth/users/{user_id}/grants/{permission}` | Yes | MANAGE_USERS      | Revoke a granted permission         |
+| POST   | `/api/v1/intake`                        | Yes  | any                          | Create intake case                  |
+| GET    | `/api/v1/intake/{id}`                   | Yes  | any                          | Get intake case                     |
+| PATCH  | `/api/v1/intake/{id}/status`            | Yes  | MANAGE_CASES                 | Update intake status                |
+| POST   | `/api/v1/consent`                       | Yes  | CAPTURE_CONSENT               | Create consent record               |
+| GET    | `/api/v1/consent/by-case/{case_id}`     | Yes  | VIEW_RECORDS_GENERAL          | Get consent for case                |
+| POST   | `/api/v1/consent/{id}/capture`          | Yes  | CAPTURE_CONSENT               | Capture consent (pending to captured) |
+| POST   | `/api/v1/consent/{id}/withdraw`         | Yes  | CAPTURE_CONSENT               | Withdraw consent                    |
+| POST   | `/api/v1/triage`                        | Yes  | MANAGE_CASES                  | Classify case urgency, blocked unless consent is captured |
+| POST   | `/api/v1/routing`                       | Yes  | MANAGE_CASES                  | Create routing decision             |
+| GET    | `/api/v1/routing/by-case/{case_id}`     | Yes  | VIEW_QUEUE                    | Get latest routing decision         |
+| GET    | `/api/v1/audit/by-case/{case_id}`       | Yes  | READ_AUDIT                    | Get audit trail for case            |
+| GET    | `/api/v1/llm/status`                    | Yes  | admin, operator (role, not permission-gated, see below) | LLM provider config, no network call |
+| POST   | `/api/v1/llm/ping`                      | Yes  | admin, operator (role, not permission-gated, see below) | Live LLM reachability check         |
+
+Every route above except `/api/v1/llm/*` gates on a permission via `require_permission()`
+(`app/auth/permissions.py`), not a role directly — see `VitalAI RBAC Report - Audit
+Trail.md` for the full permission-to-role mapping. `/api/v1/llm/*` is the one documented
+exception, kept on the older role-based `require_roles()` mechanism since it's infra/ops
+diagnostics outside the RBAC taxonomy.
 
 ## Rate limiting
 
@@ -213,11 +228,14 @@ something urgent) and is tracked as `test_triage_negation_not_urgent_escalates_i
 marked `xfail` pending the Phase 3 NLP classifier. Do not patch this with a quick
 negation rule without adding tests for the failure cases it introduces.
 
-Two contract decisions are open and tracked in `docs/project_decisions.md`: the RBAC
-role set (current code uses `front_desk`, `ops_manager`, `admin`) and the consent state
-set (current code uses `pending`, `captured`, `withdrawn`, `not_required`, with no
-`unclear` state). Code in this repository follows the states above until those
-decisions are recorded there.
+One contract decision remains open and is tracked in `docs/project_decisions.md`: the
+consent state set (current code uses `pending`, `captured`, `withdrawn`, `not_required`,
+with no `unclear` state). Code in this repository follows the states above until that
+decision is recorded there.
+
+The RBAC role and permission model is decided: see `VitalAI RBAC Report - Audit
+Trail.md` (roles `front_desk`, `operator`, `admin`, `doctor`; permission-based route
+gating via `require_permission()`).
 
 The triage consent guard treats `ConsentStatus.NOT_REQUIRED` the same as `PENDING`:
 blocked. This isn't a deliberate design choice, `NOT_REQUIRED` is defined in the enum
