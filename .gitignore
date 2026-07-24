@@ -28,6 +28,8 @@ build/
 
 # Local tool settings
 **/settings.local.json
+.claude/
+docs/superpowers/
 
 # Editor
 .vscode/settings.json
@@ -51,3 +53,9 @@ htmlcov/
 # Logs
 *.log
 *.sqlite3
+
+# Personal tracking (shared with team separately, not via git)
+/WORKLOG.md
+/council-transcript-20260716-111511.md
+/docs/backend_gap_analysis.md
+/VitalAI RBAC Report - Audit Trail.md
