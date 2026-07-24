@@ -191,3 +191,30 @@ async def test_intake_create_rejects_nonexistent_patient(client: AsyncClient, ad
     )
     assert response.status_code == 404
     assert "not found" in response.json()["detail"].lower()
+
+
+async def test_intake_create_denied_for_doctor(
+    client: AsyncClient, doctor_headers: dict, patient: Patient
+):
+    """DOCTOR lacks VIEW_QUEUE, must be denied creating intake cases."""
+    response = await client.post(
+        "/api/v1/intake",
+        json={"patient_id": str(patient.id), "contact_reason": "y", "contact_channel": "phone"},
+        headers=doctor_headers,
+    )
+    assert response.status_code == 403
+
+
+async def test_get_intake_denied_for_doctor(
+    client: AsyncClient, admin_headers: dict, doctor_headers: dict, patient: Patient
+):
+    """DOCTOR lacks VIEW_QUEUE, must be denied reading intake cases."""
+    create = await client.post(
+        "/api/v1/intake",
+        json={"patient_id": str(patient.id), "contact_reason": "y", "contact_channel": "phone"},
+        headers=admin_headers,
+    )
+    case_id = create.json()["id"]
+
+    response = await client.get(f"/api/v1/intake/{case_id}", headers=doctor_headers)
+    assert response.status_code == 403
