@@ -12,6 +12,7 @@ from app.config import settings
 from app.limiter import limiter
 from app.routes import (
     appointments,
+    approvals,
     assignments,
     audit,
     auth,
@@ -96,6 +97,7 @@ app.include_router(assignments.router, prefix=API_PREFIX)
 app.include_router(rag.router, prefix=API_PREFIX)
 app.include_router(appointments.router, prefix=API_PREFIX)
 app.include_router(clinical_documents.router, prefix=API_PREFIX)
+app.include_router(approvals.router, prefix=API_PREFIX)
 
 
 @app.get("/")
