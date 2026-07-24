@@ -68,9 +68,7 @@ async def upload_document(
     try:
         extracted_text = extract_pdf_text(file_bytes)
     except PyPdfError as exc:
-        raise EmptyExtractionError(
-            f"This file could not be read as a valid PDF: {exc}"
-        ) from exc
+        raise EmptyExtractionError(f"This file could not be read as a valid PDF: {exc}") from exc
     if not extracted_text:
         raise EmptyExtractionError(
             "No extractable text found in this PDF. Image-only PDFs are not supported "

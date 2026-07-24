@@ -115,7 +115,9 @@ async def test_upload_document_rejects_image_only_pdf(pg_session, pg_patient, pg
         )
 
 
-async def test_upload_document_stores_text_and_logs_audit_event(pg_session, pg_patient, pg_make_user):
+async def test_upload_document_stores_text_and_logs_audit_event(
+    pg_session, pg_patient, pg_make_user
+):
     uploader = await pg_make_user(UserRole.OPERATOR, "uploader5@example.com")
 
     document = await clinical_document_service.upload_document(
@@ -146,7 +148,9 @@ async def test_ingest_document_rejects_unknown_document(pg_session, pg_make_user
         await clinical_document_service.ingest_document(pg_session, uuid4(), actor)
 
 
-async def test_ingest_document_creates_restricted_scope_chunks(pg_session, pg_patient, pg_make_user):
+async def test_ingest_document_creates_restricted_scope_chunks(
+    pg_session, pg_patient, pg_make_user
+):
     uploader = await pg_make_user(UserRole.OPERATOR, "ingester2@example.com")
     document = await clinical_document_service.upload_document(
         pg_session,
@@ -169,9 +173,7 @@ async def test_ingest_document_creates_restricted_scope_chunks(pg_session, pg_pa
     chunks = result.scalars().all()
     assert len(chunks) == chunk_count
     assert all(c.access_scope == "restricted" for c in chunks)
-    assert all(
-        c.attachment_uri == f"/api/v1/clinical-documents/{document.id}/file" for c in chunks
-    )
+    assert all(c.attachment_uri == f"/api/v1/clinical-documents/{document.id}/file" for c in chunks)
 
 
 async def test_ingest_document_rejects_double_ingest(pg_session, pg_patient, pg_make_user):

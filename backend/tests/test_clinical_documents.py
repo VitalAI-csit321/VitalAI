@@ -97,7 +97,9 @@ async def test_upload_rejects_image_only_pdf(client: AsyncClient, operator_heade
     assert response.status_code == 422
 
 
-async def test_upload_succeeds_for_text_layer_pdf(client: AsyncClient, operator_headers: dict, patient):
+async def test_upload_succeeds_for_text_layer_pdf(
+    client: AsyncClient, operator_headers: dict, patient
+):
     response = await client.post(
         "/api/v1/clinical-documents",
         data={"patient_id": str(patient.id), "doc_type": "consultation"},
@@ -213,7 +215,9 @@ async def test_download_denied_for_uploader_without_view_clinical(
     assert response.status_code == 403
 
 
-async def test_download_denied_for_unassigned_doctor(pg_client: AsyncClient, pg_patient, pg_make_user):
+async def test_download_denied_for_unassigned_doctor(
+    pg_client: AsyncClient, pg_patient, pg_make_user
+):
     operator = await pg_make_user(UserRole.OPERATOR, "route-uploader6@example.com")
     doctor = await pg_make_user(UserRole.DOCTOR, "route-doctor1@example.com")
 
