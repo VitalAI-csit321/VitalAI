@@ -83,6 +83,7 @@ async def test_route_permission_enforcement(
     entry: RouteRbacEntry,
     role_headers: dict[UserRole, dict],
 ):
+    assert entry.rbac_check is not None
     headers = role_headers[test_role]
     path = _resolve_path(entry.path)
     method = entry.method.lower()
@@ -99,6 +100,7 @@ async def test_route_permission_enforcement(
             f"got {response.status_code}"
         )
     else:
-        assert response.status_code != 403, (
-            f"{test_role.value} expected non-403 on {entry.method} {entry.path}, got 403"
+        assert response.status_code != 403 and response.status_code != 500, (
+            f"{test_role.value} expected non-403/non-500 on {entry.method} {entry.path}, "
+            f"got {response.status_code}"
         )
