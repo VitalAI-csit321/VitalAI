@@ -65,7 +65,9 @@ async def claim_task(db: AsyncSession, task_id: UUID, actor: User) -> HumanRevie
             f"actor holds role '{actor.role.value}'"
         )
     if task.status != TaskStatus.PENDING:
-        raise HumanReviewTaskWrongStateError(f"Task {task_id} is '{task.status.value}', not pending")
+        raise HumanReviewTaskWrongStateError(
+            f"Task {task_id} is '{task.status.value}', not pending"
+        )
 
     task.status = TaskStatus.IN_PROGRESS
     task.assigned_to = actor.id
