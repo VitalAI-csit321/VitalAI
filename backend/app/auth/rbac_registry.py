@@ -56,6 +56,6 @@ def get_rbac_registry(app: FastAPI) -> list[RouteRbacEntry]:
             if check is not None:
                 rbac_check = check
                 break
-        for method in route.methods:
+        for method in route.methods or ():
             entries.append(RouteRbacEntry(method=method, path=full_path, rbac_check=rbac_check))
     return entries
