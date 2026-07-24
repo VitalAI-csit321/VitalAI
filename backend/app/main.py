@@ -19,6 +19,7 @@ from app.routes import (
     assignments,
     audit,
     auth,
+    calls,
     clinical_documents,
     consent,
     health,
@@ -28,6 +29,7 @@ from app.routes import (
     patients,
     rag,
     routing,
+    tasks,
     triage,
 )
 
@@ -124,6 +126,8 @@ app.include_router(health.router)
 API_PREFIX = "/api/v1"
 app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(intake.router, prefix=API_PREFIX)
+app.include_router(calls.router, prefix=API_PREFIX)
+app.include_router(tasks.router, prefix=API_PREFIX)
 app.include_router(consent.router, prefix=API_PREFIX)
 app.include_router(triage.router, prefix=API_PREFIX)
 app.include_router(routing.router, prefix=API_PREFIX)
