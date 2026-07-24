@@ -1,10 +1,12 @@
 # VitalAI Backend
 
-FastAPI backend for administrative intake, consent, triage, and routing.
+FastAPI backend for administrative intake, consent, triage, routing, patients,
+appointments, clinical document upload/retrieval, and RAG-based clinical Q&A.
 
-Built on async SQLAlchemy with Postgres, JWT auth with role-based access control, an
-append-only audit log enforced at the database level, and an LLM provider abstraction
-that lets Ollama (dev) and Bedrock (prod) be swapped through configuration.
+Built on async SQLAlchemy with Postgres, JWT auth with permission-based access control
+(`app/auth/permissions.py`, per `VitalAI RBAC Report - Audit Trail.md`), an append-only
+audit log enforced at the database level, and an LLM provider abstraction that lets
+Ollama (dev) and Bedrock (prod) be swapped through configuration.
 
 ## Quick start (Docker Compose, recommended)
 
@@ -69,11 +71,21 @@ pip-compile requirements.txt --output-file requirements.lock
 
 ## Running tests
 
-The full suite runs against SQLite and needs no setup:
+Most of the suite runs against SQLite and needs no setup. Some tests need real
+infrastructure and are not skipped automatically if it's missing: anything
+touching `app.rag.retrieval`/the `chunks` table needs real Postgres+pgvector
+(the `pg_session`/`seeded_chunks`/`pg_client` fixtures), and the clinical
+document upload tests (`test_object_storage.py`, plus the upload-success paths
+in `test_clinical_documents.py`/`test_clinical_document_service.py`) need a
+real MinIO instance:
 
 ```bash
+docker compose up -d db minio
 pytest
 ```
+
+Without `db`/`minio` running, the affected tests fail with connection errors
+rather than skipping.
 
 Three tests prove the audit log's append-only guarantee and need a real Postgres
 instance, since SQLite does not enforce the database trigger they're checking. The
@@ -121,10 +133,12 @@ mypy app
 │   ├── .env.example
 │   ├── alembic/
 │   │   ├── env.py
-│   │   └── versions/               four migrations: initial schema and the
-│   │                                append-only audit trigger (0001), triage
-│   │                                routing (0002), the pgvector store (0003),
-│   │                                human review tasks (0004)
+│   │   └── versions/               13 migrations: initial schema and the
+│   │                                append-only audit trigger (0001) through
+│   │                                RBAC roles/grants (0008-0009), patients
+│   │                                (0010), doctor-patient assignments (0011),
+│   │                                clinical documents (0012), and the user
+│   │                                department field (0013)
 │   ├── permissions/                 contains only settings.local.json (tool config,
 │   │                                not application permission logic; RBAC lives in
 │   │                                app/auth/)
@@ -158,28 +172,45 @@ the `role` field in the request body. Use the elevate endpoint to promote a user
 | POST   | `/api/v1/auth/register`                 | No   | Public                       | Register user, role forced to front_desk |
 | POST   | `/api/v1/auth/login`                    | No   | Public                       | Get JWT, 5 requests/min per IP    |
 | GET    | `/api/v1/auth/me`                       | Yes  | any                          | Current user                       |
-| POST   | `/api/v1/auth/users/{user_id}/elevate`  | Yes  | MANAGE_USERS                 | Change a user's role                |
+| POST   | `/api/v1/auth/users/{user_id}/elevate`  | Yes  | MANAGE_USERS                 | Change a user's role, audited       |
+| POST   | `/api/v1/auth/users/{user_id}/department` | Yes | MANAGE_USERS                | Set a user's department, audited    |
+| GET    | `/api/v1/auth/users`                    | Yes  | MANAGE_USERS                 | List users, paginated, name/email search, derived `last_active` |
 | POST   | `/api/v1/auth/users/{user_id}/grants`   | Yes  | MANAGE_USERS                 | Grant a permission to a user        |
 | DELETE | `/api/v1/auth/users/{user_id}/grants/{permission}` | Yes | MANAGE_USERS      | Revoke a granted permission         |
 | POST   | `/api/v1/intake`                        | Yes  | any                          | Create intake case                  |
 | GET    | `/api/v1/intake/{id}`                   | Yes  | any                          | Get intake case                     |
 | PATCH  | `/api/v1/intake/{id}/status`            | Yes  | MANAGE_CASES                 | Update intake status                |
 | POST   | `/api/v1/consent`                       | Yes  | CAPTURE_CONSENT               | Create consent record               |
-| GET    | `/api/v1/consent/by-case/{case_id}`     | Yes  | VIEW_RECORDS_GENERAL          | Get consent for case                |
+| GET    | `/api/v1/consent/by-case/{case_id}`     | Yes  | VIEW_RECORDS_GENERAL          | Get consent for case, doctor scoped to assigned patients |
 | POST   | `/api/v1/consent/{id}/capture`          | Yes  | CAPTURE_CONSENT               | Capture consent (pending to captured) |
 | POST   | `/api/v1/consent/{id}/withdraw`         | Yes  | CAPTURE_CONSENT               | Withdraw consent                    |
 | POST   | `/api/v1/triage`                        | Yes  | MANAGE_CASES                  | Classify case urgency, blocked unless consent is captured |
 | POST   | `/api/v1/routing`                       | Yes  | MANAGE_CASES                  | Create routing decision             |
 | GET    | `/api/v1/routing/by-case/{case_id}`     | Yes  | VIEW_QUEUE                    | Get latest routing decision         |
-| GET    | `/api/v1/audit/by-case/{case_id}`       | Yes  | READ_AUDIT                    | Get audit trail for case            |
+| GET    | `/api/v1/audit/by-case/{case_id}`       | Yes  | READ_AUDIT                    | Get audit trail for case; the read itself is logged too |
+| POST   | `/api/v1/patients`                      | Yes  | REGISTER_PATIENT              | Register a patient, server-generates MRN |
+| GET    | `/api/v1/patients`                      | Yes  | VIEW_RECORDS_GENERAL          | List/search patients with status counts, doctor scoped to assigned patients |
+| POST   | `/api/v1/assignments`                   | Yes  | ASSIGN_PATIENTS               | Assign a patient to a doctor        |
+| DELETE | `/api/v1/assignments/{doctor_id}/{patient_id}` | Yes | ASSIGN_PATIENTS      | Unassign a patient from a doctor    |
+| GET    | `/api/v1/assignments`                   | Yes  | ASSIGN_PATIENTS               | List a doctor's assigned patients   |
+| POST   | `/api/v1/appointments`                  | Yes  | MANAGE_APPOINTMENTS_ALL or MANAGE_OWN_CALENDAR | Book an appointment, doctor restricted to own calendar |
+| GET    | `/api/v1/appointments`                  | Yes  | MANAGE_APPOINTMENTS_ALL or MANAGE_OWN_CALENDAR | List appointments, doctor forced to own calendar |
+| POST   | `/api/v1/appointments/{id}/reschedule`  | Yes  | MANAGE_APPOINTMENTS_ALL or MANAGE_OWN_CALENDAR | Reschedule, 404 for a non-owner doctor |
+| POST   | `/api/v1/appointments/{id}/cancel`      | Yes  | MANAGE_APPOINTMENTS_ALL or MANAGE_OWN_CALENDAR | Cancel, 404 for a non-owner doctor |
+| POST   | `/api/v1/clinical-documents`            | Yes  | UPLOAD_CLINICAL               | Upload a text-layer PDF under a patient, extracts and stores the text |
+| POST   | `/api/v1/clinical-documents/{id}/ingest`| Yes  | UPLOAD_CLINICAL               | Chunk, embed, and index the extracted text at restricted scope |
+| GET    | `/api/v1/clinical-documents/{id}/file`  | Yes  | VIEW_CLINICAL                 | Download the stored file, doctor scoped to assigned patients |
+| POST   | `/api/v1/rag/query`                     | Yes  | VIEW_CLINICAL                 | Ask a clinical question over ingested documents, doctor scoped to assigned patients |
 | GET    | `/api/v1/llm/status`                    | Yes  | admin, operator (role, not permission-gated, see below) | LLM provider config, no network call |
 | POST   | `/api/v1/llm/ping`                      | Yes  | admin, operator (role, not permission-gated, see below) | Live LLM reachability check         |
 
-Every route above except `/api/v1/llm/*` gates on a permission via `require_permission()`
-(`app/auth/permissions.py`), not a role directly — see `VitalAI RBAC Report - Audit
-Trail.md` for the full permission-to-role mapping. `/api/v1/llm/*` is the one documented
-exception, kept on the older role-based `require_roles()` mechanism since it's infra/ops
-diagnostics outside the RBAC taxonomy.
+Every route marked with a specific permission above gates via `require_permission()` or
+`require_any_permission()` (`app/auth/permissions.py`, `app/auth/dependencies.py`), not a
+role directly. See `VitalAI RBAC Report - Audit Trail.md` for the full permission-to-role
+mapping. Rows marked "any" only require a valid JWT (`get_current_user`), no permission
+check. `/api/v1/llm/*` is the one documented exception to the permission model itself,
+kept on the older role-based `require_roles()` mechanism since it's infra/ops diagnostics
+outside the RBAC taxonomy.
 
 ## Rate limiting
 
@@ -233,9 +264,12 @@ consent state set (current code uses `pending`, `captured`, `withdrawn`, `not_re
 with no `unclear` state). Code in this repository follows the states above until that
 decision is recorded there.
 
-The RBAC role and permission model is decided: see `VitalAI RBAC Report - Audit
-Trail.md` (roles `front_desk`, `operator`, `admin`, `doctor`; permission-based route
-gating via `require_permission()`).
+The RBAC role and permission model is fully implemented: see `VitalAI RBAC Report -
+Audit Trail.md` (roles `front_desk`, `operator`, `admin`, `doctor`; permission-based
+route gating via `require_permission()`/`require_any_permission()`; row-level scoping
+for doctors on patients, clinical reads, and their own calendar; per-user permission
+grants; a `department` field on `User`; and audit logging on every state-changing
+action plus reads of the audit log itself).
 
 The triage consent guard treats `ConsentStatus.NOT_REQUIRED` the same as `PENDING`:
 blocked. This isn't a deliberate design choice, `NOT_REQUIRED` is defined in the enum
