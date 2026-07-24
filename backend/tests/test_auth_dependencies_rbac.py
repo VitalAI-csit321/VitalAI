@@ -10,7 +10,12 @@ from app.models.user import User, UserRole
 
 
 def _user(role: UserRole) -> User:
-    user = User(email=f"{role.value}@rbac-dep-test.example.com", hashed_password="h", full_name="X", role=role)
+    user = User(
+        email=f"{role.value}@rbac-dep-test.example.com",
+        hashed_password="h",
+        full_name="X",
+        role=role,
+    )
     user.permission_grants = []
     return user
 
