@@ -186,7 +186,15 @@ def test_get_llm_ollama_returns_client():
 
         assert result is not None
 
-    # Restore cache state for subsequent tests.
+    # Reload again outside the patch context so app.llm.provider's
+    # module-level `settings` reference is rebound to the real settings
+    # object. importlib.reload() re-executes the module's top-level `from
+    # app.config import settings`, capturing whatever app.config.settings is
+    # at that moment — inside the `with patch(...)` block above that's the
+    # mock, and without this second reload it stays bound to the mock for
+    # the rest of the test session, silently feeding every later call to
+    # app.llm.provider.get_llm() a stale, disconnected settings object.
+    importlib.reload(provider_module)
     get_llm.cache_clear()
 
 
@@ -209,4 +217,8 @@ def test_get_llm_unknown_provider_raises():
         with pytest.raises(ValueError, match="Unknown LLM_PROVIDER"):
             provider_module.get_llm()
 
+    # Reload again outside the patch context — see the matching comment in
+    # test_get_llm_ollama_returns_client() above for why this is required,
+    # not optional cleanup.
+    importlib.reload(provider_module)
     get_llm.cache_clear()
