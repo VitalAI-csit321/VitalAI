@@ -9,8 +9,15 @@ route-to-permission mapping to keep in sync. See
 docs/superpowers/specs/2026-07-24-sec-rbac-enforcement-tests-design.md.
 """
 
-from app.auth.rbac_registry import get_rbac_registry
+import re
+
+import pytest
+from httpx import AsyncClient
+
+from app.auth.permissions import ROLE_PERMISSIONS
+from app.auth.rbac_registry import RouteRbacEntry, get_rbac_registry
 from app.main import app
+from app.models.user import UserRole
 
 # Routes intentionally not permission-gated — either fully public (no auth at
 # all) or authenticated-but-no-specific-permission-required (any logged-in
@@ -42,3 +49,56 @@ def test_every_route_has_an_rbac_gate_or_is_explicitly_allowlisted():
                 f"no-permission-gate allowlist — add Depends(require_permission(...)) "
                 f"or add it to the allowlist if this is intentional"
             )
+
+
+_PLACEHOLDER_PATH_PARAM = "00000000-0000-0000-0000-000000000000"
+_PATH_PARAM_PATTERN = re.compile(r"\{[^}]+\}")
+
+# Built once at collection time so pytest can report each (route, role) pair
+# as its own named test case rather than one loop with a buried assertion.
+_GATED_ROUTES = [e for e in get_rbac_registry(app) if e.rbac_check is not None]
+
+
+def _resolve_path(path: str) -> str:
+    return _PATH_PARAM_PATTERN.sub(_PLACEHOLDER_PATH_PARAM, path)
+
+
+def _role_satisfies(role: UserRole, rbac_check: tuple[str, frozenset]) -> bool:
+    kind, values = rbac_check
+    if kind == "roles":
+        return role in values
+    held = ROLE_PERMISSIONS[role]
+    if kind == "permission":
+        return values <= held
+    if kind == "any_permission":
+        return bool(values & held)
+    raise ValueError(f"unknown rbac_check kind: {kind}")
+
+
+@pytest.mark.parametrize("entry", _GATED_ROUTES, ids=[f"{e.method}:{e.path}" for e in _GATED_ROUTES])
+@pytest.mark.parametrize("test_role", list(UserRole))
+async def test_route_permission_enforcement(
+    client: AsyncClient,
+    test_role: UserRole,
+    entry: RouteRbacEntry,
+    role_headers: dict[UserRole, dict],
+):
+    headers = role_headers[test_role]
+    path = _resolve_path(entry.path)
+    method = entry.method.lower()
+    request_kwargs: dict = {"headers": headers}
+    if entry.method in {"POST", "PUT", "PATCH"}:
+        request_kwargs["json"] = {}
+
+    response = await getattr(client, method)(path, **request_kwargs)
+
+    expected_denied = not _role_satisfies(test_role, entry.rbac_check)
+    if expected_denied:
+        assert response.status_code == 403, (
+            f"{test_role.value} expected 403 on {entry.method} {entry.path}, "
+            f"got {response.status_code}"
+        )
+    else:
+        assert response.status_code != 403, (
+            f"{test_role.value} expected non-403 on {entry.method} {entry.path}, got 403"
+        )
