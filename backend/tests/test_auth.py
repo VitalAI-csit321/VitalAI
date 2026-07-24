@@ -1,6 +1,8 @@
 from httpx import AsyncClient
+from sqlalchemy import select
 
-from app.models import Patient
+from app.models import Patient, User
+from app.models.audit import AuditEvent
 
 
 async def test_register_then_login(client: AsyncClient):
@@ -145,3 +147,166 @@ async def test_operator_cannot_elevate_role(client: AsyncClient, operator_header
         headers=operator_headers,
     )
     assert response.status_code == 403
+
+
+async def test_admin_can_set_department(client: AsyncClient, admin_headers: dict):
+    reg = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "deptarget@example.com",
+            "password": "password123",
+            "full_name": "Dept Target",
+        },
+    )
+    user_id = reg.json()["id"]
+
+    response = await client.post(
+        f"/api/v1/auth/users/{user_id}/department",
+        json={"department": "Radiology"},
+        headers=admin_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["department"] == "Radiology"
+
+
+async def test_set_department_404_for_missing_user(client: AsyncClient, admin_headers: dict):
+    response = await client.post(
+        "/api/v1/auth/users/00000000-0000-0000-0000-000000000000/department",
+        json={"department": "Radiology"},
+        headers=admin_headers,
+    )
+    assert response.status_code == 404
+
+
+async def test_front_desk_cannot_set_department(client: AsyncClient, front_desk_headers: dict):
+    reg = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "deptarget2@example.com",
+            "password": "password123",
+            "full_name": "Dept Target 2",
+        },
+    )
+    user_id = reg.json()["id"]
+
+    response = await client.post(
+        f"/api/v1/auth/users/{user_id}/department",
+        json={"department": "Radiology"},
+        headers=front_desk_headers,
+    )
+    assert response.status_code == 403
+
+
+async def test_set_department_rejects_empty_string(client: AsyncClient, admin_headers: dict):
+    reg = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "deptarget3@example.com",
+            "password": "password123",
+            "full_name": "Dept Target 3",
+        },
+    )
+    user_id = reg.json()["id"]
+
+    response = await client.post(
+        f"/api/v1/auth/users/{user_id}/department",
+        json={"department": ""},
+        headers=admin_headers,
+    )
+    assert response.status_code == 422
+
+
+async def test_admin_can_list_users(client: AsyncClient, admin_headers: dict):
+    await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "listendpoint1@example.com",
+            "password": "password123",
+            "full_name": "List Endpoint User",
+        },
+    )
+
+    response = await client.get("/api/v1/auth/users", headers=admin_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] >= 1
+    emails = {item["email"] for item in body["items"]}
+    assert "listendpoint1@example.com" in emails
+    item = next(i for i in body["items"] if i["email"] == "listendpoint1@example.com")
+    assert "last_active" in item
+    assert item["last_active"] is None
+
+
+async def test_list_users_search_query_param(client: AsyncClient, admin_headers: dict):
+    await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "searchable@example.com",
+            "password": "password123",
+            "full_name": "Very Searchable Name",
+        },
+    )
+
+    response = await client.get(
+        "/api/v1/auth/users", params={"search": "Very Searchable"}, headers=admin_headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["email"] == "searchable@example.com"
+
+
+async def test_front_desk_cannot_list_users(client: AsyncClient, front_desk_headers: dict):
+    response = await client.get("/api/v1/auth/users", headers=front_desk_headers)
+    assert response.status_code == 403
+
+
+async def test_operator_cannot_list_users(client: AsyncClient, operator_headers: dict):
+    """MANAGE_USERS has no operator grant path, must be denied."""
+    response = await client.get("/api/v1/auth/users", headers=operator_headers)
+    assert response.status_code == 403
+
+
+async def test_elevate_writes_audit_event(
+    client: AsyncClient, admin_headers: dict, admin_user: User, db_session
+):
+    reg = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "elevateaudit@example.com",
+            "password": "password123",
+            "full_name": "Elevate Audit Target",
+        },
+    )
+    user_id = reg.json()["id"]
+
+    response = await client.post(
+        f"/api/v1/auth/users/{user_id}/elevate",
+        json={"new_role": "operator"},
+        headers=admin_headers,
+    )
+    assert response.status_code == 200
+
+    # actor_id scopes to this test's own fresh admin_user, so a leftover
+    # "user.role_changed" row from prior manual/smoke-test traffic against
+    # a shared dev database (a real thing that happened during this same
+    # phase's own live smoke test) can't leak into this count, same pollution
+    # class as the other scoping fixes in this suite.
+    events = (
+        (
+            await db_session.execute(
+                select(AuditEvent).where(
+                    AuditEvent.action == "user.role_changed",
+                    AuditEvent.actor_id == admin_user.id,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(events) == 1
+    assert events[0].details == {
+        "user_id": user_id,
+        "old_role": "front_desk",
+        "new_role": "operator",
+    }

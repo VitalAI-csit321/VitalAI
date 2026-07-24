@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,9 +13,17 @@ from app.database import get_db
 from app.limiter import limiter
 from app.models.permission_grant import UserPermissionGrant
 from app.models.user import User, UserRole
-from app.schemas.auth import ElevateRoleRequest, Token, UserOut, UserRegister
+from app.schemas.auth import (
+    DepartmentUpdateRequest,
+    ElevateRoleRequest,
+    Token,
+    UserListItem,
+    UserListResponse,
+    UserOut,
+    UserRegister,
+)
 from app.schemas.permission import PermissionGrantCreate, PermissionGrantOut
-from app.services import permission_service
+from app.services import audit_service, permission_service, user_service
 from app.services.permission_service import (
     DuplicateGrantError,
     GrantNotFoundError,
@@ -48,16 +56,61 @@ async def elevate_user_role(
     user_id: UUID,
     payload: ElevateRoleRequest,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_permission(MANAGE_USERS)),
+    actor: User = Depends(require_permission(MANAGE_USERS)),
 ) -> User:
     """Change a user's role. Admin only."""
     user = await db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    old_role = user.role
     user.role = payload.new_role
+    await db.flush()
+
+    await audit_service.record_event(
+        db,
+        actor=actor,
+        action="user.role_changed",
+        details={
+            "user_id": str(user_id),
+            "old_role": old_role.value,
+            "new_role": payload.new_role.value,
+        },
+    )
     await db.commit()
     await db.refresh(user)
     return user
+
+
+@router.post("/users/{user_id}/department", response_model=UserOut)
+async def set_department_endpoint(
+    user_id: UUID,
+    payload: DepartmentUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(MANAGE_USERS)),
+) -> User:
+    """Set a user's department. Admin only."""
+    target = await db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return await user_service.set_department(db, target, payload.department, actor)
+
+
+@router.get("/users", response_model=UserListResponse)
+async def list_users_endpoint(
+    search: str | None = None,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_permission(MANAGE_USERS)),
+) -> UserListResponse:
+    rows, total = await user_service.list_users(db, search=search, limit=limit, offset=offset)
+    return UserListResponse(
+        items=[
+            UserListItem(**UserOut.model_validate(user).model_dump(), last_active=last_active)
+            for user, last_active in rows
+        ],
+        total=total,
+    )
 
 
 @router.post(

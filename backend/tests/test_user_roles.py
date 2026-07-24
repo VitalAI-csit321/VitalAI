@@ -37,3 +37,30 @@ async def test_operator_role_persists(db_session: AsyncSession):
     await db_session.commit()
     await db_session.refresh(user)
     assert user.role == UserRole.OPERATOR
+
+
+async def test_department_persists(db_session: AsyncSession):
+    user = User(
+        email="department-persist@example.com",
+        hashed_password=hash_password("password123"),
+        full_name="Department Persist Test",
+        role=UserRole.FRONT_DESK,
+        department="Radiology",
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    assert user.department == "Radiology"
+
+
+async def test_department_defaults_to_none(db_session: AsyncSession):
+    user = User(
+        email="department-default@example.com",
+        hashed_password=hash_password("password123"),
+        full_name="Department Default Test",
+        role=UserRole.FRONT_DESK,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    assert user.department is None

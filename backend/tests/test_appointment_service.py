@@ -59,7 +59,9 @@ async def test_book_appointment_creates_confirmed_and_audits(db_session: AsyncSe
     events = (
         (
             await db_session.execute(
-                select(AuditEvent).where(AuditEvent.action == "appointment.booked")
+                select(AuditEvent).where(
+                    AuditEvent.action == "appointment.booked", AuditEvent.case_id == case.id
+                )
             )
         )
         .scalars()
@@ -231,7 +233,9 @@ async def test_cancel_appointment_soft_cancels_and_audits(db_session: AsyncSessi
     events = (
         (
             await db_session.execute(
-                select(AuditEvent).where(AuditEvent.action == "appointment.cancelled")
+                select(AuditEvent).where(
+                    AuditEvent.action == "appointment.cancelled", AuditEvent.case_id == case.id
+                )
             )
         )
         .scalars()

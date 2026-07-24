@@ -56,7 +56,9 @@ async def test_assign_patient_creates_and_audits(db_session: AsyncSession):
     events = (
         (
             await db_session.execute(
-                select(AuditEvent).where(AuditEvent.action == "assignment.created")
+                select(AuditEvent).where(
+                    AuditEvent.action == "assignment.created", AuditEvent.actor_id == admin.id
+                )
             )
         )
         .scalars()

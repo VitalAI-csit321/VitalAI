@@ -47,7 +47,9 @@ async def test_create_patient_writes_audit_event(db_session: AsyncSession):
     )
 
     result = await db_session.execute(
-        select(AuditEvent).where(AuditEvent.action == "patient.registered")
+        select(AuditEvent).where(
+            AuditEvent.action == "patient.registered", AuditEvent.actor_id == actor.id
+        )
     )
     events = result.scalars().all()
     assert len(events) == 1
@@ -94,16 +96,24 @@ async def test_list_patients_status_filter(db_session: AsyncSession):
     await db_session.commit()
 
     p = await patient_service.create_patient(
-        db_session, PatientCreate(name="Y", dob=date(1990, 1, 1), gender=Gender.MALE), actor
+        db_session,
+        PatientCreate(name="StatusFilterTestPatient", dob=date(1990, 1, 1), gender=Gender.MALE),
+        actor,
     )
     p.status = PatientStatus.ACTIVE
     await db_session.commit()
 
-    items, total, _ = await patient_service.list_patients(db_session, status=PatientStatus.ACTIVE)
+    # search scopes to just this test's own patient, so pre-existing rows in a
+    # shared dev database can't inflate the count.
+    items, total, _ = await patient_service.list_patients(
+        db_session, search="StatusFilterTestPatient", status=PatientStatus.ACTIVE
+    )
     assert total == 1
     assert items[0].id == p.id
 
-    items, total, _ = await patient_service.list_patients(db_session, status=PatientStatus.INACTIVE)
+    items, total, _ = await patient_service.list_patients(
+        db_session, search="StatusFilterTestPatient", status=PatientStatus.INACTIVE
+    )
     assert total == 0
 
 
@@ -111,6 +121,12 @@ async def test_list_patients_counts_are_global_not_filtered(db_session: AsyncSes
     actor = _actor()
     db_session.add(actor)
     await db_session.commit()
+
+    # counts must reflect the whole table regardless of the search filter, so this
+    # test can't scope the count query to just its own rows the way other tests do.
+    # Compare before/after deltas instead of absolute numbers, so pre-existing rows
+    # in a shared dev database don't cause a false failure.
+    _, _, before = await patient_service.list_patients(db_session, search="nonexistent-name")
 
     p1 = await patient_service.create_patient(
         db_session, PatientCreate(name="A1", dob=date(1990, 1, 1), gender=Gender.MALE), actor
@@ -122,10 +138,10 @@ async def test_list_patients_counts_are_global_not_filtered(db_session: AsyncSes
     p2.status = PatientStatus.INACTIVE
     await db_session.commit()
 
-    _, _, counts = await patient_service.list_patients(db_session, search="nonexistent-name")
-    assert counts["active"] == 1
-    assert counts["inactive"] == 1
-    assert counts["pending"] == 0
+    _, _, after = await patient_service.list_patients(db_session, search="nonexistent-name")
+    assert after["active"] == before["active"] + 1
+    assert after["inactive"] == before["inactive"] + 1
+    assert after["pending"] == before["pending"]
 
 
 async def test_list_patients_pagination(db_session: AsyncSession):
@@ -135,12 +151,22 @@ async def test_list_patients_pagination(db_session: AsyncSession):
 
     for i in range(3):
         await patient_service.create_patient(
-            db_session, PatientCreate(name=f"P{i}", dob=date(1990, 1, 1), gender=Gender.MALE), actor
+            db_session,
+            PatientCreate(
+                name=f"PaginationTestPatient{i}", dob=date(1990, 1, 1), gender=Gender.MALE
+            ),
+            actor,
         )
 
-    items, total, _ = await patient_service.list_patients(db_session, limit=2, offset=0)
+    # search scopes pagination to just this test's own patients, so pre-existing
+    # rows in a shared dev database can't change the expected total/page sizes.
+    items, total, _ = await patient_service.list_patients(
+        db_session, search="PaginationTestPatient", limit=2, offset=0
+    )
     assert total == 3
     assert len(items) == 2
 
-    items, total, _ = await patient_service.list_patients(db_session, limit=2, offset=2)
+    items, total, _ = await patient_service.list_patients(
+        db_session, search="PaginationTestPatient", limit=2, offset=2
+    )
     assert len(items) == 1
