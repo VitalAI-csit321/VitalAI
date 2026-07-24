@@ -10,6 +10,7 @@ docs/superpowers/specs/2026-07-24-sec-rbac-enforcement-tests-design.md.
 """
 
 import re
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import AsyncClient
@@ -91,7 +92,17 @@ async def test_route_permission_enforcement(
     if entry.method in {"POST", "PUT", "PATCH"}:
         request_kwargs["json"] = {}
 
-    response = await getattr(client, method)(path, **request_kwargs)
+    # POST /api/v1/llm/ping makes a real, unmocked network call to the
+    # configured LLM provider — this test hits every gated route generically
+    # with a blank request, including this one. Only this assertion cares
+    # whether the permission gate let the request through, not whether an
+    # LLM is actually reachable, so mock get_llm() here rather than depend on
+    # a live provider (matches how tests/test_llm.py isolates its own
+    # provider tests from a live network dependency).
+    fake_llm = AsyncMock()
+    fake_llm.ainvoke.return_value = "pong"
+    with patch("app.routes.llm.get_llm", return_value=fake_llm):
+        response = await getattr(client, method)(path, **request_kwargs)
 
     expected_denied = not _role_satisfies(test_role, entry.rbac_check)
     if expected_denied:
