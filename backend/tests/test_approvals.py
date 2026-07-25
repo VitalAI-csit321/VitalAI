@@ -1,8 +1,12 @@
 import uuid
 
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.assignment import DoctorPatientAssignment
+from app.models.patient import Patient
+from app.models.user import User
 from app.services import approval_service
 
 
@@ -162,3 +166,95 @@ async def test_reject_already_decided_returns_409(
         f"/api/v1/approvals/{request.id}/reject", json={}, headers=admin_headers
     )
     assert second.status_code == 409
+
+
+async def test_approve_patient_assignment_suggested_creates_assignment(
+    client: AsyncClient,
+    admin_headers: dict,
+    db_session: AsyncSession,
+    patient: Patient,
+    doctor_user: User,
+):
+    request = await approval_service.create_approval_request(
+        db_session,
+        action_type="patient.assignment.suggested",
+        payload={"patient_id": str(patient.id), "suggested_doctor_id": str(doctor_user.id)},
+    )
+
+    response = await client.post(
+        f"/api/v1/approvals/{request.id}/approve", json={}, headers=admin_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "approved"
+
+    result = await db_session.execute(
+        select(DoctorPatientAssignment).where(
+            DoctorPatientAssignment.doctor_id == doctor_user.id,
+            DoctorPatientAssignment.patient_id == patient.id,
+        )
+    )
+    assert result.scalar_one_or_none() is not None
+
+
+async def test_approve_patient_assignment_suggested_uses_resolved_payload(
+    client: AsyncClient,
+    admin_headers: dict,
+    db_session: AsyncSession,
+    patient: Patient,
+    doctor_user: User,
+):
+    request = await approval_service.create_approval_request(
+        db_session,
+        action_type="patient.assignment.suggested",
+        payload={"patient_id": str(patient.id), "suggested_doctor_id": str(uuid.uuid4())},
+    )
+
+    response = await client.post(
+        f"/api/v1/approvals/{request.id}/approve",
+        json={
+            "resolved_payload": {
+                "patient_id": str(patient.id),
+                "suggested_doctor_id": str(doctor_user.id),
+            }
+        },
+        headers=admin_headers,
+    )
+
+    assert response.status_code == 200
+    result = await db_session.execute(
+        select(DoctorPatientAssignment).where(
+            DoctorPatientAssignment.doctor_id == doctor_user.id,
+            DoctorPatientAssignment.patient_id == patient.id,
+        )
+    )
+    assert result.scalar_one_or_none() is not None
+
+
+async def test_approve_patient_assignment_suggested_doctor_not_found_returns_404(
+    client: AsyncClient, admin_headers: dict, db_session: AsyncSession, patient: Patient
+):
+    request = await approval_service.create_approval_request(
+        db_session,
+        action_type="patient.assignment.suggested",
+        payload={"patient_id": str(patient.id), "suggested_doctor_id": str(uuid.uuid4())},
+    )
+
+    response = await client.post(
+        f"/api/v1/approvals/{request.id}/approve", json={}, headers=admin_headers
+    )
+
+    assert response.status_code == 404
+
+
+async def test_approve_unregistered_action_type_does_not_dispatch(
+    client: AsyncClient, admin_headers: dict, db_session: AsyncSession
+):
+    request = await _pending_approval(db_session)
+
+    response = await client.post(
+        f"/api/v1/approvals/{request.id}/approve", json={}, headers=admin_headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "approved"

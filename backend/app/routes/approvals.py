@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import require_permission
 from app.auth.permissions import APPROVE_ACTION
 from app.database import get_db
-from app.models.approval import ApprovalStatus
+from app.models.approval import ApprovalRequest, ApprovalStatus
 from app.models.user import User
 from app.schemas.approval import (
     ApprovalApproveBody,
@@ -14,10 +14,33 @@ from app.schemas.approval import (
     ApprovalRejectBody,
     ApprovalRequestOut,
 )
-from app.services import approval_service
+from app.services import approval_service, assignment_service
 from app.services.approval_service import ApprovalAlreadyDecidedError, ApprovalNotFoundError
+from app.services.assignment_service import (
+    AssignmentExistsError,
+    DoctorNotFoundError,
+    NotADoctorError,
+    PatientNotFoundError,
+)
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
+
+
+async def _execute_patient_assignment_suggested(
+    db: AsyncSession, request: ApprovalRequest, actor: User
+) -> None:
+    payload = request.resolved_payload or request.payload
+    await assignment_service.assign_patient(
+        db,
+        doctor_id=UUID(payload["suggested_doctor_id"]),
+        patient_id=UUID(payload["patient_id"]),
+        actor=actor,
+    )
+
+
+_ACTION_EXECUTORS = {
+    "patient.assignment.suggested": _execute_patient_assignment_suggested,
+}
 
 
 @router.get("", response_model=ApprovalListResponse)
@@ -51,7 +74,7 @@ async def approve_endpoint(
     actor: User = Depends(require_permission(APPROVE_ACTION)),
 ):
     try:
-        return await approval_service.approve(
+        approved = await approval_service.approve(
             db,
             approval_id,
             actor,
@@ -62,6 +85,21 @@ async def approve_endpoint(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ApprovalAlreadyDecidedError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    executor = _ACTION_EXECUTORS.get(approved.action_type)
+    if executor is not None:
+        try:
+            await executor(db, approved, actor)
+        except (DoctorNotFoundError, PatientNotFoundError) as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+        except NotADoctorError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+            ) from exc
+        except AssignmentExistsError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+    return approved
 
 
 @router.post("/{approval_id}/reject", response_model=ApprovalRequestOut)
