@@ -3,8 +3,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import require_permission
-from app.auth.permissions import VIEW_QUEUE
+from app.auth.dependencies import require_any_permission
+from app.auth.permissions import VIEW_CLINICAL, VIEW_QUEUE
 from app.database import get_db
 from app.models.human_review import TaskStatus, TaskType
 from app.models.user import User
@@ -30,11 +30,11 @@ async def list_tasks_endpoint(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
-    actor: User = Depends(require_permission(VIEW_QUEUE)),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
 ):
     items, total = await human_review_service.list_tasks(
         db,
-        target_role=actor.role,
+        actor,
         status=status_filter,
         task_type=task_type,
         limit=limit,
@@ -49,7 +49,7 @@ async def list_tasks_endpoint(
 async def claim_task_endpoint(
     task_id: UUID,
     db: AsyncSession = Depends(get_db),
-    actor: User = Depends(require_permission(VIEW_QUEUE)),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
 ):
     try:
         return await human_review_service.claim_task(db, task_id, actor)
@@ -66,7 +66,7 @@ async def complete_task_endpoint(
     task_id: UUID,
     payload: HumanReviewCompleteBody,
     db: AsyncSession = Depends(get_db),
-    actor: User = Depends(require_permission(VIEW_QUEUE)),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
 ):
     try:
         return await human_review_service.complete_task(db, task_id, actor, notes=payload.notes)

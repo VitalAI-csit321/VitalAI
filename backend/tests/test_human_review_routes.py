@@ -3,7 +3,16 @@ import uuid
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import HumanReviewTask, IntakeCase, Patient, TaskStatus, TaskType, UserRole
+from app.models import (
+    DoctorPatientAssignment,
+    HumanReviewTask,
+    IntakeCase,
+    Patient,
+    TaskStatus,
+    TaskType,
+    User,
+    UserRole,
+)
 
 
 async def _make_case(db_session: AsyncSession, patient: Patient) -> IntakeCase:
@@ -32,6 +41,13 @@ async def _make_task(
     return task
 
 
+async def _assign(db_session: AsyncSession, doctor: User, patient: Patient) -> None:
+    db_session.add(
+        DoctorPatientAssignment(doctor_id=doctor.id, patient_id=patient.id, assigned_by=doctor.id)
+    )
+    await db_session.commit()
+
+
 async def test_list_tasks_scoped_to_actor_role(
     client: AsyncClient, front_desk_headers: dict, db_session: AsyncSession, patient: Patient
 ):
@@ -47,9 +63,33 @@ async def test_list_tasks_scoped_to_actor_role(
     assert body["total"] == 2
 
 
-async def test_list_tasks_denied_for_doctor(client: AsyncClient, doctor_headers: dict):
+async def test_list_tasks_doctor_sees_only_assigned(
+    client: AsyncClient,
+    doctor_headers: dict,
+    db_session: AsyncSession,
+    patient: Patient,
+    doctor_user: User,
+):
+    case = await _make_case(db_session, patient)
+    await _make_task(db_session, case, UserRole.DOCTOR)
+    await _assign(db_session, doctor_user, patient)
+
     response = await client.get("/api/v1/human-review", headers=doctor_headers)
-    assert response.status_code == 403
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+
+
+async def test_list_tasks_doctor_empty_when_unassigned(
+    client: AsyncClient, doctor_headers: dict, db_session: AsyncSession, patient: Patient
+):
+    case = await _make_case(db_session, patient)
+    await _make_task(db_session, case, UserRole.DOCTOR)
+
+    response = await client.get("/api/v1/human-review", headers=doctor_headers)
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 0
 
 
 async def test_claim_task_success(
@@ -76,6 +116,34 @@ async def test_claim_task_wrong_role_returns_403(
     response = await client.post(
         f"/api/v1/human-review/{task.id}/claim", headers=operator_headers
     )
+
+    assert response.status_code == 403
+
+
+async def test_claim_task_doctor_allowed_when_assigned(
+    client: AsyncClient,
+    doctor_headers: dict,
+    db_session: AsyncSession,
+    patient: Patient,
+    doctor_user: User,
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.DOCTOR)
+    await _assign(db_session, doctor_user, patient)
+
+    response = await client.post(f"/api/v1/human-review/{task.id}/claim", headers=doctor_headers)
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "in_progress"
+
+
+async def test_claim_task_doctor_denied_when_not_assigned(
+    client: AsyncClient, doctor_headers: dict, db_session: AsyncSession, patient: Patient
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.DOCTOR)
+
+    response = await client.post(f"/api/v1/human-review/{task.id}/claim", headers=doctor_headers)
 
     assert response.status_code == 403
 
