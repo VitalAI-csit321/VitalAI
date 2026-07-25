@@ -21,9 +21,9 @@ from uuid import UUID
 from sqlalchemy import Select, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.audit import AuditEvent
 from app.models.chunk import Chunk
 from app.rag.embeddings import get_embedding_provider
+from app.services.audit_service import record_event
 
 EMBEDDING_DIM = 512
 MIN_PGVECTOR_FOR_ITERATIVE_SCAN = (0, 8, 0)
@@ -103,18 +103,20 @@ async def _emit_gov_retrieve_event(
     k: int,
     strategy: str,
 ) -> None:
-    """Append one GOV-RETRIEVE audit event per retrieve() call.
+    """Append one retrieval.performed audit event per retrieve() call.
 
-    Sink is app.models.audit.AuditEvent (append-only, DB-trigger enforced —
+    Sink is app.models.audit.AuditEvent (append-only, DB-trigger enforced,
     see alembic/versions/0001_initial.py). If that table is ever removed
     before a replacement sink lands, this should become a no-op rather than
     raise, but today the sink exists, so this writes for real.
     query_hash, not raw query text, is recorded.
     """
     query_hash = hashlib.sha256(query.encode("utf-8")).hexdigest()
-    event = AuditEvent(
+    await record_event(
+        session,
+        actor=None,
         actor_label=ctx.actor,
-        action="GOV-RETRIEVE",
+        action="retrieval.performed",
         details={
             "role": ctx.role,
             "patient_id": str(ctx.patient_id),
@@ -126,11 +128,9 @@ async def _emit_gov_retrieve_event(
             "strategy": strategy,
         },
     )
-    session.add(event)
-    # Unlike app.services.audit_service.record_event, GOV-RETRIEVE has no
-    # accompanying business write it must stay atomic with — commit here so
-    # the audit trail is durable even if the caller never commits its own
-    # session.
+    # This call has no accompanying business write it must stay atomic
+    # with, commit here so the audit trail is durable even if the caller
+    # never commits its own session.
     await session.commit()
 
 
