@@ -1,0 +1,14 @@
+
+Patient: Jeffrey Ross
+DOB: 2002-09-08
+
+Chief Complaint:
+Abdominal pain and nausea.
+
+Assessment:
+Likely viral infection.
+
+Plan:
+- Monitor blood pressure at home
+- Advise on dietary changes
+- Refer to specialist if symptoms persist

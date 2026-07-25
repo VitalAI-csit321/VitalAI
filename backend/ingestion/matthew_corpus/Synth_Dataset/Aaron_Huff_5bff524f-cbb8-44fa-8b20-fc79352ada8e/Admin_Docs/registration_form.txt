@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Aaron Huff
+
+DOB:
+1970-03-31
+
+Phone:
+0456 807 262
+
+Email:
+jodyjohnson@example.org
+
+Address:
+6 Miller Cul-de-sac, St. Nicoleberg, WA, 0876
+
+Medicare:
+4291818606

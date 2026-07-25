@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Elizabeth Thomas
+
+Haemoglobin:
+138.2 g/L
+
+Interpretation:
+Normal.

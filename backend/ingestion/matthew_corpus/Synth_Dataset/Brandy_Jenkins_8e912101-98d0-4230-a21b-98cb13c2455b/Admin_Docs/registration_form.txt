@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Brandy Jenkins
+
+DOB:
+1935-06-18
+
+Phone:
++61.3.5395.7755
+
+Email:
+carriewilliams@example.org
+
+Address:
+85 Miranda Quadrangle, Paulville, WA, 9442
+
+Medicare:
+3888494414

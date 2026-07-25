@@ -1,0 +1,11 @@
+
+Prescription
+
+Patient:
+Steven Mills
+
+Medication:
+Metformin 500mg
+
+Directions:
+Take 1 tablet twice daily with meals.

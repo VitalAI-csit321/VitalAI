@@ -1,0 +1,15 @@
+
+Patient: Cameron West
+DOB: 1971-09-13
+
+Chief Complaint:
+Abdominal pain and nausea.
+
+Assessment:
+No acute findings on examination.
+
+Plan:
+- Rest
+- Refer to specialist if symptoms persist
+- Increase fluid intake
+- Refer for physiotherapy

@@ -1,0 +1,15 @@
+
+Patient: Heather Benson
+DOB: 2018-07-17
+
+Chief Complaint:
+Headache and fatigue.
+
+Assessment:
+Consistent with musculoskeletal strain.
+
+Plan:
+- Monitor blood pressure at home
+- Arrange follow-up imaging
+- Refer to specialist if symptoms persist
+- Refer for physiotherapy

@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Jane Ayala
+
+Haemoglobin:
+155.3 g/L
+
+Interpretation:
+Normal.

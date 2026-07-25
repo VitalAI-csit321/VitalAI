@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+John Mejia
+
+Haemoglobin:
+118.7 g/L
+
+Interpretation:
+Low. Recommend clinical correlation.

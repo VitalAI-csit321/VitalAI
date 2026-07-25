@@ -1,0 +1,15 @@
+
+Patient: Mark Jones
+DOB: 1994-10-21
+
+Chief Complaint:
+Skin rash on both forearms.
+
+Assessment:
+Probable seasonal allergic reaction.
+
+Plan:
+- Order blood tests
+- Rest
+- Prescribe symptomatic relief
+- Advise on dietary changes

@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Marie James
+
+DOB:
+1999-09-08
+
+Phone:
+0448-435-903
+
+Email:
+burtonjames@example.org
+
+Address:
+563 Deborah End, Michaelfort, ACT, 2934
+
+Medicare:
+7062048903

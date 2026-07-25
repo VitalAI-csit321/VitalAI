@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+William Johnson
+
+DOB:
+1947-08-04
+
+Phone:
+0496-423-944
+
+Email:
+everettaustin@example.org
+
+Address:
+Flat 74 5 Victoria Round, West Ashley, TAS, 2999
+
+Medicare:
+2497084288

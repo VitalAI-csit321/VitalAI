@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Derek Kaiser
+
+Haemoglobin:
+139.1 g/L
+
+Interpretation:
+Normal.

@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Randall Gates
+
+DOB:
+1929-09-29
+
+Phone:
+2366 9348
+
+Email:
+nancy24@example.net
+
+Address:
+Flat 25 4 Peterson Landing, West Jasonborough, TAS, 1749
+
+Medicare:
+4365189576

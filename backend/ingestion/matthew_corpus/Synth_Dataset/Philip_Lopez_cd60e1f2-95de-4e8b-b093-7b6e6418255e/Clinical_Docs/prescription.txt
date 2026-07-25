@@ -1,0 +1,11 @@
+
+Prescription
+
+Patient:
+Philip Lopez
+
+Medication:
+Omeprazole 20mg
+
+Directions:
+Take 1 capsule once daily before breakfast.

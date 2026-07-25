@@ -1,0 +1,14 @@
+
+Patient: Christian Cohen
+DOB: 1939-05-24
+
+Chief Complaint:
+Lower back pain after lifting.
+
+Assessment:
+Signs suggestive of mild hypertension.
+
+Plan:
+- Refer to specialist if symptoms persist
+- Follow up in one week
+- Refer for physiotherapy

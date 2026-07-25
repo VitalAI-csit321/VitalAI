@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Karen Williams
+
+Haemoglobin:
+136.6 g/L
+
+Interpretation:
+Normal.

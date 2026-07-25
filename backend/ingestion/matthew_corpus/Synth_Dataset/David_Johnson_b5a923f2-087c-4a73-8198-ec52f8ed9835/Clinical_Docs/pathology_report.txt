@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+David Johnson
+
+Haemoglobin:
+171.7 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

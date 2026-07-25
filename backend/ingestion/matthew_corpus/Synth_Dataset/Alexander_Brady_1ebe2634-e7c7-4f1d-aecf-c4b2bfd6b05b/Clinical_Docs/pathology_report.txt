@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Alexander Brady
+
+Haemoglobin:
+148.5 g/L
+
+Interpretation:
+Normal.

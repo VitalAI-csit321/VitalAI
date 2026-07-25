@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Scott Crawford
+
+Haemoglobin:
+176.3 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

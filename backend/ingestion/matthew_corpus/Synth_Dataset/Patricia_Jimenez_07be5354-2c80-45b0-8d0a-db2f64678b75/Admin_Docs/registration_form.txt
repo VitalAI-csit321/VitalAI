@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Patricia Jimenez
+
+DOB:
+1935-08-08
+
+Phone:
+0444 759 682
+
+Email:
+markevans@example.com
+
+Address:
+686/2 Nichols Estate, Port Jamesland, NT, 3406
+
+Medicare:
+2907621281

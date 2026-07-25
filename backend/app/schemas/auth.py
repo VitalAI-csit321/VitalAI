@@ -17,6 +17,10 @@ class ElevateRoleRequest(BaseModel):
     new_role: UserRole
 
 
+class DepartmentUpdateRequest(BaseModel):
+    department: str = Field(min_length=1, max_length=255)
+
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
@@ -37,8 +41,18 @@ class UserOut(BaseModel):
     id: UUID
     email: EmailStr
     full_name: str
+    department: str | None
     role: UserRole
     is_active: bool
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UserListItem(UserOut):
+    last_active: datetime | None
+
+
+class UserListResponse(BaseModel):
+    items: list[UserListItem]
+    total: int

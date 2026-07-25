@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Brandy Jenkins
+
+Haemoglobin:
+160.5 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

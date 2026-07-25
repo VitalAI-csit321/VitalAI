@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Marc Nichols
+
+Haemoglobin:
+164.2 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

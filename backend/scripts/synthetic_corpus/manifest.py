@@ -53,7 +53,9 @@ class SyntheticDoc:
 
 
 DOCS: list[SyntheticDoc] = [
-    SyntheticDoc(ALICE_CHECKUP_DOC, PATIENT_ALICE, "clinical_note", "general", "alice_checkup.txt"),
+    SyntheticDoc(
+        ALICE_CHECKUP_DOC, PATIENT_ALICE, "clinical_note", "general", "alice_checkup.txt"
+    ),
     SyntheticDoc(
         ALICE_LAB_PANEL_DOC, PATIENT_ALICE, "lab_result", "restricted", "alice_lab_panel.txt"
     ),
@@ -73,7 +75,9 @@ DOCS: list[SyntheticDoc] = [
         ALICE_BILLING_DOC, PATIENT_ALICE, "sensitive_summary", "general", "alice_billing.txt"
     ),
     SyntheticDoc(BOB_CHECKUP_DOC, PATIENT_BOB, "clinical_note", "general", "bob_checkup.txt"),
-    SyntheticDoc(BOB_LAB_PANEL_DOC, PATIENT_BOB, "lab_result", "restricted", "bob_lab_panel.txt"),
+    SyntheticDoc(
+        BOB_LAB_PANEL_DOC, PATIENT_BOB, "lab_result", "restricted", "bob_lab_panel.txt"
+    ),
     SyntheticDoc(
         CAROL_REFERRAL_DOC, PATIENT_CAROL, "referral_letter", "general", "carol_referral.txt"
     ),

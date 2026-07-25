@@ -11,7 +11,22 @@ from starlette.responses import Response
 
 from app.config import settings
 from app.limiter import limiter
-from app.routes import audit, auth, consent, health, intake, llm, rag, review, routing, triage
+from app.routes import (
+    appointments,
+    assignments,
+    audit,
+    auth,
+    clinical_documents,
+    consent,
+    health,
+    intake,
+    llm,
+    patients,
+    rag,
+    routing,
+    tasks,
+    triage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +70,6 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
 
-# Must be added before the request-ID middleware below so that CORS headers are
-# attached to error responses too — otherwise a 401 from the API surfaces in the
-# browser as an opaque network error with no status code.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
@@ -88,10 +100,14 @@ app.include_router(intake.router, prefix=API_PREFIX)
 app.include_router(consent.router, prefix=API_PREFIX)
 app.include_router(triage.router, prefix=API_PREFIX)
 app.include_router(routing.router, prefix=API_PREFIX)
-app.include_router(review.router, prefix=API_PREFIX)
-app.include_router(rag.router, prefix=API_PREFIX)
 app.include_router(llm.router, prefix=API_PREFIX)
 app.include_router(audit.router, prefix=API_PREFIX)
+app.include_router(patients.router, prefix=API_PREFIX)
+app.include_router(assignments.router, prefix=API_PREFIX)
+app.include_router(rag.router, prefix=API_PREFIX)
+app.include_router(appointments.router, prefix=API_PREFIX)
+app.include_router(clinical_documents.router, prefix=API_PREFIX)
+app.include_router(tasks.router, prefix=API_PREFIX)
 
 
 @app.get("/")

@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Elizabeth Rodriguez
+
+DOB:
+1941-02-19
+
+Phone:
+0488-625-805
+
+Email:
+sarahmccoy@example.org
+
+Address:
+010 Cox Bend, Gilmoremouth, NT, 2634
+
+Medicare:
+6211065356

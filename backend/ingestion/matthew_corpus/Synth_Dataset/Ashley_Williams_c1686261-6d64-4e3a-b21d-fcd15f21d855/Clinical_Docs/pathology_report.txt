@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Ashley Williams
+
+Haemoglobin:
+158.2 g/L
+
+Interpretation:
+Normal.

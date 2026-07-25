@@ -1,0 +1,14 @@
+
+Patient: Tracy Stephens
+DOB: 1966-11-16
+
+Chief Complaint:
+Lower back pain after lifting.
+
+Assessment:
+Likely soft tissue inflammation.
+
+Plan:
+- Advise on dietary changes
+- Monitor blood pressure at home
+- Arrange follow-up imaging

@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Amber Adams
+
+Haemoglobin:
+133.2 g/L
+
+Interpretation:
+Normal.

@@ -1,0 +1,14 @@
+
+Patient: Rachel Williams
+DOB: 1968-12-23
+
+Chief Complaint:
+Abdominal pain and nausea.
+
+Assessment:
+Consistent with tension-type headache.
+
+Plan:
+- Increase fluid intake
+- Refer to specialist if symptoms persist
+- Arrange follow-up imaging

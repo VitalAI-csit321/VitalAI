@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Hunter Moore
+
+DOB:
+1940-07-09
+
+Phone:
+6906 1885
+
+Email:
+sarah50@example.com
+
+Address:
+9 Taylor Ramp, Port Alan, VIC, 2644
+
+Medicare:
+8376161578

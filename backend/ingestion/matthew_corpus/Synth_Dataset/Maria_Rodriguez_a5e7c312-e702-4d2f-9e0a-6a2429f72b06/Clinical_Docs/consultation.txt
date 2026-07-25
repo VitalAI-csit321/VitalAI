@@ -1,0 +1,15 @@
+
+Patient: Maria Rodriguez
+DOB: 1956-08-18
+
+Chief Complaint:
+Lower back pain after lifting.
+
+Assessment:
+Likely gastro-oesophageal reflux.
+
+Plan:
+- Arrange follow-up imaging
+- Prescribe symptomatic relief
+- Advise on dietary changes
+- Refer to specialist if symptoms persist

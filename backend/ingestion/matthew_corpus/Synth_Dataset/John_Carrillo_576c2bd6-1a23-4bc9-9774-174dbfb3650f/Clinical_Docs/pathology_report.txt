@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+John Carrillo
+
+Haemoglobin:
+172.3 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

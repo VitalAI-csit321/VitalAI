@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Aaron Huff
+
+Haemoglobin:
+106.5 g/L
+
+Interpretation:
+Low. Recommend clinical correlation.

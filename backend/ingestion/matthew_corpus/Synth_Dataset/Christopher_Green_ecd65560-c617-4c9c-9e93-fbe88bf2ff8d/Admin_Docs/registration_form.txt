@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Christopher Green
+
+DOB:
+1997-02-15
+
+Phone:
+(03)-7746-7967
+
+Email:
+mgilbert@example.net
+
+Address:
+9 Thomas Quadrangle, Lake Stevenville, WA, 2711
+
+Medicare:
+1022587565

@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Steven Mills
+
+Haemoglobin:
+153.5 g/L
+
+Interpretation:
+Normal.

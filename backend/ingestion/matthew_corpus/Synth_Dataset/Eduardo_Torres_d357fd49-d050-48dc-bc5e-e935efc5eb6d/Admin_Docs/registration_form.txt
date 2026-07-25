@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Eduardo Torres
+
+DOB:
+1988-08-27
+
+Phone:
+0445.497.712
+
+Email:
+wmoreno@example.net
+
+Address:
+072 Robinson Steps, Mariaborough, WA, 6392
+
+Medicare:
+5015057081

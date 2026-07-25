@@ -1,0 +1,15 @@
+
+Patient: Marc Nichols
+DOB: 1987-12-24
+
+Chief Complaint:
+Joint pain in the knees.
+
+Assessment:
+Consistent with tension-type headache.
+
+Plan:
+- Refer to specialist if symptoms persist
+- Monitor blood pressure at home
+- Prescribe symptomatic relief
+- Follow up in one week

@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Michelle Meadows
+
+DOB:
+1938-09-17
+
+Phone:
++61 7 8524 5573
+
+Email:
+anthonyhernandez@example.org
+
+Address:
+Unit 23 5 Brandon Circlet, Petermouth, SA, 2452
+
+Medicare:
+5753071736

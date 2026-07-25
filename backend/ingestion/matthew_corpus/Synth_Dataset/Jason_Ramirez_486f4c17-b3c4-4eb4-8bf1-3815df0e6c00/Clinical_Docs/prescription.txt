@@ -1,0 +1,11 @@
+
+Prescription
+
+Patient:
+Jason Ramirez
+
+Medication:
+Cetirizine 10mg
+
+Directions:
+Take 1 tablet once daily.

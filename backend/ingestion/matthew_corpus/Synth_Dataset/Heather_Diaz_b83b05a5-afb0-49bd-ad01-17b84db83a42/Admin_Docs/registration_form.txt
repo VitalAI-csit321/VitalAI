@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Heather Diaz
+
+DOB:
+1979-08-15
+
+Phone:
++61.8.5539.3397
+
+Email:
+brettcharles@example.net
+
+Address:
+11 Kelly Nook, Lawsonchester, SA, 0925
+
+Medicare:
+9054456280

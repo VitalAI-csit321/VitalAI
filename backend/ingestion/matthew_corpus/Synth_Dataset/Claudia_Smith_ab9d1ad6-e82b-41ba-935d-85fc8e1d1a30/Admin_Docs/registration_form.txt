@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Claudia Smith
+
+DOB:
+2004-07-30
+
+Phone:
++61390842582
+
+Email:
+amber15@example.com
+
+Address:
+982/0 Amanda Common, Danielville, ACT, 0254
+
+Medicare:
+1891598383

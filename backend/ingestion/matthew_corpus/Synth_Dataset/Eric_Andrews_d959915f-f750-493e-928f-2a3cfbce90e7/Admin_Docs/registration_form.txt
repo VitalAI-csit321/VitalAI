@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Eric Andrews
+
+DOB:
+2002-05-02
+
+Phone:
+8771.5924
+
+Email:
+lisamckenzie@example.com
+
+Address:
+Suite 515 12 Philip Ramble, Moraleston, QLD, 6868
+
+Medicare:
+9082499595

@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Jay Pham
+
+Haemoglobin:
+160.7 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Charles Morgan
+
+DOB:
+1940-12-03
+
+Phone:
+(08) 5309 4987
+
+Email:
+timothy76@example.org
+
+Address:
+198 Phillip Meander, Port Kelsey, TAS, 0893
+
+Medicare:
+1137282636

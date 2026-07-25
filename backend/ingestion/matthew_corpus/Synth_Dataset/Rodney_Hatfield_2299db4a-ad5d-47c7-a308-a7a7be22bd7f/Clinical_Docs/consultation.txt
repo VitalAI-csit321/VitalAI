@@ -1,0 +1,14 @@
+
+Patient: Rodney Hatfield
+DOB: 1957-04-22
+
+Chief Complaint:
+Dizziness and occasional palpitations.
+
+Assessment:
+Probable upper respiratory tract infection.
+
+Plan:
+- Rest
+- Order blood tests
+- Increase fluid intake

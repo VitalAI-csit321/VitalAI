@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+John Dawson
+
+Haemoglobin:
+116.8 g/L
+
+Interpretation:
+Low. Recommend clinical correlation.

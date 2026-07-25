@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Heather Benson
+
+DOB:
+2018-07-17
+
+Phone:
+4741.6433
+
+Email:
+sarahmiller@example.net
+
+Address:
+98 Paul Fire Track, Michaelview, VIC, 2680
+
+Medicare:
+1188904951

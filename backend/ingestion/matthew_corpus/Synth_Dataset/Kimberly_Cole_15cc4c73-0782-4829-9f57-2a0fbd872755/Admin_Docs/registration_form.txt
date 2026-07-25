@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Kimberly Cole
+
+DOB:
+1958-06-18
+
+Phone:
++61252548662
+
+Email:
+vickiebanks@example.org
+
+Address:
+362 Alexander Common, North Johnside, VIC, 2637
+
+Medicare:
+9337555854

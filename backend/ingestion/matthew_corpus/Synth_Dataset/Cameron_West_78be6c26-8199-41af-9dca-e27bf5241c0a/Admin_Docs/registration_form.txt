@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Cameron West
+
+DOB:
+1971-09-13
+
+Phone:
+02 4137 0226
+
+Email:
+brownjay@example.com
+
+Address:
+9 Sanders Formation, Port Timothy, TAS, 2680
+
+Medicare:
+7941007968

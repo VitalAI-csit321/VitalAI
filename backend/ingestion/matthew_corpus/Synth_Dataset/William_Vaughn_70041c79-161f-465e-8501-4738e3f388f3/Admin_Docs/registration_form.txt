@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+William Vaughn
+
+DOB:
+1940-08-29
+
+Phone:
++61317573472
+
+Email:
+brandonbaldwin@example.com
+
+Address:
+5 Jose Cove, Garrisonland, SA, 2639
+
+Medicare:
+1283014537

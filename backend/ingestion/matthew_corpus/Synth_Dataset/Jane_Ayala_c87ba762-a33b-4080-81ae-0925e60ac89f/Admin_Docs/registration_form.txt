@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Jane Ayala
+
+DOB:
+1963-10-09
+
+Phone:
+96831892
+
+Email:
+kenneth84@example.org
+
+Address:
+Suite 433 0 Marvin Circus, Port Tinashire, QLD, 2641
+
+Medicare:
+1820269042

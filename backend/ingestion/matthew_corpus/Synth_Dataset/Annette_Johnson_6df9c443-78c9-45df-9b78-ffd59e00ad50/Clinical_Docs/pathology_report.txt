@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Annette Johnson
+
+Haemoglobin:
+123.3 g/L
+
+Interpretation:
+Normal.

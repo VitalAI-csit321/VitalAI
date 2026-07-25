@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Elizabeth Thomas
+
+DOB:
+1969-09-09
+
+Phone:
++61.431.272.785
+
+Email:
+robert05@example.net
+
+Address:
+298 Collins Rosebowl, Lake Alexander, TAS, 2935
+
+Medicare:
+8343711297

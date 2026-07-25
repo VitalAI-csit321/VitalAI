@@ -1,0 +1,15 @@
+
+Patient: Michelle Fleming
+DOB: 1981-01-24
+
+Chief Complaint:
+Skin rash on both forearms.
+
+Assessment:
+Signs suggestive of mild hypertension.
+
+Plan:
+- Prescribe symptomatic relief
+- Arrange follow-up imaging
+- Refer to specialist if symptoms persist
+- Advise on dietary changes

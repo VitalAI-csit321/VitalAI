@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Kevin Munoz
+
+Haemoglobin:
+123.7 g/L
+
+Interpretation:
+Normal.

@@ -34,7 +34,7 @@ class LLMStatusResponse(BaseModel):
     note: str
 
 
-_llm_roles = require_roles(UserRole.ADMIN, UserRole.OPS_MANAGER)
+_llm_roles = require_roles(UserRole.ADMIN, UserRole.OPERATOR)
 
 
 def _get_current_model_name() -> str:

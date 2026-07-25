@@ -1,0 +1,11 @@
+
+Prescription
+
+Patient:
+Randy Nelson
+
+Medication:
+Paracetamol 500mg
+
+Directions:
+Take 2 tablets every 6 hours as needed.

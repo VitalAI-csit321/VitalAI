@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Derek Kaiser
+
+DOB:
+1954-01-11
+
+Phone:
+02 0502 7413
+
+Email:
+ncarter@example.com
+
+Address:
+Level 4 5 Heather Little, East Danielle, ACT, 2642
+
+Medicare:
+4736859509

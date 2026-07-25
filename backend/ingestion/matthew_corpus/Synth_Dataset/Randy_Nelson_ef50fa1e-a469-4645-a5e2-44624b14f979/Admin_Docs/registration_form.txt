@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Randy Nelson
+
+DOB:
+2001-12-31
+
+Phone:
+41776933
+
+Email:
+billy75@example.com
+
+Address:
+07/015 Sandra Circle, South Ianmouth, VIC, 2923
+
+Medicare:
+4639148659

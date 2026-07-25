@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Jason Reid
+
+DOB:
+1939-11-12
+
+Phone:
++61-470-725-796
+
+Email:
+cortezjacob@example.com
+
+Address:
+5 Harper Subway, New Donald, NSW, 1512
+
+Medicare:
+5907255602

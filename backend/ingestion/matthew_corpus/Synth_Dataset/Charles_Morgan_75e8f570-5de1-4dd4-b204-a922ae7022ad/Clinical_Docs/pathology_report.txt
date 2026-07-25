@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Charles Morgan
+
+Haemoglobin:
+141.7 g/L
+
+Interpretation:
+Normal.

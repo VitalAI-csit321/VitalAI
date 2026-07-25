@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Matthew Green
+
+DOB:
+1990-05-19
+
+Phone:
+7613 4521
+
+Email:
+meagancook@example.net
+
+Address:
+Unit 63 16 Roberts Copse, Atkinsonbury, QLD, 0917
+
+Medicare:
+4148713143

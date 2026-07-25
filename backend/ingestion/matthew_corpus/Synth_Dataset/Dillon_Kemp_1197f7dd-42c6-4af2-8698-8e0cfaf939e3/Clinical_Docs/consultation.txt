@@ -1,0 +1,13 @@
+
+Patient: Dillon Kemp
+DOB: 2000-04-16
+
+Chief Complaint:
+Skin rash on both forearms.
+
+Assessment:
+Consistent with musculoskeletal strain.
+
+Plan:
+- Follow up in one week
+- Arrange follow-up imaging

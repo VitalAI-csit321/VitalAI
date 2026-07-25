@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Heather Diaz
+
+Haemoglobin:
+170.8 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

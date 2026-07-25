@@ -1,0 +1,14 @@
+
+Patient: Annette Reyes
+DOB: 1957-06-30
+
+Chief Complaint:
+Dizziness and occasional palpitations.
+
+Assessment:
+Probable seasonal allergic reaction.
+
+Plan:
+- Prescribe symptomatic relief
+- Follow up in one week
+- Refer for physiotherapy

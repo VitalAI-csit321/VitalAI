@@ -1,0 +1,13 @@
+
+Patient: Randall Gates
+DOB: 1929-09-29
+
+Chief Complaint:
+Dizziness and occasional palpitations.
+
+Assessment:
+Likely gastro-oesophageal reflux.
+
+Plan:
+- Arrange follow-up imaging
+- Increase fluid intake

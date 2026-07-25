@@ -1,0 +1,14 @@
+
+Patient: Elizabeth Thomas
+DOB: 1969-09-09
+
+Chief Complaint:
+Dizziness and occasional palpitations.
+
+Assessment:
+Likely gastro-oesophageal reflux.
+
+Plan:
+- Advise on dietary changes
+- Rest
+- Follow up in one week

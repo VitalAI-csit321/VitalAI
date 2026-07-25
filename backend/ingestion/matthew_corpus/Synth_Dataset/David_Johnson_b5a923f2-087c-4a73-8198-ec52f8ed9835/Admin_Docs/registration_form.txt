@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+David Johnson
+
+DOB:
+1989-01-17
+
+Phone:
+(07)42876454
+
+Email:
+smithanthony@example.org
+
+Address:
+Suite 835 9 Joshua Range, North Victor, TAS, 8751
+
+Medicare:
+2281791331

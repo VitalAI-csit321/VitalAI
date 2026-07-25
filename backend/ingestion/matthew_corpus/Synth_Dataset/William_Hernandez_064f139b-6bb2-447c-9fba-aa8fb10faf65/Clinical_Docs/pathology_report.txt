@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+William Hernandez
+
+Haemoglobin:
+135.9 g/L
+
+Interpretation:
+Normal.

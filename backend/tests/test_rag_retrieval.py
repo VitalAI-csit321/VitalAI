@@ -1,7 +1,7 @@
 """FR-RAG-01 retrieval tests.
 
 Run against a real Postgres+pgvector database via the `seeded_chunks` /
-`pg_session` fixtures in conftest.py — SQLite cannot exercise cosine_distance,
+`pg_session` fixtures in conftest.py. SQLite cannot exercise cosine_distance,
 HNSW, or the SET LOCAL GUCs this module depends on.
 
 BASELINE, reconcile with Matthew's ingestion schema: the corpus these tests
@@ -131,17 +131,21 @@ async def test_score_descending_and_self_match_ranks_first(seeded_chunks: AsyncS
     scores = [chunk.score for chunk in results]
     assert scores == sorted(scores, reverse=True)
     assert results[0].chunk_id == target.id
-    assert results[0].score == pytest.approx(1.0, abs=1e-4)
+    # Query and document embeddings use different prefixes (search_query:
+    # vs search_document:), so even an exact self-match never scores a
+    # perfect 1.0. Still expect a strong match, well above the sufficiency
+    # floor (0.50).
+    assert results[0].score > 0.85
 
 
 async def test_provider_dimension_mismatch_raises(
     seeded_chunks: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     class _WrongDimProvider:
-        async def embed(self, text: str) -> list[float]:
+        async def embed_query(self, text: str) -> list[float]:
             return [0.0] * 128
 
-        async def embed_batch(self, texts: list[str]) -> list[list[float]]:
+        async def embed_documents(self, texts: list[str]) -> list[list[float]]:
             return [[0.0] * 128 for _ in texts]
 
     monkeypatch.setattr("app.rag.retrieval.get_embedding_provider", lambda: _WrongDimProvider())
@@ -152,7 +156,9 @@ async def test_provider_dimension_mismatch_raises(
 
 
 async def test_audit_emits_one_gov_retrieve_event_per_call(seeded_chunks: AsyncSession) -> None:
-    count_stmt = select(func.count()).select_from(AuditEvent).where(AuditEvent.action == "GOV-RETRIEVE")
+    count_stmt = (
+        select(func.count()).select_from(AuditEvent).where(AuditEvent.action == "GOV-RETRIEVE")
+    )
     before_count = (await seeded_chunks.execute(count_stmt)).scalar_one()
 
     query = "annual physical exam"
@@ -179,7 +185,9 @@ async def test_audit_emits_one_gov_retrieve_event_per_call(seeded_chunks: AsyncS
     assert event.details["k"] == 3
     assert event.details["strategy"] == "vector"
     assert event.details["chunk_ids"] == [str(chunk.chunk_id) for chunk in results]
-    assert event.details["source_document_ids"] == [str(chunk.source_document_id) for chunk in results]
+    assert event.details["source_document_ids"] == [
+        str(chunk.source_document_id) for chunk in results
+    ]
     assert query not in str(event.details)  # raw query text must never be stored
 
 

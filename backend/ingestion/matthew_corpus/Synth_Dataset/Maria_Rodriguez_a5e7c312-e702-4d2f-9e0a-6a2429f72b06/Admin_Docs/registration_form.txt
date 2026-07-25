@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Maria Rodriguez
+
+DOB:
+1956-08-18
+
+Phone:
+0822246477
+
+Email:
+michael43@example.net
+
+Address:
+373 Kevin Parkway, Kellyfort, WA, 2619
+
+Medicare:
+4882961207

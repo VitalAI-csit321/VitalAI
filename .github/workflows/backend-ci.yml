@@ -63,10 +63,24 @@ jobs:
         run: mypy app
         continue-on-error: true  # tighten once codebase is fully typed
 
+      - name: Start MinIO
+        # Run as a plain container rather than a services: entry: the minio/minio
+        # image requires "server /data" as an explicit command to actually start
+        # (with no args it just prints help and exits), and GitHub Actions'
+        # services: block has no command/entrypoint override key. -p binds to the
+        # runner's own localhost, reachable the same way as the postgres service.
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio server /data
+          timeout 30 bash -c 'until curl -sf http://localhost:9000/minio/health/live; do sleep 1; done'
+
       - name: Run tests with coverage
         env:
           DATABASE_URL: postgresql+asyncpg://vitalai:vitalai@localhost:5432/vitalai
           JWT_SECRET_KEY: ci-test-secret
+          MINIO_ENDPOINT: http://localhost:9000
         run: |
           coverage run -m pytest tests/
           coverage report --fail-under=80 --include="app/services/*"

@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Claudia Little
+
+Haemoglobin:
+125.1 g/L
+
+Interpretation:
+Normal.

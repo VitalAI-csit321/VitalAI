@@ -31,8 +31,9 @@ DEV_PASSWORD = "password123"
 
 USERS = [
     ("s.kapoor@royalmelb.health", "Sanjay Kapoor", UserRole.ADMIN),
-    ("m.alvarez@royalmelb.health", "Maria Alvarez", UserRole.OPS_MANAGER),
+    ("m.alvarez@royalmelb.health", "Maria Alvarez", UserRole.OPERATOR),
     ("j.doe@royalmelb.health", "Jamie Doe", UserRole.FRONT_DESK),
+    ("d.kapoor@royalmelb.health", "Sanjay Kapoor", UserRole.DOCTOR),
 ]
 
 # (patient_name, contact_reason, channel, consent_state)

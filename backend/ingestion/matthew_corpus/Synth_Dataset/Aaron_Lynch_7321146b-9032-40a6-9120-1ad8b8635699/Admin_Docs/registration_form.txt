@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Aaron Lynch
+
+DOB:
+1965-06-23
+
+Phone:
+9132 1763
+
+Email:
+lucasdebra@example.net
+
+Address:
+Level 1 966 Brooke Vale, Caldwellview, ACT, 2616
+
+Medicare:
+3390064662

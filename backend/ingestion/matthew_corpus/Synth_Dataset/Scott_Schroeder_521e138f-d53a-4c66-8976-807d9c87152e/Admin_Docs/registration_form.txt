@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Scott Schroeder
+
+DOB:
+2014-02-18
+
+Phone:
++61.3.4063.7928
+
+Email:
+rhernandez@example.com
+
+Address:
+34 Dakota Glen, St. Sarahberg, NSW, 2348
+
+Medicare:
+9458690000

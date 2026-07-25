@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Desiree Henderson
+
+Haemoglobin:
+166.7 g/L
+
+Interpretation:
+High. Recommend clinical correlation.

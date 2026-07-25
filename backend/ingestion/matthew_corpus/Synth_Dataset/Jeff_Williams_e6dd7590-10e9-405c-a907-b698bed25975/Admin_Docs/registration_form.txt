@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Jeff Williams
+
+DOB:
+1987-04-23
+
+Phone:
+(02)62521980
+
+Email:
+gowens@example.com
+
+Address:
+4/83 Joshua Riverway, Randyfurt, NT, 2168
+
+Medicare:
+4153243040

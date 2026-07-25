@@ -1,0 +1,20 @@
+
+Patient Registration Form
+
+Name:
+Kevin Munoz
+
+DOB:
+2004-10-03
+
+Phone:
+(03).7915.8249
+
+Email:
+hannahalvarado@example.com
+
+Address:
+8 Kathryn Centreway, East Davidfort, VIC, 2926
+
+Medicare:
+3746837809

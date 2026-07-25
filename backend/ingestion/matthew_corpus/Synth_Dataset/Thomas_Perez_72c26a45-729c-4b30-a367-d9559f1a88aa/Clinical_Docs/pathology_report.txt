@@ -1,0 +1,11 @@
+
+Pathology Report
+
+Patient:
+Thomas Perez
+
+Haemoglobin:
+156.0 g/L
+
+Interpretation:
+Normal.

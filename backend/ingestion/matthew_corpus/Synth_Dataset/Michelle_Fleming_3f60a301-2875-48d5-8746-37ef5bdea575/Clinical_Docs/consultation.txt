@@ -1,0 +1,13 @@
+
+Patient: Michelle Fleming
+DOB: 2007-08-06
+
+Chief Complaint:
+Headache and fatigue.
+
+Assessment:
+Consistent with tension-type headache.
+
+Plan:
+- Follow up in one week
+- Rest
