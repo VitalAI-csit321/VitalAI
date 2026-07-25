@@ -5,6 +5,7 @@ from app.auth.dependencies import require_permission
 from app.auth.permissions import VIEW_CLINICAL
 from app.auth.scoping import allowed_scopes, can_read_clinical
 from app.database import get_db
+from app.llm.guardrail import InputBlockedError
 from app.models.user import User
 from app.rag.answer import AnswerResult, answer_question
 from app.rag.retrieval import RetrievalContext
@@ -31,4 +32,10 @@ async def rag_query_endpoint(
         role=actor.role.value,
         actor=str(actor.id),
     )
-    return await answer_question(db, payload.question, ctx)
+    try:
+        return await answer_question(db, payload.question, ctx, actor)
+    except InputBlockedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="This request could not be processed.",
+        ) from exc
