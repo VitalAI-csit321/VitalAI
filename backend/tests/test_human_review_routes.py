@@ -113,9 +113,7 @@ async def test_claim_task_wrong_role_returns_403(
     case = await _make_case(db_session, patient)
     task = await _make_task(db_session, case, UserRole.FRONT_DESK)
 
-    response = await client.post(
-        f"/api/v1/human-review/{task.id}/claim", headers=operator_headers
-    )
+    response = await client.post(f"/api/v1/human-review/{task.id}/claim", headers=operator_headers)
 
     assert response.status_code == 403
 

@@ -56,9 +56,9 @@ async def list_tasks(
         query = query.join(IntakeCase, HumanReviewTask.case_id == IntakeCase.id).where(
             IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id))
         )
-        count_query = count_query.join(
-            IntakeCase, HumanReviewTask.case_id == IntakeCase.id
-        ).where(IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id)))
+        count_query = count_query.join(IntakeCase, HumanReviewTask.case_id == IntakeCase.id).where(
+            IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id))
+        )
     if status is not None:
         query = query.where(HumanReviewTask.status == status)
         count_query = count_query.where(HumanReviewTask.status == status)

@@ -76,7 +76,9 @@ def _role_satisfies(role: UserRole, rbac_check: tuple[str, frozenset]) -> bool:
     raise ValueError(f"unknown rbac_check kind: {kind}")
 
 
-@pytest.mark.parametrize("entry", _GATED_ROUTES, ids=[f"{e.method}:{e.path}" for e in _GATED_ROUTES])
+@pytest.mark.parametrize(
+    "entry", _GATED_ROUTES, ids=[f"{e.method}:{e.path}" for e in _GATED_ROUTES]
+)
 @pytest.mark.parametrize("test_role", list(UserRole))
 async def test_route_permission_enforcement(
     client: AsyncClient,
