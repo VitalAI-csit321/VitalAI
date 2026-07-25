@@ -1,7 +1,9 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import pytest
 from httpx import AsyncClient
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.permissions import VIEW_CLINICAL
@@ -10,6 +12,7 @@ from app.models import Patient, User
 from app.models.permission_grant import UserPermissionGrant
 from app.models.user import UserRole
 from app.rag.retrieval import RetrievedChunk
+from app.schemas.rag import RagQueryRequest
 
 
 def _chunk(score: float = 0.9) -> RetrievedChunk:
@@ -156,3 +159,8 @@ async def test_rag_query_builds_retrieval_context_from_caller(
     assert ctx.patient_id == patient.id
     assert set(ctx.allowed_scopes) == {"general", "restricted"}
     assert ctx.role == "doctor"
+
+
+def test_rag_query_request_rejects_question_over_2000_chars() -> None:
+    with pytest.raises(ValidationError):
+        RagQueryRequest(patient_id=uuid4(), question="x" * 2001)
