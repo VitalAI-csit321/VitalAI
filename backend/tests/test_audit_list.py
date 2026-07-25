@@ -84,3 +84,22 @@ async def test_listing_audit_events_is_itself_logged(
         .all()
     )
     assert len(events) == 1
+
+
+async def test_list_audit_events_csv_export(
+    client: AsyncClient, admin_headers: dict, patient: Patient
+):
+    await client.post(
+        "/api/v1/intake",
+        json={"patient_id": str(patient.id), "contact_reason": "Visit", "contact_channel": "phone"},
+        headers=admin_headers,
+    )
+
+    response = await client.get("/api/v1/audit?format=csv", headers=admin_headers)
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    body = response.text
+    assert (
+        "id,timestamp,actor_label,actor_role,action,case_id,risk_score,risk_level,outcome" in body
+    )
+    assert "intake.created" in body

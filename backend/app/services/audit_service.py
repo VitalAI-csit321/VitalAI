@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit_context import get_ip_address, get_session_id
@@ -131,3 +131,15 @@ async def list_events(
 
 async def get_event_by_id(db: AsyncSession, event_id: UUID) -> AuditEvent | None:
     return await db.get(AuditEvent, event_id)
+
+
+async def verify_chain(db: AsyncSession) -> dict:
+    result = await db.execute(
+        text("SELECT valid, checked_count, first_break_event_id FROM verify_audit_chain()")
+    )
+    row = result.one()
+    return {
+        "valid": row.valid,
+        "checked_count": row.checked_count,
+        "first_break_event_id": str(row.first_break_event_id) if row.first_break_event_id else None,
+    }
