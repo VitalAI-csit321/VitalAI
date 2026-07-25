@@ -1,4 +1,5 @@
-"""add call and task models
+"""merge RBAC and call/task migration branches
+
 
 Revision ID: 0014_add_call_task_models
 Revises: 0013_add_user_department
@@ -8,10 +9,7 @@ Create Date: 2026-07-24 00:00:00.000000
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
-
-from alembic import op
 
 revision: str = "0014_add_call_task_models"
 down_revision: tuple[str, str] = (
