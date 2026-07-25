@@ -1,7 +1,7 @@
 import enum
 from uuid import UUID
 
-from sqlalchemy import Enum, ForeignKey
+from sqlalchemy import Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -32,6 +32,9 @@ class Task(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     case_id: Mapped[UUID] = mapped_column(
         ForeignKey("intake_cases.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    call_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("calls.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     assigned_to: Mapped[UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -49,3 +52,5 @@ class Task(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
         default=TaskItemStatus.PENDING,
     )
+    target_queue: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    handover_context: Mapped[str | None] = mapped_column(Text, nullable=True)

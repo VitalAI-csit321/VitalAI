@@ -16,10 +16,13 @@ class TaskCreate(BaseModel):
 class TaskOut(BaseModel):
     id: UUID
     case_id: UUID
+    call_id: UUID | None
     assigned_to: UUID | None
     source: TaskSource
     priority: TaskPriority
     status: TaskItemStatus
+    target_queue: str | None
+    handover_context: str | None
     created_at: datetime
     updated_at: datetime
 

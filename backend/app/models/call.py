@@ -1,11 +1,12 @@
 import enum
 from uuid import UUID
 
+from sqlalchemy import Boolean, ForeignKey, String, Text
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.triage import TriageCategory
 
 
 class CallStatus(enum.StrEnum):
@@ -29,3 +30,19 @@ class Call(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
         default=CallStatus.RECEIVED,
     )
+    triage_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("triage_results.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    routing_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("routing_decisions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    urgency_tier: Mapped[TriageCategory | None] = mapped_column(
+        SAEnum(
+            TriageCategory,
+            name="triage_category",
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=True,
+    )
+    target_queue: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    routing_overridden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
