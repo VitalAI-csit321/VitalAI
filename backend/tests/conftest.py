@@ -223,6 +223,18 @@ def doctor_headers(doctor_user: User) -> dict[str, str]:
 
 
 @pytest_asyncio.fixture
+def role_headers(
+    front_desk_headers: dict, operator_headers: dict, admin_headers: dict, doctor_headers: dict
+) -> dict[UserRole, dict]:
+    return {
+        UserRole.FRONT_DESK: front_desk_headers,
+        UserRole.OPERATOR: operator_headers,
+        UserRole.ADMIN: admin_headers,
+        UserRole.DOCTOR: doctor_headers,
+    }
+
+
+@pytest_asyncio.fixture
 async def pg_session():
     """A session bound to a real Postgres+pgvector connection.
 

@@ -19,6 +19,8 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm import get_llm
+from app.llm.guardrail import guarded_invoke
+from app.models.user import User
 from app.rag.gating import RetrievalGateOutcome, evaluate_retrieval
 from app.rag.retrieval import RetrievalContext, retrieve
 
@@ -54,7 +56,7 @@ class AnswerResult(BaseModel):
 
 
 async def answer_question(
-    session: AsyncSession, question: str, ctx: RetrievalContext
+    session: AsyncSession, question: str, ctx: RetrievalContext, actor: User
 ) -> AnswerResult:
     chunks = await retrieve(session, question, ctx)
     gate_outcome = evaluate_retrieval(chunks)
@@ -78,7 +80,7 @@ async def answer_question(
     )
 
     llm = get_llm()
-    result = await llm.ainvoke(prompt)
+    result = await guarded_invoke(session, llm, prompt, actor=actor, route="/rag/query")
     # Ollama returns str; Bedrock chat models return AIMessage with .content.
     answer_text = result if isinstance(result, str) else getattr(result, "content", str(result))
 

@@ -5,12 +5,14 @@ from sqlalchemy import Enum, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.user import UserRole
 
 
 class TaskType(enum.StrEnum):
     TRIAGE_REVIEW = "triage_review"
     CONSENT_REVIEW = "consent_review"
     ESCALATION_REVIEW = "escalation_review"
+    ROUTING_REVIEW = "routing_review"
 
 
 class TaskStatus(enum.StrEnum):
@@ -47,6 +49,16 @@ class HumanReviewTask(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         ),
         nullable=False,
         default=TaskStatus.PENDING,
+    )
+    target_role: Mapped[UserRole | None] = mapped_column(
+        Enum(
+            UserRole,
+            name="user_role",
+            create_type=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=True,
+        index=True,
     )
     assigned_to: Mapped[UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True

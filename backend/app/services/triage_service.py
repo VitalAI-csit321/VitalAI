@@ -40,7 +40,7 @@ class ConsentGatingError(Exception):
     """Raised when triage is attempted without valid consent."""
 
 
-def _matches_any(text: str, keywords: tuple[str, ...]) -> bool:
+def matches_any(text: str, keywords: tuple[str, ...]) -> bool:
     """Substring match — handles multi-word phrases like 'chest pain'.
 
     WARNING: negation is not handled. "not urgent" will match the URGENT_KEYWORDS
@@ -77,8 +77,8 @@ async def classify(db: AsyncSession, request: TriageRequest, actor: User) -> Tri
 
     haystack = request.contact_reason.lower() + " " + " ".join(k.lower() for k in request.keywords)
 
-    has_urgent = _matches_any(haystack, URGENT_KEYWORDS)
-    has_time_sensitive = _matches_any(haystack, TIME_SENSITIVE_KEYWORDS)
+    has_urgent = matches_any(haystack, URGENT_KEYWORDS)
+    has_time_sensitive = matches_any(haystack, TIME_SENSITIVE_KEYWORDS)
     has_patient_flags = len(request.patient_priority_flags) > 0
     insufficient_info = len(haystack.split()) < 3
 

@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import RequestResponseEndpoint
@@ -12,12 +13,14 @@ from app.config import settings
 from app.limiter import limiter
 from app.routes import (
     appointments,
+    approvals,
     assignments,
     audit,
     auth,
     clinical_documents,
     consent,
     health,
+    human_review,
     intake,
     llm,
     patients,
@@ -68,6 +71,14 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_handler)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next: RequestResponseEndpoint) -> Response:
@@ -96,6 +107,8 @@ app.include_router(assignments.router, prefix=API_PREFIX)
 app.include_router(rag.router, prefix=API_PREFIX)
 app.include_router(appointments.router, prefix=API_PREFIX)
 app.include_router(clinical_documents.router, prefix=API_PREFIX)
+app.include_router(approvals.router, prefix=API_PREFIX)
+app.include_router(human_review.router, prefix=API_PREFIX)
 
 
 @app.get("/")

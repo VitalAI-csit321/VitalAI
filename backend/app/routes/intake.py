@@ -3,8 +3,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import get_current_user, require_permission
-from app.auth.permissions import MANAGE_CASES
+from app.auth.dependencies import require_permission
+from app.auth.permissions import MANAGE_CASES, VIEW_QUEUE
 from app.database import get_db
 from app.models.user import User
 from app.schemas.case import IntakeCaseOut, IntakeCreate, IntakeStatusUpdate
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/intake", tags=["intake"])
 async def create_intake_endpoint(
     payload: IntakeCreate,
     db: AsyncSession = Depends(get_db),
-    actor: User = Depends(get_current_user),
+    actor: User = Depends(require_permission(VIEW_QUEUE)),
 ):
     try:
         return await intake_service.create_intake(db, payload, actor)
@@ -29,7 +29,7 @@ async def create_intake_endpoint(
 async def get_intake_endpoint(
     case_id: UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    _: User = Depends(require_permission(VIEW_QUEUE)),
 ):
     case = await intake_service.get_case(db, case_id)
     if case is None:
