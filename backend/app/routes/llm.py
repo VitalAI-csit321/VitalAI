@@ -2,10 +2,13 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_roles
 from app.config import settings
+from app.database import get_db
 from app.llm import get_llm
+from app.llm.guardrail import InputBlockedError, guarded_invoke
 from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/llm", tags=["llm"])
@@ -72,7 +75,8 @@ async def llm_status(_: User = Depends(_llm_roles)) -> LLMStatusResponse:
 @router.post("/ping", response_model=LLMPingResponse)
 async def llm_ping(
     payload: LLMPingRequest,
-    _: User = Depends(_llm_roles),
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(_llm_roles),
 ) -> LLMPingResponse:
     """Send a prompt to the configured LLM and return its response.
 
@@ -81,7 +85,12 @@ async def llm_ping(
     """
     llm = get_llm()
     try:
-        result = await llm.ainvoke(payload.prompt)
+        result = await guarded_invoke(db, llm, payload.prompt, actor=actor, route="/llm/ping")
+    except InputBlockedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="This request could not be processed.",
+        ) from exc
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
