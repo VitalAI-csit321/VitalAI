@@ -218,3 +218,130 @@ async def test_get_intake_denied_for_doctor(
 
     response = await client.get(f"/api/v1/intake/{case_id}", headers=doctor_headers)
     assert response.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# GET /intake — list
+# ---------------------------------------------------------------------------
+
+
+async def test_list_intake_returns_paginated_envelope(
+    client: AsyncClient, admin_headers: dict, patient: Patient
+):
+    await client.post(
+        "/api/v1/intake",
+        json={"patient_id": str(patient.id), "contact_reason": "y", "contact_channel": "phone"},
+        headers=admin_headers,
+    )
+
+    response = await client.get("/api/v1/intake", headers=admin_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body.keys()) == {"items", "total", "limit", "offset"}
+    assert body["total"] >= 1
+    assert body["limit"] == 20
+    assert body["offset"] == 0
+
+
+async def test_list_intake_filters_by_channel(
+    client: AsyncClient, admin_headers: dict, patient: Patient
+):
+    await client.post(
+        "/api/v1/intake",
+        json={"patient_id": str(patient.id), "contact_reason": "y", "contact_channel": "phone"},
+        headers=admin_headers,
+    )
+    await client.post(
+        "/api/v1/intake",
+        json={"patient_id": str(patient.id), "contact_reason": "y", "contact_channel": "email"},
+        headers=admin_headers,
+    )
+
+    response = await client.get(
+        "/api/v1/intake", params={"channel": "email"}, headers=admin_headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] >= 1
+    assert all(item["contact_channel"] == "email" for item in body["items"])
+
+
+async def test_list_intake_filters_by_status(
+    client: AsyncClient, admin_headers: dict, patient: Patient
+):
+    create = await client.post(
+        "/api/v1/intake",
+        json={"patient_id": str(patient.id), "contact_reason": "y", "contact_channel": "phone"},
+        headers=admin_headers,
+    )
+    case_id = create.json()["id"]
+    await client.patch(
+        f"/api/v1/intake/{case_id}/status",
+        json={"status": "consent_pending"},
+        headers=admin_headers,
+    )
+
+    response = await client.get(
+        "/api/v1/intake", params={"status": ["consent_pending"]}, headers=admin_headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert any(item["id"] == case_id for item in body["items"])
+    assert all(item["status"] == "consent_pending" for item in body["items"])
+
+
+async def test_list_intake_search_matches_contact_reason(
+    client: AsyncClient, admin_headers: dict, patient: Patient
+):
+    await client.post(
+        "/api/v1/intake",
+        json={
+            "patient_id": str(patient.id),
+            "contact_reason": "unique-search-term-xyz",
+            "contact_channel": "phone",
+        },
+        headers=admin_headers,
+    )
+
+    response = await client.get(
+        "/api/v1/intake", params={"search": "unique-search-term-xyz"}, headers=admin_headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["contact_reason"] == "unique-search-term-xyz"
+
+
+async def test_list_intake_pagination(client: AsyncClient, admin_headers: dict, patient: Patient):
+    for _ in range(3):
+        await client.post(
+            "/api/v1/intake",
+            json={
+                "patient_id": str(patient.id),
+                "contact_reason": "pagination-case",
+                "contact_channel": "phone",
+            },
+            headers=admin_headers,
+        )
+
+    response = await client.get(
+        "/api/v1/intake",
+        params={"search": "pagination-case", "limit": 2, "offset": 0},
+        headers=admin_headers,
+    )
+    body = response.json()
+    assert body["total"] == 3
+    assert len(body["items"]) == 2
+    assert body["limit"] == 2
+    assert body["offset"] == 0
+
+
+async def test_list_intake_denied_without_view_queue(client: AsyncClient, doctor_headers: dict):
+    """DOCTOR lacks VIEW_QUEUE, must be denied listing intake cases."""
+    response = await client.get("/api/v1/intake", headers=doctor_headers)
+    assert response.status_code == 403
+
+
+async def test_list_intake_requires_auth(client: AsyncClient):
+    response = await client.get("/api/v1/intake")
+    assert response.status_code == 401
