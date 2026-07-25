@@ -47,7 +47,7 @@ class InputBlockedError(Exception):
 
     Carries the matched pattern for the caller's own logging/testing only.
     Route handlers must never put matched_pattern (or str(exc)) into the
-    HTTP response — the client only ever sees a fixed generic message.
+    HTTP response; the client only ever sees a fixed generic message.
     """
 
     def __init__(self, matched_pattern: str) -> None:
