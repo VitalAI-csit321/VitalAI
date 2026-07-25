@@ -11,6 +11,13 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     synthetic_only: bool = True
 
+    # CORS — comma-separated origins allowed to call this API from a browser.
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
     # Database — required; populated from DATABASE_URL env var or .env file.
     # Empty string default only exists so mypy does not flag Settings() as
     # missing a required argument; the validator below rejects a missing value.
