@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     confidence_threshold: float = 0.75
     confidence_source: str = "retrieval_similarity"
 
-    # Task routing gate (FR-GOV-02) — separate from the RAG gate above,
+    # Task routing gate (FR-GOV-02), separate from the RAG gate above:
     # gates task-routing classification confidence, not RAG grounding.
     task_routing_auto_threshold: float = 0.90
     task_routing_floor: float = 0.70

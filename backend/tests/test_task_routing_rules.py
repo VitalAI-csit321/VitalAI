@@ -24,7 +24,7 @@ def test_resolve_target_role(category, expected_role):
 
 
 def test_all_ten_categories_covered():
-    """Every TaskCategory value must resolve — a KeyError here means the
+    """Every TaskCategory value must resolve; a KeyError here means the
     table fell out of sync with the enum."""
     for category in TaskCategory:
         assert resolve_target_role(category) in UserRole

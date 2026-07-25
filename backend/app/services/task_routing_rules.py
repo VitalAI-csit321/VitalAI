@@ -4,7 +4,7 @@ Canonical mapping from the 10-category taxonomy
 (docs/superpowers/specs/2026-07-20-ai-task-routing-design.md section 12) to
 the role whose queue a task lands in. Same shape as
 app/services/routing_rules.py::decide(): a pure function, no DB, no I/O.
-Categories map directly to a role per the locked table — no permission-walk
+Categories map directly to a role per the locked table; no permission-walk
 algorithm, per section 12's explicit supersession of the earlier design's
 section 5.
 """

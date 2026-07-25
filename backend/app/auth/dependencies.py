@@ -62,7 +62,7 @@ async def _deny(
     left to propagate, so a real denial always surfaces as a clean 403, never
     as a 500 that looks like a server error instead of an access decision.
     Flood risk (repeated probing growing the append-only audit_events table)
-    is a separate, deliberately deferred concern — see
+    is a separate, deliberately deferred concern, see
     docs/superpowers/specs/2026-07-25-governance-follow-ups-design.md section 3.
     """
     try:
@@ -110,7 +110,7 @@ def require_permission(permission: str):
     the RBAC report's permission taxonomy.
 
     A denial writes a `governance.access_denied` AuditEvent and commits it
-    directly — app.database.get_db() rolls back the session on the
+    directly, since app.database.get_db() rolls back the session on the
     HTTPException this raises, so there's no later caller to commit on our
     behalf, and no accompanying business change to commit it alongside
     anyway. A grant writes nothing; only denials are logged, so this doesn't

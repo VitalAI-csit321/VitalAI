@@ -4,7 +4,7 @@ and every route's gate behaves correctly for all 4 roles via real HTTP
 (test_route_permission_enforcement, added in the next task).
 
 Both derive expected behavior from live code (app.auth.rbac_registry,
-app.auth.permissions.ROLE_PERMISSIONS) — there is no hand-maintained
+app.auth.permissions.ROLE_PERMISSIONS); there is no hand-maintained
 route-to-permission mapping to keep in sync. See
 docs/superpowers/specs/2026-07-24-sec-rbac-enforcement-tests-design.md.
 """
@@ -20,7 +20,7 @@ from app.auth.rbac_registry import RouteRbacEntry, get_rbac_registry
 from app.main import app
 from app.models.user import UserRole
 
-# Routes intentionally not permission-gated — either fully public (no auth at
+# Routes intentionally not permission-gated: either fully public (no auth at
 # all) or authenticated-but-no-specific-permission-required (any logged-in
 # user, e.g. reading your own profile). This is the one hand-maintained list
 # in this file, kept deliberately small and meant to be reviewed on every
@@ -42,12 +42,12 @@ def test_every_route_has_an_rbac_gate_or_is_explicitly_allowlisted():
         if key in _NO_PERMISSION_GATE:
             assert entry.rbac_check is None, (
                 f"{entry.method} {entry.path} is on the no-permission-gate allowlist "
-                f"but has an RBAC gate attached — remove it from the allowlist"
+                f"but has an RBAC gate attached, remove it from the allowlist"
             )
         else:
             assert entry.rbac_check is not None, (
                 f"{entry.method} {entry.path} has no RBAC gate and is not on the "
-                f"no-permission-gate allowlist — add Depends(require_permission(...)) "
+                f"no-permission-gate allowlist, add Depends(require_permission(...)) "
                 f"or add it to the allowlist if this is intentional"
             )
 
@@ -93,7 +93,7 @@ async def test_route_permission_enforcement(
         request_kwargs["json"] = {}
 
     # POST /api/v1/llm/ping makes a real, unmocked network call to the
-    # configured LLM provider — this test hits every gated route generically
+    # configured LLM provider; this test hits every gated route generically
     # with a blank request, including this one. Only this assertion cares
     # whether the permission gate let the request through, not whether an
     # LLM is actually reachable, so mock get_llm() here rather than depend on

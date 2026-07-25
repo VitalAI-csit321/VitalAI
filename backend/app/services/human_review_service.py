@@ -3,13 +3,13 @@
 Operates on HumanReviewTask (app/models/human_review.py), the low-confidence/
 escalated tier's work queue. Distinct from ApprovalRequest
 (app/services/approval_service.py), which is a binary governance decision,
-not a claim/work queue — see
+not a claim/work queue; see
 docs/superpowers/specs/2026-07-24-fr-gov-01-approval-gate-design.md section 3.
 
 A DOCTOR-targeted task is only claimable by a doctor actually assigned to the
 task's case's patient (app/auth/scoping.py's is_assigned()/
 assigned_patient_ids_subquery(), the same row-level scoping Phase 3 built for
-/patients, /consent, /rag/query) — see
+/patients, /consent, /rag/query), see
 docs/superpowers/specs/2026-07-25-governance-follow-ups-design.md section 1.
 Every other role keeps the original role-queue behavior unchanged.
 """

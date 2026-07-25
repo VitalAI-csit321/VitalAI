@@ -5,7 +5,7 @@ docs/superpowers/specs/2026-07-25-governance-follow-ups-design.md section 1.
 Deterministic, no LLM call: least-loaded doctor by current assignment count.
 A future agent-backed suggestion can replace this function's body without
 changing its signature or any caller, since the interface is just "produces
-a suggested doctor id (or None)" — see the design doc's "why pure functions
+a suggested doctor id (or None)," see the design doc's "why pure functions
 now, agent later" reasoning.
 """
 

@@ -41,7 +41,7 @@ def test_excludes_fastapi_internal_routes():
 def test_resolves_full_prefixed_paths():
     paths = {e.path for e in get_rbac_registry(app)}
     assert "/api/v1/triage" in paths
-    assert "/health" in paths  # included without the /api/v1 prefix — confirms prefix
+    assert "/health" in paths  # included without the /api/v1 prefix, confirms prefix
     # resolution is per-router (via _IncludedRouter.include_context.prefix), not hardcoded.
 
 
@@ -49,7 +49,7 @@ def test_total_route_count():
     registry = get_rbac_registry(app)
     # 42 real application routes as of this writing, confirmed via a direct
     # app.routes walk before this test was written. Bump deliberately when a
-    # route is added or removed — an unexpected change here means the walker
+    # route is added or removed; an unexpected change here means the walker
     # itself regressed (e.g. double-counting via bad recursion), not that
     # this number merely went stale.
     assert len({(e.method, e.path) for e in registry}) == 42
