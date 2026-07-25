@@ -23,6 +23,7 @@ from app.routes import (
     llm,
     patients,
     rag,
+    review_tasks,
     routing,
     tasks,
     triage,
@@ -107,6 +108,7 @@ app.include_router(assignments.router, prefix=API_PREFIX)
 app.include_router(rag.router, prefix=API_PREFIX)
 app.include_router(appointments.router, prefix=API_PREFIX)
 app.include_router(clinical_documents.router, prefix=API_PREFIX)
+app.include_router(review_tasks.router, prefix=API_PREFIX)
 app.include_router(tasks.router, prefix=API_PREFIX)
 
 

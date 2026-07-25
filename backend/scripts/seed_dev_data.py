@@ -24,7 +24,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.auth.security import hash_password
 from app.config import settings
 from app.models.case import IntakeCase, IntakeStatus
-from app.models.consent import ConsentRecord, ConsentStatus
+from app.models.consent import ConsentRecord
+from app.models.human_review import HumanReviewTask, TaskType, TaskStatus, ConsentStatus
 from app.models.user import User, UserRole
 
 DEV_PASSWORD = "password123"
@@ -88,6 +89,24 @@ async def seed(session: AsyncSession) -> None:
             )
         )
         created_cases += 1
+
+
+        # Seed review tasks so Review Queue is populated
+        if created_cases > 0:
+            from sqlalchemy import select as _select
+            all_cases = (await session.execute(_select(IntakeCase).limit(8))).scalars().all()
+            task_types = [TaskType.TRIAGE_REVIEW, TaskType.CONSENT_REVIEW, TaskType.ESCALATION_REVIEW]
+            task_statuses = [TaskStatus.PENDING, TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, TaskStatus.PENDING, TaskStatus.IN_PROGRESS, TaskStatus.PENDING, TaskStatus.COMPLETED]
+            for i, case in enumerate(all_cases):
+                existing_task = (await session.execute(
+                    _select(HumanReviewTask).where(HumanReviewTask.case_id == case.id)
+                )).scalar_one_or_none()
+                if not existing_task:
+                    session.add(HumanReviewTask(
+                        case_id=case.id,
+                        task_type=task_types[i % len(task_types)],
+                        status=task_statuses[i % len(task_statuses)],
+                    ))
 
     await session.commit()
 
