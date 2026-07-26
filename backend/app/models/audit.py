@@ -40,3 +40,10 @@ class AuditEvent(Base):
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False, index=True
     )
+    actor_role: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    risk_score: Mapped[int | None] = mapped_column(nullable=True)
+    outcome: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    event_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    predecessor_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)

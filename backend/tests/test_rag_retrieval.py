@@ -157,7 +157,9 @@ async def test_provider_dimension_mismatch_raises(
 
 async def test_audit_emits_one_gov_retrieve_event_per_call(seeded_chunks: AsyncSession) -> None:
     count_stmt = (
-        select(func.count()).select_from(AuditEvent).where(AuditEvent.action == "GOV-RETRIEVE")
+        select(func.count())
+        .select_from(AuditEvent)
+        .where(AuditEvent.action == "retrieval.performed")
     )
     before_count = (await seeded_chunks.execute(count_stmt)).scalar_one()
 
@@ -173,7 +175,7 @@ async def test_audit_emits_one_gov_retrieve_event_per_call(seeded_chunks: AsyncS
     event = (
         await seeded_chunks.execute(
             select(AuditEvent)
-            .where(AuditEvent.action == "GOV-RETRIEVE")
+            .where(AuditEvent.action == "retrieval.performed")
             .order_by(AuditEvent.timestamp.desc())
             .limit(1)
         )

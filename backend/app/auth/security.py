@@ -1,5 +1,5 @@
 from datetime import UTC, datetime, timedelta
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import bcrypt
 from jose import JWTError, jwt
@@ -32,6 +32,7 @@ def create_access_token(user_id: UUID, role: UserRole) -> str:
     payload = {
         "sub": str(user_id),
         "role": role.value,
+        "sid": str(uuid4()),
         "exp": int(expire.timestamp()),
     }
     encoded: str = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
