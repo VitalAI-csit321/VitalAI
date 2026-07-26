@@ -65,8 +65,11 @@ export interface TaskBoard {
 }
 
 export interface AuditEvent {
-  id: string; caseId: string | null; actorId: string | null;
-  action: string; details: Record<string, unknown>; timestamp: string;
+  id: string; caseId: string | null; actorId: string | null; actorLabel: string | null;
+  actorRole: string | null; action: string; details: Record<string, unknown>; timestamp: string;
+  riskScore: number | null; riskLevel: "High" | "Medium" | "Low"; outcome: string | null;
+  ipAddress: string | null; sessionId: string | null; eventHash: string | null;
+  predecessorHash: string | null;
 }
 
 export interface ReviewTask {
