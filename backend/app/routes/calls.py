@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import get_current_user, require_permission
+from app.auth.dependencies import require_permission
 from app.auth.permissions import MANAGE_CASES, VIEW_QUEUE
 from app.database import get_db
 from app.models.user import User
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/calls", tags=["calls"])
 async def create_call_endpoint(
     payload: CallCreate,
     db: AsyncSession = Depends(get_db),
-    actor: User = Depends(get_current_user),
+    actor: User = Depends(require_permission(VIEW_QUEUE)),
 ):
     try:
         return await call_service.create_call(db, payload, actor)

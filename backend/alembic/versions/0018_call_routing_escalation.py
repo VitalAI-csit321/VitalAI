@@ -1,7 +1,7 @@
 """add call routing and escalation context
 
-Revision ID: 0015_call_routing_escalation
-Revises: 0014_add_call_task_models
+Revision ID: 0018_call_routing_escalation
+Revises: 0017_add_call_task_models
 Create Date: 2026-07-25 00:00:00.000000
 """
 
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "0015_call_routing_escalation"
-down_revision: str | None = "0014_add_call_task_models"
+revision = "0018_call_routing_escalation"
+down_revision = "0017_add_call_task_models"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
