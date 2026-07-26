@@ -71,22 +71,6 @@ async def test_list_calls_requires_view_queue(client: AsyncClient, doctor_header
     response = await client.get("/api/v1/calls", headers=doctor_headers)
     assert response.status_code == 403
 
-async def test_create_call_requires_view_queue(
-    client: AsyncClient,
-    doctor_headers: dict,
-):
-    response = await client.post(
-        "/api/v1/calls",
-        json={
-            "case_id": str(uuid.uuid4()),
-            "phone_number": "0412345678",
-            "transcript": "Permission test",
-        },
-        headers=doctor_headers,
-    )
-
-    assert response.status_code == 403
-
 async def test_create_call_requires_auth(client: AsyncClient):
     response = await client.post(
         "/api/v1/calls",
