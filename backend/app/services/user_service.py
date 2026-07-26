@@ -4,6 +4,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit import AuditEvent
+from app.models.permission_grant import UserPermissionGrant
 from app.models.user import User
 from app.services.audit_service import record_event
 
@@ -57,3 +58,25 @@ async def list_users(
     total = (await db.execute(count_query)).scalar_one()
     rows = (await db.execute(items_query)).all()
     return [(row.User, row.last_active) for row in rows], total
+
+
+async def set_active_status(db: AsyncSession, target: User, is_active: bool, actor: User) -> User:
+    target.is_active = is_active
+    await db.flush()
+
+    await record_event(
+        db,
+        actor=actor,
+        action="user.active_status_changed",
+        details={"user_id": str(target.id), "is_active": is_active},
+    )
+    await db.commit()
+    await db.refresh(target)
+    return target
+
+
+async def get_grants(db: AsyncSession, target: User) -> list[str]:
+    result = await db.execute(
+        select(UserPermissionGrant.permission).where(UserPermissionGrant.user_id == target.id)
+    )
+    return [row[0] for row in result.all()]

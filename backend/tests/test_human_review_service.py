@@ -215,3 +215,81 @@ async def test_complete_task_not_claimed_raises(
 
     with pytest.raises(HumanReviewTaskWrongStateError):
         await human_review_service.complete_task(db_session, task.id, front_desk_user)
+
+
+async def test_reject_task_sets_cancelled_and_notes(
+    db_session: AsyncSession, patient: Patient, front_desk_user: User
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.FRONT_DESK, status=TaskStatus.IN_PROGRESS)
+
+    result = await human_review_service.reject_task(
+        db_session, task.id, front_desk_user, notes="Not a valid claim"
+    )
+
+    assert result.status == TaskStatus.CANCELLED
+    assert result.notes == "Not a valid claim"
+
+
+async def test_reject_task_requires_in_progress(
+    db_session: AsyncSession, patient: Patient, front_desk_user: User
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.FRONT_DESK, status=TaskStatus.PENDING)
+
+    with pytest.raises(HumanReviewTaskWrongStateError):
+        await human_review_service.reject_task(db_session, task.id, front_desk_user)
+
+
+async def test_reject_task_doctor_denied_when_not_assigned(
+    db_session: AsyncSession, patient: Patient, doctor_user: User
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.DOCTOR, status=TaskStatus.IN_PROGRESS)
+
+    with pytest.raises(HumanReviewTaskWrongRoleError):
+        await human_review_service.reject_task(db_session, task.id, doctor_user)
+
+
+async def test_reject_task_missing_raises(db_session: AsyncSession, front_desk_user: User):
+    with pytest.raises(HumanReviewTaskNotFoundError):
+        await human_review_service.reject_task(db_session, uuid.uuid4(), front_desk_user)
+
+
+async def test_escalate_task_sets_escalated_and_notes(
+    db_session: AsyncSession, patient: Patient, front_desk_user: User
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.FRONT_DESK, status=TaskStatus.IN_PROGRESS)
+
+    result = await human_review_service.escalate_task(
+        db_session, task.id, front_desk_user, notes="Needs senior review"
+    )
+
+    assert result.status == TaskStatus.ESCALATED
+    assert result.notes == "Needs senior review"
+
+
+async def test_escalate_task_requires_in_progress(
+    db_session: AsyncSession, patient: Patient, front_desk_user: User
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.FRONT_DESK, status=TaskStatus.PENDING)
+
+    with pytest.raises(HumanReviewTaskWrongStateError):
+        await human_review_service.escalate_task(db_session, task.id, front_desk_user)
+
+
+async def test_escalate_task_doctor_denied_when_not_assigned(
+    db_session: AsyncSession, patient: Patient, doctor_user: User
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.DOCTOR, status=TaskStatus.IN_PROGRESS)
+
+    with pytest.raises(HumanReviewTaskWrongRoleError):
+        await human_review_service.escalate_task(db_session, task.id, doctor_user)
+
+
+async def test_escalate_task_missing_raises(db_session: AsyncSession, front_desk_user: User):
+    with pytest.raises(HumanReviewTaskNotFoundError):
+        await human_review_service.escalate_task(db_session, uuid.uuid4(), front_desk_user)

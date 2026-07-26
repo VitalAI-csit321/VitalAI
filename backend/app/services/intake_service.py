@@ -21,6 +21,7 @@ async def create_intake(db: AsyncSession, payload: IntakeCreate, actor: User) ->
 
     case = IntakeCase(
         patient_id=payload.patient_id,
+        patient_name=patient.name,
         contact_reason=payload.contact_reason,
         contact_channel=payload.contact_channel,
         notes=payload.notes,

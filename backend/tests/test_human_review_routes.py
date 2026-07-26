@@ -195,3 +195,85 @@ async def test_complete_task_not_claimed_returns_409(
     )
 
     assert response.status_code == 409
+
+
+async def test_reject_endpoint_transitions_to_cancelled(
+    client: AsyncClient, db_session: AsyncSession, patient: Patient, front_desk_headers: dict
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.FRONT_DESK, status=TaskStatus.IN_PROGRESS)
+
+    response = await client.post(
+        f"/api/v1/human-review/{task.id}/reject",
+        json={"notes": "Rejected: no evidence"},
+        headers=front_desk_headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "cancelled"
+    assert body["notes"] == "Rejected: no evidence"
+
+
+async def test_reject_endpoint_not_claimed_returns_409(
+    client: AsyncClient, front_desk_headers: dict, db_session: AsyncSession, patient: Patient
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.FRONT_DESK)
+
+    response = await client.post(
+        f"/api/v1/human-review/{task.id}/reject", json={}, headers=front_desk_headers
+    )
+
+    assert response.status_code == 409
+
+
+async def test_reject_endpoint_missing_task_returns_404(
+    client: AsyncClient, front_desk_headers: dict
+):
+    response = await client.post(
+        f"/api/v1/human-review/{uuid.uuid4()}/reject", json={}, headers=front_desk_headers
+    )
+
+    assert response.status_code == 404
+
+
+async def test_escalate_endpoint_transitions_to_escalated(
+    client: AsyncClient, db_session: AsyncSession, patient: Patient, front_desk_headers: dict
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.FRONT_DESK, status=TaskStatus.IN_PROGRESS)
+
+    response = await client.post(
+        f"/api/v1/human-review/{task.id}/escalate",
+        json={"notes": "Escalating: needs senior review"},
+        headers=front_desk_headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "escalated"
+    assert body["notes"] == "Escalating: needs senior review"
+
+
+async def test_escalate_endpoint_not_claimed_returns_409(
+    client: AsyncClient, front_desk_headers: dict, db_session: AsyncSession, patient: Patient
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.FRONT_DESK)
+
+    response = await client.post(
+        f"/api/v1/human-review/{task.id}/escalate", json={}, headers=front_desk_headers
+    )
+
+    assert response.status_code == 409
+
+
+async def test_escalate_endpoint_missing_task_returns_404(
+    client: AsyncClient, front_desk_headers: dict
+):
+    response = await client.post(
+        f"/api/v1/human-review/{uuid.uuid4()}/escalate", json={}, headers=front_desk_headers
+    )
+
+    assert response.status_code == 404

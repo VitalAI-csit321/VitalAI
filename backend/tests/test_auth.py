@@ -310,3 +310,95 @@ async def test_elevate_writes_audit_event(
         "old_role": "front_desk",
         "new_role": "operator",
     }
+
+
+async def test_set_active_status_toggles_and_persists(client: AsyncClient, admin_headers: dict):
+    reg = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "toggle-me@example.com",
+            "password": "password123",
+            "full_name": "Toggle Me",
+        },
+    )
+    user_id = reg.json()["id"]
+
+    response = await client.post(
+        f"/api/v1/auth/users/{user_id}/active",
+        json={"is_active": False},
+        headers=admin_headers,
+    )
+    assert response.status_code == 200
+    assert response.json()["is_active"] is False
+
+    listing = await client.get(
+        "/api/v1/auth/users", params={"search": "toggle-me"}, headers=admin_headers
+    )
+    assert listing.json()["items"][0]["is_active"] is False
+
+
+async def test_set_active_status_404_for_missing_user(client: AsyncClient, admin_headers: dict):
+    response = await client.post(
+        "/api/v1/auth/users/00000000-0000-0000-0000-000000000000/active",
+        json={"is_active": False},
+        headers=admin_headers,
+    )
+    assert response.status_code == 404
+
+
+async def test_front_desk_cannot_set_active_status(client: AsyncClient, front_desk_headers: dict):
+    reg = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "toggle-target2@example.com",
+            "password": "password123",
+            "full_name": "Toggle Target 2",
+        },
+    )
+    user_id = reg.json()["id"]
+
+    response = await client.post(
+        f"/api/v1/auth/users/{user_id}/active",
+        json={"is_active": False},
+        headers=front_desk_headers,
+    )
+    assert response.status_code == 403
+
+
+async def test_get_user_grants_returns_real_grants(client: AsyncClient, admin_headers: dict):
+    reg = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "grants-target@example.com",
+            "password": "password123",
+            "full_name": "Grants Target",
+        },
+    )
+    user_id = reg.json()["id"]
+
+    grants = await client.get(f"/api/v1/auth/users/{user_id}/grants", headers=admin_headers)
+    assert grants.status_code == 200
+    assert grants.json()["permissions"] == []
+
+
+async def test_get_user_grants_404_for_missing_user(client: AsyncClient, admin_headers: dict):
+    response = await client.get(
+        "/api/v1/auth/users/00000000-0000-0000-0000-000000000000/grants",
+        headers=admin_headers,
+    )
+    assert response.status_code == 404
+
+
+async def test_front_desk_cannot_get_user_grants(client: AsyncClient, front_desk_headers: dict):
+    reg = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "grants-target2@example.com",
+            "password": "password123",
+            "full_name": "Grants Target 2",
+        },
+    )
+    user_id = reg.json()["id"]
+
+    response = await client.get(f"/api/v1/auth/users/{user_id}/grants", headers=front_desk_headers)
+    assert response.status_code == 403

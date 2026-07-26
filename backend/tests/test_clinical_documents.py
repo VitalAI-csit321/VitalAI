@@ -4,7 +4,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.security import create_access_token
-from app.models.user import UserRole
+from app.models.clinical_document import ClinicalDocType, ClinicalDocument
+from app.models.user import User, UserRole
 from app.rag.retrieval import RetrievalContext, retrieve
 from app.services.clinical_document_service import MAX_UPLOAD_SIZE_BYTES
 from tests.pdf_fixtures import make_image_only_pdf, make_text_layer_pdf
@@ -262,3 +263,80 @@ async def test_download_returns_file_bytes_for_assigned_doctor(
     )
     assert response.status_code == 200
     assert response.content == pdf_bytes
+
+
+async def _assign_doctor(db_session: AsyncSession, doctor: User, patient, assigned_by: User) -> None:
+    from app.models.assignment import DoctorPatientAssignment
+
+    db_session.add(
+        DoctorPatientAssignment(
+            doctor_id=doctor.id, patient_id=patient.id, assigned_by=assigned_by.id
+        )
+    )
+    await db_session.commit()
+
+
+async def test_list_documents_returns_patients_documents(
+    client: AsyncClient,
+    doctor_headers: dict,
+    doctor_user: User,
+    admin_user: User,
+    patient,
+    db_session: AsyncSession,
+):
+    await _assign_doctor(db_session, doctor_user, patient, admin_user)
+    doc = ClinicalDocument(
+        patient_id=patient.id,
+        doc_type=ClinicalDocType.CONSULTATION,
+        filename="note.pdf",
+        content_type="application/pdf",
+        size_bytes=1024,
+        storage_key=f"clinical-documents/{patient.id}/{uuid4()}.pdf",
+        extracted_text="Blood pressure 120/80.",
+        uploaded_by=admin_user.id,
+    )
+    db_session.add(doc)
+    await db_session.commit()
+
+    response = await client.get(
+        f"/api/v1/clinical-documents?patient_id={patient.id}", headers=doctor_headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["filename"] == "note.pdf"
+    assert body[0]["patient_id"] == str(patient.id)
+
+
+async def test_list_documents_denied_without_view_clinical_permission(
+    client: AsyncClient, front_desk_headers: dict, patient
+):
+    response = await client.get(
+        f"/api/v1/clinical-documents?patient_id={patient.id}", headers=front_desk_headers
+    )
+    assert response.status_code == 403
+
+
+async def test_list_documents_denied_for_unassigned_doctor(
+    client: AsyncClient, doctor_headers: dict, patient
+):
+    response = await client.get(
+        f"/api/v1/clinical-documents?patient_id={patient.id}", headers=doctor_headers
+    )
+    assert response.status_code == 403
+
+
+async def test_list_documents_empty_for_patient_with_none(
+    client: AsyncClient,
+    doctor_headers: dict,
+    doctor_user: User,
+    admin_user: User,
+    patient,
+    db_session: AsyncSession,
+):
+    await _assign_doctor(db_session, doctor_user, patient, admin_user)
+    response = await client.get(
+        f"/api/v1/clinical-documents?patient_id={patient.id}", headers=doctor_headers
+    )
+    assert response.status_code == 200
+    assert response.json() == []

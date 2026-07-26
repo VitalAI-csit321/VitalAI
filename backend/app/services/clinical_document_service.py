@@ -4,6 +4,7 @@ import asyncio
 from uuid import UUID, uuid4
 
 from pypdf.errors import PyPdfError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.base import utcnow
@@ -163,6 +164,15 @@ async def ingest_document(
 
 async def get_document(db: AsyncSession, document_id: UUID) -> ClinicalDocument | None:
     return await db.get(ClinicalDocument, document_id)
+
+
+async def list_documents_for_patient(db: AsyncSession, patient_id: UUID) -> list[ClinicalDocument]:
+    result = await db.execute(
+        select(ClinicalDocument)
+        .where(ClinicalDocument.patient_id == patient_id)
+        .order_by(ClinicalDocument.created_at.desc())
+    )
+    return list(result.scalars().all())
 
 
 async def download_document_bytes(document: ClinicalDocument) -> bytes:

@@ -56,3 +56,11 @@ class UserListItem(UserOut):
 class UserListResponse(BaseModel):
     items: list[UserListItem]
     total: int
+
+
+class ActiveStatusUpdateRequest(BaseModel):
+    is_active: bool
+
+
+class UserGrantsResponse(BaseModel):
+    permissions: list[str]

@@ -50,6 +50,38 @@ async def test_sufficient_query_gate_matches_settings(seeded_chunks: AsyncSessio
         assert outcome.decision == expected_decision
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What did the doctor recommend for the patient's cholesterol?",
+        "Is the patient's blood pressure normal?",
+        "Why was the patient referred to cardiology?",
+    ],
+)
+async def test_natural_language_question_clears_sufficiency_floor(
+    seeded_chunks: AsyncSession, question: str
+) -> None:
+    """Regression guard for the calibration bug where sufficiency_floor=0.50 sat
+    inside the real positive-score range: naturally-phrased questions (not keyword
+    soup) about content that genuinely exists for this patient must still clear
+    the floor, or the gate silently returns the hardcoded refusal before the LLM
+    is ever asked.
+    """
+    ctx = RetrievalContext(
+        patient_id=PATIENT_ALICE,
+        allowed_scopes=["general", "restricted", "sensitive"],
+        role="clinician",
+    )
+    chunks = await retrieve(seeded_chunks, question, ctx, k=8)
+    outcome = evaluate_retrieval(chunks)
+
+    assert outcome.decision != "manual_handling", (
+        f"{question!r} scored {outcome.top_score}, below sufficiency_floor="
+        f"{settings.sufficiency_floor} - a genuine question was gate-refused "
+        "before reaching the LLM"
+    )
+
+
 async def test_no_visible_chunks_is_insufficient(seeded_chunks: AsyncSession) -> None:
     ctx = RetrievalContext(patient_id=PATIENT_ALICE, allowed_scopes=[], role="front_desk")
     chunks = await retrieve(seeded_chunks, "annual physical exam blood pressure", ctx, k=8)

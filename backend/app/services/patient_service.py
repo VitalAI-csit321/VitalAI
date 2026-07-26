@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.scoping import assigned_patient_ids_subquery
 from app.models.patient import Patient, PatientStatus
 from app.models.user import User
-from app.schemas.patient import PatientCreate
+from app.schemas.patient import PatientCreate, PatientUpdate
 from app.services.audit_service import record_event
 
 _MRN_GENERATION_ATTEMPTS = 5
@@ -43,6 +43,47 @@ async def create_patient(db: AsyncSession, payload: PatientCreate, actor: User) 
     await db.commit()
     await db.refresh(patient)
     return patient
+
+
+async def update_patient(
+    db: AsyncSession,
+    patient: Patient,
+    payload: PatientUpdate,
+    actor: User,
+) -> Patient:
+    changes: dict[str, str] = {}
+    if payload.name is not None:
+        patient.name = payload.name
+        changes["name"] = payload.name
+    if payload.dob is not None:
+        patient.dob = payload.dob
+        changes["dob"] = payload.dob.isoformat()
+    if payload.gender is not None:
+        patient.gender = payload.gender
+        changes["gender"] = payload.gender.value
+    if payload.status is not None:
+        patient.status = payload.status
+        changes["status"] = payload.status.value
+    await db.flush()
+
+    await record_event(
+        db,
+        actor=actor,
+        action="patient.updated",
+        details={"patient_id": str(patient.id), **changes},
+    )
+    await db.commit()
+    await db.refresh(patient)
+    return patient
+
+
+async def get_patient_by_id(
+    db: AsyncSession, patient_id: UUID, doctor_id: UUID | None = None
+) -> Patient | None:
+    query = select(Patient).where(Patient.id == patient_id)
+    if doctor_id is not None:
+        query = query.where(Patient.id.in_(assigned_patient_ids_subquery(doctor_id)))
+    return (await db.execute(query)).scalar_one_or_none()
 
 
 async def list_patients(
