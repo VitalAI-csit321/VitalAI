@@ -22,11 +22,24 @@ function relativeAge(iso: string): string {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
+function formatCategory(category: string): string {
+  return category
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
   const ref = `T-${task.id.slice(0, 6)}`;
-  const title = `${task.source === "call" ? "Call" : "Email"} escalation`;
-  const subtitle = task.targetQueue ? task.targetQueue.replace(/_/g, " ") : "No queue assigned";
-  const initials = task.assignedTo ? task.assignedTo.slice(0, 2).toUpperCase() : "?";
+  const fallbackTitle = `${task.source === "call" ? "Call" : "Email"} escalation`;
+  const title = task.subject ?? fallbackTitle;
+  const subtitle = task.fromName
+    ?? (task.targetQueue ? task.targetQueue.replace(/_/g, " ") : "No sender on record");
+  const initials = task.fromName
+    ? task.fromName.slice(0, 2).toUpperCase()
+    : task.assignedTo
+      ? task.assignedTo.slice(0, 2).toUpperCase()
+      : "?";
   const color = AVATAR_COLORS[task.id.charCodeAt(0) % AVATAR_COLORS.length];
   const highPriority = task.priority === "urgent" || task.priority === "high";
 
@@ -36,9 +49,14 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
         <span className="text-xs font-semibold text-slate-500">{ref}</span>
         <span className={`h-2 w-2 rounded-full mt-1 ${highPriority ? "bg-slate-900" : "bg-slate-300"}`} />
       </div>
-      <p className="text-sm font-semibold text-slate-900">{title}</p>
-      <p className="mt-0.5 mb-3 text-xs text-slate-500 capitalize">{subtitle}</p>
-      <div className="flex items-center justify-between">
+      <p className="truncate text-sm font-semibold text-slate-900">{title}</p>
+      <p className="mt-0.5 truncate text-xs text-slate-500">{subtitle}</p>
+      {task.category && (
+        <span className="mt-1.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+          {formatCategory(task.category)}
+        </span>
+      )}
+      <div className="mt-3 flex items-center justify-between">
         <Avatar initials={initials} color={color} size={28} />
         <span className="text-xs text-slate-400">{relativeAge(task.createdAt)}</span>
       </div>

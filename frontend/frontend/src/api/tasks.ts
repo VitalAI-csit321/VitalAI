@@ -6,6 +6,7 @@ interface RawTask {
   source: string; priority: string; status: string;
   target_queue: string | null; handover_context: string | null;
   created_at: string; updated_at: string;
+  category: string | null; subject: string | null; from_name: string | null;
 }
 
 interface RawTaskComment {
@@ -19,6 +20,7 @@ function toTask(r: RawTask): Task {
     status: r.status as Task["status"],
     targetQueue: r.target_queue, handoverContext: r.handover_context,
     createdAt: r.created_at, updatedAt: r.updated_at,
+    category: r.category, subject: r.subject, fromName: r.from_name,
   };
 }
 

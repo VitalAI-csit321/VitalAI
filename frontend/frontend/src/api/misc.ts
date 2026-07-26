@@ -39,8 +39,19 @@ export async function listMessages(): Promise<Message[]> {
 }
 
 // Approves a pending draft reply (email.draft_reply approval), marking it sent.
-export async function approveDraft(approvalId: string): Promise<void> {
-  await apiPost(`/api/v1/approvals/${approvalId}/approve`, {});
+// editedDraft/emailId/taskId let the operator send a corrected version of the
+// AI draft instead of the original -- resolved_payload fully replaces the
+// approval's stored payload, so all three fields the executor needs must be
+// passed together whenever the text was edited.
+export async function approveDraft(
+  approvalId: string,
+  edited?: { draft: string; emailId: string; taskId: string },
+): Promise<void> {
+  await apiPost(`/api/v1/approvals/${approvalId}/approve`, {
+    resolved_payload: edited
+      ? { draft: edited.draft, email_id: edited.emailId, task_id: edited.taskId }
+      : undefined,
+  });
 }
 
 export async function escalateMessage(taskId: string, reason?: string): Promise<void> {

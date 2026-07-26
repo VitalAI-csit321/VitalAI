@@ -58,6 +58,10 @@ export interface Task {
   source: TaskSource; priority: TaskPriority; status: TaskItemStatus;
   targetQueue: string | null; handoverContext: string | null;
   createdAt: string; updatedAt: string;
+  // Populated only via getTaskBoard() (GET /tasks/board), which enriches
+  // each task with its linked email/call context for identification on the
+  // Escalations board. Plain listTasks()/getTask() leave these null.
+  category: string | null; subject: string | null; fromName: string | null;
 }
 
 export interface TaskBoard {
@@ -96,7 +100,7 @@ export interface Message {
   subject: string; body: string; priority: MessagePriority; category: string;
   unread: boolean; receivedLabel: string; threadReference: string; avatarColor: string;
   draftText: string | null; draftApprovalId: string | null; draftSent: boolean;
-  taskStatus: TaskStatus;
+  taskStatus: TaskStatus; emailId: string | null;
 }
 
 export interface DashboardSummary {

@@ -76,8 +76,10 @@ export function EscalationTaskDetail({ task: initialTask, onClose, onUpdated }: 
           <div className="p-6">
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Task {ref}</h1>
-                <p className="mt-1 text-sm text-slate-500">{task.targetQueue ? task.targetQueue.replace(/_/g, " ") : "No queue assigned"}</p>
+                <h1 className="text-2xl font-bold text-slate-900">{task.subject ?? `Task ${ref}`}</h1>
+                <p className="mt-1 text-sm text-slate-500">
+                  {task.fromName ?? (task.targetQueue ? task.targetQueue.replace(/_/g, " ") : "No queue assigned")}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 {isEscalated && <span className="rounded bg-red-100 px-2.5 py-1 text-xs font-bold uppercase text-red-600">Escalated</span>}
