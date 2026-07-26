@@ -1,34 +1,27 @@
 import { apiGet, apiPost } from "../lib/apiClient";
-import type { DashboardSummary, Message, RecordDocument } from "./types";
-import { placeholderMessages, placeholderWorkflowByDay } from "./_placeholder";
-
-export const placeholderRecords: RecordDocument[] = [
-  {id:"r1",title:"Discharge summary",type:"Clinical note",source:"Emergency Dept",date:"20 May 2026",pages:3,confidentiality:"Standard"},
-  {id:"r2",title:"Lab results - FBC",type:"Laboratory",source:"Pathology",date:"19 May 2026",pages:1,confidentiality:"Standard"},
-  {id:"r3",title:"Imaging - Chest X-ray",type:"Radiology",source:"Radiology",date:"19 May 2026",pages:2,confidentiality:"Standard"},
-  {id:"r4",title:"Medication chart",type:"Prescription",source:"Pharmacy",date:"18 May 2026",pages:1,confidentiality:"Standard"},
-  {id:"r5",title:"Admission notes",type:"Clinical note",source:"Ward 3B",date:"18 May 2026",pages:4,confidentiality:"Standard"},
-];
+import type { DashboardSummary, Message } from "./types";
+import { placeholderWorkflowByDay } from "./_placeholder";
 
 export async function getDashboard(): Promise<DashboardSummary> {
   // Fetch real data in parallel, fall back gracefully
-  const [intakeRes, taskRes, auditRes] = await Promise.allSettled([
+  const [intakeRes, auditRes, pendingRes, inProgressRes, escalatedRes] = await Promise.allSettled([
     apiGet<{items:unknown[];total:number}>("/api/v1/intake?limit=1"),
-    apiGet<{counts:{pending:number;in_progress:number;escalated:number;completed:number}}>("/api/v1/tasks/board"),
     apiGet<{total:number}>("/api/v1/audit?limit=1"),
+    apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"pending"}),
+    apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"in_progress"}),
+    apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"escalated"}),
   ]);
 
   const openCases = intakeRes.status==="fulfilled" ? intakeRes.value.total : 0;
-  const counts = taskRes.status==="fulfilled" ? taskRes.value.counts : {pending:0,in_progress:0,escalated:0,completed:0};
   const auditEvents = auditRes.status==="fulfilled" ? auditRes.value.total : 0;
-
-  // Also fetch review task summary for pending approvals
-  const reviewRes = await apiGet<{total:number;pending:number}>("/api/v1/review-tasks/summary").catch(()=>({total:0,pending:0}));
+  const pending = pendingRes.status==="fulfilled" ? pendingRes.value.total : 0;
+  const inProgress = inProgressRes.status==="fulfilled" ? inProgressRes.value.total : 0;
+  const escalated = escalatedRes.status==="fulfilled" ? escalatedRes.value.total : 0;
 
   return {
     openCases,
-    awaitingApproval: reviewRes.pending ?? (counts.pending + counts.in_progress),
-    escalations: counts.escalated ?? 0,
+    awaitingApproval: pending + inProgress,
+    escalations: escalated,
     auditEvents,
     workflowByDay: placeholderWorkflowByDay,
     pendingReviews: [
@@ -41,20 +34,19 @@ export async function getDashboard(): Promise<DashboardSummary> {
 }
 
 export async function listMessages(): Promise<Message[]> {
-  return placeholderMessages;
+  const res = await apiGet<{ items: Message[]; total: number }>("/api/v1/inbox");
+  return res.items;
 }
 
-export interface RagAnswer {
-  answer: string;
-  refusalSource: "none"|"gate"|"llm";
-  decision: string;
-  citations: RecordDocument[];
+// Approves a pending draft reply (email.draft_reply approval), marking it sent.
+export async function approveDraft(approvalId: string): Promise<void> {
+  await apiPost(`/api/v1/approvals/${approvalId}/approve`, {});
 }
 
-export async function ragQuery(input:{patient_id:string;question:string}): Promise<RagAnswer> {
-  const res = await apiPost<{answer:string;refusal_source:"none"|"gate"|"llm";decision:string;citations:{chunk_id:string;doc_type:string;source_document_id:string;score:number;content:string}[]}>("/api/v1/rag/query",input);
-  return {
-    answer:res.answer, refusalSource:res.refusal_source, decision:res.decision,
-    citations:res.citations.map(c=>({id:c.chunk_id,title:c.doc_type,type:c.doc_type,source:c.source_document_id,date:"",pages:null,confidentiality:"Standard"})),
-  };
+export async function escalateMessage(taskId: string, reason?: string): Promise<void> {
+  await apiPost(`/api/v1/tasks/${taskId}/escalate`, reason ? { reason } : {});
+}
+
+export async function archiveMessage(taskId: string): Promise<void> {
+  await apiPost(`/api/v1/tasks/${taskId}/archive`);
 }

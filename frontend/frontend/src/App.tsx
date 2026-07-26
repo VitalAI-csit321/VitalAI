@@ -11,6 +11,8 @@ import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PatientsPage } from "./pages/PatientsPage";
 import { PatientOnboardingPage } from "./pages/PatientOnboardingPage";
+import { PatientDetailPage } from "./pages/PatientDetailPage";
+import { CaseDetailPage } from "./pages/CaseDetailPage";
 import { ConsentQueuePage } from "./pages/ConsentQueuePage";
 import { ConsentCapturePage } from "./pages/ConsentCapturePage";
 import { ConsentSuccessPage } from "./pages/ConsentSuccessPage";
@@ -20,6 +22,7 @@ import { ComposePage } from "./pages/ComposePage";
 
 // New pages (15 new designs)
 import { ReviewQueuePage } from "./pages/ReviewQueuePage";
+import { AddCasePage } from "./pages/AddCasePage";
 import { EscalationsPage } from "./pages/EscalationsPage";
 import { AuditPage } from "./pages/AuditPage";
 import { AuditEventDetailPage } from "./pages/AuditEventDetailPage";
@@ -71,6 +74,8 @@ export default function App() {
             {/* Patients */}
             <Route path="/patients" element={<PatientsPage />} />
             <Route path="/patients/onboarding" element={<PatientOnboardingPage />} />
+            <Route path="/patients/:id" element={<PatientDetailPage />} />
+            <Route path="/cases/:id" element={<CaseDetailPage />} />
 
             {/* Consent */}
             <Route path="/consent" element={<ConsentQueuePage />} />
@@ -86,6 +91,7 @@ export default function App() {
 
             {/* Review Queue */}
             <Route path="/review-queue" element={<ReviewQueuePage />} />
+            <Route path="/review-queue/add" element={<AddCasePage />} />
 
             {/* Escalations */}
             <Route path="/escalations" element={<EscalationsPage />} />

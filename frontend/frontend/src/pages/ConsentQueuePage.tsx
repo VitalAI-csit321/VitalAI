@@ -137,7 +137,7 @@ export function ConsentQueuePage() {
                   </td>
                   <td className="px-6 py-4">
                     <button
-                      onClick={() => navigate("/consent/capture")}
+                      onClick={() => navigate(`/cases/${r.caseId}`)}
                       className="font-medium text-brand hover:underline"
                     >
                       View

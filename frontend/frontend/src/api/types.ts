@@ -31,7 +31,7 @@ export interface Patient {
 export interface PatientCounts { active: number; pending: number; inactive: number; }
 
 export interface Case {
-  id: string; patientName: string; contactReason: string;
+  id: string; patientId: string | null; patientName: string; contactReason: string;
   contactChannel: string; notes: string | null; status: string;
   createdAt: string; updatedAt: string;
 }
@@ -46,7 +46,7 @@ export interface Consent {
 }
 
 export interface ConsentQueueRow {
-  id: string; patientName: string; form: string; submitted: string; status: ConsentQueueStatus;
+  id: string; caseId: string; patientName: string; form: string; submitted: string; status: ConsentQueueStatus;
 }
 
 export type TaskSource = "email" | "call";
@@ -56,6 +56,7 @@ export type TaskItemStatus = "pending" | "in_progress" | "completed" | "escalate
 export interface Task {
   id: string; caseId: string; assignedTo: string | null;
   source: TaskSource; priority: TaskPriority; status: TaskItemStatus;
+  targetQueue: string | null; handoverContext: string | null;
   createdAt: string; updatedAt: string;
 }
 
@@ -64,9 +65,16 @@ export interface TaskBoard {
   counts: { pending: number; in_progress: number; escalated: number; completed: number };
 }
 
+export interface TaskComment {
+  id: string; taskId: string; authorId: string; body: string; createdAt: string;
+}
+
 export interface AuditEvent {
-  id: string; caseId: string | null; actorId: string | null;
-  action: string; details: Record<string, unknown>; timestamp: string;
+  id: string; caseId: string | null; actorId: string | null; actorLabel: string | null;
+  actorRole: string | null; action: string; details: Record<string, unknown>; timestamp: string;
+  riskScore: number | null; riskLevel: "High" | "Medium" | "Low"; outcome: string | null;
+  ipAddress: string | null; sessionId: string | null; eventHash: string | null;
+  predecessorHash: string | null;
 }
 
 export interface ReviewTask {
@@ -82,10 +90,13 @@ export interface RecordDocument {
 }
 
 export type MessagePriority = "urgent" | "normal" | "fyi";
+export type TaskStatus = "pending" | "in_progress" | "completed" | "escalated";
 export interface Message {
   id: string; fromName: string; fromInitials: string; toName: string;
-  subject: string; body: string; priority: MessagePriority;
+  subject: string; body: string; priority: MessagePriority; category: string;
   unread: boolean; receivedLabel: string; threadReference: string; avatarColor: string;
+  draftText: string | null; draftApprovalId: string | null; draftSent: boolean;
+  taskStatus: TaskStatus;
 }
 
 export interface DashboardSummary {
@@ -100,9 +111,18 @@ export interface Appointment {
   status: AppointmentStatus; createdAt: string; updatedAt: string;
 }
 
+export interface RagCitation {
+  chunkId: string; sourceDocumentId: string; docType: string; content: string; score: number;
+}
+
 export interface RagAnswer {
   answer: string;
   refusalSource: "none" | "gate" | "llm";
   decision: string;
-  citations: RecordDocument[];
+  citations: RagCitation[];
+}
+
+export interface ClinicalDocument {
+  id: string; patientId: string; docType: string; filename: string;
+  createdAt: string; ingestedAt: string | null;
 }

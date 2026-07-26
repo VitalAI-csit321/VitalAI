@@ -4,7 +4,7 @@ import type { CurrentUser, ManagedUser, Role } from "./types";
 interface RawUser {
   id: string; email: string; full_name: string; role: Role;
   department: string | null; is_active: boolean; created_at: string;
-  granted_permissions?: string[];
+  granted_permissions?: string[]; last_active?: string | null;
 }
 
 function toCurrentUser(raw: RawUser): CurrentUser {
@@ -15,8 +15,8 @@ function toCurrentUser(raw: RawUser): CurrentUser {
   };
 }
 
-function toManagedUser(raw: RawUser, lastActive: string | null = null): ManagedUser {
-  return { ...toCurrentUser(raw), createdAt: raw.created_at, lastActive };
+function toManagedUser(raw: RawUser): ManagedUser {
+  return { ...toCurrentUser(raw), createdAt: raw.created_at, lastActive: raw.last_active ?? null };
 }
 
 export async function login(email: string, password: string): Promise<CurrentUser> {
@@ -36,12 +36,8 @@ export async function getMe(): Promise<CurrentUser> {
 export interface UserListParams { limit?: number; offset?: number; search?: string; [key: string]: unknown; }
 
 export async function listUsers(params: UserListParams = {}): Promise<{ items: ManagedUser[]; total: number }> {
-  const page = await apiGet<{ items: unknown[]; total: number }>("/api/v1/auth/users", params);
-  const items = page.items.map((row: unknown) => {
-    if (Array.isArray(row)) return toManagedUser(row[0] as RawUser, row[1] as string | null);
-    return toManagedUser(row as RawUser, null);
-  });
-  return { items, total: page.total };
+  const page = await apiGet<{ items: RawUser[]; total: number }>("/api/v1/auth/users", params);
+  return { items: page.items.map(toManagedUser), total: page.total };
 }
 
 export async function registerUser(input: { email: string; password: string; full_name: string }): Promise<ManagedUser> {
@@ -50,5 +46,18 @@ export async function registerUser(input: { email: string; password: string; ful
 
 export async function elevateUser(userId: string, newRole: Role): Promise<ManagedUser> {
   return toManagedUser(await apiPost<RawUser>(`/api/v1/auth/users/${userId}/elevate`, { new_role: newRole }));
+}
+
+export async function updateUserDepartment(userId: string, department: string): Promise<ManagedUser> {
+  return toManagedUser(await apiPost<RawUser>(`/api/v1/auth/users/${userId}/department`, { department }));
+}
+
+export async function setUserActive(userId: string, isActive: boolean): Promise<ManagedUser> {
+  return toManagedUser(await apiPost<RawUser>(`/api/v1/auth/users/${userId}/active`, { is_active: isActive }));
+}
+
+export async function getUserGrants(userId: string): Promise<string[]> {
+  const res = await apiGet<{ permissions: string[] }>(`/api/v1/auth/users/${userId}/grants`);
+  return res.permissions;
 }
 

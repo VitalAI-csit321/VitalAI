@@ -31,9 +31,10 @@ export function ConsentCapturePage() {
       let caseId=params.get("case");
       if(!caseId){const r=await apiGet<{items:{id:string}[]}>("/api/v1/intake?limit=1");caseId=r.items[0]?.id;}
       if(!caseId)throw new Error("No case found");
+      const caseDetail = await apiGet<{patient_name:string|null}>(`/api/v1/intake/${caseId}`);
       const c=await createConsent({case_id:caseId,consent_type:"general_treatment"});
       await captureConsent(c.id);
-      navigate("/consent/success");
+      navigate("/consent/success", { state: { patientName: caseDetail.patient_name ?? "Unknown patient", formType: "General treatment", timestamp: new Date().toISOString() } });
     } catch{setError("Could not submit consent. Please try again.");setBusy(false);}
   }
 

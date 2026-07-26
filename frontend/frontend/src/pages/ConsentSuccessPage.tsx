@@ -1,22 +1,21 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Check } from "lucide-react";
+
+interface SuccessState { patientName: string; formType: string; timestamp: string; }
 
 export function ConsentSuccessPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as SuccessState | null;
 
-  const timestamp = new Date().toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const timestamp = state?.timestamp
+    ? new Date(state.timestamp).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : new Date().toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
   const rows = [
-    { label: "Patient", value: "Jamie Williams" },
-    { label: "Form", value: "General Treatment" },
+    { label: "Patient", value: state?.patientName ?? "—" },
+    { label: "Form", value: state?.formType ?? "—" },
     { label: "Timestamp", value: timestamp },
-    { label: "Hash", value: "a3f8d9e2…" },
   ];
 
   return (
@@ -32,9 +31,7 @@ export function ConsentSuccessPage() {
           {rows.map((r) => (
             <div key={r.label} className="flex justify-between">
               <span className="text-slate-500">{r.label}</span>
-              <span className={r.label === "Hash" ? "font-mono text-slate-500" : "font-medium text-slate-900"}>
-                {r.value}
-              </span>
+              <span className="font-medium text-slate-900">{r.value}</span>
             </div>
           ))}
         </div>

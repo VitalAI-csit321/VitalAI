@@ -64,7 +64,7 @@ function toQueueStatus(status: Consent["status"]): ConsentQueueStatus {
 
 interface RawCaseLite {
   id: string;
-  patient_name: string;
+  patient_name: string | null;
   created_at: string;
 }
 
@@ -75,7 +75,8 @@ export async function listConsentQueue(): Promise<ConsentQueueRow[]> {
       const consent = await getConsentForCase(c.id);
       return {
         id: consent?.id ?? c.id,
-        patientName: c.patient_name,
+        caseId: c.id,
+        patientName: c.patient_name ?? "Unknown patient",
         form: placeholderConsentForms[i % placeholderConsentForms.length],
         submitted: c.created_at,
         status: consent ? toQueueStatus(consent.status) : "pending",

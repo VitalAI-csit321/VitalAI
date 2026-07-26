@@ -68,6 +68,7 @@ export function PatientOnboardingPage() {
   const [form, setForm] = useState<FormData>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createdPatient, setCreatedPatient] = useState<{ mrn: string } | null>(null);
 
   function update<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm(f => ({ ...f, [key]: value }));
@@ -76,22 +77,45 @@ export function PatientOnboardingPage() {
   async function submit() {
     setBusy(true); setError(null);
     try {
-      await createPatientFromOnboarding({
+      const patient = await createPatientFromOnboarding({
         firstName: form.firstName, lastName: form.lastName,
         dateOfBirth: form.dateOfBirth, gender: form.gender, address: form.address,
         indigenousStatus: form.indigenousStatus, preferredLanguage: form.preferredLanguage,
         contactReason: "Patient onboarding", contactChannel: form.preferredCommunication || "portal",
+        phone: form.phone, email: form.email,
+        emergencyContactName: form.emergencyContactName, emergencyContactPhone: form.emergencyContactPhone,
+        bestTimeToContact: form.bestTimeToContact,
+        knownConditions: form.knownConditions, currentMedications: form.currentMedications, allergies: form.allergies,
+        insuranceProvider: form.insuranceProvider, policyNumber: form.policyNumber, groupNumber: form.groupNumber,
+        expiryDate: form.expiryDate, medicareNumber: form.medicareNumber, concessionCard: form.concessionCard,
       });
-      navigate("/patients");
+      setCreatedPatient({ mrn: patient.mrn });
     } catch {
       setError("Could not save the patient. Please try again.");
-    } finally { setBusy(false); }
+      setBusy(false);
+    }
   }
 
   function next() { if (step < 4) setStep(s => s + 1); else submit(); }
   function back() { if (step > 0) setStep(s => s - 1); }
 
   const stepTitle = ["Patient onboarding", "Patient onboarding", "Patient onboarding", "Patient onboarding", "Patient onboarding"];
+
+  if (createdPatient) {
+    return (
+      <div className="p-6">
+        <div className="mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+            <svg className="h-8 w-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+          </div>
+          <h1 className="mt-5 text-xl font-bold text-slate-900">Patient created</h1>
+          <p className="mt-2 text-sm text-slate-500">Medical record number</p>
+          <p className="mt-1 font-mono text-lg font-semibold text-slate-900">{createdPatient.mrn}</p>
+          <button onClick={() => navigate("/patients")} className="mt-6 w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white hover:bg-brand-hover">Done</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -112,7 +136,7 @@ export function PatientOnboardingPage() {
               <Field label="Gender"><input className={inputClass} value={form.gender} onChange={e => update("gender", e.target.value)} /></Field>
             </div>
             <div className="mt-5">
-              <Field label="MRN"><input className={`${inputClass} bg-slate-50 text-slate-400`} value="MRN-10848 (auto-generated)" disabled /></Field>
+              <Field label="MRN"><input className={`${inputClass} bg-slate-50 text-slate-400`} value="Assigned automatically after submission" disabled /></Field>
             </div>
             <div className="mt-5">
               <Field label="Address"><input className={inputClass} value={form.address} onChange={e => update("address", e.target.value)} /></Field>
@@ -199,7 +223,7 @@ export function PatientOnboardingPage() {
             <div className="rounded-lg border border-slate-200 divide-y divide-slate-100 text-sm">
               {[
                 ["NAME", `${form.firstName} ${form.lastName}`.trim() || "—"],
-                ["MRN", "MRN-10848 (auto-generated)"],
+                ["MRN", "Assigned automatically after submission"],
                 ["DOB", form.dateOfBirth || "—"],
                 ["GENDER", form.gender || "—"],
                 ["ADDRESS", form.address || "—"],
