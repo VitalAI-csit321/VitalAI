@@ -9,6 +9,8 @@ from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
+from app.audit_context import reset_audit_context, set_audit_context
+from app.auth.security import decode_access_token
 from app.config import settings
 from app.limiter import limiter
 from app.routes import (
@@ -88,6 +90,31 @@ async def request_id_middleware(request: Request, call_next: RequestResponseEndp
     response: Response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     return response
+
+
+@app.middleware("http")
+async def audit_context_middleware(
+    request: Request, call_next: RequestResponseEndpoint
+) -> Response:
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    ip_address = forwarded_for.split(",")[0].strip() or (
+        request.client.host if request.client else None
+    )
+
+    session_id = None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        payload = decode_access_token(auth_header.removeprefix("Bearer "))
+        if payload is not None:
+            sid = payload.get("sid")
+            if isinstance(sid, str):
+                session_id = sid
+
+    ip_token, session_token = set_audit_context(ip_address=ip_address, session_id=session_id)
+    try:
+        return await call_next(request)
+    finally:
+        reset_audit_context(ip_token, session_token)
 
 
 # Public

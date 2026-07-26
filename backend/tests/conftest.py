@@ -240,7 +240,7 @@ async def pg_session():
 
     Wraps each test in an outer transaction + SAVEPOINT
     (join_transaction_mode="create_savepoint") so app.rag.retrieval's internal
-    session.commit() (for the GOV-RETRIEVE audit event) only releases the
+    session.commit() (for the retrieval.performed audit event) only releases the
     savepoint — the outer rollback below discards everything the test wrote,
     including seeded chunks, leaving the dev database as it was.
     """
