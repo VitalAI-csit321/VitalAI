@@ -265,7 +265,9 @@ async def test_download_returns_file_bytes_for_assigned_doctor(
     assert response.content == pdf_bytes
 
 
-async def _assign_doctor(db_session: AsyncSession, doctor: User, patient, assigned_by: User) -> None:
+async def _assign_doctor(
+    db_session: AsyncSession, doctor: User, patient, assigned_by: User
+) -> None:
     from app.models.assignment import DoctorPatientAssignment
 
     db_session.add(

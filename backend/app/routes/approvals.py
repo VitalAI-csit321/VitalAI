@@ -7,6 +7,7 @@ from app.auth.dependencies import require_permission
 from app.auth.permissions import APPROVE_ACTION
 from app.database import get_db
 from app.models.approval import ApprovalRequest, ApprovalStatus
+from app.models.task import Task
 from app.models.user import User
 from app.schemas.approval import (
     ApprovalApproveBody,
@@ -22,6 +23,7 @@ from app.services.assignment_service import (
     NotADoctorError,
     PatientNotFoundError,
 )
+from app.services.audit_service import record_event
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
 
@@ -38,8 +40,33 @@ async def _execute_patient_assignment_suggested(
     )
 
 
+async def _execute_email_draft_reply(
+    db: AsyncSession, request: ApprovalRequest, actor: User
+) -> None:
+    # "Sending" means marking the approval resolved with the final draft --
+    # no live SMTP integration exists (locked MVP decision), matching how
+    # this whole pipeline treats "sent" as a DB-level state, not a real email.
+    payload = request.resolved_payload or request.payload
+    task_id = payload.get("task_id")
+    if task_id is not None:
+        task = await db.get(Task, UUID(task_id))
+        if task is not None:
+            task.draft_sent = True
+            if payload.get("draft") is not None:
+                task.draft_text = payload["draft"]
+    await record_event(
+        db,
+        actor=actor,
+        case_id=request.case_id,
+        action="email.sent",
+        details={"email_id": payload.get("email_id"), "approval_id": str(request.id)},
+    )
+    await db.commit()
+
+
 _ACTION_EXECUTORS = {
     "patient.assignment.suggested": _execute_patient_assignment_suggested,
+    "email.draft_reply": _execute_email_draft_reply,
 }
 
 

@@ -1,8 +1,25 @@
+import json
 import uuid
+from typing import cast
 
 from httpx import AsyncClient
 
 from app.models import Patient
+
+
+class _FakeLLM:
+    def __init__(self, response: str):
+        self.response = response
+
+    async def ainvoke(self, prompt: str) -> str:
+        return self.response
+
+
+def _mock_classifier(monkeypatch, category: str, confidence: float) -> None:
+    monkeypatch.setattr(
+        "app.services.call_service.get_llm",
+        lambda: _FakeLLM(json.dumps({"category": category, "confidence": confidence})),
+    )
 
 
 async def _create_case(client: AsyncClient, headers: dict, patient: Patient) -> str:
@@ -16,7 +33,7 @@ async def _create_case(client: AsyncClient, headers: dict, patient: Patient) -> 
         headers=headers,
     )
     assert response.status_code == 201
-    return response.json()["id"]
+    return cast(str, response.json()["id"])
 
 
 async def test_create_call_manual_entry(
@@ -122,40 +139,59 @@ async def _create_call(client: AsyncClient, headers: dict, case_id: str, transcr
         headers=headers,
     )
     assert response.status_code == 201
-    return response.json()
+    return cast(dict, response.json())
 
 
-async def test_call_urgency_routing_reuses_shared_tiers(
-    client: AsyncClient, operator_headers: dict, patient: Patient
+async def test_call_routing_flags_urgent_keywords_for_human_review(
+    client: AsyncClient, operator_headers: dict, patient: Patient, monkeypatch
 ):
+    # Category the fake classifier returns doesn't matter here: the urgent
+    # keyword hard override in evaluate_task_routing_gate() fires regardless.
+    _mock_classifier(monkeypatch, "general_administrative", 0.6)
     case_id = await _create_case(client, operator_headers, patient)
     await _capture_consent(client, operator_headers, case_id)
     call = await _create_call(
-        client,
-        operator_headers,
-        case_id,
-        "Caller reports chest pain and difficulty breathing.",
+        client, operator_headers, case_id, "Caller reports chest pain and difficulty breathing."
     )
 
     response = await client.post(
-        f"/api/v1/calls/{call['id']}/route",
-        json={},
-        headers=operator_headers,
+        f"/api/v1/calls/{call['id']}/route", json={}, headers=operator_headers
     )
 
     assert response.status_code == 200
     body = response.json()
-    assert body["category"] == "immediate"
-    assert body["routing_action"] == "direct_escalation"
-    assert body["target_queue"] == "escalation_immediate"
-    assert body["escalated"] is True
+    assert body["outcome"] == "human_review"
+    assert body["override_reason"] == "urgent_keyword"
     assert body["call"]["status"] == "processed"
-    assert body["call"]["urgency_tier"] == "immediate"
+    assert body["call"]["category"] == "general_administrative"
+
+
+async def test_call_routing_auto_routes_high_confidence(
+    client: AsyncClient, operator_headers: dict, patient: Patient, monkeypatch
+):
+    _mock_classifier(monkeypatch, "appointment_request", 0.95)
+    case_id = await _create_case(client, operator_headers, patient)
+    await _capture_consent(client, operator_headers, case_id)
+    call = await _create_call(
+        client, operator_headers, case_id, "Caller wants to book an appointment."
+    )
+
+    response = await client.post(
+        f"/api/v1/calls/{call['id']}/route", json={}, headers=operator_headers
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["outcome"] == "auto_routed"
+    assert body["category"] == "appointment_request"
+    assert body["target_role"] == "front_desk"
+    assert body["override_reason"] is None
 
 
 async def test_call_routing_override_is_reversible_and_audited(
-    client: AsyncClient, admin_headers: dict, patient: Patient
+    client: AsyncClient, admin_headers: dict, patient: Patient, monkeypatch
 ):
+    _mock_classifier(monkeypatch, "general_administrative", 0.95)
     case_id = await _create_case(client, admin_headers, patient)
     await _capture_consent(client, admin_headers, case_id)
     call = await _create_call(client, admin_headers, case_id, "Routine appointment query.")
@@ -164,42 +200,40 @@ async def test_call_routing_override_is_reversible_and_audited(
 
     override = await client.post(
         f"/api/v1/calls/{call['id']}/override-routing",
-        json={"category": "time_sensitive", "reason": "Caller must be seen today"},
+        json={"category": "referral_request", "reason": "Clinician reviewed, this is a referral"},
         headers=admin_headers,
     )
     assert override.status_code == 200
     assert override.json()["call"]["routing_overridden"] is True
-    assert override.json()["target_queue"] == "priority_review"
+    assert override.json()["target_role"] == "operator"
 
     reverse = await client.post(
         f"/api/v1/calls/{call['id']}/override-routing",
-        json={"category": "routine", "reason": "Clinician confirmed routine follow-up"},
+        json={"category": "general_administrative", "reason": "Reverting, was misrouted"},
         headers=admin_headers,
     )
     assert reverse.status_code == 200
-    assert reverse.json()["category"] == "routine"
-    assert reverse.json()["target_queue"] == "admin_routine"
+    assert reverse.json()["target_role"] == "front_desk"
 
     audit = await client.get(f"/api/v1/audit/by-case/{case_id}", headers=admin_headers)
     actions = [event["action"] for event in audit.json()]
     assert actions.count("call.routing_overridden") == 2
 
 
-async def test_call_escalation_creates_task_with_full_context(
-    client: AsyncClient, operator_headers: dict, patient: Patient
+async def test_call_escalation_transitions_the_routed_task_to_escalated(
+    client: AsyncClient, operator_headers: dict, patient: Patient, monkeypatch
 ):
+    _mock_classifier(monkeypatch, "urgent_emergency", 0.95)
     case_id = await _create_case(client, operator_headers, patient)
     await _capture_consent(client, operator_headers, case_id)
     call = await _create_call(
-        client,
-        operator_headers,
-        case_id,
-        "Caller reports chest pain and needs immediate help.",
+        client, operator_headers, case_id, "Caller reports chest pain and needs immediate help."
     )
     routed = await client.post(
         f"/api/v1/calls/{call['id']}/route", json={}, headers=operator_headers
     )
     assert routed.status_code == 200
+    routed_task_id = routed.json()["task_id"]
 
     escalation = await client.post(
         f"/api/v1/calls/{call['id']}/escalate",
@@ -210,21 +244,21 @@ async def test_call_escalation_creates_task_with_full_context(
     body = escalation.json()
     assert body["call"]["status"] == "escalated"
     assert body["task_priority"] == "urgent"
-    assert body["target_queue"] == "escalation_immediate"
     assert body["handover_context"]["transcript"] == call["transcript"]
     assert body["handover_context"]["phone_number"] == "0412345678"
-    assert body["handover_context"]["case_id"] == case_id
 
-    task = await client.get(f"/api/v1/tasks/{body['task_id']}", headers=operator_headers)
+    # Same task the route step created, now transitioned, not a new one.
+    task = await client.get(f"/api/v1/tasks/{routed_task_id}", headers=operator_headers)
     assert task.status_code == 200
+    assert task.json()["id"] == routed_task_id
     assert task.json()["call_id"] == call["id"]
     assert task.json()["status"] == "escalated"
-    assert task.json()["target_queue"] == "escalation_immediate"
 
 
 async def test_call_escalation_prevents_duplicate_active_handover(
-    client: AsyncClient, operator_headers: dict, patient: Patient
+    client: AsyncClient, operator_headers: dict, patient: Patient, monkeypatch
 ):
+    _mock_classifier(monkeypatch, "urgent_emergency", 0.95)
     case_id = await _create_case(client, operator_headers, patient)
     await _capture_consent(client, operator_headers, case_id)
     call = await _create_call(client, operator_headers, case_id, "Urgent chest pain.")

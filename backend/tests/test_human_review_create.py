@@ -32,9 +32,7 @@ async def test_create_task_creates_independent_case_and_task(
     assert case.contact_reason == "Manually logged case"
 
 
-async def test_create_task_defaults_priority_to_medium(
-    client: AsyncClient, admin_headers: dict
-):
+async def test_create_task_defaults_priority_to_medium(client: AsyncClient, admin_headers: dict):
     response = await client.post(
         "/api/v1/human-review",
         json={"task_type": "consent_review", "contact_reason": "Manually logged case"},
@@ -76,9 +74,7 @@ async def test_create_task_with_owner_sets_assigned_to(
     assert response.json()["assigned_to"] == str(admin_user.id)
 
 
-async def test_created_task_appears_in_creators_queue(
-    client: AsyncClient, admin_headers: dict
-):
+async def test_created_task_appears_in_creators_queue(client: AsyncClient, admin_headers: dict):
     create = await client.post(
         "/api/v1/human-review",
         json={"task_type": "routing_review", "contact_reason": "Manually logged case"},

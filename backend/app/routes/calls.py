@@ -12,6 +12,7 @@ from app.schemas.call import (
     CallEscalateRequest,
     CallEscalationOut,
     CallOut,
+    CallOverrideOut,
     CallRouteOut,
     CallRouteRequest,
     CallRoutingOverride,
@@ -50,23 +51,27 @@ async def route_call_endpoint(
     actor: User = Depends(require_permission(MANAGE_CASES)),
 ):
     try:
-        call, triage, decision = await call_service.route_call(db, call_id, payload, actor)
+        call, task, gate = await call_service.route_call(db, call_id, payload, actor)
     except call_service.CallNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except (call_service.TranscriptRequiredError, ConsentGatingError) as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    # route_call() always sets these before returning.
+    assert call.category is not None
+    assert call.confidence is not None
+    assert call.target_role is not None
     return CallRouteOut(
-        call=call,
-        category=triage.category,
-        confidence=triage.confidence,
-        rationale=triage.rationale,
-        routing_action=decision.action,
-        target_queue=decision.target_queue,
-        escalated=decision.escalated,
+        call=CallOut.model_validate(call),
+        task_id=task.id,
+        category=call.category,
+        confidence=call.confidence,
+        target_role=call.target_role,
+        outcome=gate.outcome,
+        override_reason=gate.override_reason,
     )
 
 
-@router.post("/{call_id}/override-routing", response_model=CallRouteOut)
+@router.post("/{call_id}/override-routing", response_model=CallOverrideOut)
 async def override_call_routing_endpoint(
     call_id: UUID,
     payload: CallRoutingOverride,
@@ -74,21 +79,21 @@ async def override_call_routing_endpoint(
     actor: User = Depends(require_permission(MANAGE_CASES)),
 ):
     try:
-        call, triage, decision = await call_service.override_call_routing(
-            db, call_id, payload, actor
-        )
+        call, task = await call_service.override_call_routing(db, call_id, payload, actor)
     except call_service.CallNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except call_service.TranscriptRequiredError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-    return CallRouteOut(
-        call=call,
-        category=triage.category,
-        confidence=triage.confidence,
-        rationale=triage.rationale,
-        routing_action=decision.action,
-        target_queue=decision.target_queue,
-        escalated=decision.escalated,
+    except call_service.CallNotRoutedError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    # override_call_routing() always sets these before returning.
+    assert call.category is not None
+    assert call.target_role is not None
+    return CallOverrideOut(
+        call=CallOut.model_validate(call),
+        task_id=task.id,
+        category=call.category,
+        target_role=call.target_role,
     )
 
 
@@ -110,10 +115,9 @@ async def escalate_call_endpoint(
     ) as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     return CallEscalationOut(
-        call=call,
+        call=CallOut.model_validate(call),
         task_id=task.id,
         task_priority=task.priority,
-        target_queue=task.target_queue or "",
         handover_context=context,
     )
 

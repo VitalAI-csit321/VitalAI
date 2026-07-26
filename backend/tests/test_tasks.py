@@ -1,4 +1,5 @@
 import uuid
+from typing import cast
 
 from httpx import AsyncClient
 
@@ -16,7 +17,7 @@ async def _create_case(client: AsyncClient, headers: dict, patient: Patient) -> 
         headers=headers,
     )
     assert response.status_code == 201
-    return response.json()["id"]
+    return cast(str, response.json()["id"])
 
 
 async def test_create_task_manual_entry(
@@ -283,3 +284,41 @@ async def test_add_comment_rejects_empty_body(
         headers=admin_headers,
     )
     assert response.status_code == 422
+
+
+async def test_list_tasks_includes_subject_and_from_name_for_email_tasks(
+    client: AsyncClient, front_desk_headers: dict, monkeypatch
+):
+    import json
+    from unittest.mock import AsyncMock, patch
+
+    class _FakeLLM:
+        def __init__(self, response: str):
+            self.response = response
+
+        async def ainvoke(self, prompt: str) -> str:
+            return self.response
+
+    monkeypatch.setattr(
+        "app.services.email_service.get_llm",
+        lambda: _FakeLLM(json.dumps({"category": "general_administrative", "confidence": 0.95})),
+    )
+    with patch(
+        "app.services.email_service._generate_plain_reply", new=AsyncMock(return_value="ok")
+    ):
+        await client.post(
+            "/api/v1/email/ingest",
+            json={
+                "sender": "patient@example.com",
+                "recipient": "clinic@example.com",
+                "subject": "Identify me",
+                "body": "Some question.",
+            },
+            headers=front_desk_headers,
+        )
+
+    response = await client.get("/api/v1/tasks", headers=front_desk_headers)
+
+    assert response.status_code == 200
+    task = next(t for t in response.json() if t["subject"] == "Identify me")
+    assert task["from_name"] == "patient@example.com"

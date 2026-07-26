@@ -63,9 +63,7 @@ async def test_list_audit_events_filters_by_risk_level(
     assert all(item["risk_level"] == "High" for item in body["items"])
 
 
-async def test_listing_audit_events_is_not_itself_logged(
-    client: AsyncClient, admin_headers: dict
-):
+async def test_listing_audit_events_is_not_itself_logged(client: AsyncClient, admin_headers: dict):
     await client.get("/api/v1/audit", headers=admin_headers)
 
     response = await client.get("/api/v1/audit", headers=admin_headers)

@@ -4,11 +4,10 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.llm import get_llm
 from app.models.call import Call, CallStatus
 from app.models.case import IntakeCase
-from app.models.routing import RoutingDecision
 from app.models.task import Task, TaskItemStatus, TaskPriority, TaskSource
-from app.models.triage import TriageCategory, TriageResult
 from app.models.user import User
 from app.schemas.call import (
     CallCreate,
@@ -16,10 +15,14 @@ from app.schemas.call import (
     CallRouteRequest,
     CallRoutingOverride,
 )
-from app.schemas.triage import TriageRequest
-from app.services import routing_service, triage_service
 from app.services.audit_service import record_event
-from app.services.routing_rules import decide
+from app.services.content_classifier import classify_content
+from app.services.task_routing_gate import (
+    TaskRoutingGateResult,
+    TaskRoutingOutcome,
+    evaluate_task_routing_gate,
+)
+from app.services.task_routing_rules import resolve_target_role
 
 
 class CaseNotFoundError(Exception):
@@ -46,12 +49,12 @@ class AssigneeNotFoundError(Exception):
     """Raised when the requested assignee does not exist."""
 
 
-def _priority_for_category(category: TriageCategory) -> TaskPriority:
-    if category == TriageCategory.IMMEDIATE:
-        return TaskPriority.URGENT
-    if category in (TriageCategory.TIME_SENSITIVE, TriageCategory.LOW_CONFIDENCE):
-        return TaskPriority.HIGH
-    return TaskPriority.MEDIUM
+def _priority_for_gate(gate: TaskRoutingGateResult) -> TaskPriority:
+    if gate.outcome == TaskRoutingOutcome.HUMAN_REVIEW:
+        return TaskPriority.URGENT if gate.override_reason else TaskPriority.HIGH
+    if gate.outcome == TaskRoutingOutcome.AUTO_ROUTED_FLAGGED:
+        return TaskPriority.MEDIUM
+    return TaskPriority.LOW
 
 
 async def create_call(db: AsyncSession, payload: CallCreate, actor: User) -> Call:
@@ -89,42 +92,47 @@ async def list_calls(db: AsyncSession) -> list[Call]:
     return list(result.scalars().all())
 
 
+async def _get_or_create_call_task(db: AsyncSession, call: Call) -> Task:
+    result = await db.execute(select(Task).where(Task.call_id == call.id))
+    task = result.scalars().first()
+    if task is None:
+        task = Task(
+            case_id=call.case_id,
+            call_id=call.id,
+            source=TaskSource.CALL,
+            status=TaskItemStatus.PENDING,
+        )
+        db.add(task)
+    return task
+
+
 async def route_call(
-    db: AsyncSession,
-    call_id: UUID,
-    payload: CallRouteRequest,
-    actor: User,
-) -> tuple[Call, TriageResult, RoutingDecision]:
+    db: AsyncSession, call_id: UUID, payload: CallRouteRequest, actor: User
+) -> tuple[Call, Task, TaskRoutingGateResult]:
     call = await db.get(Call, call_id)
     if call is None:
         raise CallNotFoundError("Call not found")
     if not call.transcript or not call.transcript.strip():
         raise TranscriptRequiredError("A transcript is required before urgency routing")
 
-    triage_response = await triage_service.classify(
-        db,
-        TriageRequest(
-            case_id=call.case_id,
-            contact_reason=call.transcript,
-            keywords=payload.keywords,
-            patient_priority_flags=payload.patient_priority_flags,
-        ),
-        actor,
+    llm = get_llm()
+    category, confidence = await classify_content(
+        db, llm, call.transcript, actor=actor, channel="call"
     )
-    decision = await routing_service.route_from_triage_id(db, triage_response.triage_id, actor)
-    if decision is None:  # defensive: the triage row was just created
-        raise RuntimeError("Routing decision could not be created")
+    target_role = resolve_target_role(category)
+    gate = evaluate_task_routing_gate(category, confidence, call.transcript)
+    priority = _priority_for_gate(gate)
 
-    triage = await db.get(TriageResult, triage_response.triage_id)
-    if triage is None:
-        raise RuntimeError("Triage result could not be reloaded")
-
-    call.triage_id = triage.id
-    call.routing_id = decision.id
-    call.urgency_tier = triage.category
-    call.target_queue = decision.target_queue
-    call.routing_overridden = False
+    call.category = category
+    call.confidence = confidence
+    call.target_role = target_role
     call.status = CallStatus.PROCESSED
+
+    task = await _get_or_create_call_task(db, call)
+    task.category = category
+    task.target_role = target_role
+    task.priority = priority
+    await db.flush()
 
     await record_event(
         db,
@@ -133,60 +141,44 @@ async def route_call(
         action="call.routed",
         details={
             "call_id": str(call.id),
-            "triage_id": str(triage.id),
-            "routing_id": str(decision.id),
-            "urgency_tier": triage.category.value,
-            "target_queue": decision.target_queue,
-            "escalated": decision.escalated,
+            "task_id": str(task.id),
+            "category": category.value,
+            "confidence": confidence,
+            "target_role": target_role.value,
+            "outcome": gate.outcome.value,
+            "override_reason": gate.override_reason,
         },
     )
     await db.commit()
     await db.refresh(call)
-    return call, triage, decision
+    await db.refresh(task)
+    return call, task, gate
 
 
 async def override_call_routing(
-    db: AsyncSession,
-    call_id: UUID,
-    payload: CallRoutingOverride,
-    actor: User,
-) -> tuple[Call, TriageResult, RoutingDecision]:
+    db: AsyncSession, call_id: UUID, payload: CallRoutingOverride, actor: User
+) -> tuple[Call, Task]:
     call = await db.get(Call, call_id)
     if call is None:
         raise CallNotFoundError("Call not found")
     if not call.transcript or not call.transcript.strip():
         raise TranscriptRequiredError("A transcript is required before urgency routing")
 
-    previous_category = call.urgency_tier.value if call.urgency_tier else None
-    previous_queue = call.target_queue
-    action, target_queue, escalated = decide(payload.category)
+    result = await db.execute(select(Task).where(Task.call_id == call.id))
+    task = result.scalars().first()
+    if task is None:
+        raise CallNotRoutedError("Call must be routed before its routing can be overridden")
 
-    triage = TriageResult(
-        case_id=call.case_id,
-        category=payload.category,
-        confidence=1.0,
-        rationale=f"Human override: {payload.reason}",
-        routed=True,
-    )
-    db.add(triage)
-    await db.flush()
+    previous_category = call.category.value if call.category else None
+    new_target_role = resolve_target_role(payload.category)
 
-    decision = RoutingDecision(
-        case_id=call.case_id,
-        triage_id=triage.id,
-        action=action,
-        target_queue=target_queue,
-        escalated=escalated,
-    )
-    db.add(decision)
-    await db.flush()
-
-    call.triage_id = triage.id
-    call.routing_id = decision.id
-    call.urgency_tier = payload.category
-    call.target_queue = target_queue
+    call.category = payload.category
+    call.confidence = 1.0  # a human override is certain by definition
+    call.target_role = new_target_role
     call.routing_overridden = True
-    call.status = CallStatus.PROCESSED
+    task.category = payload.category
+    task.target_role = new_target_role
+    await db.flush()
 
     await record_event(
         db,
@@ -197,72 +189,53 @@ async def override_call_routing(
             "call_id": str(call.id),
             "previous_category": previous_category,
             "new_category": payload.category.value,
-            "previous_queue": previous_queue,
-            "new_queue": target_queue,
+            "new_target_role": new_target_role.value,
             "reason": payload.reason,
-            "triage_id": str(triage.id),
-            "routing_id": str(decision.id),
         },
     )
     await db.commit()
     await db.refresh(call)
-    return call, triage, decision
+    await db.refresh(task)
+    return call, task
 
 
 async def escalate_call(
-    db: AsyncSession,
-    call_id: UUID,
-    payload: CallEscalateRequest,
-    actor: User,
+    db: AsyncSession, call_id: UUID, payload: CallEscalateRequest, actor: User
 ) -> tuple[Call, Task, dict]:
     call = await db.get(Call, call_id)
     if call is None:
         raise CallNotFoundError("Call not found")
     if not call.transcript or not call.transcript.strip():
         raise TranscriptRequiredError("A transcript is required before escalation")
-    if call.routing_id is None or call.urgency_tier is None or call.target_queue is None:
+    if call.category is None or call.target_role is None:
         raise CallNotRoutedError("Call must be routed before escalation")
 
     if payload.assigned_to is not None and await db.get(User, payload.assigned_to) is None:
         raise AssigneeNotFoundError(f"User {payload.assigned_to} not found")
 
-    active = await db.execute(
-        select(Task).where(
-            Task.call_id == call.id,
-            Task.status.in_(
-                [TaskItemStatus.PENDING, TaskItemStatus.IN_PROGRESS, TaskItemStatus.ESCALATED]
-            ),
-        )
-    )
-    if active.scalars().first() is not None:
+    result = await db.execute(select(Task).where(Task.call_id == call.id))
+    task = result.scalars().first()
+    if task is None:
+        raise CallNotRoutedError("Call must be routed before escalation")
+    if task.status == TaskItemStatus.ESCALATED:
         raise DuplicateEscalationError("An active escalation task already exists for this call")
 
-    triage = await db.get(TriageResult, call.triage_id) if call.triage_id else None
-    decision = await db.get(RoutingDecision, call.routing_id)
     context = {
         "call_id": str(call.id),
         "case_id": str(call.case_id),
         "phone_number": call.phone_number,
         "transcript": call.transcript,
-        "urgency_tier": call.urgency_tier.value,
-        "target_queue": call.target_queue,
-        "routing_action": decision.action.value if decision else None,
-        "routing_rationale": triage.rationale if triage else None,
+        "category": call.category.value,
+        "target_role": call.target_role.value,
         "override_applied": call.routing_overridden,
         "escalation_reason": payload.reason,
     }
 
-    task = Task(
-        case_id=call.case_id,
-        call_id=call.id,
-        assigned_to=payload.assigned_to,
-        source=TaskSource.CALL,
-        priority=_priority_for_category(call.urgency_tier),
-        status=TaskItemStatus.ESCALATED,
-        target_queue=call.target_queue,
-        handover_context=json.dumps(context),
-    )
-    db.add(task)
+    task.status = TaskItemStatus.ESCALATED
+    task.priority = TaskPriority.URGENT
+    if payload.assigned_to is not None:
+        task.assigned_to = payload.assigned_to
+    task.handover_context = json.dumps(context)
     call.status = CallStatus.ESCALATED
     await db.flush()
 
@@ -274,7 +247,6 @@ async def escalate_call(
         details={
             "call_id": str(call.id),
             "task_id": str(task.id),
-            "target_queue": task.target_queue,
             "priority": task.priority.value,
             "assigned_to": str(task.assigned_to) if task.assigned_to else None,
             "full_context_attached": True,

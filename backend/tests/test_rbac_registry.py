@@ -47,13 +47,13 @@ def test_resolves_full_prefixed_paths():
 
 def test_total_route_count():
     registry = get_rbac_registry(app)
-    # 63 real application routes as of this writing (54 prior count + 9
-    # routes ported from origin/feature/task-call-models: POST/GET /calls,
-    # GET /calls/{id}, POST /calls/{id}/route, POST /calls/{id}/override-
-    # routing, POST /calls/{id}/escalate, POST/GET /tasks, GET /tasks/{id} -
-    # the Escalations page's real backend), confirmed via a direct
-    # app.routes walk before this test is written. Bump deliberately when a
-    # route is added or removed; an unexpected change here means the walker
-    # itself regressed (e.g. double-counting via bad recursion), not that
-    # this number merely went stale.
-    assert len({(e.method, e.path) for e in registry}) == 63
+    # 71 real application routes as of this writing, after reconciling two
+    # branches that each independently ported origin/feature/task-call-models
+    # (so their two prior counts, 63 and 60, both already included the shared
+    # base /calls and /tasks routes and can't just be summed). Counted
+    # directly off the merged app's own route table, not derived from either
+    # branch's stale number. Bump deliberately when a route is added or
+    # removed; an unexpected change here means the walker itself regressed
+    # (e.g. double-counting via bad recursion), not that this number merely
+    # went stale.
+    assert len({(e.method, e.path) for e in registry}) == 71

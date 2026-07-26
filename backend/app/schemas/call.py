@@ -4,9 +4,10 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.models.call import CallStatus
-from app.models.routing import RoutingAction
-from app.models.task import TaskPriority
+from app.models.task import TaskCategory, TaskPriority
 from app.models.triage import TriageCategory
+from app.models.user import UserRole
+from app.services.task_routing_gate import TaskRoutingOutcome
 
 
 class CallCreate(BaseModel):
@@ -21,7 +22,7 @@ class CallRouteRequest(BaseModel):
 
 
 class CallRoutingOverride(BaseModel):
-    category: TriageCategory
+    category: TaskCategory
     reason: str = Field(min_length=3, max_length=500)
 
 
@@ -40,6 +41,9 @@ class CallOut(BaseModel):
     routing_id: UUID | None
     urgency_tier: TriageCategory | None
     target_queue: str | None
+    category: TaskCategory | None
+    confidence: float | None
+    target_role: UserRole | None
     routing_overridden: bool
     created_at: datetime
     updated_at: datetime
@@ -49,17 +53,23 @@ class CallOut(BaseModel):
 
 class CallRouteOut(BaseModel):
     call: CallOut
-    category: TriageCategory
+    task_id: UUID
+    category: TaskCategory
     confidence: float
-    rationale: str
-    routing_action: RoutingAction
-    target_queue: str
-    escalated: bool
+    target_role: UserRole
+    outcome: TaskRoutingOutcome
+    override_reason: str | None
+
+
+class CallOverrideOut(BaseModel):
+    call: CallOut
+    task_id: UUID
+    category: TaskCategory
+    target_role: UserRole
 
 
 class CallEscalationOut(BaseModel):
     call: CallOut
     task_id: UUID
     task_priority: TaskPriority
-    target_queue: str
     handover_context: dict

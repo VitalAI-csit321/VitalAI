@@ -1,12 +1,14 @@
 import enum
 from uuid import UUID
 
-from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy import Boolean, Float, ForeignKey, String, Text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.task import TaskCategory
 from app.models.triage import TriageCategory
+from app.models.user import UserRole
 
 
 class CallStatus(enum.StrEnum):
@@ -46,3 +48,12 @@ class Call(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     target_queue: Mapped[str | None] = mapped_column(String(100), nullable=True)
     routing_overridden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    category: Mapped[TaskCategory | None] = mapped_column(
+        SAEnum(TaskCategory, name="task_category", values_callable=lambda x: [e.value for e in x]),
+        nullable=True,
+    )
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    target_role: Mapped[UserRole | None] = mapped_column(
+        SAEnum(UserRole, name="user_role", values_callable=lambda x: [e.value for e in x]),
+        nullable=True,
+    )

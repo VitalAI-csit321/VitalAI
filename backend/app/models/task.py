@@ -1,10 +1,11 @@
 import enum
 from uuid import UUID
 
-from sqlalchemy import Enum, ForeignKey, String, Text
+from sqlalchemy import Boolean, Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.user import UserRole
 
 
 class TaskSource(enum.StrEnum):
@@ -24,6 +25,19 @@ class TaskItemStatus(enum.StrEnum):
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     ESCALATED = "escalated"
+
+
+class TaskCategory(enum.StrEnum):
+    APPOINTMENT_REQUEST = "appointment_request"
+    NEW_PATIENT_ONBOARDING = "new_patient_onboarding"
+    PRESCRIPTION_RENEWAL = "prescription_renewal"
+    RESULTS_ENQUIRY = "results_enquiry"
+    REFERRAL_REQUEST = "referral_request"
+    MEDICAL_RECORDS_REQUEST = "medical_records_request"
+    BILLING_INSURANCE_ENQUIRY = "billing_insurance_enquiry"
+    COMPLAINT_ESCALATION = "complaint_escalation"
+    GENERAL_ADMINISTRATIVE = "general_administrative"
+    URGENT_EMERGENCY = "urgent_emergency"
 
 
 class Task(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -54,3 +68,17 @@ class Task(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     target_queue: Mapped[str | None] = mapped_column(String(100), nullable=True)
     handover_context: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category: Mapped[TaskCategory | None] = mapped_column(
+        Enum(TaskCategory, name="task_category", values_callable=lambda x: [e.value for e in x]),
+        nullable=True,
+    )
+    target_role: Mapped[UserRole | None] = mapped_column(
+        Enum(UserRole, name="user_role", values_callable=lambda x: [e.value for e in x]),
+        nullable=True,
+        index=True,
+    )
+    draft_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    draft_approval_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("approval_requests.id", ondelete="SET NULL"), nullable=True
+    )
+    draft_sent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

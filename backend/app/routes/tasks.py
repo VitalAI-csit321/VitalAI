@@ -3,11 +3,19 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import require_permission
-from app.auth.permissions import MANAGE_CASES, VIEW_QUEUE
+from app.auth.dependencies import require_any_permission, require_permission
+from app.auth.permissions import MANAGE_CASES, VIEW_CLINICAL, VIEW_QUEUE
 from app.database import get_db
 from app.models.user import User
-from app.schemas.task import TaskCommentCreate, TaskCommentOut, TaskCreate, TaskOut, TaskUpdate
+from app.schemas.task import (
+    TaskCommentCreate,
+    TaskCommentOut,
+    TaskCreate,
+    TaskEscalateRequest,
+    TaskOut,
+    TaskOverrideRequest,
+    TaskUpdate,
+)
 from app.services import task_service
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -82,3 +90,49 @@ async def add_comment_endpoint(
         return await task_service.add_comment(db, task_id, payload, actor)
     except task_service.TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post("/{task_id}/override", response_model=TaskOut)
+async def override_task_endpoint(
+    task_id: UUID,
+    payload: TaskOverrideRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(MANAGE_CASES)),
+):
+    try:
+        return await task_service.override_task(
+            db, task_id, payload.category, payload.reason, actor
+        )
+    except task_service.TaskNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.post("/{task_id}/escalate", response_model=TaskOut)
+async def escalate_task_endpoint(
+    task_id: UUID,
+    payload: TaskEscalateRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
+):
+    try:
+        return await task_service.escalate_task(db, task_id, payload.reason, actor)
+    except task_service.TaskNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except task_service.TaskForbiddenError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except task_service.TaskAlreadyEscalatedError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.post("/{task_id}/archive", response_model=TaskOut)
+async def archive_task_endpoint(
+    task_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
+):
+    try:
+        return await task_service.archive_task(db, task_id, actor)
+    except task_service.TaskNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except task_service.TaskForbiddenError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
