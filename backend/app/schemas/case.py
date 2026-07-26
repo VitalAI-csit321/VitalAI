@@ -29,3 +29,10 @@ class IntakeCaseOut(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class IntakeCaseListResponse(BaseModel):
+    items: list[IntakeCaseOut]
+    total: int
+    limit: int
+    offset: int
