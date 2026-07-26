@@ -2,15 +2,26 @@ import { apiGet, apiPost } from "../lib/apiClient";
 import type { DashboardSummary, Message } from "./types";
 import { placeholderWorkflowByDay } from "./_placeholder";
 
+const TASK_TYPE_LABEL: Record<string, string> = {
+  triage_review: "HITL Approval",
+  consent_review: "Consent Review",
+  escalation_review: "Escalation Review",
+  routing_review: "Routing Review",
+};
+
 export async function getDashboard(): Promise<DashboardSummary> {
   // Fetch real data in parallel, fall back gracefully
-  const [intakeRes, auditRes, pendingRes, inProgressRes, escalatedRes] = await Promise.allSettled([
-    apiGet<{items:unknown[];total:number}>("/api/v1/intake?limit=1"),
-    apiGet<{total:number}>("/api/v1/audit?limit=1"),
-    apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"pending"}),
-    apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"in_progress"}),
-    apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"escalated"}),
-  ]);
+  const [intakeRes, auditRes, pendingRes, inProgressRes, escalatedRes, reviewListRes] =
+    await Promise.allSettled([
+      apiGet<{items:unknown[];total:number}>("/api/v1/intake?limit=1"),
+      apiGet<{total:number}>("/api/v1/audit?limit=1"),
+      apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"pending"}),
+      apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"in_progress"}),
+      apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"escalated"}),
+      apiGet<{items:{id:string;case_id:string;task_type:string;status:string}[];total:number}>(
+        "/api/v1/human-review", {limit:20}
+      ),
+    ]);
 
   const openCases = intakeRes.status==="fulfilled" ? intakeRes.value.total : 0;
   const auditEvents = auditRes.status==="fulfilled" ? auditRes.value.total : 0;
@@ -18,18 +29,41 @@ export async function getDashboard(): Promise<DashboardSummary> {
   const inProgress = inProgressRes.status==="fulfilled" ? inProgressRes.value.total : 0;
   const escalated = escalatedRes.status==="fulfilled" ? escalatedRes.value.total : 0;
 
+  // Pending Reviews list: real human-review tasks, enriched with the real
+  // patient name from each task's linked case (the task itself only carries
+  // case_id, not a display name).
+  let pendingReviews: DashboardSummary["pendingReviews"] = [];
+  if (reviewListRes.status === "fulfilled") {
+    const openTasks = reviewListRes.value.items
+      .filter(t => t.status === "pending" || t.status === "in_progress")
+      .slice(0, 4);
+
+    pendingReviews = await Promise.all(
+      openTasks.map(async (task) => {
+        let name = "Unknown patient";
+        try {
+          const caseData = await apiGet<{ patient_name: string | null }>(
+            `/api/v1/intake/${task.case_id}`
+          );
+          name = caseData.patient_name ?? "Unknown patient";
+        } catch { /* keep fallback */ }
+        return {
+          id: task.id,
+          name,
+          kind: TASK_TYPE_LABEL[task.task_type] ?? task.task_type,
+          isNew: task.status === "pending",
+        };
+      })
+    );
+  }
+
   return {
     openCases,
     awaitingApproval: pending + inProgress,
     escalations: escalated,
     auditEvents,
     workflowByDay: placeholderWorkflowByDay,
-    pendingReviews: [
-      {id:"1",name:"Emily Zhang",kind:"Consent Review",isNew:true},
-      {id:"2",name:"Marcus Williams",kind:"Treatment Auth",isNew:true},
-      {id:"3",name:"Sarah Johnson",kind:"Medical Records",isNew:false},
-      {id:"4",name:"David Chen",kind:"Insurance Claim",isNew:false},
-    ],
+    pendingReviews,
   };
 }
 
@@ -40,7 +74,7 @@ export async function listMessages(): Promise<Message[]> {
 
 // Approves a pending draft reply (email.draft_reply approval), marking it sent.
 // editedDraft/emailId/taskId let the operator send a corrected version of the
-// AI draft instead of the original -- resolved_payload fully replaces the
+// AI draft instead of the original; resolved_payload fully replaces the
 // approval's stored payload, so all three fields the executor needs must be
 // passed together whenever the text was edited.
 export async function approveDraft(

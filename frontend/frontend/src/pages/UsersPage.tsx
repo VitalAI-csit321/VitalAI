@@ -81,7 +81,7 @@ export function UsersPage() {
   function load(){setLoading(true);listUsers({limit:20}).then(r=>setUsers(r.items)).catch(()=>{}).finally(()=>setLoading(false));}
   useEffect(()=>{load();},[]);
 
-  async function changeRole(id:string,role:Role){setChanging(id);try{await elevateUser(id,role);load();}catch{}finally{setChanging(null);}}
+  async function changeRole(id:string,role:Role){setChanging(id);try{await elevateUser(id,role);load();}catch{/* leave the row as-is on failure, no optimistic change to undo */}finally{setChanging(null);}}
 
   async function toggleActive(id:string,current:boolean){
     setTogglingId(id);
