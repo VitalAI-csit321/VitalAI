@@ -71,12 +71,14 @@ async def test_list_calls_requires_view_queue(client: AsyncClient, doctor_header
     response = await client.get("/api/v1/calls", headers=doctor_headers)
     assert response.status_code == 403
 
+
 async def test_create_call_requires_auth(client: AsyncClient):
     response = await client.post(
         "/api/v1/calls",
         json={"case_id": str(uuid.uuid4()), "phone_number": "0412345678"},
     )
     assert response.status_code == 401
+
 
 async def test_create_call_requires_view_queue(
     client: AsyncClient,
@@ -93,6 +95,7 @@ async def test_create_call_requires_view_queue(
     )
 
     assert response.status_code == 403
+
 
 async def _capture_consent(client: AsyncClient, headers: dict, case_id: str) -> None:
     created = await client.post(
