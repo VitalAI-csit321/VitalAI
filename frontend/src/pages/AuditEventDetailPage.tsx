@@ -1,7 +1,8 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getAuditEvent } from "../api/audit";
 import type { AuditEvent } from "../api/types";
+import { Spinner } from "../components/ui";
 
 const PLACEHOLDER: AuditEvent = {
   id: "e1", caseId: "C-1042", actorId: "u-8472", action: "CASE.APPROVE",
@@ -18,6 +19,7 @@ const RELATED = [
 
 export function AuditEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
+  const navigate = useNavigate();
   const [event, setEvent] = useState<AuditEvent>(PLACEHOLDER);
 
   useEffect(() => {
@@ -27,6 +29,7 @@ export function AuditEventDetailPage() {
   }, [eventId]);
 
   const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString("en-AU", { hour12: false });
+  const fmtDate = (iso: string) => new Date(iso).toLocaleString("en-AU", { hour12: false });
 
   return (
     <div className="p-6">

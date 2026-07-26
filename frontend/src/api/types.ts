@@ -99,10 +99,3 @@ export interface Appointment {
   id: string; caseId: string; doctorId: string; timeSlot: string;
   status: AppointmentStatus; createdAt: string; updatedAt: string;
 }
-
-export interface RagAnswer {
-  answer: string;
-  refusalSource: "none" | "gate" | "llm";
-  decision: string;
-  citations: RecordDocument[];
-}
