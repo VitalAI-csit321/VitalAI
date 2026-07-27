@@ -14,9 +14,11 @@ from app.limiter import limiter
 from app.models.permission_grant import UserPermissionGrant
 from app.models.user import User, UserRole
 from app.schemas.auth import (
+    ActiveStatusUpdateRequest,
     DepartmentUpdateRequest,
     ElevateRoleRequest,
     Token,
+    UserGrantsResponse,
     UserListItem,
     UserListResponse,
     UserOut,
@@ -93,6 +95,34 @@ async def set_department_endpoint(
     if target is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return await user_service.set_department(db, target, payload.department, actor)
+
+
+@router.post("/users/{user_id}/active", response_model=UserOut)
+async def set_active_status_endpoint(
+    user_id: UUID,
+    payload: ActiveStatusUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(MANAGE_USERS)),
+) -> User:
+    """Activate or deactivate a user. Admin only."""
+    target = await db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return await user_service.set_active_status(db, target, payload.is_active, actor)
+
+
+@router.get("/users/{user_id}/grants", response_model=UserGrantsResponse)
+async def get_user_grants_endpoint(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(MANAGE_USERS)),
+) -> UserGrantsResponse:
+    """List a user's real per-user permission grants. Admin only."""
+    target = await db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    permissions = await user_service.get_grants(db, target)
+    return UserGrantsResponse(permissions=permissions)
 
 
 @router.get("/users", response_model=UserListResponse)

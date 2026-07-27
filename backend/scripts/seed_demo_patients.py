@@ -1,0 +1,127 @@
+"""Backfill `patients` rows for the 100-patient Synth_Dataset corpus.
+
+The corpus (ingestion/matthew_corpus/Synth_Dataset) already has 100 realistic
+patients x 5 document types (registration_form, appointment_history,
+prescription, consultation, pathology_report) sitting on disk unused.
+scripts/ingest_corpus.py already chunks/embeds/inserts those documents into
+`chunks`, keyed on the UUID in each folder name - but the corpus has never had
+matching rows in `patients`, so none of it is reachable from intake/search.
+
+This script only creates the missing `patients` rows (same UUID as the folder,
+so chunks and patients line up), reading name/dob/mrn straight out of each
+patient's registration_form.txt. It does not touch `chunks` - run
+`python -m scripts.ingest_corpus` afterwards for that.
+
+Idempotent: re-running upserts (skips patients whose id already exists).
+
+Usage (against the docker-compose db, migrated to head):
+    DATABASE_URL=postgresql+asyncpg://vitalai:vitalai@localhost:5432/vitalai \
+        python -m scripts.seed_demo_patients
+"""
+
+from __future__ import annotations
+
+import hashlib
+import re
+import sys
+import uuid
+from datetime import date, datetime
+from pathlib import Path
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+_CORPUS_DIR = (
+    Path(__file__).resolve().parents[1] / "ingestion" / "matthew_corpus" / "Synth_Dataset"
+)
+
+from app.models.patient import Gender, Patient, PatientStatus  # noqa: E402
+
+_UUID_RE = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
+_GENDERS = [Gender.FEMALE, Gender.MALE, Gender.NON_BINARY]
+
+
+def _parse_folder(folder_name: str) -> tuple[str, uuid.UUID]:
+    match = _UUID_RE.search(folder_name)
+    if match is None:
+        raise ValueError(f"no UUID found in patient folder name: {folder_name!r}")
+    patient_id = uuid.UUID(match.group(0))
+    name = folder_name[: match.start()].rstrip("_").replace("_", " ")
+    return name, patient_id
+
+
+def _field(text: str, label: str) -> str:
+    match = re.search(rf"^{label}:\s*\n(.+)$", text, re.MULTILINE)
+    if match is None:
+        raise ValueError(f"field {label!r} not found in registration form")
+    return match.group(1).strip()
+
+
+def _gender_for(patient_id: uuid.UUID) -> Gender:
+    # ponytail: corpus has no gender field; deterministic hash-based assignment
+    # so demo data is stable across reseeds, not a real inference.
+    digest = hashlib.sha256(patient_id.bytes).digest()
+    return _GENDERS[digest[0] % len(_GENDERS)]
+
+
+async def main() -> None:
+    from app.config import settings
+
+    patient_dirs = sorted(p for p in _CORPUS_DIR.iterdir() if p.is_dir())
+
+    engine = create_async_engine(settings.database_url)
+    async_session = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
+    created = 0
+    skipped = 0
+    failures: list[tuple[str, str]] = []
+
+    async with async_session() as session:
+        for patient_dir in patient_dirs:
+            try:
+                name, patient_id = _parse_folder(patient_dir.name)
+
+                existing = await session.execute(
+                    select(Patient.id).where(Patient.id == patient_id)
+                )
+                if existing.scalar_one_or_none() is not None:
+                    skipped += 1
+                    continue
+
+                reg_form = (patient_dir / "Admin_Docs" / "registration_form.txt").read_text()
+                dob = datetime.strptime(_field(reg_form, "DOB"), "%Y-%m-%d").date()
+                mrn = _field(reg_form, "Medicare")
+
+                session.add(
+                    Patient(
+                        id=patient_id,
+                        mrn=mrn,
+                        name=name,
+                        dob=dob,
+                        gender=_gender_for(patient_id),
+                        status=PatientStatus.ACTIVE,
+                    )
+                )
+                created += 1
+            except Exception as exc:  # noqa: BLE001 - one bad folder must not abort the rest
+                failures.append((patient_dir.name, str(exc)))
+                print(f"FAILED  {patient_dir.name}: {exc}")
+
+        await session.commit()
+    await engine.dispose()
+
+    print()
+    print(f"done: {created} created, {skipped} already existed, {len(failures)} failed")
+    if failures:
+        print("failures:")
+        for name, err in failures:
+            print(f"  - {name}: {err}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(main())

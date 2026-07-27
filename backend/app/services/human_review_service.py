@@ -20,9 +20,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.scoping import assigned_patient_ids_subquery, is_assigned
-from app.models.case import IntakeCase
-from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
+from app.models.case import IntakeCase, IntakeStatus
+from app.models.human_review import HumanReviewTask, TaskPriority, TaskStatus, TaskType
 from app.models.user import User, UserRole
+from app.services.audit_service import record_event
 
 
 class HumanReviewTaskNotFoundError(Exception):
@@ -70,6 +71,57 @@ async def list_tasks(
     query = query.order_by(HumanReviewTask.created_at).limit(limit).offset(offset)
     items = (await db.execute(query)).scalars().all()
     return list(items), total
+
+
+async def create_task(
+    db: AsyncSession,
+    actor: User,
+    *,
+    task_type: TaskType,
+    contact_reason: str,
+    priority: TaskPriority = TaskPriority.MEDIUM,
+    assigned_to: UUID | None = None,
+    reviewed: bool = False,
+    notes: str | None = None,
+) -> HumanReviewTask:
+    """Manually log an independent case + review task (FR-TASK-ADD).
+
+    Unlike system-generated tasks (triage/routing), this isn't linked to an
+    existing patient - `IntakeCase.patient_id` is nullable precisely for this
+    standalone case. `target_role` defaults to the creating actor's own role
+    so the task is immediately visible in their own queue (list_tasks scopes
+    strictly by `target_role == actor.role`).
+    """
+    case = IntakeCase(
+        patient_id=None,
+        contact_reason=contact_reason,
+        contact_channel="manual",
+        status=IntakeStatus.RECEIVED,
+    )
+    db.add(case)
+    await db.flush()
+
+    await record_event(
+        db,
+        case_id=case.id,
+        actor=actor,
+        action="intake.created",
+        details={"channel": "manual"},
+    )
+
+    task = HumanReviewTask(
+        case_id=case.id,
+        task_type=task_type,
+        priority=priority,
+        target_role=actor.role,
+        assigned_to=assigned_to,
+        status=TaskStatus.COMPLETED if reviewed else TaskStatus.PENDING,
+        notes=notes,
+    )
+    db.add(task)
+    await db.commit()
+    await db.refresh(task)
+    return task
 
 
 async def _check_doctor_assigned(db: AsyncSession, task: HumanReviewTask, actor: User) -> None:
@@ -124,6 +176,56 @@ async def complete_task(
         )
 
     task.status = TaskStatus.COMPLETED
+    task.notes = notes
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+
+async def reject_task(
+    db: AsyncSession, task_id: UUID, actor: User, notes: str | None = None
+) -> HumanReviewTask:
+    task = await db.get(HumanReviewTask, task_id)
+    if task is None:
+        raise HumanReviewTaskNotFoundError(f"No human review task with id {task_id}")
+    if task.target_role != actor.role:
+        raise HumanReviewTaskWrongRoleError(
+            f"Task {task_id} is targeted at role '{task.target_role}', "
+            f"actor holds role '{actor.role.value}'"
+        )
+    if actor.role == UserRole.DOCTOR:
+        await _check_doctor_assigned(db, task, actor)
+    if task.status != TaskStatus.IN_PROGRESS:
+        raise HumanReviewTaskWrongStateError(
+            f"Task {task_id} is '{task.status.value}', not in progress"
+        )
+
+    task.status = TaskStatus.CANCELLED
+    task.notes = notes
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+
+async def escalate_task(
+    db: AsyncSession, task_id: UUID, actor: User, notes: str | None = None
+) -> HumanReviewTask:
+    task = await db.get(HumanReviewTask, task_id)
+    if task is None:
+        raise HumanReviewTaskNotFoundError(f"No human review task with id {task_id}")
+    if task.target_role != actor.role:
+        raise HumanReviewTaskWrongRoleError(
+            f"Task {task_id} is targeted at role '{task.target_role}', "
+            f"actor holds role '{actor.role.value}'"
+        )
+    if actor.role == UserRole.DOCTOR:
+        await _check_doctor_assigned(db, task, actor)
+    if task.status != TaskStatus.IN_PROGRESS:
+        raise HumanReviewTaskWrongStateError(
+            f"Task {task_id} is '{task.status.value}', not in progress"
+        )
+
+    task.status = TaskStatus.ESCALATED
     task.notes = notes
     await db.commit()
     await db.refresh(task)

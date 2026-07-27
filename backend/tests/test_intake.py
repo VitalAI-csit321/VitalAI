@@ -22,6 +22,7 @@ async def test_create_intake(client: AsyncClient, admin_headers: dict, patient: 
     body = response.json()
     assert body["status"] == "intake_received"
     assert body["patient_id"] == str(patient.id)
+    assert body["patient_name"] == patient.name
     assert "id" in body
 
 

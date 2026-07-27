@@ -47,12 +47,13 @@ def test_resolves_full_prefixed_paths():
 
 def test_total_route_count():
     registry = get_rbac_registry(app)
-    # 46 real application routes as of this writing (42 base + GET /api/v1/intake
-    # from fix/intake-list-endpoint, + GET /api/v1/audit/verify and
-    # GET /api/v1/audit/{event_id} from feature/audit-trail, now both merged
-    # into main), confirmed via a direct app.routes walk before this test is
-    # written. Bump deliberately when a route is added or removed; an
-    # unexpected change here means the walker itself regressed (e.g.
-    # double-counting via bad recursion), not that this number merely went
-    # stale.
-    assert len({(e.method, e.path) for e in registry}) == 46
+    # 71 real application routes as of this writing, after reconciling two
+    # branches that each independently ported origin/feature/task-call-models
+    # (so their two prior counts, 63 and 60, both already included the shared
+    # base /calls and /tasks routes and can't just be summed). Counted
+    # directly off the merged app's own route table, not derived from either
+    # branch's stale number. Bump deliberately when a route is added or
+    # removed; an unexpected change here means the walker itself regressed
+    # (e.g. double-counting via bad recursion), not that this number merely
+    # went stale.
+    assert len({(e.method, e.path) for e in registry}) == 71

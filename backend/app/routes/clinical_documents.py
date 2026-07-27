@@ -24,6 +24,20 @@ from app.services.clinical_document_service import (
 router = APIRouter(prefix="/clinical-documents", tags=["clinical-documents"])
 
 
+@router.get("", response_model=list[ClinicalDocumentOut])
+async def list_clinical_documents_endpoint(
+    patient_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(VIEW_CLINICAL)),
+):
+    if not await can_read_clinical(db, actor, patient_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not permitted to read clinical records for this patient",
+        )
+    return await clinical_document_service.list_documents_for_patient(db, patient_id)
+
+
 @router.post("", response_model=ClinicalDocumentOut, status_code=status.HTTP_201_CREATED)
 async def upload_clinical_document_endpoint(
     patient_id: UUID = Form(...),

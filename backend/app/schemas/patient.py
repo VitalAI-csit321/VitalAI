@@ -12,6 +12,13 @@ class PatientCreate(BaseModel):
     gender: Gender
 
 
+class PatientUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    dob: date | None = None
+    gender: Gender | None = None
+    status: PatientStatus | None = None
+
+
 class PatientOut(BaseModel):
     id: UUID
     mrn: str

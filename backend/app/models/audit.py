@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Uuid
+from sqlalchemy import JSON, BigInteger, DateTime, FetchedValue, ForeignKey, String, Uuid
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -47,3 +47,11 @@ class AuditEvent(Base):
     session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     event_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     predecessor_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Server-side monotonic counter the hash-chain trigger/verify function order
+    # by, instead of `timestamp` (client-assigned in Python, so its order can
+    # diverge from true insert order under concurrent writers; see migration
+    # 0018's docstring). Nullable here only because SQLite (no trigger, no
+    # sequence default) never populates it; real Postgres rows always have it.
+    sequence_number: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True, server_default=FetchedValue()
+    )

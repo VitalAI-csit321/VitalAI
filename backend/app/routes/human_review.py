@@ -10,6 +10,7 @@ from app.models.human_review import TaskStatus, TaskType
 from app.models.user import User
 from app.schemas.human_review import (
     HumanReviewCompleteBody,
+    HumanReviewTaskCreate,
     HumanReviewTaskListResponse,
     HumanReviewTaskOut,
 )
@@ -45,6 +46,24 @@ async def list_tasks_endpoint(
     )
 
 
+@router.post("", response_model=HumanReviewTaskOut, status_code=status.HTTP_201_CREATED)
+async def create_task_endpoint(
+    payload: HumanReviewTaskCreate,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
+):
+    return await human_review_service.create_task(
+        db,
+        actor,
+        task_type=payload.task_type,
+        contact_reason=payload.contact_reason,
+        priority=payload.priority,
+        assigned_to=payload.assigned_to,
+        reviewed=payload.reviewed,
+        notes=payload.notes,
+    )
+
+
 @router.post("/{task_id}/claim", response_model=HumanReviewTaskOut)
 async def claim_task_endpoint(
     task_id: UUID,
@@ -70,6 +89,40 @@ async def complete_task_endpoint(
 ):
     try:
         return await human_review_service.complete_task(db, task_id, actor, notes=payload.notes)
+    except HumanReviewTaskNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except HumanReviewTaskWrongRoleError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except HumanReviewTaskWrongStateError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.post("/{task_id}/reject", response_model=HumanReviewTaskOut)
+async def reject_task_endpoint(
+    task_id: UUID,
+    payload: HumanReviewCompleteBody,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
+):
+    try:
+        return await human_review_service.reject_task(db, task_id, actor, notes=payload.notes)
+    except HumanReviewTaskNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except HumanReviewTaskWrongRoleError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except HumanReviewTaskWrongStateError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+
+
+@router.post("/{task_id}/escalate", response_model=HumanReviewTaskOut)
+async def escalate_task_endpoint(
+    task_id: UUID,
+    payload: HumanReviewCompleteBody,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
+):
+    try:
+        return await human_review_service.escalate_task(db, task_id, actor, notes=payload.notes)
     except HumanReviewTaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except HumanReviewTaskWrongRoleError as exc:

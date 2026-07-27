@@ -9,23 +9,8 @@ algorithm, per section 12's explicit supersession of the earlier design's
 section 5.
 """
 
-import enum
-
-from app.models.user import UserRole
-
-
-class TaskCategory(enum.StrEnum):
-    APPOINTMENT_REQUEST = "appointment_request"
-    NEW_PATIENT_ONBOARDING = "new_patient_onboarding"
-    PRESCRIPTION_RENEWAL = "prescription_renewal"
-    RESULTS_ENQUIRY = "results_enquiry"
-    REFERRAL_REQUEST = "referral_request"
-    MEDICAL_RECORDS_REQUEST = "medical_records_request"
-    BILLING_INSURANCE_ENQUIRY = "billing_insurance_enquiry"
-    COMPLAINT_ESCALATION = "complaint_escalation"
-    GENERAL_ADMINISTRATIVE = "general_administrative"
-    URGENT_EMERGENCY = "urgent_emergency"
-
+from app.models.task import TaskCategory
+from app.models.user import UserRole  # noqa: F401
 
 _CATEGORY_TO_ROLE: dict[TaskCategory, UserRole] = {
     TaskCategory.APPOINTMENT_REQUEST: UserRole.FRONT_DESK,

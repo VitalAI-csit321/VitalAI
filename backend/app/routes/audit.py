@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import require_permission
 from app.auth.permissions import READ_AUDIT
 from app.database import get_db
-from app.models.case import IntakeCase
 from app.models.user import User
 from app.schemas.audit import AuditEventListResponse, AuditEventOut
 from app.services import audit_service
@@ -45,23 +44,6 @@ async def list_audit_events(
         limit=limit,
         offset=offset,
     )
-
-    await audit_service.record_event(
-        db,
-        actor=actor,
-        action="audit.list_read",
-        details={
-            "filters": {
-                "actor_id": str(actor_id) if actor_id else None,
-                "action": action,
-                "risk_level": risk_level,
-                "outcome": outcome,
-                "case_id": str(case_id) if case_id else None,
-            },
-            "format": format or "json",
-        },
-    )
-    await db.commit()
 
     if format == "csv":
         buffer = io.StringIO()
@@ -119,24 +101,7 @@ async def get_audit_for_case(
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_permission(READ_AUDIT)),
 ):
-    events = await audit_service.get_events_for_case(db, case_id)
-
-    # audit_events.case_id has a real FK to intake_cases, so a read against a
-    # case_id that doesn't exist (a typo, a stale link, deliberate probing)
-    # can't be attached to that column without violating the constraint. The
-    # read attempt is still logged either way; the attempted id always lands
-    # in details, which carries no FK.
-    case_exists = await db.get(IntakeCase, case_id) is not None
-    await audit_service.record_event(
-        db,
-        actor=actor,
-        action="audit.read",
-        case_id=case_id if case_exists else None,
-        details={"case_id": str(case_id)},
-    )
-    await db.commit()
-
-    return events
+    return await audit_service.get_events_for_case(db, case_id)
 
 
 @router.get("/{event_id}", response_model=AuditEventOut)
@@ -148,13 +113,5 @@ async def get_audit_event(
     event = await audit_service.get_event_by_id(db, event_id)
     if event is None:
         raise HTTPException(status_code=404, detail="Audit event not found")
-
-    await audit_service.record_event(
-        db,
-        actor=actor,
-        action="audit.event_read",
-        details={"event_id": str(event_id)},
-    )
-    await db.commit()
 
     return event

@@ -3,7 +3,7 @@ from app.models.approval import ApprovalStatus
 from app.models.case import IntakeStatus
 from app.models.clinical_document import ClinicalDocType
 from app.models.consent import ConsentStatus
-from app.models.human_review import TaskStatus, TaskType
+from app.models.human_review import TaskPriority, TaskStatus, TaskType
 from app.models.patient import Gender, PatientStatus
 from app.models.routing import RoutingAction
 from app.models.triage import TriageCategory
@@ -22,4 +22,5 @@ __all__ = [
     "ClinicalDocType",
     "TaskType",
     "TaskStatus",
+    "TaskPriority",
 ]

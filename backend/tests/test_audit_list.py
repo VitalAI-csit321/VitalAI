@@ -1,6 +1,6 @@
 from httpx import AsyncClient
 
-from app.models import Patient, User
+from app.models import Patient
 
 
 async def test_list_audit_events_requires_read_audit_permission(
@@ -63,27 +63,12 @@ async def test_list_audit_events_filters_by_risk_level(
     assert all(item["risk_level"] == "High" for item in body["items"])
 
 
-async def test_listing_audit_events_is_itself_logged(
-    client: AsyncClient, admin_headers: dict, admin_user: User, db_session
-):
-    from sqlalchemy import select
-
-    from app.models.audit import AuditEvent
-
+async def test_listing_audit_events_is_not_itself_logged(client: AsyncClient, admin_headers: dict):
     await client.get("/api/v1/audit", headers=admin_headers)
 
-    events = (
-        (
-            await db_session.execute(
-                select(AuditEvent).where(
-                    AuditEvent.action == "audit.list_read", AuditEvent.actor_id == admin_user.id
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    assert len(events) == 1
+    response = await client.get("/api/v1/audit", headers=admin_headers)
+    actions = [item["action"] for item in response.json()["items"]]
+    assert "audit.list_read" not in actions
 
 
 async def test_list_audit_events_csv_export(

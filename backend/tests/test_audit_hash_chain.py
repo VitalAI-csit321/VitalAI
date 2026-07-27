@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
@@ -212,3 +213,47 @@ async def test_action_shape_constraint_rejects_bad_action(pg_session: AsyncSessi
             )
         )
         await pg_session.flush()
+
+
+@_needs_postgres
+async def test_verify_chain_survives_out_of_order_timestamps(
+    pg_session: AsyncSession, chain_case: IntakeCase, chain_actor: User
+):
+    """The chain must link by true insert order (sequence_number), not by the
+    client-assigned `timestamp` column, since the two can diverge under
+    concurrent writers.
+
+    Regression test for a real bug found on the shared dev DB: the old
+    trigger picked its "predecessor" via `ORDER BY timestamp DESC, id DESC`,
+    so a row inserted first but stamped with a *later* timestamp than a row
+    inserted after it would corrupt the chain's logical shape (confirmed via
+    a stored predecessor_hash pointing at a row timestamped after it).
+    Reproduces that exact ordering here directly via raw SQL, which lets the
+    two inserts specify timestamps independent of real insert order.
+    """
+    later_ts = datetime.now(UTC) + timedelta(seconds=5)
+    earlier_ts = datetime.now(UTC) - timedelta(seconds=5)
+
+    # Inserted FIRST but stamped with the LATER timestamp.
+    await pg_session.execute(
+        text(
+            "INSERT INTO audit_events (id, case_id, actor_id, actor_label, action, details, timestamp) "
+            "VALUES (gen_random_uuid(), :case_id, :actor_id, 'system', 'test.race_later_ts_first', '{}'::jsonb, :ts)"
+        ),
+        {"case_id": chain_case.id, "actor_id": chain_actor.id, "ts": later_ts},
+    )
+    # Inserted SECOND but stamped with the EARLIER timestamp.
+    await pg_session.execute(
+        text(
+            "INSERT INTO audit_events (id, case_id, actor_id, actor_label, action, details, timestamp) "
+            "VALUES (gen_random_uuid(), :case_id, :actor_id, 'system', 'test.race_earlier_ts_second', '{}'::jsonb, :ts)"
+        ),
+        {"case_id": chain_case.id, "actor_id": chain_actor.id, "ts": earlier_ts},
+    )
+    await pg_session.commit()
+
+    result = await pg_session.execute(
+        text("SELECT valid, first_break_event_id FROM verify_audit_chain()")
+    )
+    row = result.one()
+    assert row.valid is True, f"chain broke at {row.first_break_event_id}"

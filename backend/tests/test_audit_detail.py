@@ -44,13 +44,9 @@ async def test_get_audit_event_not_found(client: AsyncClient, admin_headers: dic
     assert response.status_code == 404
 
 
-async def test_getting_audit_event_is_itself_logged(
-    client: AsyncClient, admin_headers: dict, admin_user, patient: Patient, db_session
+async def test_getting_audit_event_is_not_itself_logged(
+    client: AsyncClient, admin_headers: dict, patient: Patient
 ):
-    from sqlalchemy import select
-
-    from app.models.audit import AuditEvent
-
     await client.post(
         "/api/v1/intake",
         json={"patient_id": str(patient.id), "contact_reason": "Visit", "contact_channel": "phone"},
@@ -61,15 +57,6 @@ async def test_getting_audit_event_is_itself_logged(
 
     await client.get(f"/api/v1/audit/{event_id}", headers=admin_headers)
 
-    events = (
-        (
-            await db_session.execute(
-                select(AuditEvent).where(
-                    AuditEvent.action == "audit.event_read", AuditEvent.actor_id == admin_user.id
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-    assert len(events) == 1
+    response = await client.get("/api/v1/audit", headers=admin_headers)
+    actions = [item["action"] for item in response.json()["items"]]
+    assert "audit.event_read" not in actions
