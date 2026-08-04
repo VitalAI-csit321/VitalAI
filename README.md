@@ -1,17 +1,39 @@
-# CSIT321 Capstone Monorepo
+# Feature Branch: Appointment Model
 
-This repository is organised as a monorepo. Each top-level directory is a self-contained service or workspace.
+## Purpose
 
-## Structure
+This branch introduces the appointment domain model used by the VitalAI backend. It establishes the database entities, schemas, and supporting components required for appointment scheduling and management.
 
-```
-/
-├── backend/     FastAPI backend- see backend/README.md for setup and API reference
-├── frontend/    Frontend
-├── docs/        Project documentation
-└── .github/     CI pipelines
-```
+## Objectives
 
-## Quick start
+- Introduce the Appointment model.
+- Define appointment status lifecycle.
+- Integrate appointments with existing users and intake cases.
+- Support future scheduling APIs.
+- Prepare the database schema through Alembic migrations.
 
-See [backend/README.md](backend/README.md) for the backend service.
+## Main Components
+
+- Appointment SQLAlchemy model
+- Appointment status enumeration
+- Database migration
+- Model registration
+- Supporting schemas
+
+## Integration
+
+This branch provides the foundation for:
+
+- Appointment booking
+- Appointment management
+- Calendar integration
+- Clinical scheduling workflows
+
+## Status
+
+Completed feature branch.
+Integrated into the project as the foundation for appointment functionality.
+
+## Notes
+
+This branch focuses on the data model only. Business logic and scheduling workflows are implemented in later feature branches.
