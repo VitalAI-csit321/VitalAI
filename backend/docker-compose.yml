@@ -72,6 +72,14 @@ services:
     volumes:
       - ollama_data:/root/.ollama
 
+  adminer:
+    image: adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   redis_data:
