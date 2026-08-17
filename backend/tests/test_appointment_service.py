@@ -166,17 +166,17 @@ async def test_reschedule_appointment_updates_time_slot(db_session: AsyncSession
     # wall-clock value is unchanged; normalize both sides before comparing.
     assert updated.time_slot.replace(tzinfo=None) == new_slot.replace(tzinfo=None)
     events = (
-    (
-        await db_session.execute(
-            select(AuditEvent).where(
-                AuditEvent.action == "appointment.rescheduled",
-                AuditEvent.case_id == case.id,
+        (
+            await db_session.execute(
+                select(AuditEvent).where(
+                    AuditEvent.action == "appointment.rescheduled",
+                    AuditEvent.case_id == case.id,
+                )
             )
         )
+        .scalars()
+        .all()
     )
-    .scalars()
-    .all()
-)
 
     assert len(events) == 1
     assert events[0].actor_id == admin.id

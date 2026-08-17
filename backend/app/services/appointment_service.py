@@ -31,8 +31,10 @@ class SlotTakenError(Exception):
 class AppointmentStateError(Exception):
     """Raised when rescheduling/cancelling an appointment in an illegal state."""
 
+
 class DoctorPatientAccessError(Exception):
     """Raised when a Doctor tries to manage a patient who is not assigned to them."""
+
 
 async def book_appointment(
     db: AsyncSession, doctor_id: UUID, case_id: UUID, time_slot: datetime, actor: User
@@ -89,34 +91,34 @@ async def book_appointment(
 async def list_appointments(
     db: AsyncSession, actor: User, doctor_id: UUID | None = None, limit: int = 20, offset: int = 0
 ) -> tuple[list[Appointment], int]:
-        query = select(Appointment)
-        count_query = select(func.count()).select_from(Appointment)
+    query = select(Appointment)
+    count_query = select(func.count()).select_from(Appointment)
 
-        if doctor_id is not None:
-            query = query.where(Appointment.doctor_id == doctor_id)
-            count_query = count_query.where(Appointment.doctor_id == doctor_id)
+    if doctor_id is not None:
+        query = query.where(Appointment.doctor_id == doctor_id)
+        count_query = count_query.where(Appointment.doctor_id == doctor_id)
 
-        if actor.role == UserRole.DOCTOR:
-            assigned_patient_ids = assigned_patient_ids_subquery(actor.id)
+    if actor.role == UserRole.DOCTOR:
+        assigned_patient_ids = assigned_patient_ids_subquery(actor.id)
 
-            query = query.join(
-                IntakeCase,
-                Appointment.case_id == IntakeCase.id,
-            ).where(IntakeCase.patient_id.in_(assigned_patient_ids))
+        query = query.join(
+            IntakeCase,
+            Appointment.case_id == IntakeCase.id,
+        ).where(IntakeCase.patient_id.in_(assigned_patient_ids))
 
-            count_query = count_query.join(
-                IntakeCase,
-                Appointment.case_id == IntakeCase.id,
-            ).where(IntakeCase.patient_id.in_(assigned_patient_ids))
+        count_query = count_query.join(
+            IntakeCase,
+            Appointment.case_id == IntakeCase.id,
+        ).where(IntakeCase.patient_id.in_(assigned_patient_ids))
 
-        items_result = await db.execute(
-            query.order_by(Appointment.time_slot.asc()).limit(limit).offset(offset)
-        )
-        items = list(items_result.scalars().all())
+    items_result = await db.execute(
+        query.order_by(Appointment.time_slot.asc()).limit(limit).offset(offset)
+    )
+    items = list(items_result.scalars().all())
 
-        total = (await db.execute(count_query)).scalar_one()
+    total = (await db.execute(count_query)).scalar_one()
 
-        return items, total
+    return items, total
 
 
 async def _get_scoped(
