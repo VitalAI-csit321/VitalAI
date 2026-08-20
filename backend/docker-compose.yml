@@ -31,7 +31,13 @@ services:
   minio:
     image: minio/minio
     ports:
-      - "9000:9000"
+      # Host side only (9002), not the container's internal 9000: this
+      # machine already has another service (a local Hadoop NameNode)
+      # bound to host port 9000, which silently corrupted PUT/write
+      # requests forwarded through Docker's proxy for that port. Only
+      # affects host access; compose-internal traffic still uses
+      # minio:9000 (see MINIO_ENDPOINT's default in app/config.py).
+      - "9002:9000"
       - "9001:9001"
     environment:
       MINIO_ROOT_USER: minioadmin
