@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutGrid, Users as UsersIcon, FileText, FolderClosed, Mail, ClipboardList, AlertTriangle, ShieldCheck, UserCog, Settings } from "lucide-react";
+import { LayoutGrid, Users as UsersIcon, FileText, FolderClosed, Mail, ClipboardList, AlertTriangle, ShieldCheck, UserCog, Settings, CalendarDays } from "lucide-react";
 import { useAuth } from "../lib/auth";
 import { Avatar } from "./ui";
 import type { Role } from "../api/types";
@@ -15,6 +15,7 @@ const NAV: { to: string; label: string; icon: typeof LayoutGrid; roles?: Role[] 
   { to: "/audit", label: "Audit", icon: ShieldCheck, roles: ["admin"] },
   { to: "/users", label: "Users", icon: UserCog, roles: ["admin"] },
   { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/calendar", label: "Calendar", icon: CalendarDays },
 ];
 
 function initialsOf(name: string): string {

@@ -28,6 +28,10 @@ import { AuditPage } from "./pages/AuditPage";
 import { AuditEventDetailPage } from "./pages/AuditEventDetailPage";
 import { UsersPage } from "./pages/UsersPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { CalendarPage } from "./pages/CalendarPage";
+import { AppointmentDetailPage } from "./pages/AppointmentDetailPage";
+import { AppointmentEditPage } from "./pages/AppointmentEditPage";
+import { AppointmentNewPage } from "./pages/AppointmentNewPage";
 
 // Platform Operations (separate shell)
 import {
@@ -126,6 +130,12 @@ export default function App() {
 
             {/* Settings */}
             <Route path="/settings" element={<SettingsPage />} />
+
+            {/* Calendar */}
+            <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/calendar/new" element={<AppointmentNewPage />} />
+            <Route path="/calendar/:id" element={<AppointmentDetailPage />} />
+            <Route path="/calendar/:id/edit" element={<AppointmentEditPage />} />
           </Route>
 
           {/* Catch-all */}

@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { getToken } from "./apiClient";
+import { isDemoMode } from "./demoMode";
+import { demoUser } from "../data/demoData";
 import { getMe, login as apiLogin, logout as apiLogout } from "../api/auth";
 import type { CurrentUser } from "../api/types";
 
@@ -13,10 +15,11 @@ interface AuthState {
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<CurrentUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<CurrentUser | null>(isDemoMode() ? demoUser : null);
+  const [loading, setLoading] = useState(!isDemoMode());
 
   useEffect(() => {
+    if (isDemoMode()) return;
     let active = true;
     async function bootstrap() {
       if (!getToken()) {
@@ -39,11 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function login(email: string, password: string) {
+    if (isDemoMode()) { setUser(demoUser); return; }
     const me = await apiLogin(email, password);
     setUser(me);
   }
 
   function logout() {
+    if (isDemoMode()) { setUser(null); return; }
     apiLogout();
     setUser(null);
   }

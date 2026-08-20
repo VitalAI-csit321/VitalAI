@@ -109,11 +109,52 @@ export interface DashboardSummary {
   pendingReviews: { id: string; name: string; kind: string; isNew: boolean }[];
 }
 
-export type AppointmentStatus = "suggested" | "confirmed" | "cancelled";
+export type AppointmentStatus = "pending" | "confirmed" | "cancelled" | "completed";
+export type AppointmentType = "new_patient" | "follow_up" | "procedure" | "other";
+
 export interface Appointment {
-  id: string; caseId: string; doctorId: string; timeSlot: string;
-  status: AppointmentStatus; createdAt: string; updatedAt: string;
+  id: string; caseId: string; doctorId: string; timeSlot: string; endTime: string;
+  durationMinutes: number; appointmentType: AppointmentType; location: string | null;
+  reason: string | null; internalNotes: string | null; status: AppointmentStatus;
+  referenceCode: string; notifyPatient: boolean; notifyProvider: boolean;
+  seriesId: string | null; createdAt: string; updatedAt: string;
+  doctorName: string | null; patientName: string | null; patientMrn: string | null;
 }
+
+export interface AppointmentPatientSummary {
+  id: string | null; mrn: string | null; name: string; dob: string | null; gender: Gender | null;
+}
+
+export interface AppointmentConsentSummary { status: string; capturedAt: string | null; }
+
+export interface AppointmentHistoryEntry {
+  action: string; label: string; actorLabel: string | null; timestamp: string; details: Record<string, unknown>;
+}
+
+export interface AppointmentDetail extends Appointment {
+  patient: AppointmentPatientSummary | null;
+  consent: AppointmentConsentSummary | null;
+  history: AppointmentHistoryEntry[];
+}
+
+export interface Doctor { id: string; fullName: string; department: string | null; }
+
+export interface CalendarStats {
+  scheduled: number; pendingConfirmation: number; confirmedToday: number; cancellations: number;
+}
+
+export interface CalendarDayCell { date: string; appointments: Appointment[]; total: number; }
+export interface CalendarMonth { year: number; month: number; stats: CalendarStats; days: CalendarDayCell[]; }
+export interface CalendarMonthMarker { date: string; count: number; }
+
+export interface ProviderDayLoad { doctorId: string; doctorName: string; appointmentCount: number; }
+export interface DayView {
+  date: string; stats: CalendarStats; appointments: Appointment[];
+  totalBookedMinutes: number; statusBreakdown: Record<string, number>; providers: ProviderDayLoad[];
+}
+
+export interface AvailabilitySlot { start: string; end: string; available: boolean; }
+export interface Availability { doctorId: string; date: string; slotMinutes: number; slots: AvailabilitySlot[]; }
 
 export interface RagCitation {
   chunkId: string; sourceDocumentId: string; docType: string; content: string; score: number;
