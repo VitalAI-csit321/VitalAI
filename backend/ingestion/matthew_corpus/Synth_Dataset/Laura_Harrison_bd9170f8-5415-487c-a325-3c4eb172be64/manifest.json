@@ -1,0 +1,68 @@
+{
+  "patient_id": "bd9170f8-5415-487c-a325-3c4eb172be64",
+  "name": "Laura Harrison",
+  "dob": "2012-11-24",
+  "gender": "Female",
+  "archetype": "acute_general",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [
+    "Bee stings"
+  ],
+  "assigned_doctor": "Dr Samuel Osei",
+  "assigned_doctor_id": "doctor06",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-06-10.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-06-10"
+    },
+    {
+      "filename": "prescription_2025-06-10.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-06-10"
+    },
+    {
+      "filename": "consultation_2026-01-01.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-01"
+    },
+    {
+      "filename": "prescription_2026-01-01.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-01"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-06-10"
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "patient_id": "1b94aca6-0e55-4ac1-b9ec-b31184fd58cb",
+  "name": "Richard Shields",
+  "dob": "1995-02-05",
+  "gender": "Male",
+  "archetype": "sports_injury",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr Marcus O'Connell",
+  "assigned_doctor_id": "doctor04",
+  "note_style": "terse",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-01-09.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-09"
+    },
+    {
+      "filename": "prescription_2025-01-09.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-09"
+    },
+    {
+      "filename": "referral_2025-01-09.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-01-09"
+    },
+    {
+      "filename": "specialist_letter_2025-02-27.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-02-27"
+    },
+    {
+      "filename": "imaging_2025-01-23.txt",
+      "doc_type": "external_imaging_report",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-01-23"
+    },
+    {
+      "filename": "consultation_2026-07-09.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-07-09"
+    },
+    {
+      "filename": "prescription_2026-07-09.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-07-09"
+    },
+    {
+      "filename": "imaging_2026-07-16.txt",
+      "doc_type": "external_imaging_report",
+      "classification": "High",
+      "source": "external",
+      "date": "2026-07-16"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-01-09"
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "patient_id": "812507f6-922f-4d88-a187-988cdc630493",
+  "name": "Dawn Ramsey",
+  "dob": "1943-11-26",
+  "gender": "Female",
+  "archetype": "skin_check",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": "2026-03-04",
+  "allergies": [
+    "Latex"
+  ],
+  "assigned_doctor": "Dr David Nguyen",
+  "assigned_doctor_id": "doctor02",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "hospital_discharge_2026-03-04.txt",
+      "doc_type": "hospital_discharge_summary",
+      "classification": "High",
+      "source": "external",
+      "date": "2026-03-04"
+    },
+    {
+      "filename": "consultation_2025-05-26.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-05-26"
+    },
+    {
+      "filename": "referral_2025-05-26.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-05-26"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-05-26"
+    }
+  ]
+}

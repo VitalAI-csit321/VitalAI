@@ -1,0 +1,89 @@
+{
+  "patient_id": "260b9a37-37d2-471e-be9c-c73a516c9d88",
+  "name": "Alice Nunez",
+  "dob": "1984-03-15",
+  "gender": "Female",
+  "archetype": "asthma",
+  "chronic_conditions": [
+    "Asthma"
+  ],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr Aisha Rahman",
+  "assigned_doctor_id": "doctor01",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-09-12.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-09-12"
+    },
+    {
+      "filename": "prescription_2025-09-12.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-09-12"
+    },
+    {
+      "filename": "pathology_2025-09-12_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-09-12"
+    },
+    {
+      "filename": "consultation_2025-10-26.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-26"
+    },
+    {
+      "filename": "prescription_2025-10-26.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-26"
+    },
+    {
+      "filename": "consultation_2026-07-09.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-07-09"
+    },
+    {
+      "filename": "prescription_2026-07-09.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-07-09"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-09-12"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Christopher Mitchell
+DOB: 1950-02-17
+Date collected: 25/06/2025
+Requested by: Dr Samuel Osei
+
+TFT
+
+Test     Result    Unit          Ref Range     Flag
+TSH      4.4       mIU/L         0.4-4.0       H
+Free T4  12.4      pmol/L        10-20         -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

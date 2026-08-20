@@ -1,0 +1,16 @@
+Pathology Report
+
+Patient: Matthew Ruiz
+DOB: 1985-01-13
+Date collected: 12/04/2025
+Requested by: Dr David Nguyen
+
+Iron Studies
+
+Test                    Result    Unit          Ref Range     Flag
+Iron                    3         umol/L        6-32          L
+Transferrin             2.9       g/L           2.0-3.6       -
+Transferrin Saturation  9         %             10-50         L
+Ferritin                21        ug/L          30-300        L
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

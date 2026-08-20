@@ -11,9 +11,12 @@ Runs the full Synth_Dataset corpus (100 patients), one patient at a time, each i
 its own delete-then-insert transaction so a single bad patient can't roll back
 everyone else's data. Not a modification to any existing module, ingestion or app.rag.
 
-doc_type is set to the filename stem verbatim (consultation, prescription,
-pathology_report, registration_form, appointment_history). It is not mapped onto the
-baseline synthetic corpus vocabulary (clinical_note, lab_result, ...); that
+doc_type comes from the patient's manifest.json (per-file "doc_type" field), written by
+the longitudinal generator in "Dataset Generator Code/Dataset_Generator.py". Older
+corpora with no manifest.json fall back to the filename stem verbatim (consultation,
+prescription, pathology_report, registration_form, appointment_history), which is how
+the original 5-doc-type generator's output still ingests unchanged. Neither is mapped
+onto the baseline synthetic corpus vocabulary (clinical_note, lab_result, ...); that
 reconciliation is separate, open work.
 
 access_scope comes from DOC_TYPE_TO_SCOPE below, the single source of truth for the
@@ -29,6 +32,7 @@ Usage (against the docker-compose db, migrated to head):
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import re
 import sys
@@ -58,18 +62,41 @@ EMBEDDING_DIM = 512
 # its value) lands in one chunk instead of splitting across two.
 CHUNK_SIZE = 500
 
-# Ratified access_scope vocabulary, keyed on doc_type (not folder label). The
-# generator emits exactly five doc_types, confirmed by listing the dataset on disk.
-# The sensitive tier stays defined in the vocabulary but no current doc_type maps to
-# it, because the generator emits no sensitive document class yet. An unknown or
-# unmapped doc_type fails closed to restricted, never general, so an unrecognised
-# clinical document cannot leak to all staff.
+# Ratified access_scope vocabulary, keyed on doc_type (not folder label). Covers both
+# the original 5-doc-type generator (bare filename stems: consultation, ...) and the
+# longitudinal generator's manifest doc_types (consultation_note, ...), mirroring that
+# generator's own DOC_CLASSIFICATION tiers: Low/Medium -> general, High -> restricted,
+# Critical -> sensitive. An unknown or unmapped doc_type fails closed to restricted,
+# never general, so an unrecognised clinical document cannot leak to all staff.
 DOC_TYPE_TO_SCOPE = {
     "consultation": "restricted",
+    "consultation_note": "restricted",
     "pathology_report": "restricted",
     "prescription": "restricted",
     "registration_form": "general",
     "appointment_history": "general",
+    "referral_letter": "general",
+    "care_plan": "restricted",
+    "specialist_letter": "restricted",
+    "hospital_discharge_summary": "restricted",
+    "external_imaging_report": "restricted",
+    "consent_record": "sensitive",
+    # Org-wide (patient_id=NULL) doc types, ingested by scripts/ingest_org_profile.py
+    # from "Organization Profile Review/". general = patient-facing, safe to quote
+    # (the only org scope email_service.draft_reply's allowed_scopes=["general",
+    # "restricted"] and /rag/query can both legitimately surface to a patient).
+    # routing_rules/staff_directory/data_classification/guardrails are internal-only
+    # (login usernames, routing internals) with no legitimate reason to reach a
+    # patient reply, so they're "sensitive" -- a separate tier from the "restricted"
+    # clinical-patient-data scope, unreachable by any current retrieval caller
+    # (app.auth.scoping.allowed_scopes() never grants "sensitive"). Deliberately
+    # inert until a future system-level caller opts into "sensitive" explicitly.
+    "clinic_identity": "general",
+    "policy_faq": "general",
+    "routing_rules": "sensitive",
+    "staff_directory": "sensitive",
+    "data_classification": "sensitive",
+    "guardrails": "sensitive",
 }
 
 _UUID_RE = re.compile(
@@ -98,8 +125,17 @@ def _list_patient_files(patient_dir: Path) -> list[Path]:
     return sorted(files)
 
 
+def _load_manifest_doc_types(patient_dir: Path) -> dict[str, str]:
+    """filename -> doc_type from the patient's manifest.json, if the generator wrote one."""
+    manifest_path = patient_dir / "manifest.json"
+    if not manifest_path.exists():
+        return {}
+    manifest = json.loads(manifest_path.read_text())
+    return {doc["filename"]: doc["doc_type"] for doc in manifest.get("documents", [])}
+
+
 async def ingest_file(
-    session: AsyncSession, file_path: Path, provider: EmbeddingProvider
+    session: AsyncSession, file_path: Path, provider: EmbeddingProvider, doc_type: str
 ) -> int:
     """Run the loader/cleaner/chunker unchanged, then embed and insert for real."""
     raw_ref = load_document.remote(str(file_path))
@@ -108,7 +144,6 @@ async def ingest_file(
     chunked = ray.get(chunked_ref)
 
     patient_id = _extract_patient_uuid(chunked["patient_id"])
-    doc_type = file_path.stem
     access_scope = _access_scope_for_doc_type(doc_type)
     source_document_id = uuid.uuid4()
     citation_tag = f"{str(patient_id)[:8]}_{doc_type}"
@@ -144,10 +179,12 @@ async def ingest_patient(session: AsyncSession, patient_dir: Path) -> int:
     patient_id = _extract_patient_uuid(patient_dir.name)
     await session.execute(delete(Chunk).where(Chunk.patient_id == patient_id))
 
+    manifest_doc_types = _load_manifest_doc_types(patient_dir)
     provider = get_embedding_provider()
     total = 0
     for file_path in _list_patient_files(patient_dir):
-        total += await ingest_file(session, file_path, provider)
+        doc_type = manifest_doc_types.get(file_path.name, file_path.stem)
+        total += await ingest_file(session, file_path, provider, doc_type)
 
     await session.commit()
     return total

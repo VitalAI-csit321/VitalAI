@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Kathryn Gonzalez
+DOB: 2006-05-17
+Date: 11/11/2024
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

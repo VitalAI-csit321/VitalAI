@@ -1,0 +1,16 @@
+Prescription
+
+Patient: Jennifer Bowman
+DOB: 1959-08-31
+Date: 07/08/2026
+Prescribed by: Dr David Nguyen
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 60  Repeats: 5
+Reviewed today, no change.
+
+Levothyroxine 50mcg
+Take 1 tablet once daily on an empty stomach.
+Quantity: 30  Repeats: 5
+Continuing current dose, well tolerated.

@@ -1,0 +1,16 @@
+Pathology Report
+
+Patient: Sean Schmidt
+DOB: 1958-08-27
+Date collected: 05/12/2025
+Requested by: Dr Priya Menon
+
+Iron Studies
+
+Test                    Result    Unit          Ref Range     Flag
+Iron                    5         umol/L        6-32          L
+Transferrin             2.4       g/L           2.0-3.6       -
+Transferrin Saturation  6         %             10-50         L
+Ferritin                13        ug/L          30-300        L
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

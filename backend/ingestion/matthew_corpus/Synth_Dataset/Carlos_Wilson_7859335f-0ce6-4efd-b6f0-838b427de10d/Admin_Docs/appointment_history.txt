@@ -1,7 +1,0 @@
-
-Appointment History
-
-19/11/2024 - Health Check
-15/02/2025 - Blood Test
-21/10/2025 - Specialist Referral
-04/03/2026 - Specialist Referral

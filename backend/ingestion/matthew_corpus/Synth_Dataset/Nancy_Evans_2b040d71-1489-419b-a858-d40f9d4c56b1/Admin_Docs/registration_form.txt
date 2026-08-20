@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Nancy Evans
+DOB: 2008-05-23
+Gender: Female
+Phone: (08).9470.5516
+Email: laura09@example.com
+Address: 0 Jackson Run, Hernandezbury, ACT, 5130
+
+Medicare number: 7980 83246/2
+IHI: 8003923773760494
+Concession card: Health Care Card
+
+Emergency contact: Jason Gutierrez, 08.8970.2838
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Current smoker, 5-10 cigarettes/day
+Alcohol use: Nil
+Occupation: Journalist, broadcasting
+Allergies: No known drug allergies
+Assigned doctor: Dr Aisha Rahman

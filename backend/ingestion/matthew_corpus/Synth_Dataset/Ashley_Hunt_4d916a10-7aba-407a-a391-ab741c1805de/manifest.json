@@ -1,0 +1,66 @@
+{
+  "patient_id": "4d916a10-7aba-407a-a391-ab741c1805de",
+  "name": "Ashley Hunt",
+  "dob": "2016-05-17",
+  "gender": "Female",
+  "archetype": "paediatric_immunisation",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": "2025-02-22",
+  "allergies": [],
+  "assigned_doctor": "Dr Hannah Fitzgerald",
+  "assigned_doctor_id": "doctor05",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "hospital_discharge_2025-02-22.txt",
+      "doc_type": "hospital_discharge_summary",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-02-22"
+    },
+    {
+      "filename": "consultation_2024-12-26.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-12-26"
+    },
+    {
+      "filename": "consultation_2026-04-22.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-04-22"
+    },
+    {
+      "filename": "consultation_2026-05-18.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-05-18"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-12-26"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+Pathology Report
+
+Patient: Kathryn Gonzalez
+DOB: 2006-05-17
+Date collected: 11/11/2024
+Requested by: Dr Aisha Rahman
+
+Iron Studies
+
+Test                    Result    Unit          Ref Range     Flag
+Iron                    3         umol/L        6-32          L
+Transferrin             2.8       g/L           2.0-3.6       -
+Transferrin Saturation  7         %             10-50         L
+Ferritin                11        ug/L          13-150        L
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

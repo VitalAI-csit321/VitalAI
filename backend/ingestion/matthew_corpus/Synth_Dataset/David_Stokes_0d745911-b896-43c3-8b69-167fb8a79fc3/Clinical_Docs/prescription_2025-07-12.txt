@@ -1,0 +1,11 @@
+Prescription
+
+Patient: David Stokes
+DOB: 1946-07-06
+Date: 12/07/2025
+Prescribed by: Dr David Nguyen
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 90  Repeats: 2
+Reviewed today, no change.

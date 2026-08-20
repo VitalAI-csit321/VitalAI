@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Angela Cole
+DOB: 1991-11-18
+Gender: Female
+Phone: (02)83046990
+Email: lopezkathleen@example.net
+Address: Unit 54 331 Rocha Tollway, Port Rose, TAS, 2926
+
+Medicare number: 6329 64576/2
+IHI: 8003649669639935
+Concession card: None
+
+Emergency contact: Matthew Parker, (08)71753556
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Armed forces technical officer
+Allergies: No known drug allergies
+Assigned doctor: Dr Aisha Rahman

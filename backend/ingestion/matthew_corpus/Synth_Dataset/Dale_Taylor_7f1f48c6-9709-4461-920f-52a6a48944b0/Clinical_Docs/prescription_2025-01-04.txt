@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Dale Taylor
+DOB: 1998-09-02
+Date: 04/01/2025
+Prescribed by: Dr Marcus O'Connell
+
+Ibuprofen 400mg
+Take 1 tablet every 8 hours with food as needed.
+Quantity: 30  Repeats: 4

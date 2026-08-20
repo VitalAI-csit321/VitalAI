@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Rebecca Davis
+DOB: 1943-05-22
+Date collected: 16/11/2024
+Requested by: Dr Samuel Osei
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            16.5      %             4.5-11.0      H
+Fasting Glucose  10.2      mmol/L        3.5-15.0      -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

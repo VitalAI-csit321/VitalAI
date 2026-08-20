@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Thomas Rodriguez
+DOB: 1979-07-03
+Date: 08/09/2024
+Prescribed by: Dr Priya Menon
+
+Salbutamol Inhaler 100mcg
+Inhale 2 puffs as needed for shortness of breath.
+Quantity: 60  Repeats: 0

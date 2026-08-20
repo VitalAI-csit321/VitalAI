@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Thomas Weaver
+DOB: 1979-12-04
+Gender: Male
+Phone: +61-408-010-062
+Email: carloshernandez@example.org
+Address: Apt. 997 7 Adam Ride, Smithhaven, SA, 4408
+
+Medicare number: 0050 54595/9
+IHI: 8003856138581503
+Concession card: None
+
+Emergency contact: Megan Drake, 02-1823-3984
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Current smoker, 5-10 cigarettes/day
+Alcohol use: Moderate, 5-10 standard drinks/week
+Occupation: Manufacturing systems engineer
+Allergies: Bee stings
+Assigned doctor: Dr Priya Menon

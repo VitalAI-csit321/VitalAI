@@ -1,0 +1,8 @@
+Appointment History
+
+Patient: Thomas Johnson
+
+21/12/2024 - Blood Test - Dr David Nguyen
+03/12/2025 - Follow-up Review - Dr David Nguyen
+04/01/2026 - Follow-up Review - Dr David Nguyen
+25/07/2026 - Blood Test - Dr David Nguyen

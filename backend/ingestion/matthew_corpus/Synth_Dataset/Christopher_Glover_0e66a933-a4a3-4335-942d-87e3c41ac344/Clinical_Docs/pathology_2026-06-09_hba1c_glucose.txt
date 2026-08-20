@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Christopher Glover
+DOB: 1967-02-19
+Date collected: 09/06/2026
+Requested by: Dr David Nguyen
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            12.4      %             4.5-11.0      H
+Fasting Glucose  18.3      mmol/L        3.5-15.0      H
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

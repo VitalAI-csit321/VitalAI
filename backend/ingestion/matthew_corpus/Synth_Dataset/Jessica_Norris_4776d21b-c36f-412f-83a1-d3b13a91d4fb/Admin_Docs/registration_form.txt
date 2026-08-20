@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Jessica Norris
+DOB: 1968-05-06
+Gender: Female
+Phone: (08)05964016
+Email: william20@example.org
+Address: 135 Reyes Ring, West Erikastad, TAS, 2611
+
+Medicare number: 2772 39977/9
+IHI: 8003720423889068
+Concession card: None
+
+Emergency contact: Kendra Sanders, +61-443-102-786
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Moderate, 5-10 standard drinks/week
+Occupation: Surveyor, planning and development
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

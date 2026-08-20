@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Lee Schwartz
+DOB: 1967-06-29
+Date: 18/12/2025
+Seen by: Dr Priya Menon
+
+Known conditions: Osteoarthritis
+Allergies: No known drug allergies
+
+Vitals: BP 105/73 mmHg, Weight 80.3 kg
+
+Chief Complaint:
+Joint stiffness and aching, worse in the mornings.
+
+Assessment:
+Consistent with osteoarthritis.
+
+Plan:
+- Continue current medication
+- Review in 3 months
+- Weight management advice

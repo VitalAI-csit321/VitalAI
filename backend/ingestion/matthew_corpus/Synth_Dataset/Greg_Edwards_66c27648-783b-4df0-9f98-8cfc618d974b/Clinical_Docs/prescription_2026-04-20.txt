@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Greg Edwards
+DOB: 1960-11-05
+Date: 20/04/2026
+Prescribed by: Dr Priya Menon
+
+Salbutamol Inhaler 100mcg
+Inhale 2 puffs as needed for shortness of breath.
+Quantity: 90  Repeats: 2

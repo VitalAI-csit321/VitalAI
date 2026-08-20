@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Sean Schmidt
+DOB: 1958-08-27
+Date: 05/12/2025
+Prescribed by: Dr Priya Menon
+
+Ferro-Grad C 325mg
+Take 1 tablet once daily with food.
+Quantity: 30  Repeats: 5

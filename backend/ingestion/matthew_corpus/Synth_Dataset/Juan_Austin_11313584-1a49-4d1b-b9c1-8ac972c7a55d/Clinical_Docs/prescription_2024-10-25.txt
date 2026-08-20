@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Juan Austin
+DOB: 1991-01-09
+Date: 25/10/2024
+Prescribed by: Dr Marcus O'Connell
+
+Ibuprofen 400mg
+Take 1 tablet every 8 hours with food as needed.
+Quantity: 30  Repeats: 1

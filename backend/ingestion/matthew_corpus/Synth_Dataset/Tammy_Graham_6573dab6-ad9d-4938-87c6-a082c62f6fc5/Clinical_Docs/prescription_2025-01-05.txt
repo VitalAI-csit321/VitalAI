@@ -1,0 +1,19 @@
+Prescription
+
+Patient: Tammy Graham
+DOB: 1934-05-28
+Date: 05/01/2025
+Prescribed by: Dr Samuel Osei
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 30  Repeats: 3
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 60  Repeats: 0
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 90  Repeats: 1
+Reviewed today, no change.

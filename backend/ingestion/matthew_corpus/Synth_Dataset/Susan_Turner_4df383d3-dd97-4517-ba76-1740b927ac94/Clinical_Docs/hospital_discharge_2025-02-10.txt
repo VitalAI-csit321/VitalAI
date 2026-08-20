@@ -1,0 +1,16 @@
+HARBOURVIEW HOSPITAL
+EMERGENCY DEPARTMENT DISCHARGE SUMMARY
+
+UR Number: UR2042273
+Patient: TURNER, Susan
+DOB: 31/12/2009
+Presented: 10/02/2025
+Discharged: 12/02/2025
+
+Presenting complaint: Gastroenteritis, dehydration
+
+Findings: Mild dehydration, responded to IV fluids.
+
+Management: Discharged, advised oral rehydration.
+
+Discharge plan: Follow up with regular GP within one week. Copy forwarded to GreenCare Family Medical Clinic.

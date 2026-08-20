@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Angela Duncan
+DOB: 1964-05-07
+Date: 08/12/2024
+Prescribed by: Dr Priya Menon
+
+Salbutamol Inhaler 100mcg
+Inhale 2 puffs as needed for shortness of breath.
+Quantity: 30  Repeats: 0

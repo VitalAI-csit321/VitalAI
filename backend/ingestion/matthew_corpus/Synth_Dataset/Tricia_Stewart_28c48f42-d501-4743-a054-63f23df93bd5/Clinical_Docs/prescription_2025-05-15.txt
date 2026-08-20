@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Tricia Stewart
+DOB: 1991-09-15
+Date: 15/05/2025
+Prescribed by: Dr Aisha Rahman
+
+Folic Acid 500mcg
+Take 1 tablet once daily.
+Quantity: 30  Repeats: 2
+Reviewed today, no change.

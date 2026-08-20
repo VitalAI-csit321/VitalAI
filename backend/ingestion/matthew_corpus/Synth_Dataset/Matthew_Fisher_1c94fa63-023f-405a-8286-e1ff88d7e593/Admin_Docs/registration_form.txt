@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Matthew Fisher
+DOB: 1985-08-17
+Gender: Male
+Phone: +61 8 6618 2512
+Email: urice@example.org
+Address: 78 Patel End, St. Michael, SA, 2661
+
+Medicare number: 4500 66352/8
+IHI: 8003930245646717
+Concession card: None
+
+Emergency contact: Matthew Mendez, 3311 9079
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Art therapist
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

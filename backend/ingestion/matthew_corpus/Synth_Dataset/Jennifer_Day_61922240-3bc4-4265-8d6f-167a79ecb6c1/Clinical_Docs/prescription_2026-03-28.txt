@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Jennifer Day
+DOB: 1963-12-05
+Date: 28/03/2026
+Prescribed by: Dr Samuel Osei
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 90  Repeats: 2
+Reviewed today, no change.

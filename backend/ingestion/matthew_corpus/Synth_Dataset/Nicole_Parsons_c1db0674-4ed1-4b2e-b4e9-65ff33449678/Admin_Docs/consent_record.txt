@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Nicole Parsons
+DOB: 1992-10-02
+Date: 18/02/2025
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

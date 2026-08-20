@@ -1,0 +1,23 @@
+Consultation Note
+
+Patient: Zachary White
+DOB: 1945-08-09
+Date: 12/02/2026
+Seen by: Dr Hannah Fitzgerald
+
+Known conditions: None recorded
+Allergies: Sulfa drugs
+
+Vitals: BP 123/67 mmHg, Weight 73.9 kg
+
+Chief Complaint:
+Abdominal pain and nausea.
+
+Assessment:
+No acute findings on examination.
+
+Plan:
+- Rest
+- Follow up if not improving in a week
+- Increase fluid intake
+- Symptomatic relief advised

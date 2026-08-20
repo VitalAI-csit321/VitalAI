@@ -1,0 +1,19 @@
+Prescription
+
+Patient: James Thomas
+DOB: 1938-04-03
+Date: 30/12/2025
+Prescribed by: Dr Samuel Osei
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 60  Repeats: 5
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 90  Repeats: 1
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 90  Repeats: 2
+Reviewed today, no change.

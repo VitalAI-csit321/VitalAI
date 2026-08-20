@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: John Munoz
+DOB: 1974-04-24
+Gender: Male
+Phone: 0427 231 843
+Email: jacobcox@example.net
+Address: 51 Leonard Place, West Deborah, VIC, 2030
+
+Medicare number: 2685 13715/4
+IHI: 8003830780084435
+Concession card: DVA Gold Card
+
+Emergency contact: Kevin Taylor, 0409 202 428
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Current smoker, 5-10 cigarettes/day
+Alcohol use: Nil
+Occupation: Optician, dispensing
+Allergies: No known drug allergies
+Assigned doctor: Dr Marcus O'Connell

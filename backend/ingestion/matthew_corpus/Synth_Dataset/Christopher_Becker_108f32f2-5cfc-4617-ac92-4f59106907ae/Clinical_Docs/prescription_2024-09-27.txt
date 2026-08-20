@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Christopher Becker
+DOB: 1976-11-21
+Date: 27/09/2024
+Prescribed by: Dr Marcus O'Connell
+
+Ibuprofen 400mg
+Take 1 tablet every 8 hours with food as needed.
+Quantity: 60  Repeats: 5

@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Jamie Baker
+DOB: 1974-01-03
+Gender: Female
+Phone: +61-3-8944-8463
+Email: whitekeith@example.net
+Address: Level 9 35 Edwin Range, West Teresaport, SA, 2627
+
+Medicare number: 2849 33446/7
+IHI: 8003787038795172
+Concession card: Health Care Card
+
+Emergency contact: Crystal Hernandez, +61356475705
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Catering manager
+Allergies: Latex
+Assigned doctor: Dr Priya Menon

@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Kathryn Farrell
+DOB: 1994-03-07
+Date: 09/12/2024
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

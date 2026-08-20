@@ -1,0 +1,902 @@
+[
+  {
+    "patient_id": "32b3c812-02f1-40af-b0bc-da1a67370ee7",
+    "name": "Alexander Hill",
+    "archetype": "hypertension",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "fad7228b-7b50-4c0a-8cf0-87ca0f1d005f",
+    "name": "David Garcia",
+    "archetype": "skin_check",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor01",
+    "consent_status": "PENDING"
+  },
+  {
+    "patient_id": "108f32f2-5cfc-4617-ac92-4f59106907ae",
+    "name": "Christopher Becker",
+    "archetype": "sports_injury",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "PENDING"
+  },
+  {
+    "patient_id": "988fbed0-6663-46c6-ad3f-334212b0bc87",
+    "name": "Daniel Ryan",
+    "archetype": "sports_injury",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "1dcdec59-f4b8-4f57-80b9-1e62ac7c8afd",
+    "name": "Scott Wright",
+    "archetype": "acute_general",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "PENDING"
+  },
+  {
+    "patient_id": "cc7248aa-994b-4b37-8d6d-d6cdd3360d36",
+    "name": "Kathryn Farrell",
+    "archetype": "asthma",
+    "secondary_condition": "Gastro-oesophageal reflux disease",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "4dc80404-4448-41ca-a8b5-9299aa25e8bf",
+    "name": "Michele Carr",
+    "archetype": "aged_care_polypharmacy",
+    "secondary_condition": "Gastro-oesophageal reflux disease",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "e1e65f9c-036b-4233-ae11-86e6223fcf76",
+    "name": "Mary Gomez",
+    "archetype": "sports_injury",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "PENDING"
+  },
+  {
+    "patient_id": "6d915e2f-3e9b-4af1-88d7-f48798668cec",
+    "name": "Jessica Chandler",
+    "archetype": "aged_care_polypharmacy",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "5cbe76bf-58c7-49e7-99cf-c4b6aeebc36a",
+    "name": "Riley Moyer",
+    "archetype": "type2_diabetes",
+    "secondary_condition": "Gastro-oesophageal reflux disease",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "c8b132d6-c029-4117-bda1-59191cef274d",
+    "name": "Joseph Sims",
+    "archetype": "sports_injury",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "005c4211-d94e-41bc-9650-2b7e7f251df2",
+    "name": "Kimberly Meadows",
+    "archetype": "mental_health",
+    "secondary_condition": null,
+    "hospital_event": true,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "9d41ded6-1e5e-4555-81c1-f50ae4893ff6",
+    "name": "Samuel Short",
+    "archetype": "skin_check",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "91861777-ff26-453f-9d07-0fc81ef3ec5a",
+    "name": "Rebecca Davis",
+    "archetype": "aged_care_polypharmacy",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "bd9170f8-5415-487c-a325-3c4eb172be64",
+    "name": "Laura Harrison",
+    "archetype": "acute_general",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "f8281a04-7f42-41a7-8d5d-6f2e9f957967",
+    "name": "Andrew Roberts",
+    "archetype": "aged_care_polypharmacy",
+    "secondary_condition": "Dyslipidaemia",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "PENDING"
+  },
+  {
+    "patient_id": "0b71c0a2-424b-4ff9-aca8-a442bf6a4a7f",
+    "name": "Lauren Walters",
+    "archetype": "asthma",
+    "secondary_condition": "Dyslipidaemia",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "PENDING"
+  },
+  {
+    "patient_id": "f90daade-4724-4a84-a71d-e8932c753554",
+    "name": "Kristen Davis",
+    "archetype": "asthma",
+    "secondary_condition": "Iron deficiency anaemia",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor05",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "89506731-6bcd-4bf4-878c-f4210ee94a18",
+    "name": "Andrew Garner",
+    "archetype": "acute_general",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "85b4ab3c-ed77-47ed-a210-1fe8e2b4d45e",
+    "name": "James Thomas",
+    "archetype": "aged_care_polypharmacy",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "a794516b-7246-4b22-91a5-41e3392fea7e",
+    "name": "Jonathan Strong",
+    "archetype": "mental_health",
+    "secondary_condition": "Seasonal allergic rhinitis",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "WITHDRAWN"
+  },
+  {
+    "patient_id": "4df383d3-dd97-4517-ba76-1740b927ac94",
+    "name": "Susan Turner",
+    "archetype": "asthma",
+    "secondary_condition": null,
+    "hospital_event": true,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "22e87ede-954b-48bc-a8fe-24a7be1574ef",
+    "name": "Julian Willis",
+    "archetype": "hypertension",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "31a8050d-edea-4d17-b96c-2b41142f756c",
+    "name": "Denise Schultz",
+    "archetype": "skin_check",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor05",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "de8074c1-c4b9-429b-bb53-c43c787afdc6",
+    "name": "Mary Walker",
+    "archetype": "mental_health",
+    "secondary_condition": "Seasonal allergic rhinitis",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "f26926d6-b471-41cc-96c0-6dec21f63811",
+    "name": "Jennifer Bowman",
+    "archetype": "hypertension",
+    "secondary_condition": "Hypothyroidism",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "28c48f42-d501-4743-a054-63f23df93bd5",
+    "name": "Tricia Stewart",
+    "archetype": "antenatal",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor01",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "9c07b5b0-f104-4b60-8bb5-92f894fce7c2",
+    "name": "Melissa Myers",
+    "archetype": "skin_check",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor05",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "a1582843-bb60-47c1-8287-a027edd8c320",
+    "name": "Robert Solis",
+    "archetype": "asthma",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "PENDING"
+  },
+  {
+    "patient_id": "b59cce27-70c0-4a4b-980f-55ebf1dbbd7a",
+    "name": "Todd Lynch",
+    "archetype": "paediatric_immunisation",
+    "secondary_condition": "Dyslipidaemia",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor05",
+    "consent_status": "PENDING"
+  },
+  {
+    "patient_id": "a5c389a4-0269-49a4-b5f8-bbc5833809b0",
+    "name": "Peter Anderson",
+    "archetype": "type2_diabetes",
+    "secondary_condition": "Hypothyroidism",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "4776d21b-c36f-412f-83a1-d3b13a91d4fb",
+    "name": "Jessica Norris",
+    "archetype": "type2_diabetes",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "8d42a2ae-026e-4287-9b51-35205eebb175",
+    "name": "William Anderson",
+    "archetype": "sports_injury",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "3dd04345-a560-4e4e-b502-e3f4156f5090",
+    "name": "Lisa Johnson",
+    "archetype": "sports_injury",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "56a7842f-023b-48eb-aa18-2ad73e15fe61",
+    "name": "Matthew Ruiz",
+    "archetype": "hypertension",
+    "secondary_condition": "Iron deficiency anaemia",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "WITHDRAWN"
+  },
+  {
+    "patient_id": "2b040d71-1489-419b-a858-d40f9d4c56b1",
+    "name": "Nancy Evans",
+    "archetype": "antenatal",
+    "secondary_condition": "Seasonal allergic rhinitis",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor01",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "dd1b604d-ff79-4b17-b536-660a2cb93d49",
+    "name": "Vickie Wise",
+    "archetype": "sports_injury",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "PENDING"
+  },
+  {
+    "patient_id": "e0b36282-84ef-4a73-87cf-1e03502da928",
+    "name": "Karen Santos",
+    "archetype": "paediatric_immunisation",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor05",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "fc7e412a-6aad-42ef-84f2-76ef4d61ae96",
+    "name": "Brandon Caldwell",
+    "archetype": "asthma",
+    "secondary_condition": "Hypothyroidism",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "c53526a7-087b-4b92-8451-6a3ab21194be",
+    "name": "Thomas Rodriguez",
+    "archetype": "asthma",
+    "secondary_condition": "Dyslipidaemia",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "1c94fa63-023f-405a-8286-e1ff88d7e593",
+    "name": "Matthew Fisher",
+    "archetype": "type2_diabetes",
+    "secondary_condition": "Iron deficiency anaemia",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "c1db0674-4ed1-4b2e-b4e9-65ff33449678",
+    "name": "Nicole Parsons",
+    "archetype": "sports_injury",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "472fdd9f-3574-4702-873f-02f74a8ffa40",
+    "name": "Angela Cole",
+    "archetype": "antenatal",
+    "secondary_condition": "Dyslipidaemia",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor01",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "1cb96dff-4ff3-4483-abc8-f3199b2df74f",
+    "name": "Thomas Weaver",
+    "archetype": "mental_health",
+    "secondary_condition": "Seasonal allergic rhinitis",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "3cb11c49-c24d-4fcf-bc89-551defa1778a",
+    "name": "Bradley Bruce",
+    "archetype": "acute_general",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor05",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "e877ff83-718d-4f5d-8d4c-7001752ac003",
+    "name": "James Ayala",
+    "archetype": "acute_general",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor01",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "1b94aca6-0e55-4ac1-b9ec-b31184fd58cb",
+    "name": "Richard Shields",
+    "archetype": "sports_injury",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "e7f9317f-86fb-4132-bbf2-7943cbea9d0e",
+    "name": "Zachary White",
+    "archetype": "acute_general",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor05",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "ffdfd8b3-a0c9-48c3-8ef4-bc5d0d7b5c9d",
+    "name": "Connie Brooks",
+    "archetype": "asthma",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "1deab6d8-68b1-468b-84b7-fae37cf0ae69",
+    "name": "Robert Brown",
+    "archetype": "mental_health",
+    "secondary_condition": "Hypothyroidism",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "PENDING"
+  },
+  {
+    "patient_id": "8e0944ca-4483-4b37-b24e-7fae7029b5b8",
+    "name": "Dylan Norman",
+    "archetype": "asthma",
+    "secondary_condition": "Hypothyroidism",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "a4af529c-c810-483f-854d-d294d5135a1c",
+    "name": "Meghan Davis",
+    "archetype": "mental_health",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "f7af6b7f-76ec-4f82-b613-df153ec3058a",
+    "name": "Elizabeth Baxter",
+    "archetype": "aged_care_polypharmacy",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "e7021404-4771-4b00-aa4c-17d978c0fdfd",
+    "name": "Jennifer Parks",
+    "archetype": "sports_injury",
+    "secondary_condition": "Hypothyroidism",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "072b6fc6-edb0-4411-9b80-cecd6849e65d",
+    "name": "Angel Matthews",
+    "archetype": "type2_diabetes",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "0263abe0-32b5-4536-ae12-85a21e1b7527",
+    "name": "Stacey Wise",
+    "archetype": "asthma",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor05",
+    "consent_status": "PENDING"
+  },
+  {
+    "patient_id": "16c2afa3-20df-4f5b-8c3e-7a8fc5505a33",
+    "name": "Kelli Williams",
+    "archetype": "hypertension",
+    "secondary_condition": "Iron deficiency anaemia",
+    "hospital_event": true,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "ba69ff50-3898-42ad-afec-36d00e7a41c4",
+    "name": "Angela Bradley",
+    "archetype": "hypertension",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "PENDING"
+  },
+  {
+    "patient_id": "fc1048f5-8a32-4465-b948-62468ca39217",
+    "name": "Christopher Crane",
+    "archetype": "asthma",
+    "secondary_condition": null,
+    "hospital_event": true,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "61922240-3bc4-4265-8d6f-167a79ecb6c1",
+    "name": "Jennifer Day",
+    "archetype": "acute_general",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "ee696a49-70ab-40a5-872a-91dec02bf03e",
+    "name": "Thomas Johnson",
+    "archetype": "hypertension",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "90de4d0a-511e-4b11-8150-629bde1db847",
+    "name": "Rachel Walker",
+    "archetype": "mental_health",
+    "secondary_condition": "Osteoarthritis",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "7664832e-b6c7-4e34-97b0-38dd85625b14",
+    "name": "Benjamin Jackson",
+    "archetype": "acute_general",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor01",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "a6040ebf-fe6b-4057-8c6a-c2f1faec75ec",
+    "name": "Angela Anthony",
+    "archetype": "type2_diabetes",
+    "secondary_condition": "Gastro-oesophageal reflux disease",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "cf6cb834-86ff-4e96-8673-684aeeb8e772",
+    "name": "Zachary Burton",
+    "archetype": "acute_general",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "3f9a451e-b578-4e12-8393-798d35487f43",
+    "name": "Alicia Roth",
+    "archetype": "skin_check",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor05",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "7b03d9aa-84c4-4271-91c9-d1eee6a65654",
+    "name": "Caleb Johnson",
+    "archetype": "skin_check",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "4d916a10-7aba-407a-a391-ab741c1805de",
+    "name": "Ashley Hunt",
+    "archetype": "paediatric_immunisation",
+    "secondary_condition": null,
+    "hospital_event": true,
+    "assigned_doctor_id": "doctor05",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "0d745911-b896-43c3-8b69-167fb8a79fc3",
+    "name": "David Stokes",
+    "archetype": "type2_diabetes",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "0e66a933-a4a3-4335-942d-87e3c41ac344",
+    "name": "Christopher Glover",
+    "archetype": "type2_diabetes",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "4982d461-ae32-47ad-b058-dd639d7c8b84",
+    "name": "Amanda Mcdowell",
+    "archetype": "aged_care_polypharmacy",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "277b77ec-df82-4013-9901-b9ff7d71524c",
+    "name": "Sara Caldwell",
+    "archetype": "skin_check",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "d39a18eb-c142-4ec8-b64d-dfaa076e52df",
+    "name": "Gregory Rhodes",
+    "archetype": "aged_care_polypharmacy",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "d48c070e-5a0f-4869-b94b-1d154a5653d4",
+    "name": "Glen Bryan",
+    "archetype": "type2_diabetes",
+    "secondary_condition": "Hypothyroidism",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "5c6351c8-2af4-4296-b179-c842459f6d8f",
+    "name": "Lee Schwartz",
+    "archetype": "acute_general",
+    "secondary_condition": "Osteoarthritis",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "dcd1c2d6-de2b-468f-86a3-c24e1428ac6c",
+    "name": "Christopher Mitchell",
+    "archetype": "aged_care_polypharmacy",
+    "secondary_condition": "Hypothyroidism",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "4b732b92-848f-49cc-886e-cbe11eb0819e",
+    "name": "Dawn Rivera",
+    "archetype": "paediatric_immunisation",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor05",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "812507f6-922f-4d88-a187-988cdc630493",
+    "name": "Dawn Ramsey",
+    "archetype": "skin_check",
+    "secondary_condition": null,
+    "hospital_event": true,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "260b9a37-37d2-471e-be9c-c73a516c9d88",
+    "name": "Alice Nunez",
+    "archetype": "asthma",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor01",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "d1bb8409-e4e3-4095-9be0-8e8dce611103",
+    "name": "Paul Berger",
+    "archetype": "skin_check",
+    "secondary_condition": "Hypothyroidism",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor01",
+    "consent_status": "WITHDRAWN"
+  },
+  {
+    "patient_id": "cb0f4bca-5ae1-469f-861d-866aa6cabecb",
+    "name": "Christina Gross",
+    "archetype": "sports_injury",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "PENDING"
+  },
+  {
+    "patient_id": "b954d205-45ac-4397-aa28-0f8ba9ed41ea",
+    "name": "John Munoz",
+    "archetype": "acute_general",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "PENDING"
+  },
+  {
+    "patient_id": "e7eba10c-49e7-42c8-92f7-95fc867a1613",
+    "name": "Michelle Stanley",
+    "archetype": "type2_diabetes",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "f25baf89-bc22-496f-97b4-1a76213a9630",
+    "name": "Michael Stewart",
+    "archetype": "hypertension",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "6573dab6-ad9d-4938-87c6-a082c62f6fc5",
+    "name": "Tammy Graham",
+    "archetype": "aged_care_polypharmacy",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "b584c505-9edd-49c0-9d64-7d8da3c1b8f5",
+    "name": "Jennifer Rodriguez",
+    "archetype": "type2_diabetes",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "70a39598-0217-4786-8f10-c0f075ad7588",
+    "name": "Kathryn Gonzalez",
+    "archetype": "antenatal",
+    "secondary_condition": null,
+    "hospital_event": true,
+    "assigned_doctor_id": "doctor01",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "8259aed5-ad85-4e6a-b397-259dc1079b8e",
+    "name": "Scott Gonzalez",
+    "archetype": "sports_injury",
+    "secondary_condition": null,
+    "hospital_event": true,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "66c27648-783b-4df0-9f98-8cfc618d974b",
+    "name": "Greg Edwards",
+    "archetype": "asthma",
+    "secondary_condition": null,
+    "hospital_event": true,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "beddb260-34c6-494d-ab02-a53a7e9a75dd",
+    "name": "Frederick Alvarez",
+    "archetype": "paediatric_immunisation",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor05",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "bdd3713f-1ec0-4c93-9319-e9a67cdefb55",
+    "name": "Jamie Baker",
+    "archetype": "mental_health",
+    "secondary_condition": "Dyslipidaemia",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "d1a3fb2e-3eeb-474b-a3dc-394c0bdff101",
+    "name": "Nicolas Davis",
+    "archetype": "type2_diabetes",
+    "secondary_condition": "Iron deficiency anaemia",
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor02",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "9313732a-337e-47d1-bab3-75d3ab0eb422",
+    "name": "David Holden",
+    "archetype": "paediatric_immunisation",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor05",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "11313584-1a49-4d1b-b9c1-8ac972c7a55d",
+    "name": "Juan Austin",
+    "archetype": "sports_injury",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "487cd72e-cce5-4bbc-890c-18082671ed36",
+    "name": "Kim Lopez",
+    "archetype": "sports_injury",
+    "secondary_condition": null,
+    "hospital_event": true,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "1c2aeb9a-9a90-496a-83f5-3814ee5de33f",
+    "name": "Dawn Evans",
+    "archetype": "aged_care_polypharmacy",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor06",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "6ffc5e0d-165f-46f8-9181-c469c0233f82",
+    "name": "Angela Duncan",
+    "archetype": "asthma",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "86e070a0-4715-4697-a9ac-784a051387ce",
+    "name": "Patrick Sanchez",
+    "archetype": "skin_check",
+    "secondary_condition": null,
+    "hospital_event": true,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "60c1280c-682b-4221-91a4-c95320b26f7b",
+    "name": "Sean Schmidt",
+    "archetype": "skin_check",
+    "secondary_condition": "Iron deficiency anaemia",
+    "hospital_event": true,
+    "assigned_doctor_id": "doctor03",
+    "consent_status": "CAPTURED"
+  },
+  {
+    "patient_id": "7f1f48c6-9709-4461-920f-52a6a48944b0",
+    "name": "Dale Taylor",
+    "archetype": "sports_injury",
+    "secondary_condition": null,
+    "hospital_event": false,
+    "assigned_doctor_id": "doctor04",
+    "consent_status": "PENDING"
+  }
+]

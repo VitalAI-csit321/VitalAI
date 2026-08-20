@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Kelli Williams
+DOB: 1948-02-15
+Date collected: 29/07/2026
+Requested by: Dr David Nguyen
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       145       mmol/L        135-145       -
+Potassium    3.3       mmol/L        3.5-5.2       L
+Chloride     108       mmol/L        95-110        -
+Bicarbonate  32        mmol/L        22-32         -
+Urea         4.3       mmol/L        2.5-8.0       -
+Creatinine   74        umol/L        45-90         -
+eGFR         45        mL/min/1.73m2 60-120        L
+
+Interpretation: Results within expected reference ranges.

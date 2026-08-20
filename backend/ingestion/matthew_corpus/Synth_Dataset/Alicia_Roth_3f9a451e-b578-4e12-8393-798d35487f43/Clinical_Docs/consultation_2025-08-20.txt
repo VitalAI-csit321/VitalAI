@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Alicia Roth
+DOB: 2001-02-09
+Date: 20/08/2025
+Seen by: Dr Hannah Fitzgerald
+
+Known conditions: None recorded
+Allergies: No known drug allergies
+
+Vitals: BP 133/83 mmHg, Weight 84.8 kg
+
+Chief Complaint:
+Routine full-body skin check.
+
+Assessment:
+Lesion appears benign, monitor.
+
+Plan:
+- Photograph and monitor lesion
+- Refer to dermatologist if changes noted
+- Review in 6 months

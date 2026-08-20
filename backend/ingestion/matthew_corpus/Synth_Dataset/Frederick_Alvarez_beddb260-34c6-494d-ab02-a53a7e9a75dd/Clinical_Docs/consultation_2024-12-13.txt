@@ -1,0 +1,23 @@
+Consultation Note
+
+Patient: Frederick Alvarez
+DOB: 2024-04-02
+Date: 13/12/2024
+Seen by: Dr Hannah Fitzgerald
+
+Known conditions: None recorded
+Allergies: No known drug allergies
+
+Vitals: BP 124/72 mmHg, Weight 94.3 kg
+
+Chief Complaint:
+Immunisation catch-up.
+
+Assessment:
+No concerns identified.
+
+Plan:
+- Administer scheduled vaccine
+- Routine growth check
+- Provide next due date
+- Update immunisation register

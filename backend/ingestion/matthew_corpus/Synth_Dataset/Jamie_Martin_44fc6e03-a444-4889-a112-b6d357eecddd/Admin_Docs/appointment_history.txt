@@ -1,8 +1,0 @@
-
-Appointment History
-
-07/11/2024 - General Consultation
-05/02/2025 - Vaccination
-25/04/2025 - Physiotherapy Session
-18/10/2025 - Blood Test
-04/06/2026 - Blood Test

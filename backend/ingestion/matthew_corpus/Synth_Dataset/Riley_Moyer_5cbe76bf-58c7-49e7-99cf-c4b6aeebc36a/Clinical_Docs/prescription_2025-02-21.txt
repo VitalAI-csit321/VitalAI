@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Riley Moyer
+DOB: 1964-02-21
+Date: 21/02/2025
+Prescribed by: Dr David Nguyen
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 60  Repeats: 2
+Continuing current dose, well tolerated.

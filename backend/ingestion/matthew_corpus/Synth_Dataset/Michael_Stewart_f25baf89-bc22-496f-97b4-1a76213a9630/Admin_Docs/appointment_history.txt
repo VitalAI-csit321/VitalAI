@@ -1,0 +1,7 @@
+Appointment History
+
+Patient: Michael Stewart
+
+19/08/2024 - Blood Test - Dr David Nguyen
+21/10/2024 - Follow-up Review - Dr David Nguyen
+22/07/2026 - Blood Test - Dr David Nguyen

@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Angela Bradley
+DOB: 1981-07-17
+Date collected: 01/06/2025
+Requested by: Dr David Nguyen
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       135       mmol/L        135-145       -
+Potassium    4.6       mmol/L        3.5-5.2       -
+Chloride     104       mmol/L        95-110        -
+Bicarbonate  31        mmol/L        22-32         -
+Urea         3.6       mmol/L        2.5-8.0       -
+Creatinine   59        umol/L        45-90         -
+eGFR         67        mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

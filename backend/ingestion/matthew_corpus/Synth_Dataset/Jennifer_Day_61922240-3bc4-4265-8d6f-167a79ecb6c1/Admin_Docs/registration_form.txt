@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Jennifer Day
+DOB: 1963-12-05
+Gender: Female
+Phone: 0438 065 787
+Email: roberta85@example.com
+Address: 593 Paula Wynd, Brianfort, TAS, 6321
+
+Medicare number: 5361 67781/8
+IHI: 8003304345658360
+Concession card: None
+
+Emergency contact: David Ferguson, 3965-2239
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Investment banker, corporate
+Allergies: No known drug allergies
+Assigned doctor: Dr Samuel Osei

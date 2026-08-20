@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Robert Brown
+DOB: 1995-10-07
+Date collected: 26/11/2024
+Requested by: Dr Priya Menon
+
+TFT
+
+Test     Result    Unit          Ref Range     Flag
+TSH      2.67      mIU/L         0.4-4.0       -
+Free T4  11.7      pmol/L        10-20         -
+
+Interpretation: Results within expected reference ranges.

@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Susan Turner
+DOB: 2009-12-31
+Date: 21/09/2024
+Seen by: Dr Priya Menon
+
+Known conditions: Asthma
+Allergies: No known drug allergies
+
+Vitals: BP 148/81 mmHg, Weight 105.4 kg
+
+Chief Complaint:
+Asthma review.
+
+Assessment:
+Asthma, well controlled.
+
+Plan:
+- Continue current medication
+- Order spirometry
+- Follow up in 4 weeks

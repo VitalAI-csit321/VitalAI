@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Robert Solis
+DOB: 2019-05-26
+Date: 29/08/2024
+Prescribed by: Dr Samuel Osei
+
+Salbutamol Inhaler 100mcg
+Inhale 2 puffs as needed for shortness of breath.
+Quantity: 60  Repeats: 3
+Continuing current dose, well tolerated.

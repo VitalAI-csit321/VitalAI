@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Paul Berger
+DOB: 1957-11-13
+Date: 22/04/2026
+Seen by: Dr Aisha Rahman
+
+Known conditions: Hypothyroidism
+Allergies: No known drug allergies
+
+Vitals: BP 114/89 mmHg, Weight 95.2 kg
+
+Chief Complaint:
+Ongoing fatigue and weight gain, reviewed after abnormal thyroid function.
+
+Assessment:
+Hypothyroidism confirmed, treatment commenced.
+
+Plan:
+- Continue current medication
+- Advise on symptoms of over-replacement
+- Commence thyroxine replacement

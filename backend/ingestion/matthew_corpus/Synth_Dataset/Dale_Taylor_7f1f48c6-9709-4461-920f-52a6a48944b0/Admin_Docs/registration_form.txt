@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Dale Taylor
+DOB: 1998-09-02
+Gender: Male
+Phone: 0426 292 518
+Email: whitemary@example.org
+Address: 64/42 Daniel Cul-de-sac, New Catherinebury, QLD, 2680
+
+Medicare number: 1397 28106/6
+IHI: 8003249119330058
+Concession card: None
+
+Emergency contact: Michael Woods, 0497 526 772
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Former smoker
+Alcohol use: Nil
+Occupation: Development worker, community
+Allergies: No known drug allergies
+Assigned doctor: Dr Marcus O'Connell

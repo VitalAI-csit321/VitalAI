@@ -1,0 +1,73 @@
+{
+  "patient_id": "1dcdec59-f4b8-4f57-80b9-1e62ac7c8afd",
+  "name": "Scott Wright",
+  "dob": "1959-07-23",
+  "gender": "Male",
+  "archetype": "acute_general",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr Samuel Osei",
+  "assigned_doctor_id": "doctor06",
+  "note_style": "soap",
+  "consent_status": "PENDING",
+  "documents": [
+    {
+      "filename": "consultation_2024-09-26.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-26"
+    },
+    {
+      "filename": "prescription_2024-09-26.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-26"
+    },
+    {
+      "filename": "pathology_2024-09-26_crp.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-26"
+    },
+    {
+      "filename": "consultation_2026-02-13.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-13"
+    },
+    {
+      "filename": "prescription_2026-02-13.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-13"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-09-26"
+    }
+  ]
+}

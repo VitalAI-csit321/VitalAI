@@ -1,0 +1,23 @@
+Consultation Note
+
+Patient: Kathryn Gonzalez
+DOB: 2006-05-17
+Date: 11/11/2024
+Seen by: Dr Aisha Rahman
+
+Known conditions: Pregnancy, antenatal care
+Allergies: No known drug allergies
+
+Vitals: BP 117/87 mmHg, Weight 86.2 kg
+
+Chief Complaint:
+Mild nausea, otherwise well.
+
+Assessment:
+Pregnancy progressing normally.
+
+Plan:
+- Shared care with hospital antenatal clinic
+- Refer for morphology scan
+- Follow up in 4 weeks
+- Order full blood count and iron studies

@@ -1,0 +1,16 @@
+Prescription
+
+Patient: Lauren Walters
+DOB: 1967-08-09
+Date: 04/11/2025
+Prescribed by: Dr Priya Menon
+
+Salbutamol Inhaler 100mcg
+Inhale 2 puffs as needed for shortness of breath.
+Quantity: 30  Repeats: 0
+Continuing current dose, well tolerated.
+
+Atorvastatin 20mg
+Take 1 tablet once daily at night.
+Quantity: 90  Repeats: 2
+Continuing current dose, well tolerated.

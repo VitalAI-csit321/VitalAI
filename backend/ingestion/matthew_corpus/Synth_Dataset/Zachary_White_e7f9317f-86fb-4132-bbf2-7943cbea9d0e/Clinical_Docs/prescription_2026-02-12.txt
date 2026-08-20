@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Zachary White
+DOB: 1945-08-09
+Date: 12/02/2026
+Prescribed by: Dr Hannah Fitzgerald
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 90  Repeats: 2

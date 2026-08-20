@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Richard Shields
+DOB: 1995-02-05
+Date: 09/01/2025
+Prescribed by: Dr Marcus O'Connell
+
+Ibuprofen 400mg
+Take 1 tablet every 8 hours with food as needed.
+Quantity: 60  Repeats: 4
+Continuing current dose, well tolerated.

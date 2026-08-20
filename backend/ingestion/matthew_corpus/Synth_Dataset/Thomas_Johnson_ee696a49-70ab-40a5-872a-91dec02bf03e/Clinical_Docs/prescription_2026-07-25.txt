@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Thomas Johnson
+DOB: 1974-09-10
+Date: 25/07/2026
+Prescribed by: Dr David Nguyen
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 60  Repeats: 2

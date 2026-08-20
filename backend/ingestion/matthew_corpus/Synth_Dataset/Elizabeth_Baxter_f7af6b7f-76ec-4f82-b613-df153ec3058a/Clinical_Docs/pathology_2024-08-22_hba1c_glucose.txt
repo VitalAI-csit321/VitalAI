@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Elizabeth Baxter
+DOB: 1953-07-24
+Date collected: 22/08/2024
+Requested by: Dr Samuel Osei
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            15.0      %             4.5-11.0      H
+Fasting Glucose  11.1      mmol/L        3.5-15.0      -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

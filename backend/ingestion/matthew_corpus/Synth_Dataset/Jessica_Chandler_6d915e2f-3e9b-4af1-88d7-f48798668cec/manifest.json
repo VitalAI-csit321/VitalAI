@@ -1,0 +1,163 @@
+{
+  "patient_id": "6d915e2f-3e9b-4af1-88d7-f48798668cec",
+  "name": "Jessica Chandler",
+  "dob": "1933-06-11",
+  "gender": "Female",
+  "archetype": "aged_care_polypharmacy",
+  "chronic_conditions": [
+    "Essential hypertension",
+    "Type 2 diabetes mellitus",
+    "Osteoarthritis"
+  ],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [
+    "Aspirin (NSAIDs)"
+  ],
+  "assigned_doctor": "Dr Samuel Osei",
+  "assigned_doctor_id": "doctor06",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-01-16.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-16"
+    },
+    {
+      "filename": "prescription_2025-01-16.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-16"
+    },
+    {
+      "filename": "pathology_2025-01-16_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-16"
+    },
+    {
+      "filename": "pathology_2025-01-16_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-16"
+    },
+    {
+      "filename": "pathology_2025-01-16_lft.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-16"
+    },
+    {
+      "filename": "consultation_2025-04-08.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-04-08"
+    },
+    {
+      "filename": "prescription_2025-04-08.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-04-08"
+    },
+    {
+      "filename": "consultation_2025-07-04.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-04"
+    },
+    {
+      "filename": "prescription_2025-07-04.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-04"
+    },
+    {
+      "filename": "consultation_2025-11-02.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-11-02"
+    },
+    {
+      "filename": "prescription_2025-11-02.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-11-02"
+    },
+    {
+      "filename": "consultation_2025-12-22.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-22"
+    },
+    {
+      "filename": "prescription_2025-12-22.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-22"
+    },
+    {
+      "filename": "consultation_2026-03-13.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-13"
+    },
+    {
+      "filename": "prescription_2026-03-13.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-13"
+    },
+    {
+      "filename": "pathology_2026-03-13_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-13"
+    },
+    {
+      "filename": "care_plan_2025-01-16.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-16"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-01-16"
+    }
+  ]
+}

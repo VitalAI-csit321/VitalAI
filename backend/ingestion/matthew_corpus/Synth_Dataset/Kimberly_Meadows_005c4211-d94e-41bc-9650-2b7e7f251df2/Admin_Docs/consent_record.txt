@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Kimberly Meadows
+DOB: 2009-06-20
+Date: 13/12/2024
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

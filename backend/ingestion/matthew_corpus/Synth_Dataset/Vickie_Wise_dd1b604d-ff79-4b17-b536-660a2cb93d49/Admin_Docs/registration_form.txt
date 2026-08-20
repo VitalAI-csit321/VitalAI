@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Vickie Wise
+DOB: 2009-03-23
+Gender: Female
+Phone: 08.5758.4419
+Email: zhuang@example.com
+Address: Apt. 415 47 James Reach, Sarahview, NT, 2599
+
+Medicare number: 1042 94759/4
+IHI: 8003376649331652
+Concession card: Health Care Card
+
+Emergency contact: Anthony Stein, 0301657120
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Former smoker
+Alcohol use: Nil
+Occupation: Statistician
+Allergies: Latex
+Assigned doctor: Dr Marcus O'Connell

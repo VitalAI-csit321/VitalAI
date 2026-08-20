@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Jamie Baker
+DOB: 1974-01-03
+Date collected: 24/04/2026
+Requested by: Dr Priya Menon
+
+TFT
+
+Test     Result    Unit          Ref Range     Flag
+TSH      3.96      mIU/L         0.4-4.0       -
+Free T4  23.5      pmol/L        10-20         H
+
+Interpretation: Results within expected reference ranges.

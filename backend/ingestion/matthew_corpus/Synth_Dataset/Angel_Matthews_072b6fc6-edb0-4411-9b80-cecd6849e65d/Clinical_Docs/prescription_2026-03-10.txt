@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Angel Matthews
+DOB: 1986-01-16
+Date: 10/03/2026
+Prescribed by: Dr David Nguyen
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 30  Repeats: 1

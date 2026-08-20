@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Angel Matthews
+DOB: 1986-01-16
+Gender: Female
+Phone: 4300 6848
+Email: zhenderson@example.org
+Address: Flat 41 3 Amanda Link, New Hollybury, ACT, 2691
+
+Medicare number: 7257 56966/7
+IHI: 8003560127606032
+Concession card: None
+
+Emergency contact: Audrey Salazar, 4210-2027
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Loss adjuster, chartered
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

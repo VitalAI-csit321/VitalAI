@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Thomas Rodriguez
+DOB: 1979-07-03
+Date: 01/03/2026
+Seen by: Dr Priya Menon
+
+Known conditions: Asthma, Dyslipidaemia
+Allergies: No known drug allergies
+
+Vitals: BP 108/81 mmHg, Weight 63.4 kg
+
+Chief Complaint:
+Reviewed after elevated cholesterol noted on routine bloods.
+
+Assessment:
+Dyslipidaemia, above target on lipid profile.
+
+Plan:
+- Dietary and lifestyle advice
+- Continue current medication
+- Repeat lipids in 3 months

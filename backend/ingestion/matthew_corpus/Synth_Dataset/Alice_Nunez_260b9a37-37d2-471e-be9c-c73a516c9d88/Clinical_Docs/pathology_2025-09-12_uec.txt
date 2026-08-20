@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Alice Nunez
+DOB: 1984-03-15
+Date collected: 12/09/2025
+Requested by: Dr Aisha Rahman
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       140       mmol/L        135-145       -
+Potassium    4.4       mmol/L        3.5-5.2       -
+Chloride     105       mmol/L        95-110        -
+Bicarbonate  31        mmol/L        22-32         -
+Urea         5.1       mmol/L        2.5-8.0       -
+Creatinine   78        umol/L        45-90         -
+eGFR         85        mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

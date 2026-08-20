@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Jonathan Strong
+DOB: 1987-01-04
+Gender: Male
+Phone: (03)-9533-9421
+Email: parkerscott@example.net
+Address: 456 James Reserve, Alyssaview, NT, 2774
+
+Medicare number: 7339 72163/7
+IHI: 8003898227342425
+Concession card: DVA Gold Card
+
+Emergency contact: Gina Wilson, 2368.5160
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Geneticist, molecular
+Allergies: Bee stings
+Assigned doctor: Dr Priya Menon

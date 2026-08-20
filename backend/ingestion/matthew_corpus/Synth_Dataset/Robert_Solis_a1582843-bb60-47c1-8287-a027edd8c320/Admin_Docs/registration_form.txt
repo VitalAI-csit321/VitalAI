@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Robert Solis
+DOB: 2019-05-26
+Gender: Male
+Phone: 07 0758 1814
+Email: hinesjoshua@example.net
+Address: Flat 37 06 Randy Landing, Port Virginia, TAS, 2680
+
+Medicare number: 8555 19259/9
+IHI: 8003960979981827
+Concession card: None
+
+Emergency contact: Brett Espinoza, (03).2047.2779
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Accountant, chartered public finance
+Allergies: No known drug allergies
+Assigned doctor: Dr Samuel Osei

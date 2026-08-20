@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Elizabeth Baxter
+DOB: 1953-07-24
+Gender: Female
+Phone: (02) 5415 2064
+Email: rubendavis@example.org
+Address: 12 April Parade, North Heatherville, VIC, 2627
+
+Medicare number: 6113 72895/2
+IHI: 8003548547578636
+Concession card: None
+
+Emergency contact: James Cross, 15542622
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Former smoker
+Alcohol use: Moderate, 5-10 standard drinks/week
+Occupation: Broadcast presenter
+Allergies: Sulfa drugs
+Assigned doctor: Dr Samuel Osei

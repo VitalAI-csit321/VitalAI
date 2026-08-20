@@ -1,0 +1,10 @@
+Appointment History
+
+Patient: Michele Carr
+
+14/09/2024 - Blood Test - Dr Samuel Osei
+15/09/2024 - Follow-up Review - Dr Samuel Osei
+04/05/2025 - Follow-up Review - Dr Samuel Osei
+09/05/2025 - Follow-up Review - Dr Samuel Osei
+29/06/2026 - Follow-up Review - Dr Samuel Osei
+27/07/2026 - Blood Test - Dr Samuel Osei

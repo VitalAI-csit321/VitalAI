@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Andrew Garner
+DOB: 2003-03-07
+Date: 20/03/2026
+Prescribed by: Dr Samuel Osei
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 90  Repeats: 2
+Reviewed today, no change.

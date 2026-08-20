@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Paul Berger
+DOB: 1957-11-13
+Date: 22/11/2024
+Status: WITHDRAWN
+
+Patient withdrew consent to share records with other providers.

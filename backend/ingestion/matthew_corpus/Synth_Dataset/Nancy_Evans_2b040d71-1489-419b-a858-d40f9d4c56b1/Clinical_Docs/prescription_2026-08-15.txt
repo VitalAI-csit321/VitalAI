@@ -1,0 +1,15 @@
+Prescription
+
+Patient: Nancy Evans
+DOB: 2008-05-23
+Date: 15/08/2026
+Prescribed by: Dr Aisha Rahman
+
+Folic Acid 500mcg
+Take 1 tablet once daily.
+Quantity: 60  Repeats: 4
+Continuing current dose, well tolerated.
+
+Cetirizine 10mg
+Take 1 tablet once daily.
+Quantity: 60  Repeats: 5

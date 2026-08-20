@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Dawn Ramsey
+DOB: 1943-11-26
+Date: 26/05/2025
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

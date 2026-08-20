@@ -1,0 +1,131 @@
+{
+  "patient_id": "cb0f4bca-5ae1-469f-861d-866aa6cabecb",
+  "name": "Christina Gross",
+  "dob": "2007-03-03",
+  "gender": "Female",
+  "archetype": "sports_injury",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [
+    "Penicillin"
+  ],
+  "assigned_doctor": "Dr Marcus O'Connell",
+  "assigned_doctor_id": "doctor04",
+  "note_style": "terse",
+  "consent_status": "PENDING",
+  "documents": [
+    {
+      "filename": "consultation_2024-09-16.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-16"
+    },
+    {
+      "filename": "prescription_2024-09-16.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-16"
+    },
+    {
+      "filename": "referral_2024-09-16.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2024-09-16"
+    },
+    {
+      "filename": "specialist_letter_2024-11-11.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2024-11-11"
+    },
+    {
+      "filename": "imaging_2024-09-23.txt",
+      "doc_type": "external_imaging_report",
+      "classification": "High",
+      "source": "external",
+      "date": "2024-09-23"
+    },
+    {
+      "filename": "consultation_2025-01-14.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-14"
+    },
+    {
+      "filename": "prescription_2025-01-14.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-14"
+    },
+    {
+      "filename": "referral_2025-01-14.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-01-14"
+    },
+    {
+      "filename": "consultation_2025-05-13.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-05-13"
+    },
+    {
+      "filename": "prescription_2025-05-13.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-05-13"
+    },
+    {
+      "filename": "referral_2025-05-13.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-05-13"
+    },
+    {
+      "filename": "specialist_letter_2025-06-03.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-06-03"
+    },
+    {
+      "filename": "imaging_2025-05-27.txt",
+      "doc_type": "external_imaging_report",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-05-27"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-09-16"
+    }
+  ]
+}

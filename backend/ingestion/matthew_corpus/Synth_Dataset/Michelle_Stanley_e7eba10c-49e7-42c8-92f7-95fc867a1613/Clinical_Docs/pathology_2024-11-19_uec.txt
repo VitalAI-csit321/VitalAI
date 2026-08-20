@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Michelle Stanley
+DOB: 1941-06-25
+Date collected: 19/11/2024
+Requested by: Dr David Nguyen
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       147       mmol/L        135-145       H
+Potassium    4.0       mmol/L        3.5-5.2       -
+Chloride     107       mmol/L        95-110        -
+Bicarbonate  28        mmol/L        22-32         -
+Urea         8.6       mmol/L        2.5-8.0       H
+Creatinine   67        umol/L        45-90         -
+eGFR         80        mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

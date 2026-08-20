@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Alexander Hill
+DOB: 1971-06-07
+Gender: Male
+Phone: 0318196001
+Email: jesseguzman@example.net
+Address: Unit 79 02 Peterson Cove, Lake Curtis, VIC, 2555
+
+Medicare number: 2276 80402/9
+IHI: 8003657744287142
+Concession card: None
+
+Emergency contact: Renee Blair, 0416-184-959
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Engineer, agricultural
+Allergies: Bee stings
+Assigned doctor: Dr David Nguyen

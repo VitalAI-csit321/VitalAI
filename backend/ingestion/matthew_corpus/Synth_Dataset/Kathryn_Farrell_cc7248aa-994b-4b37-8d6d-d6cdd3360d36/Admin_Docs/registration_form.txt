@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Kathryn Farrell
+DOB: 1994-03-07
+Gender: Female
+Phone: 02-8121-9136
+Email: davidashley@example.net
+Address: 99 Donovan Dip, Johnfurt, NT, 2937
+
+Medicare number: 7540 08958/9
+IHI: 8003113878822178
+Concession card: Pensioner Concession Card
+
+Emergency contact: Paul Jones, +61.2.1838.4251
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Financial risk analyst
+Allergies: No known drug allergies
+Assigned doctor: Dr Marcus O'Connell

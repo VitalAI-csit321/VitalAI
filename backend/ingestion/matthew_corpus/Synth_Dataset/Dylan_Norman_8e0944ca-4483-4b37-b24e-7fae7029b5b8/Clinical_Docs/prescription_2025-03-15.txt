@@ -1,0 +1,16 @@
+Prescription
+
+Patient: Dylan Norman
+DOB: 1970-06-19
+Date: 15/03/2025
+Prescribed by: Dr Marcus O'Connell
+
+Salbutamol Inhaler 100mcg
+Inhale 2 puffs as needed for shortness of breath.
+Quantity: 90  Repeats: 3
+Reviewed today, no change.
+
+Levothyroxine 50mcg
+Take 1 tablet once daily on an empty stomach.
+Quantity: 30  Repeats: 1
+Reviewed today, no change.

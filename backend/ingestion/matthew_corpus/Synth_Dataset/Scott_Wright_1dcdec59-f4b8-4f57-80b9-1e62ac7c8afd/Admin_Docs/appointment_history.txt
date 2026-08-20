@@ -1,0 +1,6 @@
+Appointment History
+
+Patient: Scott Wright
+
+26/09/2024 - Blood Test - Dr Samuel Osei
+13/02/2026 - Follow-up Review - Dr Samuel Osei

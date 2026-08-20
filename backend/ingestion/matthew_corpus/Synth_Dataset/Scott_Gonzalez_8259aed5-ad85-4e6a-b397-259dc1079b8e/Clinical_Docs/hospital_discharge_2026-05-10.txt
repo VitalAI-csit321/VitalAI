@@ -1,0 +1,16 @@
+ST AUGUSTINE'S HOSPITAL
+EMERGENCY DEPARTMENT DISCHARGE SUMMARY
+
+UR Number: UR8788747
+Patient: GONZALEZ, Scott
+DOB: 24/05/1993
+Presented: 10/05/2026
+Discharged: 10/05/2026
+
+Presenting complaint: Chest pain, query cardiac
+
+Findings: ECG and troponin normal, non-cardiac chest pain.
+
+Management: Discharged with GP follow-up advised.
+
+Discharge plan: Follow up with regular GP within one week. Copy forwarded to GreenCare Family Medical Clinic.

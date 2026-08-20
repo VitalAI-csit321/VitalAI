@@ -1,0 +1,16 @@
+Pathology Report
+
+Patient: Nancy Evans
+DOB: 2008-05-23
+Date collected: 18/05/2025
+Requested by: Dr Aisha Rahman
+
+Iron Studies
+
+Test                    Result    Unit          Ref Range     Flag
+Iron                    3         umol/L        6-32          L
+Transferrin             3.2       g/L           2.0-3.6       -
+Transferrin Saturation  8         %             10-50         L
+Ferritin                7         ug/L          13-150        L
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

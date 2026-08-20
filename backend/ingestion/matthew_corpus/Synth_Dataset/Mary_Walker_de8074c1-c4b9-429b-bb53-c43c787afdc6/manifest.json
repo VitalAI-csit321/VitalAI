@@ -1,0 +1,184 @@
+{
+  "patient_id": "de8074c1-c4b9-429b-bb53-c43c787afdc6",
+  "name": "Mary Walker",
+  "dob": "1963-05-23",
+  "gender": "Female",
+  "archetype": "mental_health",
+  "chronic_conditions": [
+    "Generalised anxiety",
+    "Low mood",
+    "Seasonal allergic rhinitis"
+  ],
+  "secondary_condition": "Seasonal allergic rhinitis",
+  "hospital_event_date": null,
+  "allergies": [
+    "Bee stings"
+  ],
+  "assigned_doctor": "Dr Priya Menon",
+  "assigned_doctor_id": "doctor03",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-11-07.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-07"
+    },
+    {
+      "filename": "prescription_2024-11-07.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-07"
+    },
+    {
+      "filename": "referral_2024-11-07.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2024-11-07"
+    },
+    {
+      "filename": "specialist_letter_2024-12-19.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2024-12-19"
+    },
+    {
+      "filename": "consultation_2025-03-03.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-03-03"
+    },
+    {
+      "filename": "prescription_2025-03-03.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-03-03"
+    },
+    {
+      "filename": "referral_2025-03-03.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-03-03"
+    },
+    {
+      "filename": "specialist_letter_2025-04-28.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-04-28"
+    },
+    {
+      "filename": "consultation_2025-07-05.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-05"
+    },
+    {
+      "filename": "prescription_2025-07-05.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-05"
+    },
+    {
+      "filename": "pathology_2025-07-05_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-05"
+    },
+    {
+      "filename": "referral_2025-07-05.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-07-05"
+    },
+    {
+      "filename": "consultation_2025-08-06.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-08-06"
+    },
+    {
+      "filename": "prescription_2025-08-06.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-08-06"
+    },
+    {
+      "filename": "consultation_2026-02-18.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-18"
+    },
+    {
+      "filename": "prescription_2026-02-18.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-18"
+    },
+    {
+      "filename": "pathology_2026-02-18_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-18"
+    },
+    {
+      "filename": "referral_2026-02-18.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2026-02-18"
+    },
+    {
+      "filename": "specialist_letter_2026-04-08.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2026-04-08"
+    },
+    {
+      "filename": "care_plan_2024-11-07.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-07"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-11-07"
+    }
+  ]
+}

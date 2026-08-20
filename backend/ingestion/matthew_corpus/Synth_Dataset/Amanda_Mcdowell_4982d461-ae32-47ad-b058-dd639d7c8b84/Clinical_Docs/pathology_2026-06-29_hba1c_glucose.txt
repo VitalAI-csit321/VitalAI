@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Amanda Mcdowell
+DOB: 1947-07-17
+Date collected: 29/06/2026
+Requested by: Dr Samuel Osei
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            14.4      %             4.5-11.0      H
+Fasting Glucose  9.2       mmol/L        3.5-15.0      -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

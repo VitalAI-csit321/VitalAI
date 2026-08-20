@@ -1,0 +1,209 @@
+{
+  "patient_id": "472fdd9f-3574-4702-873f-02f74a8ffa40",
+  "name": "Angela Cole",
+  "dob": "1991-11-18",
+  "gender": "Female",
+  "archetype": "antenatal",
+  "chronic_conditions": [
+    "Pregnancy, antenatal care",
+    "Dyslipidaemia"
+  ],
+  "secondary_condition": "Dyslipidaemia",
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr Aisha Rahman",
+  "assigned_doctor_id": "doctor01",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-11-30.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-30"
+    },
+    {
+      "filename": "prescription_2024-11-30.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-30"
+    },
+    {
+      "filename": "pathology_2024-11-30_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-30"
+    },
+    {
+      "filename": "pathology_2024-11-30_iron_studies.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-30"
+    },
+    {
+      "filename": "consultation_2025-01-24.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-24"
+    },
+    {
+      "filename": "prescription_2025-01-24.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-24"
+    },
+    {
+      "filename": "referral_2025-01-24.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-01-24"
+    },
+    {
+      "filename": "specialist_letter_2025-02-14.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-02-14"
+    },
+    {
+      "filename": "imaging_2025-02-07.txt",
+      "doc_type": "external_imaging_report",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-02-07"
+    },
+    {
+      "filename": "consultation_2025-02-22.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-22"
+    },
+    {
+      "filename": "prescription_2025-02-22.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-22"
+    },
+    {
+      "filename": "pathology_2025-02-22_lipids.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-22"
+    },
+    {
+      "filename": "consultation_2025-10-01.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-01"
+    },
+    {
+      "filename": "prescription_2025-10-01.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-01"
+    },
+    {
+      "filename": "consultation_2025-10-13.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-13"
+    },
+    {
+      "filename": "prescription_2025-10-13.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-13"
+    },
+    {
+      "filename": "referral_2025-10-13.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-10-13"
+    },
+    {
+      "filename": "specialist_letter_2025-11-03.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-11-03"
+    },
+    {
+      "filename": "imaging_2025-10-27.txt",
+      "doc_type": "external_imaging_report",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-10-27"
+    },
+    {
+      "filename": "consultation_2026-06-30.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-06-30"
+    },
+    {
+      "filename": "prescription_2026-06-30.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-06-30"
+    },
+    {
+      "filename": "pathology_2026-06-30_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-06-30"
+    },
+    {
+      "filename": "referral_2026-06-30.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2026-06-30"
+    },
+    {
+      "filename": "imaging_2026-07-21.txt",
+      "doc_type": "external_imaging_report",
+      "classification": "High",
+      "source": "external",
+      "date": "2026-07-21"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-11-30"
+    }
+  ]
+}

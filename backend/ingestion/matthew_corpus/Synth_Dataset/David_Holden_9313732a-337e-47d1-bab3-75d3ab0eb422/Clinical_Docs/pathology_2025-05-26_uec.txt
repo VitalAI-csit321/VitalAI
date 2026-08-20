@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: David Holden
+DOB: 2011-10-07
+Date collected: 26/05/2025
+Requested by: Dr Hannah Fitzgerald
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       144       mmol/L        135-145       -
+Potassium    4.5       mmol/L        3.5-5.2       -
+Chloride     101       mmol/L        95-110        -
+Bicarbonate  29        mmol/L        22-32         -
+Urea         6.0       mmol/L        2.5-8.0       -
+Creatinine   103       umol/L        60-110        -
+eGFR         73        mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

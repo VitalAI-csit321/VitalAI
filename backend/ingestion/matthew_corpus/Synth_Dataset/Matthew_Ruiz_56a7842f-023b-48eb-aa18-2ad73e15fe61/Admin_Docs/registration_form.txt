@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Matthew Ruiz
+DOB: 1985-01-13
+Gender: Male
+Phone: 0401-624-565
+Email: moralesashley@example.org
+Address: Flat 68 84 David Centreway, Brooksmouth, TAS, 2633
+
+Medicare number: 5640 91811/4
+IHI: 8003945956203540
+Concession card: None
+
+Emergency contact: Jennifer Williams, 2578-7298
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Counselling psychologist
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

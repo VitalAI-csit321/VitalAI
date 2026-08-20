@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Benjamin Jackson
+DOB: 2020-10-16
+Date: 18/12/2024
+Seen by: Dr Aisha Rahman
+
+Known conditions: None recorded
+Allergies: Sulfa drugs
+
+Vitals: BP 132/87 mmHg, Weight 104.2 kg
+
+Chief Complaint:
+Headache and fatigue.
+
+Assessment:
+No acute findings on examination.
+
+Plan:
+- Symptomatic relief advised
+- Increase fluid intake

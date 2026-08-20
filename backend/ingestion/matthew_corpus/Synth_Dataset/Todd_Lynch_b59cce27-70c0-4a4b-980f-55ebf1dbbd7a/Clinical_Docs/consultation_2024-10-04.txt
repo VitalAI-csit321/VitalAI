@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Todd Lynch
+DOB: 2012-03-02
+Date: 04/10/2024
+Seen by: Dr Hannah Fitzgerald
+
+Known conditions: None recorded
+Allergies: No known drug allergies
+
+Vitals: BP 119/77 mmHg, Weight 55.4 kg
+
+Chief Complaint:
+Developmental check.
+
+Assessment:
+No concerns identified.
+
+Plan:
+- Routine growth check
+- Administer scheduled vaccine

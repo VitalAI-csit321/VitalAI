@@ -1,0 +1,23 @@
+Consultation Note
+
+Patient: Kathryn Gonzalez
+DOB: 2006-05-17
+Date: 06/03/2026
+Seen by: Dr Aisha Rahman
+
+Known conditions: Pregnancy, antenatal care
+Allergies: No known drug allergies
+
+Note: Aware of recent hospital presentation on 10/10/2025, no new concerns raised today.
+
+Vitals: BP 148/82 mmHg, Weight 60.7 kg
+
+Chief Complaint:
+Antenatal review, fetal movements normal.
+
+Assessment:
+Antenatal review, no concerns.
+
+Plan:
+- Refer for morphology scan
+- Order full blood count and iron studies

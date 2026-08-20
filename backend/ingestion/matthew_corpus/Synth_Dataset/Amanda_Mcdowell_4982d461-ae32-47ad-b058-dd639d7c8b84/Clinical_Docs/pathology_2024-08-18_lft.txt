@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Amanda Mcdowell
+DOB: 1947-07-17
+Date collected: 18/08/2024
+Requested by: Dr Samuel Osei
+
+LFT
+
+Test             Result    Unit          Ref Range     Flag
+Total Protein    84        g/L           60-80         H
+Albumin          47        g/L           35-50         -
+Total Bilirubin  7         umol/L        2-20          -
+ALP              85        U/L           30-110        -
+GGT              44        U/L           5-35          H
+ALT              33        U/L           5-30          H
+AST              17        U/L           5-40          -
+
+Interpretation: Results within expected reference ranges.

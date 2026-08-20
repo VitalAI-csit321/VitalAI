@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Kathryn Gonzalez
+DOB: 2006-05-17
+Gender: Female
+Phone: 0733339521
+Email: moraemma@example.net
+Address: 0 Watson Glade, Villanuevashire, SA, 2920
+
+Medicare number: 2431 82072/9
+IHI: 8003354644483312
+Concession card: None
+
+Emergency contact: Phillip Dixon, +61 3 9208 6780
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Retail buyer
+Allergies: No known drug allergies
+Assigned doctor: Dr Aisha Rahman

@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Michele Carr
+DOB: 1952-04-21
+Date collected: 14/09/2024
+Requested by: Dr Samuel Osei
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       142       mmol/L        135-145       -
+Potassium    4.0       mmol/L        3.5-5.2       -
+Chloride     104       mmol/L        95-110        -
+Bicarbonate  33        mmol/L        22-32         H
+Urea         6.9       mmol/L        2.5-8.0       -
+Creatinine   47        umol/L        45-90         -
+eGFR         97        mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

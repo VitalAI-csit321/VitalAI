@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Jessica Chandler
+DOB: 1933-06-11
+Date collected: 16/01/2025
+Requested by: Dr Samuel Osei
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       142       mmol/L        135-145       -
+Potassium    4.8       mmol/L        3.5-5.2       -
+Chloride     105       mmol/L        95-110        -
+Bicarbonate  29        mmol/L        22-32         -
+Urea         5.7       mmol/L        2.5-8.0       -
+Creatinine   72        umol/L        45-90         -
+eGFR         110       mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

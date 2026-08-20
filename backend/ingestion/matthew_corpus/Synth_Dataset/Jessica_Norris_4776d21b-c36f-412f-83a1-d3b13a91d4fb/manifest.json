@@ -1,0 +1,194 @@
+{
+  "patient_id": "4776d21b-c36f-412f-83a1-d3b13a91d4fb",
+  "name": "Jessica Norris",
+  "dob": "1968-05-06",
+  "gender": "Female",
+  "archetype": "type2_diabetes",
+  "chronic_conditions": [
+    "Type 2 diabetes mellitus"
+  ],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr David Nguyen",
+  "assigned_doctor_id": "doctor02",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-11-10.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-10"
+    },
+    {
+      "filename": "prescription_2024-11-10.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-10"
+    },
+    {
+      "filename": "pathology_2024-11-10_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-10"
+    },
+    {
+      "filename": "pathology_2024-11-10_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-10"
+    },
+    {
+      "filename": "referral_2024-11-10.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2024-11-10"
+    },
+    {
+      "filename": "specialist_letter_2024-12-08.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2024-12-08"
+    },
+    {
+      "filename": "consultation_2025-01-19.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-19"
+    },
+    {
+      "filename": "prescription_2025-01-19.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-19"
+    },
+    {
+      "filename": "referral_2025-01-19.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-01-19"
+    },
+    {
+      "filename": "consultation_2025-11-06.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-11-06"
+    },
+    {
+      "filename": "prescription_2025-11-06.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-11-06"
+    },
+    {
+      "filename": "consultation_2026-01-05.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-05"
+    },
+    {
+      "filename": "prescription_2026-01-05.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-05"
+    },
+    {
+      "filename": "pathology_2026-01-05_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-05"
+    },
+    {
+      "filename": "consultation_2026-01-12.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-12"
+    },
+    {
+      "filename": "prescription_2026-01-12.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-12"
+    },
+    {
+      "filename": "consultation_2026-03-05.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-05"
+    },
+    {
+      "filename": "prescription_2026-03-05.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-05"
+    },
+    {
+      "filename": "pathology_2026-03-05_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-05"
+    },
+    {
+      "filename": "referral_2026-03-05.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2026-03-05"
+    },
+    {
+      "filename": "specialist_letter_2026-04-23.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2026-04-23"
+    },
+    {
+      "filename": "care_plan_2024-11-10.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-10"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-11-10"
+    }
+  ]
+}

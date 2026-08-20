@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Todd Lynch
+DOB: 2012-03-02
+Date: 30/10/2024
+Seen by: Dr Hannah Fitzgerald
+
+Known conditions: None recorded
+Allergies: No known drug allergies
+
+Vitals: BP 113/85 mmHg, Weight 109.6 kg
+
+Chief Complaint:
+Routine childhood immunisation.
+
+Assessment:
+Immunisation administered without complication.
+
+Plan:
+- Provide next due date
+- Administer scheduled vaccine
+- Update immunisation register

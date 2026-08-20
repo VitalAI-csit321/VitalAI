@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Christina Gross
+DOB: 2007-03-03
+Date: 16/09/2024
+Status: PENDING
+
+Consent form partially completed. Information-sharing section not yet signed.

@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Kelli Williams
+DOB: 1948-02-15
+Date collected: 24/10/2024
+Requested by: Dr David Nguyen
+
+FBC
+
+Test              Result    Unit          Ref Range     Flag
+Haemoglobin       94        g/L           115-165       L
+White Cell Count  4.5       x10^9/L       4.0-11.0      -
+Platelets         181       x10^9/L       150-400       -
+Haematocrit       0.4       L/L           0.37-0.47     -
+MCV               84.2      fL            80-100        -
+Neutrophils       2.3       x10^9/L       2.0-8.0       -
+Lymphocytes       3.9       x10^9/L       1.0-4.0       -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

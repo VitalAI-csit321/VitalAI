@@ -1,0 +1,8 @@
+Appointment History
+
+Patient: Stacey Wise
+
+23/09/2024 - General Consultation - Dr Hannah Fitzgerald
+11/11/2024 - Follow-up Review - Dr Hannah Fitzgerald
+07/10/2025 - Follow-up Review - Dr Hannah Fitzgerald
+21/12/2025 - Follow-up Review - Dr Hannah Fitzgerald

@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Stacey Wise
+DOB: 1973-05-13
+Date: 11/11/2024
+Prescribed by: Dr Hannah Fitzgerald
+
+Salbutamol Inhaler 100mcg
+Inhale 2 puffs as needed for shortness of breath.
+Quantity: 60  Repeats: 2
+Reviewed today, no change.

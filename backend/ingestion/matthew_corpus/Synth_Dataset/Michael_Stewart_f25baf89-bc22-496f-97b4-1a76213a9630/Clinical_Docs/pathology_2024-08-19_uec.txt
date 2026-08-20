@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Michael Stewart
+DOB: 1972-04-12
+Date collected: 19/08/2024
+Requested by: Dr David Nguyen
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       145       mmol/L        135-145       -
+Potassium    4.3       mmol/L        3.5-5.2       -
+Chloride     95        mmol/L        95-110        -
+Bicarbonate  28        mmol/L        22-32         -
+Urea         2.3       mmol/L        2.5-8.0       L
+Creatinine   81        umol/L        60-110        -
+eGFR         102       mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Nicolas Davis
+DOB: 1949-10-15
+Gender: Male
+Phone: +61.437.645.208
+Email: kingdanielle@example.org
+Address: 3 Joel Nook, Alexisview, NSW, 2993
+
+Medicare number: 6912 56110/7
+IHI: 8003359514823963
+Concession card: None
+
+Emergency contact: Andrew Logan, +61351327195
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Current smoker, 5-10 cigarettes/day
+Alcohol use: Nil
+Occupation: Best boy
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

@@ -1,0 +1,6 @@
+Appointment History
+
+Patient: Zachary White
+
+27/09/2025 - General Consultation - Dr Hannah Fitzgerald
+12/02/2026 - Follow-up Review - Dr Hannah Fitzgerald

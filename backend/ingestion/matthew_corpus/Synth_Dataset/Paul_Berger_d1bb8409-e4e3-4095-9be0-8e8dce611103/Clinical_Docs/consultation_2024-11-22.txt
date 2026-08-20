@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Paul Berger
+DOB: 1957-11-13
+Date: 22/11/2024
+Seen by: Dr Aisha Rahman
+
+Known conditions: None recorded
+Allergies: No known drug allergies
+
+Vitals: BP 150/79 mmHg, Weight 95.7 kg
+
+Chief Complaint:
+Routine full-body skin check.
+
+Assessment:
+Lesion appears benign, monitor.
+
+Plan:
+- Refer to dermatologist if changes noted
+- Review in 6 months

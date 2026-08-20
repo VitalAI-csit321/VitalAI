@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Caleb Johnson
+DOB: 1982-01-04
+Gender: Male
+Phone: (08)97279855
+Email: marygreen@example.net
+Address: Apt. 602 3 Deborah Strip, New Denise, ACT, 1722
+
+Medicare number: 3078 32448/3
+IHI: 8003261341323052
+Concession card: None
+
+Emergency contact: Alejandra King, (07)-6657-4374
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Scientist, research (life sciences)
+Allergies: No known drug allergies
+Assigned doctor: Dr Priya Menon

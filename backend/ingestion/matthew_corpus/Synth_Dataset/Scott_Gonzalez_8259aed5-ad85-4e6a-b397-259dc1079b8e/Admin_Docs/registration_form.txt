@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Scott Gonzalez
+DOB: 1993-05-24
+Gender: Male
+Phone: 08 0267 2885
+Email: jevans@example.net
+Address: Flat 20 471 Garner Firetrail, Michaelside, SA, 2960
+
+Medicare number: 8185 60799/7
+IHI: 8003959017342540
+Concession card: Health Care Card
+
+Emergency contact: Gregory Frazier, +61 439 982 455
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Sales professional, IT
+Allergies: No known drug allergies
+Assigned doctor: Dr Marcus O'Connell

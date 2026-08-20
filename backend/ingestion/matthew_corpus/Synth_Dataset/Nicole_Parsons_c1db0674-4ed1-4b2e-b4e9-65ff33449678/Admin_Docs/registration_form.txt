@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Nicole Parsons
+DOB: 1992-10-02
+Gender: Female
+Phone: 07 3959 9534
+Email: valerieboyd@example.com
+Address: Apt. 892 6 Williams Highroad, Floydmouth, VIC, 0224
+
+Medicare number: 8501 61712/5
+IHI: 8003107253466526
+Concession card: Pensioner Concession Card
+
+Emergency contact: Paul Wells, 0727086688
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Contractor
+Allergies: No known drug allergies
+Assigned doctor: Dr Marcus O'Connell
