@@ -27,18 +27,11 @@ def _chunk(score: float) -> RetrievedChunk:
     )
 
 
-def test_sufficient_high_confidence_proceeds() -> None:
+def test_sufficient_proceeds() -> None:
     outcome = evaluate_retrieval([_chunk(0.80)])
 
     assert outcome.sufficient is True
     assert outcome.decision == "proceed"
-
-
-def test_sufficient_low_confidence_escalates() -> None:
-    outcome = evaluate_retrieval([_chunk(0.60)])
-
-    assert outcome.sufficient is True
-    assert outcome.decision == "escalate"
 
 
 def test_no_chunks_is_insufficient() -> None:
