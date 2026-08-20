@@ -1,4 +1,8 @@
-fastapi>=0.110.0
+# Bounded, unlike the rest of this file: app/auth/rbac_registry.py walks
+# fastapi.routing._IncludedRouter, a private class. Both bounds were checked
+# against the actual wheels; the ceiling forces a re-verify (see that module's
+# docstring) instead of letting an unpinned install break the RBAC tests.
+fastapi>=0.139.2,<0.142.0
 uvicorn[standard]>=0.29.0
 pydantic>=2.7.0
 pydantic-settings>=2.2.0
