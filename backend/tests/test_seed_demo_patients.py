@@ -1,5 +1,6 @@
-import pytest
 from datetime import date
+
+import pytest
 
 from app.models.patient import Gender
 from scripts.seed_demo_patients import _field, _gender_from_form, _parse_folder

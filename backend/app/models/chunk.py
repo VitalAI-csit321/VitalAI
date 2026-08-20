@@ -22,6 +22,7 @@ def _skip_computed_on_sqlite(element: Computed, compiler, **kw) -> str:
     want the same "inert under SQLite" behaviour."""
     return ""
 
+
 # postgresql.UUID with_variant Uuid() so SQLite (other suites' in-memory tests) still compiles
 _pg_uuid = postgresql.UUID(as_uuid=True).with_variant(Uuid(), "sqlite")
 # vector(512) has no SQLite equivalent; substitute an opaque blob so

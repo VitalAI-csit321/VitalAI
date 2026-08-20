@@ -268,9 +268,7 @@ async def retrieve(
         vector_rows = await _vector_candidates(
             session, query_embedding, ctx, doc_type, candidate_pool
         )
-        fulltext_chunks = await _fulltext_candidates(
-            session, query, ctx, doc_type, candidate_pool
-        )
+        fulltext_chunks = await _fulltext_candidates(session, query, ctx, doc_type, candidate_pool)
 
         chunk_by_id: dict[UUID, Chunk] = {}
         distance_by_id: dict[UUID, float] = {}
