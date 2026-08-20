@@ -1,4 +1,5 @@
 from datetime import date
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,18 +62,23 @@ async def test_list_patients_search_by_partial_name(db_session: AsyncSession):
     db_session.add(actor)
     await db_session.commit()
 
+    # A uuid-suffixed surname, not "Smith"/"Doe": list_patients() searches
+    # unscoped across the whole table, and this dev database accumulates
+    # real demo patients across sessions, so a common name can collide with
+    # pre-existing rows and make total > 1.
+    unique_name = f"Zeldenrust{uuid4().hex[:8]}"
     await patient_service.create_patient(
         db_session,
-        PatientCreate(name="Jane Smith", dob=date(1990, 1, 1), gender=Gender.FEMALE),
+        PatientCreate(name=f"Jane {unique_name}", dob=date(1990, 1, 1), gender=Gender.FEMALE),
         actor,
     )
     await patient_service.create_patient(
         db_session, PatientCreate(name="John Doe", dob=date(1991, 1, 1), gender=Gender.MALE), actor
     )
 
-    items, total, _ = await patient_service.list_patients(db_session, search="smith")
+    items, total, _ = await patient_service.list_patients(db_session, search=unique_name)
     assert total == 1
-    assert items[0].name == "Jane Smith"
+    assert items[0].name == f"Jane {unique_name}"
 
 
 async def test_list_patients_search_by_partial_mrn(db_session: AsyncSession):
