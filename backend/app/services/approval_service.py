@@ -59,7 +59,12 @@ async def approve(
     resolved_payload: dict | None = None,
     notes: str | None = None,
 ) -> ApprovalRequest:
-    request = await db.get(ApprovalRequest, approval_id)
+    # with_for_update: two concurrent approve()/reject() calls on the same
+    # request must not both pass the PENDING check below. Without the lock,
+    # a blocked commit() unblocks after the first commit and Postgres
+    # silently re-applies it (WHERE id = :id still matches), overwriting the
+    # already-decided row instead of raising ApprovalAlreadyDecidedError.
+    request = await db.get(ApprovalRequest, approval_id, with_for_update=True)
     if request is None:
         raise ApprovalNotFoundError(f"No approval request with id {approval_id}")
     if request.status != ApprovalStatus.PENDING:
@@ -91,7 +96,8 @@ async def reject(
     decided_by: User,
     notes: str | None = None,
 ) -> ApprovalRequest:
-    request = await db.get(ApprovalRequest, approval_id)
+    # with_for_update: see the matching comment in approve() above.
+    request = await db.get(ApprovalRequest, approval_id, with_for_update=True)
     if request is None:
         raise ApprovalNotFoundError(f"No approval request with id {approval_id}")
     if request.status != ApprovalStatus.PENDING:
