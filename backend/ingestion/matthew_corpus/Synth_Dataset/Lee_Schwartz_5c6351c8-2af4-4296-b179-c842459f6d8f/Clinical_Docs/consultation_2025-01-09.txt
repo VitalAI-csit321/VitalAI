@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Lee Schwartz
+DOB: 1967-06-29
+Date: 09/01/2025
+Seen by: Dr Priya Menon
+
+Known conditions: None recorded
+Allergies: No known drug allergies
+
+Vitals: BP 132/88 mmHg, Weight 85.8 kg
+
+Chief Complaint:
+Headache and fatigue.
+
+Assessment:
+No acute findings on examination.
+
+Plan:
+- Symptomatic relief advised
+- Follow up if not improving in a week

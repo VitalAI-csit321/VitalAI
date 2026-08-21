@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Peter Anderson
+DOB: 1967-05-24
+Gender: Male
+Phone: (07)27722170
+Email: james30@example.com
+Address: 4/345 Michelle Ground, Davidstad, VIC, 2997
+
+Medicare number: 3260 80333/7
+IHI: 8003367970020075
+Concession card: DVA Gold Card
+
+Emergency contact: Jasmine Beltran, +61858416169
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Education administrator
+Allergies: Penicillin
+Assigned doctor: Dr David Nguyen

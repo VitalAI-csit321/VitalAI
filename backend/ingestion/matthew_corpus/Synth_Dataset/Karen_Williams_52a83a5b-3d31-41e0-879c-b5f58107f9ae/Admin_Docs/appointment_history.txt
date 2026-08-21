@@ -1,8 +1,0 @@
-
-Appointment History
-
-27/09/2024 - General Consultation
-09/01/2025 - Minor Procedure
-18/01/2025 - Vaccination
-26/07/2025 - Physiotherapy Session
-12/06/2026 - Physiotherapy Session

@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Elizabeth Baxter
+DOB: 1953-07-24
+Date collected: 22/08/2024
+Requested by: Dr Samuel Osei
+
+LFT
+
+Test             Result    Unit          Ref Range     Flag
+Total Protein    67        g/L           60-80         -
+Albumin          47        g/L           35-50         -
+Total Bilirubin  3         umol/L        2-20          -
+ALP              28        U/L           30-110        L
+GGT              8         U/L           5-35          -
+ALT              18        U/L           5-30          -
+AST              23        U/L           5-40          -
+
+Interpretation: Results within expected reference ranges.

@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Samuel Short
+DOB: 1960-07-14
+Gender: Male
+Phone: 65726284
+Email: umarshall@example.net
+Address: Unit 14 37 Rogers Point, Hunterborough, TAS, 2754
+
+Medicare number: 4239 39602/2
+IHI: 8003980269039728
+Concession card: DVA Gold Card
+
+Emergency contact: Meredith Hill, 8313 6783
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Publishing copy
+Allergies: Penicillin
+Assigned doctor: Dr Priya Menon

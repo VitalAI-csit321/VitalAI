@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Greg Edwards
+DOB: 1960-11-05
+Gender: Male
+Phone: +61-444-964-759
+Email: lgutierrez@example.org
+Address: 4 Jason Little, East Calebfort, ACT, 2068
+
+Medicare number: 7613 20626/9
+IHI: 8003678330077932
+Concession card: None
+
+Emergency contact: Angela Baker, 02 6433 4722
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Secretary/administrator
+Allergies: Latex
+Assigned doctor: Dr Priya Menon

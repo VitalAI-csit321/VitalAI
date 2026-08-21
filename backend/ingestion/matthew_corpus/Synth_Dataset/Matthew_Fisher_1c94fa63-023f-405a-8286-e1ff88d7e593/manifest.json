@@ -1,0 +1,139 @@
+{
+  "patient_id": "1c94fa63-023f-405a-8286-e1ff88d7e593",
+  "name": "Matthew Fisher",
+  "dob": "1985-08-17",
+  "gender": "Male",
+  "archetype": "type2_diabetes",
+  "chronic_conditions": [
+    "Type 2 diabetes mellitus",
+    "Iron deficiency anaemia"
+  ],
+  "secondary_condition": "Iron deficiency anaemia",
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr David Nguyen",
+  "assigned_doctor_id": "doctor02",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-09-17.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-17"
+    },
+    {
+      "filename": "prescription_2024-09-17.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-17"
+    },
+    {
+      "filename": "pathology_2024-09-17_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-17"
+    },
+    {
+      "filename": "pathology_2024-09-17_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-17"
+    },
+    {
+      "filename": "referral_2024-09-17.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2024-09-17"
+    },
+    {
+      "filename": "consultation_2025-02-10.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-10"
+    },
+    {
+      "filename": "prescription_2025-02-10.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-10"
+    },
+    {
+      "filename": "referral_2025-02-10.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-02-10"
+    },
+    {
+      "filename": "consultation_2025-07-02.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-02"
+    },
+    {
+      "filename": "prescription_2025-07-02.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-02"
+    },
+    {
+      "filename": "pathology_2025-07-02_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-02"
+    },
+    {
+      "filename": "pathology_2025-07-02_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-02"
+    },
+    {
+      "filename": "pathology_2025-07-02_iron_studies.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-02"
+    },
+    {
+      "filename": "care_plan_2024-09-17.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-17"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-09-17"
+    }
+  ]
+}

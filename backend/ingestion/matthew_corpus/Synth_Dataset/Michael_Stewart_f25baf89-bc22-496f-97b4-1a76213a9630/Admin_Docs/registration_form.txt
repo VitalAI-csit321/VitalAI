@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Michael Stewart
+DOB: 1972-04-12
+Gender: Male
+Phone: (02)26944869
+Email: cheryl63@example.com
+Address: 88 King Gate, Kimfurt, NT, 2619
+
+Medicare number: 3975 49404/5
+IHI: 8003610922698282
+Concession card: None
+
+Emergency contact: Jillian Lyons, 02-3865-8902
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Neurosurgeon
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: David Holden
+DOB: 2011-10-07
+Date: 03/09/2025
+Seen by: Dr Hannah Fitzgerald
+
+Known conditions: None recorded
+Allergies: Bee stings
+
+Vitals: BP 126/88 mmHg, Weight 85.5 kg
+
+Chief Complaint:
+Routine childhood immunisation.
+
+Assessment:
+Immunisation administered without complication.
+
+Plan:
+- Administer scheduled vaccine
+- Routine growth check

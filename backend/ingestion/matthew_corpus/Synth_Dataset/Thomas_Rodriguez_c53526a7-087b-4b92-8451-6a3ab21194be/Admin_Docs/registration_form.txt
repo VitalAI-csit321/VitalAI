@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Thomas Rodriguez
+DOB: 1979-07-03
+Gender: Male
+Phone: 0483-982-258
+Email: nwilson@example.net
+Address: 7 Shawn Quadrant, Bryantton, WA, 2930
+
+Medicare number: 3468 08149/5
+IHI: 8003864481179819
+Concession card: Health Care Card
+
+Emergency contact: Robert Reese, 0410.651.801
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Moderate, 5-10 standard drinks/week
+Occupation: Public house manager
+Allergies: No known drug allergies
+Assigned doctor: Dr Priya Menon

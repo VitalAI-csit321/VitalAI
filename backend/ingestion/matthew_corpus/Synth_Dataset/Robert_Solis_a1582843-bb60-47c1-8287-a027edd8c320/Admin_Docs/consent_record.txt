@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Robert Solis
+DOB: 2019-05-26
+Date: 29/08/2024
+Status: PENDING
+
+Consent form partially completed. Information-sharing section not yet signed.

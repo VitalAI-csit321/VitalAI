@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Samuel Short
+DOB: 1960-07-14
+Date: 01/12/2025
+Seen by: Dr Priya Menon
+
+Known conditions: None recorded
+Allergies: Penicillin
+
+Vitals: BP 116/68 mmHg, Weight 89.7 kg
+
+Chief Complaint:
+Follow-up on previously monitored lesion.
+
+Assessment:
+No suspicious lesions identified.
+
+Plan:
+- Photograph and monitor lesion
+- Refer to dermatologist if changes noted
+- Review in 6 months

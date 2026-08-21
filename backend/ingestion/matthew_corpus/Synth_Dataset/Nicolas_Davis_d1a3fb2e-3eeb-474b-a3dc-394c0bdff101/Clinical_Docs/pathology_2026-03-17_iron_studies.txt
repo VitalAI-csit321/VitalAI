@@ -1,0 +1,16 @@
+Pathology Report
+
+Patient: Nicolas Davis
+DOB: 1949-10-15
+Date collected: 17/03/2026
+Requested by: Dr David Nguyen
+
+Iron Studies
+
+Test                    Result    Unit          Ref Range     Flag
+Iron                    4         umol/L        6-32          L
+Transferrin             2.1       g/L           2.0-3.6       -
+Transferrin Saturation  6         %             10-50         L
+Ferritin                27        ug/L          30-300        L
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

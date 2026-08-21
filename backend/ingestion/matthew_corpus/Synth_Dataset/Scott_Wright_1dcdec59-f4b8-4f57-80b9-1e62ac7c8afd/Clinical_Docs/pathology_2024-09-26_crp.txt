@@ -1,0 +1,13 @@
+Pathology Report
+
+Patient: Scott Wright
+DOB: 1959-07-23
+Date collected: 26/09/2024
+Requested by: Dr Samuel Osei
+
+CRP
+
+Test                Result    Unit          Ref Range     Flag
+C-Reactive Protein  83        mg/L          0-60          H
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

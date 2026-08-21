@@ -1,0 +1,117 @@
+{
+  "patient_id": "0d745911-b896-43c3-8b69-167fb8a79fc3",
+  "name": "David Stokes",
+  "dob": "1946-07-06",
+  "gender": "Male",
+  "archetype": "type2_diabetes",
+  "chronic_conditions": [
+    "Type 2 diabetes mellitus"
+  ],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr David Nguyen",
+  "assigned_doctor_id": "doctor02",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-01-16.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-16"
+    },
+    {
+      "filename": "prescription_2025-01-16.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-16"
+    },
+    {
+      "filename": "pathology_2025-01-16_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-16"
+    },
+    {
+      "filename": "pathology_2025-01-16_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-16"
+    },
+    {
+      "filename": "consultation_2025-07-12.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-12"
+    },
+    {
+      "filename": "prescription_2025-07-12.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-12"
+    },
+    {
+      "filename": "consultation_2026-03-04.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-04"
+    },
+    {
+      "filename": "prescription_2026-03-04.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-04"
+    },
+    {
+      "filename": "pathology_2026-03-04_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-04"
+    },
+    {
+      "filename": "referral_2026-03-04.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2026-03-04"
+    },
+    {
+      "filename": "care_plan_2025-01-16.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-16"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-01-16"
+    }
+  ]
+}

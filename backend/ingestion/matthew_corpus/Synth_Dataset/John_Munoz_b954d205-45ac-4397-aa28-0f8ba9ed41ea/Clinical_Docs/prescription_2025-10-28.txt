@@ -1,0 +1,11 @@
+Prescription
+
+Patient: John Munoz
+DOB: 1974-04-24
+Date: 28/10/2025
+Prescribed by: Dr Marcus O'Connell
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 30  Repeats: 2
+Continuing current dose, well tolerated.

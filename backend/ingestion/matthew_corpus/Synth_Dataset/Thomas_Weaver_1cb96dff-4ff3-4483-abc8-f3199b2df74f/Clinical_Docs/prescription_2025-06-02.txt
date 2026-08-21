@@ -1,0 +1,15 @@
+Prescription
+
+Patient: Thomas Weaver
+DOB: 1979-12-04
+Date: 02/06/2025
+Prescribed by: Dr Priya Menon
+
+Sertraline 50mg
+Take 1 tablet once daily.
+Quantity: 60  Repeats: 2
+Continuing current dose, well tolerated.
+
+Cetirizine 10mg
+Take 1 tablet once daily.
+Quantity: 60  Repeats: 3

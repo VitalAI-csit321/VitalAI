@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Lauren Walters
+DOB: 1967-08-09
+Gender: Female
+Phone: +61275655125
+Email: ssteele@example.net
+Address: 15 Morris Walkway, Hancocktown, WA, 0203
+
+Medicare number: 0351 65395/9
+IHI: 8003534692073767
+Concession card: None
+
+Emergency contact: Lisa Jimenez, +61.2.3482.4771
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Air cabin crew
+Allergies: No known drug allergies
+Assigned doctor: Dr Priya Menon

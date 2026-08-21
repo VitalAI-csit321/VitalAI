@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Rebecca Davis
+DOB: 1943-05-22
+Date collected: 16/11/2024
+Requested by: Dr Samuel Osei
+
+LFT
+
+Test             Result    Unit          Ref Range     Flag
+Total Protein    62        g/L           60-80         -
+Albumin          41        g/L           35-50         -
+Total Bilirubin  12        umol/L        2-20          -
+ALP              98        U/L           30-110        -
+GGT              30        U/L           5-35          -
+ALT              21        U/L           5-30          -
+AST              50        U/L           5-40          H
+
+Interpretation: Results within expected reference ranges.

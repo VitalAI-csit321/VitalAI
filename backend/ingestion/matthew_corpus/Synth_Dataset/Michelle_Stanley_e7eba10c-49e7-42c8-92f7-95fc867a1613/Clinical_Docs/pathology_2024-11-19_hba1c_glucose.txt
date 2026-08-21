@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Michelle Stanley
+DOB: 1941-06-25
+Date collected: 19/11/2024
+Requested by: Dr David Nguyen
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            16.1      %             4.5-11.0      H
+Fasting Glucose  19.9      mmol/L        3.5-15.0      H
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Peter Anderson
+DOB: 1967-05-24
+Date collected: 07/04/2025
+Requested by: Dr David Nguyen
+
+TFT
+
+Test     Result    Unit          Ref Range     Flag
+TSH      4.7       mIU/L         0.4-4.0       H
+Free T4  10.4      pmol/L        10-20         -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

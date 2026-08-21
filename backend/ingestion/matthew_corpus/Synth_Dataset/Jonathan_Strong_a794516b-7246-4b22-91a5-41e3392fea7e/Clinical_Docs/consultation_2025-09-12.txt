@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Jonathan Strong
+DOB: 1987-01-04
+Date: 12/09/2025
+Seen by: Dr Priya Menon
+
+Known conditions: Generalised anxiety, Low mood, Seasonal allergic rhinitis
+Allergies: Bee stings
+
+Vitals: BP 146/83 mmHg, Weight 63.9 kg
+
+Chief Complaint:
+Sneezing, itchy eyes and nasal congestion, seasonal pattern.
+
+Assessment:
+Consistent with seasonal allergic rhinitis.
+
+Plan:
+- Advise on allergen avoidance
+- Trial antihistamine
+- Review if not improving

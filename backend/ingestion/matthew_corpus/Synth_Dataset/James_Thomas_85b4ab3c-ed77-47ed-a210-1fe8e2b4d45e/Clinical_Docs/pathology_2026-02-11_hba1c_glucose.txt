@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: James Thomas
+DOB: 1938-04-03
+Date collected: 11/02/2026
+Requested by: Dr Samuel Osei
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            12.9      %             4.5-11.0      H
+Fasting Glucose  6.9       mmol/L        3.5-15.0      -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Bradley Bruce
+DOB: 1995-11-29
+Date: 01/03/2026
+Seen by: Dr Hannah Fitzgerald
+
+Known conditions: None recorded
+Allergies: No known drug allergies
+
+Vitals: BP 138/92 mmHg, Weight 104.6 kg
+
+Chief Complaint:
+Headache and fatigue.
+
+Assessment:
+Likely viral infection.
+
+Plan:
+- Rest
+- Symptomatic relief advised

@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Andrew Roberts
+DOB: 1942-11-04
+Date collected: 14/09/2024
+Requested by: Dr Samuel Osei
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       140       mmol/L        135-145       -
+Potassium    4.2       mmol/L        3.5-5.2       -
+Chloride     100       mmol/L        95-110        -
+Bicarbonate  24        mmol/L        22-32         -
+Urea         5.2       mmol/L        2.5-8.0       -
+Creatinine   67        umol/L        60-110        -
+eGFR         122       mL/min/1.73m2 60-120        H
+
+Interpretation: Results within expected reference ranges.

@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Thomas Weaver
+DOB: 1979-12-04
+Date: 08/06/2025
+Seen by: Dr Priya Menon
+
+Known conditions: Generalised anxiety, Low mood, Seasonal allergic rhinitis
+Allergies: Bee stings
+
+Vitals: BP 137/85 mmHg, Weight 66.8 kg
+
+Chief Complaint:
+Sneezing, itchy eyes and nasal congestion, seasonal pattern.
+
+Assessment:
+Consistent with seasonal allergic rhinitis.
+
+Plan:
+- Trial antihistamine
+- Review if not improving

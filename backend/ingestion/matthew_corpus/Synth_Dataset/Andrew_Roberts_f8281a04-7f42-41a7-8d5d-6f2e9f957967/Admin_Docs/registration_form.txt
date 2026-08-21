@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Andrew Roberts
+DOB: 1942-11-04
+Gender: Male
+Phone: (08)-1349-3618
+Email: deborahkerr@example.org
+Address: 499 Gonzales Path, Hollyview, WA, 2611
+
+Medicare number: 9516 59488/2
+IHI: 8003512445132435
+Concession card: None
+
+Emergency contact: Stacy Navarro, +61 440 139 904
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Technical author
+Allergies: Penicillin
+Assigned doctor: Dr Samuel Osei

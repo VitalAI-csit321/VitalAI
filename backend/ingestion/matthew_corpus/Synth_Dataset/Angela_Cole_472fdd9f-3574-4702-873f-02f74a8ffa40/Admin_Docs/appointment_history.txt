@@ -1,0 +1,10 @@
+Appointment History
+
+Patient: Angela Cole
+
+30/11/2024 - Blood Test - Dr Aisha Rahman
+24/01/2025 - Specialist Referral - Dr Aisha Rahman
+22/02/2025 - Blood Test - Dr Aisha Rahman
+01/10/2025 - Follow-up Review - Dr Aisha Rahman
+13/10/2025 - Specialist Referral - Dr Aisha Rahman
+30/06/2026 - Specialist Referral - Dr Aisha Rahman

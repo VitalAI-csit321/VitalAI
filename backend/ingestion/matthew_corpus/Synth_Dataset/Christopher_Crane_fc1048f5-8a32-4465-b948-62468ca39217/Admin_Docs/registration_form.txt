@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Christopher Crane
+DOB: 2009-10-01
+Gender: Male
+Phone: +61.3.1712.1003
+Email: jamesmorales@example.net
+Address: Flat 01 721 Martinez Pass, West Sandrachester, VIC, 2920
+
+Medicare number: 1951 55298/4
+IHI: 8003138500903037
+Concession card: Health Care Card
+
+Emergency contact: Michael Thompson, 03.4472.0999
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Financial trader
+Allergies: No known drug allergies
+Assigned doctor: Dr Samuel Osei

@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: David Holden
+DOB: 2011-10-07
+Gender: Male
+Phone: +61-457-306-524
+Email: washingtonsamuel@example.com
+Address: 2 Morris Path, Mikaylaside, NT, 2382
+
+Medicare number: 3678 87704/2
+IHI: 8003365814162276
+Concession card: None
+
+Emergency contact: Robert Weaver, +61.2.8620.9593
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: IT sales professional
+Allergies: Bee stings
+Assigned doctor: Dr Hannah Fitzgerald

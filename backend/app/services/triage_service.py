@@ -1,7 +1,11 @@
-"""Rules-based triage classifier — Phase 1.
+"""Rules-based triage classifier for the manual `POST /triage` endpoint.
 
-In Phase 3 this will be replaced by an NLP urgency classifier behind a
-LangGraph node, and the abstraction will move to app.agents.triage.
+Superseded for live email/call ingestion by app.services.content_classifier's
+LLM-based classifier (FR-TRIAGE-01), which those pipelines call directly.
+This module stays in use for two other reasons: `POST /triage` is still a
+real, tested manual-classification path, and matches_any/URGENT_KEYWORDS/
+ConsentGatingError defined here are reused by app.llm.guardrail and
+app.services.task_routing_gate. Don't delete this file assuming it's dead.
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,7 +75,6 @@ async def _assert_consent(db: AsyncSession, case_id) -> ConsentRecord:
     return record
 
 
-# Phase 3: replace with app.agents.triage_agent.classify_with_graph (LangGraph orchestration)
 async def classify(db: AsyncSession, request: TriageRequest, actor: User) -> TriageResponse:
     await _assert_consent(db, request.case_id)
 

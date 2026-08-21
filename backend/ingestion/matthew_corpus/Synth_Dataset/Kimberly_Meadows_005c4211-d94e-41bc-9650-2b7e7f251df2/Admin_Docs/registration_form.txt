@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Kimberly Meadows
+DOB: 2009-06-20
+Gender: Female
+Phone: 0490.162.720
+Email: nicholas37@example.com
+Address: Level 6 17 Kaitlyn Boulevard, Jeffreyland, ACT, 2033
+
+Medicare number: 1342 55929/7
+IHI: 8003256706492763
+Concession card: None
+
+Emergency contact: Lisa Allen, +61293745299
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Former smoker
+Alcohol use: Nil
+Occupation: Colour technologist
+Allergies: No known drug allergies
+Assigned doctor: Dr Priya Menon

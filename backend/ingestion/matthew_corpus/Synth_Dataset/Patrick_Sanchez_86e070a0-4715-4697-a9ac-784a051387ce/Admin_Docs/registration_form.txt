@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Patrick Sanchez
+DOB: 1941-11-21
+Gender: Male
+Phone: +61 424 051 477
+Email: riverajody@example.org
+Address: 9/2 Nicholas State Highway, New Georgeport, QLD, 0840
+
+Medicare number: 6999 60419/9
+IHI: 8003913130419368
+Concession card: None
+
+Emergency contact: Tony Jones, +61.445.104.636
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Rural practice surveyor
+Allergies: Bee stings
+Assigned doctor: Dr Priya Menon

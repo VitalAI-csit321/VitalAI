@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Jonathan Strong
+DOB: 1987-01-04
+Date: 14/07/2025
+Seen by: Dr Priya Menon
+
+Known conditions: Generalised anxiety, Low mood
+Allergies: Bee stings
+
+Vitals: BP 111/86 mmHg, Weight 96.2 kg
+
+Chief Complaint:
+Difficulty sleeping and low mood.
+
+Assessment:
+Mild to moderate anxiety, responding to treatment.
+
+Plan:
+- Continue current medication
+- Follow up in 2 weeks
+- Refer to psychologist

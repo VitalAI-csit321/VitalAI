@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Connie Brooks
+DOB: 2001-01-04
+Date: 22/10/2025
+Prescribed by: Dr Marcus O'Connell
+
+Salbutamol Inhaler 100mcg
+Inhale 2 puffs as needed for shortness of breath.
+Quantity: 90  Repeats: 2
+Continuing current dose, well tolerated.

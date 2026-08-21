@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Matthew Ruiz
+DOB: 1985-01-13
+Date: 12/12/2024
+Prescribed by: Dr David Nguyen
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 60  Repeats: 0
+Reviewed today, no change.

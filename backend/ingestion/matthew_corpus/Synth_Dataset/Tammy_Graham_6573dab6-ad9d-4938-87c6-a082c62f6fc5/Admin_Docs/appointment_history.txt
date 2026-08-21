@@ -1,0 +1,10 @@
+Appointment History
+
+Patient: Tammy Graham
+
+05/01/2025 - Blood Test - Dr Samuel Osei
+06/03/2025 - Follow-up Review - Dr Samuel Osei
+10/10/2025 - Follow-up Review - Dr Samuel Osei
+02/11/2025 - Follow-up Review - Dr Samuel Osei
+26/06/2026 - Follow-up Review - Dr Samuel Osei
+21/07/2026 - Blood Test - Dr Samuel Osei

@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Jessica Chandler
+DOB: 1933-06-11
+Date collected: 16/01/2025
+Requested by: Dr Samuel Osei
+
+LFT
+
+Test             Result    Unit          Ref Range     Flag
+Total Protein    67        g/L           60-80         -
+Albumin          46        g/L           35-50         -
+Total Bilirubin  3         umol/L        2-20          -
+ALP              28        U/L           30-110        L
+GGT              28        U/L           5-35          -
+ALT              5         U/L           5-30          -
+AST              22        U/L           5-40          -
+
+Interpretation: Results within expected reference ranges.

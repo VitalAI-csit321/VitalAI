@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Benjamin Jackson
+DOB: 2020-10-16
+Gender: Male
+Phone: +61 3 1815 9970
+Email: kdunlap@example.net
+Address: 153 Robert Ride, Donnaport, QLD, 2506
+
+Medicare number: 3615 68001/8
+IHI: 8003372060582519
+Concession card: None
+
+Emergency contact: Sara Hernandez, (02)61497310
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Moderate, 5-10 standard drinks/week
+Occupation: Engineer, maintenance
+Allergies: Sulfa drugs
+Assigned doctor: Dr Aisha Rahman

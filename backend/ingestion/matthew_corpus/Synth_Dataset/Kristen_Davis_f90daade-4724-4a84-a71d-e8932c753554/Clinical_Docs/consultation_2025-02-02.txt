@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Kristen Davis
+DOB: 1991-12-25
+Date: 02/02/2025
+Seen by: Dr Hannah Fitzgerald
+
+Known conditions: Asthma
+Allergies: Sulfa drugs
+
+Vitals: BP 140/69 mmHg, Weight 86.7 kg
+
+Chief Complaint:
+Wheeze and chest tightness.
+
+Assessment:
+Asthma, well controlled.
+
+Plan:
+- Provide asthma action plan
+- Continue current medication
+- Order spirometry

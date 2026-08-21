@@ -1,0 +1,157 @@
+{
+  "patient_id": "f8281a04-7f42-41a7-8d5d-6f2e9f957967",
+  "name": "Andrew Roberts",
+  "dob": "1942-11-04",
+  "gender": "Male",
+  "archetype": "aged_care_polypharmacy",
+  "chronic_conditions": [
+    "Essential hypertension",
+    "Type 2 diabetes mellitus",
+    "Osteoarthritis",
+    "Dyslipidaemia"
+  ],
+  "secondary_condition": "Dyslipidaemia",
+  "hospital_event_date": null,
+  "allergies": [
+    "Penicillin"
+  ],
+  "assigned_doctor": "Dr Samuel Osei",
+  "assigned_doctor_id": "doctor06",
+  "note_style": "soap",
+  "consent_status": "PENDING",
+  "documents": [
+    {
+      "filename": "consultation_2024-09-14.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-14"
+    },
+    {
+      "filename": "prescription_2024-09-14.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-14"
+    },
+    {
+      "filename": "pathology_2024-09-14_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-14"
+    },
+    {
+      "filename": "pathology_2024-09-14_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-14"
+    },
+    {
+      "filename": "pathology_2024-09-14_lft.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-14"
+    },
+    {
+      "filename": "consultation_2025-07-25.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-25"
+    },
+    {
+      "filename": "prescription_2025-07-25.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-25"
+    },
+    {
+      "filename": "consultation_2025-12-05.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-05"
+    },
+    {
+      "filename": "prescription_2025-12-05.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-05"
+    },
+    {
+      "filename": "pathology_2025-12-05_lipids.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-05"
+    },
+    {
+      "filename": "consultation_2026-02-19.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-19"
+    },
+    {
+      "filename": "prescription_2026-02-19.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-19"
+    },
+    {
+      "filename": "consultation_2026-06-16.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-06-16"
+    },
+    {
+      "filename": "prescription_2026-06-16.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-06-16"
+    },
+    {
+      "filename": "pathology_2026-06-16_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-06-16"
+    },
+    {
+      "filename": "care_plan_2024-09-14.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-14"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-09-14"
+    }
+  ]
+}

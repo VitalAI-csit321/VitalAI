@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Alice Nunez
+DOB: 1984-03-15
+Date: 12/09/2025
+Seen by: Dr Aisha Rahman
+
+Known conditions: Asthma
+Allergies: No known drug allergies
+
+Vitals: BP 144/95 mmHg, Weight 88.8 kg
+
+Chief Complaint:
+Wheeze and chest tightness.
+
+Assessment:
+Asthma review, technique reinforced.
+
+Plan:
+- Follow up in 4 weeks
+- Review inhaler technique
+- Order spirometry

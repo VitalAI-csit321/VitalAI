@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Jennifer Rodriguez
+DOB: 1952-08-20
+Date: 09/07/2026
+Prescribed by: Dr David Nguyen
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 90  Repeats: 5

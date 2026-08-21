@@ -1,0 +1,16 @@
+Pathology Report
+
+Patient: Andrew Roberts
+DOB: 1942-11-04
+Date collected: 05/12/2025
+Requested by: Dr Samuel Osei
+
+Lipids
+
+Test               Result    Unit          Ref Range     Flag
+Total Cholesterol  11.3      mmol/L        2.5-7.5       H
+HDL Cholesterol    2.37      mmol/L        0.7-2.0       H
+LDL Cholesterol    8.5       mmol/L        1.0-5.5       H
+Triglycerides      1.6       mmol/L        0.3-3.5       -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

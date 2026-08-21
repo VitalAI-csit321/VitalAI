@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Paul Berger
+DOB: 1957-11-13
+Date: 22/04/2026
+Prescribed by: Dr Aisha Rahman
+
+Levothyroxine 50mcg
+Take 1 tablet once daily on an empty stomach.
+Quantity: 60  Repeats: 1

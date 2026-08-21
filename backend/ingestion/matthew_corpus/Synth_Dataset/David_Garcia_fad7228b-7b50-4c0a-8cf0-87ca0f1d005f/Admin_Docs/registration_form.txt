@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: David Garcia
+DOB: 1941-06-13
+Gender: Male
+Phone: (08) 5255 3419
+Email: amandasanchez@example.com
+Address: Unit 50 056 Jones Ring, Jasonfort, VIC, 2902
+
+Medicare number: 4498 25198/5
+IHI: 8003851319995413
+Concession card: None
+
+Emergency contact: David Hoffman, (08) 9653 2871
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Art gallery manager
+Allergies: No known drug allergies
+Assigned doctor: Dr Aisha Rahman

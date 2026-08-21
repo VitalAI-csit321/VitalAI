@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Todd Lynch
+DOB: 2012-03-02
+Date: 09/12/2025
+Prescribed by: Dr Hannah Fitzgerald
+
+Atorvastatin 20mg
+Take 1 tablet once daily at night.
+Quantity: 30  Repeats: 5
+Reviewed today, no change.

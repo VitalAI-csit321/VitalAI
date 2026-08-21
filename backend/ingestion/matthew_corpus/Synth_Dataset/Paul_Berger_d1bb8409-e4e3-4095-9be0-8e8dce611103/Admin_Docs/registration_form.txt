@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Paul Berger
+DOB: 1957-11-13
+Gender: Male
+Phone: (03)68222394
+Email: dannylambert@example.net
+Address: Flat 41 13 Lynn Interchange, South Craig, NSW, 2665
+
+Medicare number: 8800 46122/6
+IHI: 8003777588861097
+Concession card: None
+
+Emergency contact: Mr. Matthew Steele, 07 5620 5336
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Current smoker, 5-10 cigarettes/day
+Alcohol use: Moderate, 5-10 standard drinks/week
+Occupation: Health and safety inspector
+Allergies: No known drug allergies
+Assigned doctor: Dr Aisha Rahman

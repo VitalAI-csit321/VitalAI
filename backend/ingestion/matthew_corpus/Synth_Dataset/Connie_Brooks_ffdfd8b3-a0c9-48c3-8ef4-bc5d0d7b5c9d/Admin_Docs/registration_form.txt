@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Connie Brooks
+DOB: 2001-01-04
+Gender: Female
+Phone: +61.3.5071.4611
+Email: michaelcooper@example.org
+Address: 1/75 Kevin Towers, North Melindaville, NT, 2698
+
+Medicare number: 3829 69417/5
+IHI: 8003222611966675
+Concession card: None
+
+Emergency contact: Christopher Castro, +61.3.6226.6093
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Moderate, 5-10 standard drinks/week
+Occupation: Production assistant, television
+Allergies: No known drug allergies
+Assigned doctor: Dr Marcus O'Connell

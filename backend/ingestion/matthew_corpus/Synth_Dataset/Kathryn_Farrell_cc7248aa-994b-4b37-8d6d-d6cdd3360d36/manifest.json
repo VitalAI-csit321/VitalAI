@@ -1,0 +1,69 @@
+{
+  "patient_id": "cc7248aa-994b-4b37-8d6d-d6cdd3360d36",
+  "name": "Kathryn Farrell",
+  "dob": "1994-03-07",
+  "gender": "Female",
+  "archetype": "asthma",
+  "chronic_conditions": [
+    "Asthma",
+    "Gastro-oesophageal reflux disease"
+  ],
+  "secondary_condition": "Gastro-oesophageal reflux disease",
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr Marcus O'Connell",
+  "assigned_doctor_id": "doctor04",
+  "note_style": "terse",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-12-09.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-12-09"
+    },
+    {
+      "filename": "prescription_2024-12-09.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-12-09"
+    },
+    {
+      "filename": "consultation_2025-05-13.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-05-13"
+    },
+    {
+      "filename": "prescription_2025-05-13.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-05-13"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-12-09"
+    }
+  ]
+}

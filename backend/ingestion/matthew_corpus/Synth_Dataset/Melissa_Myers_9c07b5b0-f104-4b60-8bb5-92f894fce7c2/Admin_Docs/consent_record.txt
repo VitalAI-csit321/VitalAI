@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Melissa Myers
+DOB: 2006-04-08
+Date: 16/02/2026
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

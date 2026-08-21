@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Thomas Johnson
+DOB: 1974-09-10
+Gender: Male
+Phone: (03)93784270
+Email: browncarolyn@example.org
+Address: 93 Matthew Crossway, Brianberg, NT, 2619
+
+Medicare number: 9412 35078/6
+IHI: 8003120456744211
+Concession card: DVA Gold Card
+
+Emergency contact: Shannon Yu, (08)91545226
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Current smoker, 5-10 cigarettes/day
+Alcohol use: Nil
+Occupation: Radiographer, therapeutic
+Allergies: Aspirin (NSAIDs)
+Assigned doctor: Dr David Nguyen

@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Todd Lynch
+DOB: 2012-03-02
+Date: 04/05/2025
+Seen by: Dr Hannah Fitzgerald
+
+Known conditions: Dyslipidaemia
+Allergies: No known drug allergies
+
+Vitals: BP 111/69 mmHg, Weight 95.1 kg
+
+Chief Complaint:
+Reviewed after elevated cholesterol noted on routine bloods.
+
+Assessment:
+Dyslipidaemia, above target on lipid profile.
+
+Plan:
+- Continue current medication
+- Commence statin therapy
+- Repeat lipids in 3 months

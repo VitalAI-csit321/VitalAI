@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Brandon Caldwell
+DOB: 1989-08-19
+Date collected: 06/09/2025
+Requested by: Dr David Nguyen
+
+TFT
+
+Test     Result    Unit          Ref Range     Flag
+TSH      6.07      mIU/L         0.4-4.0       H
+Free T4  10.1      pmol/L        10-20         -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

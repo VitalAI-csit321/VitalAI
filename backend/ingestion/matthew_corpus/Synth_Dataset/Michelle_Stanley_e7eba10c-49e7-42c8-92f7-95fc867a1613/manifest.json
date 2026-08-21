@@ -1,0 +1,175 @@
+{
+  "patient_id": "e7eba10c-49e7-42c8-92f7-95fc867a1613",
+  "name": "Michelle Stanley",
+  "dob": "1941-06-25",
+  "gender": "Female",
+  "archetype": "type2_diabetes",
+  "chronic_conditions": [
+    "Type 2 diabetes mellitus"
+  ],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [
+    "Penicillin"
+  ],
+  "assigned_doctor": "Dr David Nguyen",
+  "assigned_doctor_id": "doctor02",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-11-19.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-19"
+    },
+    {
+      "filename": "prescription_2024-11-19.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-19"
+    },
+    {
+      "filename": "pathology_2024-11-19_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-19"
+    },
+    {
+      "filename": "pathology_2024-11-19_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-19"
+    },
+    {
+      "filename": "referral_2024-11-19.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2024-11-19"
+    },
+    {
+      "filename": "specialist_letter_2024-12-17.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2024-12-17"
+    },
+    {
+      "filename": "consultation_2025-08-03.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-08-03"
+    },
+    {
+      "filename": "prescription_2025-08-03.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-08-03"
+    },
+    {
+      "filename": "referral_2025-08-03.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-08-03"
+    },
+    {
+      "filename": "consultation_2025-10-31.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-31"
+    },
+    {
+      "filename": "prescription_2025-10-31.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-31"
+    },
+    {
+      "filename": "consultation_2026-04-12.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-04-12"
+    },
+    {
+      "filename": "prescription_2026-04-12.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-04-12"
+    },
+    {
+      "filename": "consultation_2026-06-02.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-06-02"
+    },
+    {
+      "filename": "prescription_2026-06-02.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-06-02"
+    },
+    {
+      "filename": "pathology_2026-06-02_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-06-02"
+    },
+    {
+      "filename": "referral_2026-06-02.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2026-06-02"
+    },
+    {
+      "filename": "specialist_letter_2026-06-30.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2026-06-30"
+    },
+    {
+      "filename": "care_plan_2024-11-19.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-19"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-11-19"
+    }
+  ]
+}

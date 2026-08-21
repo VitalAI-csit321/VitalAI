@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Susan Turner
+DOB: 2009-12-31
+Gender: Female
+Phone: +61-2-2004-7113
+Email: paulwatson@example.net
+Address: 17 Crosby Formation, Lake Jeffmouth, QLD, 2971
+
+Medicare number: 1114 21775/4
+IHI: 8003188850611322
+Concession card: None
+
+Emergency contact: Mrs. Stephanie Newman, 6431-7139
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Current smoker, 5-10 cigarettes/day
+Alcohol use: Nil
+Occupation: Advertising art director
+Allergies: No known drug allergies
+Assigned doctor: Dr Priya Menon

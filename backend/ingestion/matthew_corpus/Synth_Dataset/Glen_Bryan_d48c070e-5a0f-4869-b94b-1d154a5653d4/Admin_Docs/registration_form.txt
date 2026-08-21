@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Glen Bryan
+DOB: 1961-08-11
+Gender: Male
+Phone: 0858997571
+Email: malonejeffrey@example.com
+Address: 102/26 Jonathan Dell, East Sarah, VIC, 2677
+
+Medicare number: 6894 36097/3
+IHI: 8003255165754057
+Concession card: None
+
+Emergency contact: Cheryl Morgan, +61-2-9177-9827
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Current smoker, 5-10 cigarettes/day
+Alcohol use: Moderate, 5-10 standard drinks/week
+Occupation: Accountant, chartered management
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Stacey Wise
+DOB: 1973-05-13
+Date: 11/11/2024
+Seen by: Dr Hannah Fitzgerald
+
+Known conditions: Asthma
+Allergies: Penicillin
+
+Vitals: BP 123/79 mmHg, Weight 73.9 kg
+
+Chief Complaint:
+Shortness of breath on exertion.
+
+Assessment:
+Asthma review, technique reinforced.
+
+Plan:
+- Provide asthma action plan
+- Review inhaler technique
+- Follow up in 4 weeks

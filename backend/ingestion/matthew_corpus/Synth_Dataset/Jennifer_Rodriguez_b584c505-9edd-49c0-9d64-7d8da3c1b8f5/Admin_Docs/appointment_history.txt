@@ -1,0 +1,9 @@
+Appointment History
+
+Patient: Jennifer Rodriguez
+
+28/02/2025 - Blood Test - Dr David Nguyen
+01/05/2025 - Specialist Referral - Dr David Nguyen
+28/12/2025 - Specialist Referral - Dr David Nguyen
+31/05/2026 - Follow-up Review - Dr David Nguyen
+09/07/2026 - Specialist Referral - Dr David Nguyen

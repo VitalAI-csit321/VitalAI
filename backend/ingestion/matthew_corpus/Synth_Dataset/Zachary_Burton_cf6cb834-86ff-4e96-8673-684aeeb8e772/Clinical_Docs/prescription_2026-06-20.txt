@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Zachary Burton
+DOB: 1969-03-01
+Date: 20/06/2026
+Prescribed by: Dr David Nguyen
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 90  Repeats: 3

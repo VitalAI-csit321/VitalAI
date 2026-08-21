@@ -1,0 +1,15 @@
+Prescription
+
+Patient: Kristen Davis
+DOB: 1991-12-25
+Date: 07/10/2025
+Prescribed by: Dr Hannah Fitzgerald
+
+Salbutamol Inhaler 100mcg
+Inhale 2 puffs as needed for shortness of breath.
+Quantity: 60  Repeats: 3
+Continuing current dose, well tolerated.
+
+Ferro-Grad C 325mg
+Take 1 tablet once daily with food.
+Quantity: 30  Repeats: 4

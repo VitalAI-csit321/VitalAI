@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Gregory Rhodes
+DOB: 1937-02-01
+Date collected: 01/10/2025
+Requested by: Dr Samuel Osei
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            11.9      %             4.5-11.0      H
+Fasting Glucose  6.2       mmol/L        3.5-15.0      -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Dawn Evans
+DOB: 1937-02-13
+Gender: Female
+Phone: 0469.315.727
+Email: larsonkevin@example.net
+Address: 556 Conrad Close, North Cynthia, VIC, 2248
+
+Medicare number: 5577 17981/3
+IHI: 8003043056027012
+Concession card: DVA Gold Card
+
+Emergency contact: Joshua Hernandez, 0432 067 998
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Chemical engineer
+Allergies: No known drug allergies
+Assigned doctor: Dr Samuel Osei

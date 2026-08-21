@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Angela Cole
+DOB: 1991-11-18
+Date: 30/11/2024
+Seen by: Dr Aisha Rahman
+
+Known conditions: Pregnancy, antenatal care
+Allergies: No known drug allergies
+
+Vitals: BP 109/71 mmHg, Weight 90.2 kg
+
+Chief Complaint:
+Routine antenatal check.
+
+Assessment:
+Pregnancy progressing normally.
+
+Plan:
+- Order full blood count and iron studies
+- Shared care with hospital antenatal clinic

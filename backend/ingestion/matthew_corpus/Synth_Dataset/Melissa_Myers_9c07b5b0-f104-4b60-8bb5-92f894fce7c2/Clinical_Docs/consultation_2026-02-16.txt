@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Melissa Myers
+DOB: 2006-04-08
+Date: 16/02/2026
+Seen by: Dr Hannah Fitzgerald
+
+Known conditions: None recorded
+Allergies: Aspirin (NSAIDs)
+
+Vitals: BP 146/89 mmHg, Weight 64.9 kg
+
+Chief Complaint:
+Follow-up on previously monitored lesion.
+
+Assessment:
+Lesion appears benign, monitor.
+
+Plan:
+- Photograph and monitor lesion
+- Review in 6 months
+- Refer to dermatologist if changes noted

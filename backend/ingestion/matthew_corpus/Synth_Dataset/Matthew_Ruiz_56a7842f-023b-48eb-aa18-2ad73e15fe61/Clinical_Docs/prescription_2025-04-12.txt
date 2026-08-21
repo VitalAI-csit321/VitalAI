@@ -1,0 +1,14 @@
+Prescription
+
+Patient: Matthew Ruiz
+DOB: 1985-01-13
+Date: 12/04/2025
+Prescribed by: Dr David Nguyen
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 90  Repeats: 0
+
+Ferro-Grad C 325mg
+Take 1 tablet once daily with food.
+Quantity: 30  Repeats: 3

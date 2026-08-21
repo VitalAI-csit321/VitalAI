@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Angela Cole
+DOB: 1991-11-18
+Date: 13/10/2025
+Seen by: Dr Aisha Rahman
+
+Known conditions: Pregnancy, antenatal care, Dyslipidaemia
+Allergies: No known drug allergies
+
+Vitals: BP 144/91 mmHg, Weight 65.2 kg
+
+Chief Complaint:
+Antenatal review, fetal movements normal.
+
+Assessment:
+Pregnancy progressing normally.
+
+Plan:
+- Refer for morphology scan
+- Order full blood count and iron studies

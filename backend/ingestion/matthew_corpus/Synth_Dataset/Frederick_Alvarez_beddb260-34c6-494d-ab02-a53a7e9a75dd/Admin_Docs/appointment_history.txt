@@ -1,0 +1,9 @@
+Appointment History
+
+Patient: Frederick Alvarez
+
+13/12/2024 - Vaccination - Dr Hannah Fitzgerald
+31/05/2025 - Vaccination - Dr Hannah Fitzgerald
+12/06/2025 - Vaccination - Dr Hannah Fitzgerald
+29/09/2025 - Vaccination - Dr Hannah Fitzgerald
+05/02/2026 - Vaccination - Dr Hannah Fitzgerald

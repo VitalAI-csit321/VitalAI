@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Kim Lopez
+DOB: 2000-05-10
+Date: 20/08/2024
+Prescribed by: Dr Marcus O'Connell
+
+Ibuprofen 400mg
+Take 1 tablet every 8 hours with food as needed.
+Quantity: 90  Repeats: 3
+Continuing current dose, well tolerated.

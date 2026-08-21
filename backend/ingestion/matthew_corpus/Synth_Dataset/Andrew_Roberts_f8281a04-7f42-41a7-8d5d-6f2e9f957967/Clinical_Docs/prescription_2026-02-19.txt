@@ -1,0 +1,24 @@
+Prescription
+
+Patient: Andrew Roberts
+DOB: 1942-11-04
+Date: 19/02/2026
+Prescribed by: Dr Samuel Osei
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 30  Repeats: 5
+Continuing current dose, well tolerated.
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 30  Repeats: 1
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 60  Repeats: 3
+
+Atorvastatin 20mg
+Take 1 tablet once daily at night.
+Quantity: 90  Repeats: 3
+Reviewed today, no change.

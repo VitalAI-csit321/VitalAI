@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Jamie Baker
+DOB: 1974-01-03
+Date: 24/04/2026
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

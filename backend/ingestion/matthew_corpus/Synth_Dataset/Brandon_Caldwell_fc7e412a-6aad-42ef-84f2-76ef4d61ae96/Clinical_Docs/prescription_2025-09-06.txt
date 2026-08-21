@@ -1,0 +1,15 @@
+Prescription
+
+Patient: Brandon Caldwell
+DOB: 1989-08-19
+Date: 06/09/2025
+Prescribed by: Dr David Nguyen
+
+Salbutamol Inhaler 100mcg
+Inhale 2 puffs as needed for shortness of breath.
+Quantity: 90  Repeats: 2
+Reviewed today, no change.
+
+Levothyroxine 50mcg
+Take 1 tablet once daily on an empty stomach.
+Quantity: 90  Repeats: 0

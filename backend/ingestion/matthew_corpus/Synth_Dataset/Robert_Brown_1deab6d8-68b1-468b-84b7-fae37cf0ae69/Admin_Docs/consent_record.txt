@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Robert Brown
+DOB: 1995-10-07
+Date: 26/11/2024
+Status: PENDING
+
+Consent form partially completed. Information-sharing section not yet signed.

@@ -1,0 +1,23 @@
+Consultation Note
+
+Patient: Nancy Evans
+DOB: 2008-05-23
+Date: 31/07/2025
+Seen by: Dr Aisha Rahman
+
+Known conditions: Pregnancy, antenatal care
+Allergies: No known drug allergies
+
+Vitals: BP 143/90 mmHg, Weight 50.5 kg
+
+Chief Complaint:
+Antenatal review, fetal movements normal.
+
+Assessment:
+Pregnancy progressing normally.
+
+Plan:
+- Order full blood count and iron studies
+- Refer for morphology scan
+- Follow up in 4 weeks
+- Shared care with hospital antenatal clinic

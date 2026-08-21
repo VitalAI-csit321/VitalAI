@@ -1,0 +1,16 @@
+Pathology Report
+
+Patient: Jennifer Bowman
+DOB: 1959-08-31
+Date collected: 29/11/2025
+Requested by: Dr David Nguyen
+
+Lipids
+
+Test               Result    Unit          Ref Range     Flag
+Total Cholesterol  12.0      mmol/L        2.5-7.5       H
+HDL Cholesterol    1.9       mmol/L        0.9-2.2       -
+LDL Cholesterol    5.9       mmol/L        1.0-5.5       H
+Triglycerides      3.3       mmol/L        0.3-3.5       -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

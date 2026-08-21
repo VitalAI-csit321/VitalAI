@@ -147,6 +147,9 @@ async def test_grant_written_to_audit_log(
         select(AuditEvent).where(AuditEvent.action == "user.permission_granted")
     )
     events = result.scalars().all()
-    assert len(events) == 1
-    assert events[0].details["target_user_id"] == str(operator_user.id)
-    assert events[0].details["permission"] == "read_audit"
+    # Filtered by target_user_id, not an unfiltered count: this dev database
+    # accumulates real permission grants across sessions, so other rows for
+    # this same action can legitimately already exist.
+    matching = [e for e in events if e.details.get("target_user_id") == str(operator_user.id)]
+    assert len(matching) == 1
+    assert matching[0].details["permission"] == "read_audit"

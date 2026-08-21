@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Todd Lynch
+DOB: 2012-03-02
+Date: 04/10/2024
+Status: PENDING
+
+Consent form partially completed. Information-sharing section not yet signed.

@@ -1,0 +1,16 @@
+Prescription
+
+Patient: Mary Walker
+DOB: 1963-05-23
+Date: 18/02/2026
+Prescribed by: Dr Priya Menon
+
+Sertraline 50mg
+Take 1 tablet once daily.
+Quantity: 90  Repeats: 3
+Reviewed today, no change.
+
+Cetirizine 10mg
+Take 1 tablet once daily.
+Quantity: 30  Repeats: 5
+Reviewed today, no change.

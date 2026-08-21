@@ -1,0 +1,147 @@
+{
+  "patient_id": "85b4ab3c-ed77-47ed-a210-1fe8e2b4d45e",
+  "name": "James Thomas",
+  "dob": "1938-04-03",
+  "gender": "Male",
+  "archetype": "aged_care_polypharmacy",
+  "chronic_conditions": [
+    "Essential hypertension",
+    "Type 2 diabetes mellitus",
+    "Osteoarthritis"
+  ],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr Samuel Osei",
+  "assigned_doctor_id": "doctor06",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-09-20.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-20"
+    },
+    {
+      "filename": "prescription_2024-09-20.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-20"
+    },
+    {
+      "filename": "pathology_2024-09-20_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-20"
+    },
+    {
+      "filename": "pathology_2024-09-20_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-20"
+    },
+    {
+      "filename": "pathology_2024-09-20_lft.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-20"
+    },
+    {
+      "filename": "consultation_2025-03-04.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-03-04"
+    },
+    {
+      "filename": "prescription_2025-03-04.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-03-04"
+    },
+    {
+      "filename": "consultation_2025-10-03.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-03"
+    },
+    {
+      "filename": "prescription_2025-10-03.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-03"
+    },
+    {
+      "filename": "consultation_2025-12-30.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-30"
+    },
+    {
+      "filename": "prescription_2025-12-30.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-30"
+    },
+    {
+      "filename": "consultation_2026-02-11.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-11"
+    },
+    {
+      "filename": "prescription_2026-02-11.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-11"
+    },
+    {
+      "filename": "pathology_2026-02-11_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-11"
+    },
+    {
+      "filename": "care_plan_2024-09-20.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-20"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-09-20"
+    }
+  ]
+}

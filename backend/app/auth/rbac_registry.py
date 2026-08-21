@@ -2,16 +2,18 @@
 registered route, what RBAC check (if any) gates it. Single source of truth
 for tests/test_rbac_enforcement.py; never re-derive this by hand.
 
-FastAPI (this project's pinned 0.139.2) leaves routes registered via
-app.include_router() as opaque _IncludedRouter wrappers in app.routes rather
-than flattening them eagerly: the wrapper's own .original_router.routes
-holds the real APIRoute objects, and .include_context.prefix holds the
-prefix passed to include_router(), which is NOT merged into route.path.
-Both were confirmed empirically against this app before writing this walk,
-not assumed from FastAPI's general docs; re-verify against a throwaway
-app.routes dump if this project ever upgrades FastAPI/Starlette, since this
-relies on a private (underscore-prefixed) class name that isn't a stable
-public API.
+FastAPI leaves routes registered via app.include_router() as opaque
+_IncludedRouter wrappers in app.routes rather than flattening them eagerly:
+the wrapper's own .original_router.routes holds the real APIRoute objects,
+and .include_context.prefix holds the prefix passed to include_router(),
+which is NOT merged into route.path. Both were confirmed empirically against
+this app before writing this walk, not assumed from FastAPI's general docs.
+
+_IncludedRouter is private (underscore-prefixed) and not stable API, so
+requirements.txt bounds fastapi to >=0.139.2,<0.142.0, the range whose
+wheels were checked to carry this class with both attributes. 0.136.3 and
+earlier have no _IncludedRouter at all and fail at this import. Before
+raising that ceiling, re-verify against a throwaway app.routes dump.
 """
 
 from collections.abc import Iterator

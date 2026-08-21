@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: James Thomas
+DOB: 1938-04-03
+Date collected: 20/09/2024
+Requested by: Dr Samuel Osei
+
+LFT
+
+Test             Result    Unit          Ref Range     Flag
+Total Protein    86        g/L           60-80         H
+Albumin          37        g/L           35-50         -
+Total Bilirubin  5         umol/L        2-20          -
+ALP              55        U/L           30-110        -
+GGT              33        U/L           5-50          -
+ALT              26        U/L           5-40          -
+AST              23        U/L           5-40          -
+
+Interpretation: Results within expected reference ranges.

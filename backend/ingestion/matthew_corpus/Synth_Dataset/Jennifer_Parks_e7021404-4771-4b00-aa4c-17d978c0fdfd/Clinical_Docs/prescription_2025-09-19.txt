@@ -1,0 +1,15 @@
+Prescription
+
+Patient: Jennifer Parks
+DOB: 1976-10-30
+Date: 19/09/2025
+Prescribed by: Dr Marcus O'Connell
+
+Ibuprofen 400mg
+Take 1 tablet every 8 hours with food as needed.
+Quantity: 30  Repeats: 4
+
+Levothyroxine 50mcg
+Take 1 tablet once daily on an empty stomach.
+Quantity: 60  Repeats: 0
+Continuing current dose, well tolerated.

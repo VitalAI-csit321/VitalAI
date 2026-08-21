@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Alicia Roth
+DOB: 2001-02-09
+Date: 20/08/2025
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

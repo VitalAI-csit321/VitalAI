@@ -1,0 +1,7 @@
+Appointment History
+
+Patient: Paul Berger
+
+22/11/2024 - Specialist Referral - Dr Aisha Rahman
+02/02/2026 - Blood Test - Dr Aisha Rahman
+22/04/2026 - Follow-up Review - Dr Aisha Rahman

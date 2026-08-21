@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Daniel Ryan
+DOB: 1987-12-22
+Gender: Male
+Phone: 07.6578.7133
+Email: morganbrianna@example.org
+Address: 031 Michele Broadway, New Elizabeth, QLD, 4299
+
+Medicare number: 4808 80650/2
+IHI: 8003981424039274
+Concession card: Pensioner Concession Card
+
+Emergency contact: Richard Aguirre, 02.1656.6701
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Biochemist, clinical
+Allergies: No known drug allergies
+Assigned doctor: Dr Marcus O'Connell

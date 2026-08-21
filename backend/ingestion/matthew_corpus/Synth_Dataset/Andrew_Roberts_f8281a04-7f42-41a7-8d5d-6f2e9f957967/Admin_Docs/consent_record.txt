@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Andrew Roberts
+DOB: 1942-11-04
+Date: 14/09/2024
+Status: PENDING
+
+Consent form partially completed. Information-sharing section not yet signed.

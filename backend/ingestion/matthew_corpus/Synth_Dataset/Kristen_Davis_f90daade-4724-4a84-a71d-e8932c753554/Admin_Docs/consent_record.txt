@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Kristen Davis
+DOB: 1991-12-25
+Date: 02/02/2025
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

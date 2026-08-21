@@ -1,0 +1,149 @@
+{
+  "patient_id": "1deab6d8-68b1-468b-84b7-fae37cf0ae69",
+  "name": "Robert Brown",
+  "dob": "1995-10-07",
+  "gender": "Male",
+  "archetype": "mental_health",
+  "chronic_conditions": [
+    "Generalised anxiety",
+    "Low mood",
+    "Hypothyroidism"
+  ],
+  "secondary_condition": "Hypothyroidism",
+  "hospital_event_date": null,
+  "allergies": [
+    "Sulfa drugs"
+  ],
+  "assigned_doctor": "Dr Priya Menon",
+  "assigned_doctor_id": "doctor03",
+  "note_style": "prose",
+  "consent_status": "PENDING",
+  "documents": [
+    {
+      "filename": "consultation_2024-11-26.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-26"
+    },
+    {
+      "filename": "prescription_2024-11-26.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-26"
+    },
+    {
+      "filename": "pathology_2024-11-26_tft.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-26"
+    },
+    {
+      "filename": "referral_2024-11-26.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2024-11-26"
+    },
+    {
+      "filename": "specialist_letter_2024-12-31.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2024-12-31"
+    },
+    {
+      "filename": "consultation_2025-04-02.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-04-02"
+    },
+    {
+      "filename": "prescription_2025-04-02.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-04-02"
+    },
+    {
+      "filename": "referral_2025-04-02.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-04-02"
+    },
+    {
+      "filename": "specialist_letter_2025-05-14.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-05-14"
+    },
+    {
+      "filename": "consultation_2025-07-11.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-11"
+    },
+    {
+      "filename": "prescription_2025-07-11.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-11"
+    },
+    {
+      "filename": "pathology_2025-07-11_tft.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-11"
+    },
+    {
+      "filename": "consultation_2025-08-08.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-08-08"
+    },
+    {
+      "filename": "prescription_2025-08-08.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-08-08"
+    },
+    {
+      "filename": "care_plan_2024-11-26.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-26"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-11-26"
+    }
+  ]
+}

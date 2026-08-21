@@ -1,0 +1,104 @@
+{
+  "patient_id": "c53526a7-087b-4b92-8451-6a3ab21194be",
+  "name": "Thomas Rodriguez",
+  "dob": "1979-07-03",
+  "gender": "Male",
+  "archetype": "asthma",
+  "chronic_conditions": [
+    "Asthma",
+    "Dyslipidaemia"
+  ],
+  "secondary_condition": "Dyslipidaemia",
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr Priya Menon",
+  "assigned_doctor_id": "doctor03",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-09-08.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-08"
+    },
+    {
+      "filename": "prescription_2024-09-08.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-08"
+    },
+    {
+      "filename": "consultation_2025-06-10.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-06-10"
+    },
+    {
+      "filename": "prescription_2025-06-10.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-06-10"
+    },
+    {
+      "filename": "consultation_2026-02-26.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-26"
+    },
+    {
+      "filename": "prescription_2026-02-26.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-26"
+    },
+    {
+      "filename": "consultation_2026-03-01.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-01"
+    },
+    {
+      "filename": "prescription_2026-03-01.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-01"
+    },
+    {
+      "filename": "pathology_2026-03-01_lipids.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-01"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-09-08"
+    }
+  ]
+}

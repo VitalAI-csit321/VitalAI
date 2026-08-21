@@ -1,0 +1,138 @@
+{
+  "patient_id": "22e87ede-954b-48bc-a8fe-24a7be1574ef",
+  "name": "Julian Willis",
+  "dob": "1982-02-04",
+  "gender": "Male",
+  "archetype": "hypertension",
+  "chronic_conditions": [
+    "Essential hypertension"
+  ],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr David Nguyen",
+  "assigned_doctor_id": "doctor02",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-10-08.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-08"
+    },
+    {
+      "filename": "prescription_2024-10-08.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-08"
+    },
+    {
+      "filename": "pathology_2024-10-08_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-08"
+    },
+    {
+      "filename": "pathology_2024-10-08_lipids.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-08"
+    },
+    {
+      "filename": "consultation_2024-10-14.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-14"
+    },
+    {
+      "filename": "prescription_2024-10-14.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-14"
+    },
+    {
+      "filename": "consultation_2025-08-09.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-08-09"
+    },
+    {
+      "filename": "prescription_2025-08-09.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-08-09"
+    },
+    {
+      "filename": "consultation_2025-11-03.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-11-03"
+    },
+    {
+      "filename": "prescription_2025-11-03.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-11-03"
+    },
+    {
+      "filename": "consultation_2026-06-11.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-06-11"
+    },
+    {
+      "filename": "prescription_2026-06-11.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-06-11"
+    },
+    {
+      "filename": "pathology_2026-06-11_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-06-11"
+    },
+    {
+      "filename": "care_plan_2024-10-08.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-08"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-10-08"
+    }
+  ]
+}

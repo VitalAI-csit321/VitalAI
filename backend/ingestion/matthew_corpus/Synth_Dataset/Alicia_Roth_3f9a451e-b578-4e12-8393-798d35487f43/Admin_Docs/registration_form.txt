@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Alicia Roth
+DOB: 2001-02-09
+Gender: Female
+Phone: (07)-4713-2475
+Email: jessica91@example.org
+Address: 78 Nicholson Quadrant, East Larry, VIC, 2628
+
+Medicare number: 5199 68954/4
+IHI: 8003217694160624
+Concession card: None
+
+Emergency contact: Alyssa Lee, 02.3070.5345
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Psychologist, forensic
+Allergies: No known drug allergies
+Assigned doctor: Dr Hannah Fitzgerald

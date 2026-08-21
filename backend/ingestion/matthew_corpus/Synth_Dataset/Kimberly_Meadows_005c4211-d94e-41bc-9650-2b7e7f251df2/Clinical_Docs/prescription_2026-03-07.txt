@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Kimberly Meadows
+DOB: 2009-06-20
+Date: 07/03/2026
+Prescribed by: Dr Priya Menon
+
+Sertraline 50mg
+Take 1 tablet once daily.
+Quantity: 60  Repeats: 5

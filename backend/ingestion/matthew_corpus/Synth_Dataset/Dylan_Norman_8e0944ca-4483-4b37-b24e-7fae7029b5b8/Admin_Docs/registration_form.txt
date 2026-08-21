@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Dylan Norman
+DOB: 1970-06-19
+Gender: Male
+Phone: 0478.819.148
+Email: amber07@example.net
+Address: Flat 34 745 Scott Close, South Lisa, TAS, 0862
+
+Medicare number: 8068 34952/8
+IHI: 8003195547846594
+Concession card: None
+
+Emergency contact: Rachel Li, 9584-9825
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Horticulturist, commercial
+Allergies: Sulfa drugs
+Assigned doctor: Dr Marcus O'Connell

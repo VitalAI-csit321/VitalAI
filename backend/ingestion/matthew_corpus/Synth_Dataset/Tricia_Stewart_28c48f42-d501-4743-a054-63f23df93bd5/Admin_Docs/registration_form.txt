@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Tricia Stewart
+DOB: 1991-09-15
+Gender: Female
+Phone: +61.2.7744.9058
+Email: collinsshannon@example.org
+Address: Flat 19 8 Ford Ride, St. Reginashire, QLD, 2949
+
+Medicare number: 6165 66937/2
+IHI: 8003025555437553
+Concession card: None
+
+Emergency contact: Chris Brown, 51820377
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Scientist, research (physical sciences)
+Allergies: Latex
+Assigned doctor: Dr Aisha Rahman

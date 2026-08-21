@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Karen Santos
+DOB: 2024-08-05
+Date: 03/05/2026
+Seen by: Dr Hannah Fitzgerald
+
+Known conditions: None recorded
+Allergies: No known drug allergies
+
+Vitals: BP 139/84 mmHg, Weight 52.9 kg
+
+Chief Complaint:
+Routine childhood immunisation.
+
+Assessment:
+Development within normal range.
+
+Plan:
+- Administer scheduled vaccine
+- Update immunisation register
+- Provide next due date

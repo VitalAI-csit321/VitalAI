@@ -1,0 +1,8 @@
+Appointment History
+
+Patient: Susan Turner
+
+21/09/2024 - General Consultation - Dr Priya Menon
+16/04/2025 - Follow-up Review - Dr Priya Menon
+14/03/2026 - Blood Test - Dr Priya Menon
+08/08/2026 - Follow-up Review - Dr Priya Menon

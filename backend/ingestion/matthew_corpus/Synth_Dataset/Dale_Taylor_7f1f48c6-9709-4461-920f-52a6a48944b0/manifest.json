@@ -1,0 +1,66 @@
+{
+  "patient_id": "7f1f48c6-9709-4461-920f-52a6a48944b0",
+  "name": "Dale Taylor",
+  "dob": "1998-09-02",
+  "gender": "Male",
+  "archetype": "sports_injury",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr Marcus O'Connell",
+  "assigned_doctor_id": "doctor04",
+  "note_style": "terse",
+  "consent_status": "PENDING",
+  "documents": [
+    {
+      "filename": "consultation_2025-01-04.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-04"
+    },
+    {
+      "filename": "prescription_2025-01-04.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-04"
+    },
+    {
+      "filename": "referral_2025-01-04.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-01-04"
+    },
+    {
+      "filename": "imaging_2025-01-11.txt",
+      "doc_type": "external_imaging_report",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-01-11"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-01-04"
+    }
+  ]
+}

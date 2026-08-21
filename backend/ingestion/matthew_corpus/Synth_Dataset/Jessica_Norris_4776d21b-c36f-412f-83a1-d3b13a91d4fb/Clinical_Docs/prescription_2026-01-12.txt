@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Jessica Norris
+DOB: 1968-05-06
+Date: 12/01/2026
+Prescribed by: Dr David Nguyen
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 60  Repeats: 5
+Reviewed today, no change.

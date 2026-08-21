@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Michelle Stanley
+DOB: 1941-06-25
+Gender: Female
+Phone: (02)-3797-7236
+Email: laurahoover@example.org
+Address: 5 Carlson Bridge, Port Paul, NSW, 2038
+
+Medicare number: 5597 47675/8
+IHI: 8003761706639306
+Concession card: Health Care Card
+
+Emergency contact: Kathy Barnes, 02 2799 0881
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Former smoker
+Alcohol use: Nil
+Occupation: Chief Financial Officer
+Allergies: Penicillin
+Assigned doctor: Dr David Nguyen

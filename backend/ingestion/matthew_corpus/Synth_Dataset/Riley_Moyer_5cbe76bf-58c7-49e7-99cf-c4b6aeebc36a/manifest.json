@@ -1,0 +1,120 @@
+{
+  "patient_id": "5cbe76bf-58c7-49e7-99cf-c4b6aeebc36a",
+  "name": "Riley Moyer",
+  "dob": "1964-02-21",
+  "gender": "Male",
+  "archetype": "type2_diabetes",
+  "chronic_conditions": [
+    "Type 2 diabetes mellitus",
+    "Gastro-oesophageal reflux disease"
+  ],
+  "secondary_condition": "Gastro-oesophageal reflux disease",
+  "hospital_event_date": null,
+  "allergies": [
+    "Penicillin"
+  ],
+  "assigned_doctor": "Dr David Nguyen",
+  "assigned_doctor_id": "doctor02",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-02-12.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-12"
+    },
+    {
+      "filename": "prescription_2025-02-12.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-12"
+    },
+    {
+      "filename": "pathology_2025-02-12_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-12"
+    },
+    {
+      "filename": "pathology_2025-02-12_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-12"
+    },
+    {
+      "filename": "consultation_2025-02-21.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-21"
+    },
+    {
+      "filename": "prescription_2025-02-21.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-21"
+    },
+    {
+      "filename": "referral_2025-02-21.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-02-21"
+    },
+    {
+      "filename": "consultation_2025-11-25.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-11-25"
+    },
+    {
+      "filename": "prescription_2025-11-25.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-11-25"
+    },
+    {
+      "filename": "pathology_2025-11-25_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-11-25"
+    },
+    {
+      "filename": "care_plan_2025-02-12.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-12"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-02-12"
+    }
+  ]
+}

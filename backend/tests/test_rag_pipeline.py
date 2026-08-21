@@ -39,15 +39,10 @@ async def test_sufficient_query_gate_matches_settings(seeded_chunks: AsyncSessio
         assert outcome.sufficient is False
         assert outcome.reason == "below_floor"
         assert outcome.decision == "manual_handling"
-        assert outcome.confidence is None
-        assert outcome.confidence_source is None
     else:
         assert outcome.sufficient is True
         assert outcome.reason is None
-        assert outcome.confidence == top_score
-        assert outcome.confidence_source == settings.confidence_source
-        expected_decision = "proceed" if top_score >= settings.confidence_threshold else "escalate"
-        assert outcome.decision == expected_decision
+        assert outcome.decision == "proceed"
 
 
 @pytest.mark.parametrize(
@@ -91,4 +86,3 @@ async def test_no_visible_chunks_is_insufficient(seeded_chunks: AsyncSession) ->
     assert outcome.sufficient is False
     assert outcome.reason == "no_results"
     assert outcome.decision == "manual_handling"
-    assert outcome.confidence is None

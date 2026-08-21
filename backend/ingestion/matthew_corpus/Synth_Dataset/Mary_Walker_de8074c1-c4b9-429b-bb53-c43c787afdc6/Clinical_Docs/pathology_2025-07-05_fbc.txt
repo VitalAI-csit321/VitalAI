@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Mary Walker
+DOB: 1963-05-23
+Date collected: 05/07/2025
+Requested by: Dr Priya Menon
+
+FBC
+
+Test              Result    Unit          Ref Range     Flag
+Haemoglobin       129       g/L           115-165       -
+White Cell Count  8.6       x10^9/L       4.0-11.0      -
+Platelets         363       x10^9/L       150-400       -
+Haematocrit       0.34      L/L           0.37-0.47     L
+MCV               96.4      fL            80-100        -
+Neutrophils       3.8       x10^9/L       2.0-8.0       -
+Lymphocytes       2.7       x10^9/L       1.0-4.0       -
+
+Interpretation: Results within expected reference ranges.
