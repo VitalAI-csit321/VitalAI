@@ -121,6 +121,24 @@ async def test_list_tasks_doctor_sees_nothing_when_unassigned(
     assert items == []
 
 
+async def test_list_tasks_admin_sees_all_target_roles(
+    db_session: AsyncSession, patient: Patient, admin_user: User
+):
+    case = await _make_case(db_session, patient)
+    await _make_task(db_session, case, UserRole.FRONT_DESK)
+    await _make_task(db_session, case, UserRole.OPERATOR)
+    await _make_task(db_session, case, UserRole.DOCTOR)
+
+    items, total = await human_review_service.list_tasks(db_session, admin_user)
+
+    assert total == 3
+    assert {t.target_role for t in items} == {
+        UserRole.FRONT_DESK,
+        UserRole.OPERATOR,
+        UserRole.DOCTOR,
+    }
+
+
 async def test_claim_task_success(
     db_session: AsyncSession, patient: Patient, front_desk_user: User
 ):
@@ -182,6 +200,18 @@ async def test_claim_task_missing_raises(db_session: AsyncSession, front_desk_us
         await human_review_service.claim_task(db_session, uuid.uuid4(), front_desk_user)
 
 
+async def test_claim_task_admin_allowed_on_any_target_role(
+    db_session: AsyncSession, patient: Patient, admin_user: User
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.OPERATOR)
+
+    claimed = await human_review_service.claim_task(db_session, task.id, admin_user)
+
+    assert claimed.status == TaskStatus.IN_PROGRESS
+    assert claimed.assigned_to == admin_user.id
+
+
 async def test_complete_task_success(
     db_session: AsyncSession, patient: Patient, front_desk_user: User
 ):
@@ -205,6 +235,21 @@ async def test_complete_task_doctor_denied_when_not_assigned(
 
     with pytest.raises(HumanReviewTaskWrongRoleError):
         await human_review_service.complete_task(db_session, task.id, doctor_user)
+
+
+async def test_complete_task_admin_allowed_on_doctor_target_without_assignment(
+    db_session: AsyncSession, patient: Patient, admin_user: User
+):
+    """Admin's VIEW_ALL_QUEUES bypasses target_role scoping entirely, including
+    for DOCTOR-targeted tasks - no patient assignment required, unlike a real
+    doctor actor (see _check_doctor_assigned, only triggered for actor.role ==
+    DOCTOR)."""
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.DOCTOR, status=TaskStatus.IN_PROGRESS)
+
+    completed = await human_review_service.complete_task(db_session, task.id, admin_user)
+
+    assert completed.status == TaskStatus.COMPLETED
 
 
 async def test_complete_task_not_claimed_raises(

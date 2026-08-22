@@ -19,6 +19,9 @@ langchain>=0.2.0
 langchain-community>=0.2.0
 langchain-aws>=0.1.0
 
+# Call transcription (Phase 1 MVP, local STT)
+faster-whisper>=1.0.0
+
 # Rate limiting
 slowapi>=0.1.9
 

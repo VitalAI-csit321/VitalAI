@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     llm_model: str = "gemma2:9b"
     ollama_base_url: str = "http://ollama:11434"
 
+    # Call transcription (Phase 1 MVP — local STT, no Twilio yet)
+    whisper_model: str = "base"
+
     # Bedrock
     aws_region: str = "ap-southeast-2"
     bedrock_model_id: str = "anthropic.claude-3-haiku-20240307-v1:0"

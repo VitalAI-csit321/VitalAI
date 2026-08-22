@@ -73,3 +73,7 @@ class CallEscalationOut(BaseModel):
     task_id: UUID
     task_priority: TaskPriority
     handover_context: dict
+
+
+class CallTranscribeOut(BaseModel):
+    transcript: str

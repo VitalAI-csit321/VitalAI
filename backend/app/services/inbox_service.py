@@ -10,6 +10,7 @@ from langchain_core.language_models import BaseLanguageModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.permissions import VIEW_ALL_QUEUES, effective_permissions
 from app.auth.scoping import assigned_patient_ids_subquery
 from app.llm import get_llm
 from app.models.call import Call
@@ -51,9 +52,9 @@ async def summarize_call(llm: BaseLanguageModel, transcript: str) -> str:
 
 
 async def _visible_tasks(db: AsyncSession, actor: User) -> list[Task]:
-    query = select(Task).where(
-        Task.target_role == actor.role, Task.status != TaskItemStatus.COMPLETED
-    )
+    query = select(Task).where(Task.status != TaskItemStatus.COMPLETED)
+    if VIEW_ALL_QUEUES not in effective_permissions(actor):
+        query = query.where(Task.target_role == actor.role)
     if actor.role == UserRole.DOCTOR:
         query = query.join(IntakeCase, Task.case_id == IntakeCase.id).where(
             IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id))

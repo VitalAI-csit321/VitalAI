@@ -1,12 +1,10 @@
 """Embedding provider abstraction.
 
-Dev:  nomic-embed-text via sentence-transformers (local)
-Prod: Amazon Bedrock Titan Text Embeddings v2 (when LLM_PROVIDER=bedrock)
+nomic-embed-text via sentence-transformers (local).
 """
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
@@ -62,19 +60,5 @@ class NomicEmbedProvider:
         return result
 
 
-class BedrockTitanProvider:
-    """Amazon Bedrock Titan Text Embeddings v2 (prod)."""
-
-    MODEL_ID = "amazon.titan-embed-text-v2:0"
-
-    async def embed_query(self, text: str) -> list[float]:
-        raise NotImplementedError("Bedrock Titan embeddings not wired until Phase 3")
-
-    async def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        raise NotImplementedError("Bedrock Titan embeddings not wired until Phase 3")
-
-
 def get_embedding_provider() -> EmbeddingProvider:
-    if os.getenv("LLM_PROVIDER") == "bedrock":
-        return BedrockTitanProvider()
     return NomicEmbedProvider()
