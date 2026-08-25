@@ -5,10 +5,17 @@ from httpx import AsyncClient
 
 
 class _FakeLLM:
+    """Answers the classifier's canned response, and answers WORTHY to the
+    reply-worthiness gate's separate call -- these tests aren't exercising
+    that gate (see test_reply_gate.py), they just need it out of the way.
+    """
+
     def __init__(self, response: str):
         self.response = response
 
     async def ainvoke(self, prompt: str) -> str:
+        if "worthy" in prompt.lower():
+            return json.dumps({"worthy": True, "reason": "test default"})
         return self.response
 
 
@@ -26,7 +33,7 @@ async def test_ingest_email_endpoint_creates_task(
 
     with patch(
         "app.services.email_service._generate_org_grounded_reply",
-        new=AsyncMock(return_value="Thanks, we'll confirm your appointment shortly."),
+        new=AsyncMock(return_value=("Thanks, we'll confirm your appointment shortly.", True)),
     ):
         response = await client.post(
             "/api/v1/email/ingest",

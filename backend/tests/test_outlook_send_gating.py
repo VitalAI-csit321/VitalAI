@@ -1,11 +1,14 @@
 """Safety behaviour of the outbound path.
 
-Two properties matter here and neither is about Outlook mechanics:
+Three properties matter here and none of them are about Outlook mechanics:
 
 1. With the connector live, no reply is auto-sent on confidence alone. Before
    this feature "sent" was a database flag; now it means a message actually
    reaches a patient, so the high-confidence shortcut must close.
 2. A failed delivery is never recorded as sent.
+3. Turning the connector off does not bypass the reply-worthiness gate's
+   safety conditions either: an ungrounded draft still requires approval
+   regardless of outlook_enabled, see app.services.reply_gate.
 """
 
 import json
@@ -21,10 +24,17 @@ from app.services import email_service
 
 
 class _FakeLLM:
+    """Answers the classifier's canned response, and answers WORTHY to the
+    reply-worthiness gate's separate call -- these tests aren't exercising
+    that gate (see test_reply_gate.py), they just need it out of the way.
+    """
+
     def __init__(self, response: str):
         self.response = response
 
     async def ainvoke(self, prompt: str) -> str:
+        if "worthy" in prompt.lower():
+            return json.dumps({"worthy": True, "reason": "test default"})
         return self.response
 
 
@@ -49,11 +59,13 @@ async def _ingest_high_confidence(db_session, actor, monkeypatch, **request_kwar
 
 
 @pytest.mark.asyncio
-async def test_auto_send_still_applies_when_connector_is_off(
+async def test_ungrounded_reply_requires_approval_even_with_connector_off(
     db_session, front_desk_user, monkeypatch
 ):
-    """Baseline: unchanged behaviour, which is what keeps the existing suite
-    passing."""
+    """The reply-worthiness gate's grounding requirement isn't an
+    Outlook-only safeguard: _ingest_high_confidence's empty retrieval means
+    the draft falls back to a generic, ungrounded reply, which must go to
+    approval whether or not the connector is live."""
     monkeypatch.setattr(email_service.settings, "outlook_enabled", False)
     email, task, gate, confidence = await _ingest_high_confidence(
         db_session, front_desk_user, monkeypatch
@@ -63,8 +75,8 @@ async def test_auto_send_still_applies_when_connector_is_off(
         db_session, task, email, front_desk_user, gate, confidence
     )
 
-    assert outcome.sent is True
-    assert outcome.approval_id is None
+    assert outcome.sent is False
+    assert outcome.approval_id is not None
 
 
 @pytest.mark.asyncio

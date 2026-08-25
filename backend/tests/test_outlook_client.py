@@ -172,6 +172,41 @@ class TestTransport:
         assert b"Thanks, booked." in captured["body"]
 
     @pytest.mark.asyncio
+    async def test_send_reply_converts_newlines_to_br(self, monkeypatch):
+        """The comment field is inserted into an HTML body server-side; a raw
+        \\n collapses to whitespace there, which is the one-paragraph bug."""
+        captured: dict = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured["body"] = request.content
+            return httpx.Response(202)
+
+        _patch_transport(monkeypatch, handler)
+        await outlook_client.send_reply("tok", "AAMkAGI2", "Line one.\nLine two.")
+
+        assert b"Line one.<br>Line two." in captured["body"]
+        assert b"Line one.\\nLine two." not in captured["body"]
+
+    @pytest.mark.asyncio
+    async def test_send_reply_escapes_html_from_untrusted_draft_content(self, monkeypatch):
+        """The draft text derives from an LLM reply to untrusted email
+        content, so raw '<' / '&' must never reach Graph as live markup."""
+        captured: dict = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured["body"] = request.content
+            return httpx.Response(202)
+
+        _patch_transport(monkeypatch, handler)
+        await outlook_client.send_reply(
+            "tok", "AAMkAGI2", "<script>alert(1)</script> & <b>bold</b>"
+        )
+
+        assert b"<script>" not in captured["body"]
+        assert b"&lt;script&gt;" in captured["body"]
+        assert b"&amp;" in captured["body"]
+
+    @pytest.mark.asyncio
     async def test_graph_error_propagates(self, monkeypatch):
         """Callers distinguish a failed send from a successful one, so a 4xx
         must raise rather than be swallowed here."""

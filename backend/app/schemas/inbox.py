@@ -24,6 +24,7 @@ class InboxMessageOut(BaseModel):
     draftSent: bool = False  # noqa: N815
     taskStatus: str = "pending"  # noqa: N815
     emailId: str | None = None  # noqa: N815
+    handoverContext: str | None = None  # noqa: N815
 
 
 class InboxListResponse(BaseModel):

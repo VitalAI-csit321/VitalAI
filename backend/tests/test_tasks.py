@@ -297,6 +297,8 @@ async def test_list_tasks_includes_subject_and_from_name_for_email_tasks(
             self.response = response
 
         async def ainvoke(self, prompt: str) -> str:
+            if "worthy" in prompt.lower():
+                return json.dumps({"worthy": True, "reason": "test default"})
             return self.response
 
     monkeypatch.setattr(
@@ -304,7 +306,7 @@ async def test_list_tasks_includes_subject_and_from_name_for_email_tasks(
         lambda: _FakeLLM(json.dumps({"category": "general_administrative", "confidence": 0.95})),
     )
     with patch(
-        "app.services.email_service._generate_org_grounded_reply", new=AsyncMock(return_value="ok")
+        "app.services.email_service._generate_org_grounded_reply", new=AsyncMock(return_value=("ok", True))
     ):
         await client.post(
             "/api/v1/email/ingest",

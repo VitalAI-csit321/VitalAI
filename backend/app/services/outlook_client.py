@@ -147,6 +147,15 @@ async def mark_as_read(access_token: str, message_id: str) -> None:
         response.raise_for_status()
 
 
+def _plain_text_to_html(text: str) -> str:
+    """Graph inserts `comment` into an HTML body, where a raw \\n is just
+    collapsed whitespace -- hence the reply arriving as one paragraph.
+    Escape first, since the text is an LLM reply to untrusted email content,
+    then turn newlines into line breaks.
+    """
+    return html.escape(text).replace("\n", "<br>")
+
+
 async def send_reply(access_token: str, message_id: str, reply_body: str) -> None:
     """Reply to a message in its own thread.
 
@@ -158,6 +167,6 @@ async def send_reply(access_token: str, message_id: str, reply_body: str) -> Non
         response = await client.post(
             f"{GRAPH_URL}/me/messages/{message_id}/reply",
             headers={**_auth_headers(access_token), "Content-Type": "application/json"},
-            json={"comment": reply_body},
+            json={"comment": _plain_text_to_html(reply_body)},
         )
         response.raise_for_status()
