@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_any_permission, require_permission
-from app.auth.permissions import MANAGE_CASES, VIEW_CLINICAL, VIEW_QUEUE
+from app.auth.permissions import DELETE_MESSAGES, MANAGE_CASES, VIEW_CLINICAL, VIEW_QUEUE
 from app.database import get_db
 from app.models.user import User
 from app.schemas.task import (
@@ -132,6 +132,34 @@ async def archive_task_endpoint(
 ):
     try:
         return await task_service.archive_task(db, task_id, actor)
+    except task_service.TaskNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except task_service.TaskForbiddenError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+
+@router.delete("/{task_id}", response_model=TaskOut)
+async def delete_task_endpoint(
+    task_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(DELETE_MESSAGES)),
+):
+    try:
+        return await task_service.soft_delete_task(db, task_id, actor)
+    except task_service.TaskNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except task_service.TaskForbiddenError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+
+@router.post("/{task_id}/read", response_model=TaskOut)
+async def mark_task_read_endpoint(
+    task_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
+):
+    try:
+        return await task_service.mark_task_read(db, task_id, actor)
     except task_service.TaskNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except task_service.TaskForbiddenError as exc:

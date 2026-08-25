@@ -15,6 +15,13 @@ class EmailIngestRequest(BaseModel):
     body: str = Field(min_length=1)
     case_id: UUID | None = None  # None creates a new IntakeCase
 
+    # Set by the Outlook connector, absent for directly-ingested mail.
+    # received_at carries the mailbox's own timestamp so a polled email keeps
+    # when it actually arrived rather than when this system got round to it.
+    external_id: str | None = None
+    external_source: str | None = None
+    received_at: datetime | None = None
+
 
 class EmailOut(BaseModel):
     id: UUID
@@ -24,6 +31,8 @@ class EmailOut(BaseModel):
     subject: str
     body: str
     received_at: datetime
+    external_id: str | None = None
+    external_source: str | None = None
 
     model_config = {"from_attributes": True}
 

@@ -10,6 +10,7 @@ from langchain_core.language_models import BaseLanguageModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.permissions import VIEW_ALL_QUEUES, effective_permissions
 from app.auth.scoping import assigned_patient_ids_subquery
 from app.llm import get_llm
 from app.models.call import Call
@@ -50,10 +51,15 @@ async def summarize_call(llm: BaseLanguageModel, transcript: str) -> str:
     return result if isinstance(result, str) else getattr(result, "content", str(result))
 
 
-async def _visible_tasks(db: AsyncSession, actor: User) -> list[Task]:
-    query = select(Task).where(
-        Task.target_role == actor.role, Task.status != TaskItemStatus.COMPLETED
+async def _visible_tasks(db: AsyncSession, actor: User, archived: bool = False) -> list[Task]:
+    status_filter = (
+        Task.status == TaskItemStatus.COMPLETED
+        if archived
+        else Task.status != TaskItemStatus.COMPLETED
     )
+    query = select(Task).where(status_filter, Task.deleted_at.is_(None))
+    if VIEW_ALL_QUEUES not in effective_permissions(actor):
+        query = query.where(Task.target_role == actor.role)
     if actor.role == UserRole.DOCTOR:
         query = query.join(IntakeCase, Task.case_id == IntakeCase.id).where(
             IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id))
@@ -65,7 +71,7 @@ async def _visible_tasks(db: AsyncSession, actor: User) -> list[Task]:
 
 async def _to_message(db: AsyncSession, task: Task) -> InboxMessageOut | None:
     priority = _PRIORITY_MAP[task.priority]
-    unread = task.status == TaskItemStatus.PENDING
+    unread = task.read_at is None
     category = task.category.value if task.category else "uncategorized"
 
     if task.source == TaskSource.EMAIL:
@@ -91,6 +97,7 @@ async def _to_message(db: AsyncSession, task: Task) -> InboxMessageOut | None:
             draftSent=task.draft_sent,
             taskStatus=task.status.value,
             emailId=str(email.id),
+            handoverContext=task.handover_context,
         )
 
     call_result = await db.execute(select(Call).where(Call.id == task.call_id))
@@ -115,9 +122,9 @@ async def _to_message(db: AsyncSession, task: Task) -> InboxMessageOut | None:
 
 
 async def list_inbox(
-    db: AsyncSession, actor: User, limit: int = 50, offset: int = 0
+    db: AsyncSession, actor: User, limit: int = 50, offset: int = 0, archived: bool = False
 ) -> tuple[list[InboxMessageOut], int]:
-    tasks = await _visible_tasks(db, actor)
+    tasks = await _visible_tasks(db, actor, archived=archived)
     total = len(tasks)
     page = tasks[offset : offset + limit]
 

@@ -11,7 +11,11 @@ task's case's patient (app/auth/scoping.py's is_assigned()/
 assigned_patient_ids_subquery(), the same row-level scoping Phase 3 built for
 /patients, /consent, /rag/query), see
 docs/superpowers/specs/2026-07-25-governance-follow-ups-design.md section 1.
-Every other role keeps the original role-queue behavior unchanged.
+
+Visibility and action authority are otherwise scoped to `target_role ==
+actor.role` (own queue only), except for actors holding VIEW_ALL_QUEUES
+(app/auth/permissions.py), who see and can act on every role's queue -
+currently ADMIN only. See _check_target_role().
 """
 
 from uuid import UUID
@@ -19,6 +23,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.permissions import VIEW_ALL_QUEUES, effective_permissions
 from app.auth.scoping import assigned_patient_ids_subquery, is_assigned
 from app.models.case import IntakeCase, IntakeStatus
 from app.models.human_review import HumanReviewTask, TaskPriority, TaskStatus, TaskType
@@ -47,12 +52,11 @@ async def list_tasks(
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list[HumanReviewTask], int]:
-    query = select(HumanReviewTask).where(HumanReviewTask.target_role == actor.role)
-    count_query = (
-        select(func.count())
-        .select_from(HumanReviewTask)
-        .where(HumanReviewTask.target_role == actor.role)
-    )
+    query = select(HumanReviewTask)
+    count_query = select(func.count()).select_from(HumanReviewTask)
+    if VIEW_ALL_QUEUES not in effective_permissions(actor):
+        query = query.where(HumanReviewTask.target_role == actor.role)
+        count_query = count_query.where(HumanReviewTask.target_role == actor.role)
     if actor.role == UserRole.DOCTOR:
         query = query.join(IntakeCase, HumanReviewTask.case_id == IntakeCase.id).where(
             IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id))
@@ -90,7 +94,7 @@ async def create_task(
     existing patient - `IntakeCase.patient_id` is nullable precisely for this
     standalone case. `target_role` defaults to the creating actor's own role
     so the task is immediately visible in their own queue (list_tasks scopes
-    strictly by `target_role == actor.role`).
+    by `target_role == actor.role`, except for actors holding VIEW_ALL_QUEUES).
     """
     case = IntakeCase(
         patient_id=None,
@@ -134,15 +138,22 @@ async def _check_doctor_assigned(db: AsyncSession, task: HumanReviewTask, actor:
         raise HumanReviewTaskWrongRoleError(f"Task {task.id} is not assigned to doctor {actor.id}")
 
 
+def _check_target_role(task: HumanReviewTask, actor: User) -> None:
+    """Gate claim/complete/reject/escalate by target_role, unless the actor
+    holds VIEW_ALL_QUEUES (admin oversight across every role's queue)."""
+    if task.target_role == actor.role or VIEW_ALL_QUEUES in effective_permissions(actor):
+        return
+    raise HumanReviewTaskWrongRoleError(
+        f"Task {task.id} is targeted at role '{task.target_role}', "
+        f"actor holds role '{actor.role.value}'"
+    )
+
+
 async def claim_task(db: AsyncSession, task_id: UUID, actor: User) -> HumanReviewTask:
     task = await db.get(HumanReviewTask, task_id)
     if task is None:
         raise HumanReviewTaskNotFoundError(f"No human review task with id {task_id}")
-    if task.target_role != actor.role:
-        raise HumanReviewTaskWrongRoleError(
-            f"Task {task_id} is targeted at role '{task.target_role}', "
-            f"actor holds role '{actor.role.value}'"
-        )
+    _check_target_role(task, actor)
     if actor.role == UserRole.DOCTOR:
         await _check_doctor_assigned(db, task, actor)
     if task.status != TaskStatus.PENDING:
@@ -163,11 +174,7 @@ async def complete_task(
     task = await db.get(HumanReviewTask, task_id)
     if task is None:
         raise HumanReviewTaskNotFoundError(f"No human review task with id {task_id}")
-    if task.target_role != actor.role:
-        raise HumanReviewTaskWrongRoleError(
-            f"Task {task_id} is targeted at role '{task.target_role}', "
-            f"actor holds role '{actor.role.value}'"
-        )
+    _check_target_role(task, actor)
     if actor.role == UserRole.DOCTOR:
         await _check_doctor_assigned(db, task, actor)
     if task.status != TaskStatus.IN_PROGRESS:
@@ -188,11 +195,7 @@ async def reject_task(
     task = await db.get(HumanReviewTask, task_id)
     if task is None:
         raise HumanReviewTaskNotFoundError(f"No human review task with id {task_id}")
-    if task.target_role != actor.role:
-        raise HumanReviewTaskWrongRoleError(
-            f"Task {task_id} is targeted at role '{task.target_role}', "
-            f"actor holds role '{actor.role.value}'"
-        )
+    _check_target_role(task, actor)
     if actor.role == UserRole.DOCTOR:
         await _check_doctor_assigned(db, task, actor)
     if task.status != TaskStatus.IN_PROGRESS:
@@ -213,11 +216,7 @@ async def escalate_task(
     task = await db.get(HumanReviewTask, task_id)
     if task is None:
         raise HumanReviewTaskNotFoundError(f"No human review task with id {task_id}")
-    if task.target_role != actor.role:
-        raise HumanReviewTaskWrongRoleError(
-            f"Task {task_id} is targeted at role '{task.target_role}', "
-            f"actor holds role '{actor.role.value}'"
-        )
+    _check_target_role(task, actor)
     if actor.role == UserRole.DOCTOR:
         await _check_doctor_assigned(db, task, actor)
     if task.status != TaskStatus.IN_PROGRESS:

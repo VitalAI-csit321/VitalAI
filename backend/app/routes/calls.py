@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_permission
@@ -16,11 +16,15 @@ from app.schemas.call import (
     CallRouteOut,
     CallRouteRequest,
     CallRoutingOverride,
+    CallTranscribeOut,
 )
 from app.services import call_service
+from app.services.transcription_service import EmptyTranscriptError, transcribe_audio
 from app.services.triage_service import ConsentGatingError
 
 router = APIRouter(prefix="/calls", tags=["calls"])
+
+MAX_AUDIO_BYTES = 25 * 1024 * 1024  # generous for a few minutes of voice audio
 
 
 @router.post("", response_model=CallOut, status_code=status.HTTP_201_CREATED)
@@ -120,6 +124,29 @@ async def escalate_call_endpoint(
         task_priority=task.priority,
         handover_context=context,
     )
+
+
+@router.post("/transcribe", response_model=CallTranscribeOut)
+async def transcribe_call_endpoint(
+    audio: UploadFile = File(...),
+    _: User = Depends(require_permission(VIEW_QUEUE)),
+):
+    raw = await audio.read()
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="No audio uploaded"
+        )
+    if len(raw) > MAX_AUDIO_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Audio file too large"
+        )
+    try:
+        transcript = transcribe_audio(raw)
+    except EmptyTranscriptError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
+    return CallTranscribeOut(transcript=transcript)
 
 
 @router.get("/{call_id}", response_model=CallOut)

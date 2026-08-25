@@ -44,3 +44,7 @@ dist/
 # Logs & local DB
 *.log
 *.sqlite3
+
+# Outlook connector token cache: holds a live refresh token, never commit it.
+.outlook_token_cache.json
+*.outlook_token_cache.json

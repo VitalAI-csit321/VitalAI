@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -245,6 +246,46 @@ async def archive_task(db: AsyncSession, task_id: UUID, actor: User) -> Task:
     )
     await db.commit()
     await db.refresh(task)
+    return task
+
+
+async def soft_delete_task(db: AsyncSession, task_id: UUID, actor: User) -> Task:
+    """Hide a task from both the inbox and the archived view while keeping
+    the row and its audit trail -- hard-deleting an ingested patient email
+    would destroy the evidence it ever arrived, unacceptable in a clinical
+    audit context. Route-gated on DELETE_MESSAGES (admin/operator only).
+    """
+    task = await db.get(Task, task_id)
+    if task is None:
+        raise TaskNotFoundError(f"Task {task_id} not found")
+    await _check_task_access(db, task, actor)
+
+    task.deleted_at = datetime.now(UTC)
+    task.deleted_by = actor.id
+    await db.flush()
+
+    await record_event(
+        db,
+        case_id=task.case_id,
+        actor=actor,
+        action="task.deleted",
+        details={"task_id": str(task.id)},
+    )
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+
+async def mark_task_read(db: AsyncSession, task_id: UUID, actor: User) -> Task:
+    task = await db.get(Task, task_id)
+    if task is None:
+        raise TaskNotFoundError(f"Task {task_id} not found")
+    await _check_task_access(db, task, actor)
+
+    if task.read_at is None:
+        task.read_at = datetime.now(UTC)
+        await db.commit()
+        await db.refresh(task)
     return task
 
 
