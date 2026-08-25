@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "../lib/apiClient";
+import { apiDelete, apiGet, apiPost } from "../lib/apiClient";
 import type { DashboardSummary, Message } from "./types";
 import { placeholderWorkflowByDay } from "./_placeholder";
 
@@ -67,8 +67,8 @@ export async function getDashboard(): Promise<DashboardSummary> {
   };
 }
 
-export async function listMessages(): Promise<Message[]> {
-  const res = await apiGet<{ items: Message[]; total: number }>("/api/v1/inbox");
+export async function listMessages(archived = false): Promise<Message[]> {
+  const res = await apiGet<{ items: Message[]; total: number }>("/api/v1/inbox", { archived });
   return res.items;
 }
 
@@ -94,4 +94,12 @@ export async function escalateMessage(taskId: string, reason?: string): Promise<
 
 export async function archiveMessage(taskId: string): Promise<void> {
   await apiPost(`/api/v1/tasks/${taskId}/archive`);
+}
+
+export async function markMessageRead(taskId: string): Promise<void> {
+  await apiPost(`/api/v1/tasks/${taskId}/read`);
+}
+
+export async function deleteMessage(taskId: string): Promise<void> {
+  await apiDelete(`/api/v1/tasks/${taskId}`);
 }

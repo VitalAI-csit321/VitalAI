@@ -100,7 +100,7 @@ export interface Message {
   subject: string; body: string; priority: MessagePriority; category: string;
   unread: boolean; receivedLabel: string; threadReference: string; avatarColor: string;
   draftText: string | null; draftApprovalId: string | null; draftSent: boolean;
-  taskStatus: TaskStatus; emailId: string | null;
+  taskStatus: TaskStatus; emailId: string | null; handoverContext: string | null;
 }
 
 export interface DashboardSummary {

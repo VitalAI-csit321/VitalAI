@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { approveDraft, archiveMessage, escalateMessage, listMessages } from "../api/misc";
+import {
+  approveDraft,
+  archiveMessage,
+  deleteMessage,
+  escalateMessage,
+  listMessages,
+  markMessageRead,
+} from "../api/misc";
 import type { Message, MessagePriority } from "../api/types";
 import { useAuth } from "../lib/auth";
 import { Avatar, Spinner } from "../components/ui";
 
-type Tab = "all" | "urgent" | "normal" | "fyi";
+type Tab = "all" | "urgent" | "archived";
 
 function priorityBadge(p: MessagePriority) {
   if (p === "urgent")
@@ -41,7 +48,7 @@ export function InboxPage() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   function refresh(preferId?: string | null) {
-    return listMessages().then((m) => {
+    return listMessages(tab === "archived").then((m) => {
       setMessages(m);
       const keep = preferId ?? selectedId;
       const stillThere = keep ? m.find((x) => x.id === keep) : undefined;
@@ -50,9 +57,10 @@ export function InboxPage() {
   }
 
   useEffect(() => {
-    refresh().finally(() => setLoading(false));
+    setLoading(true);
+    refresh(null).finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tab]);
 
   const selected = messages.find((m) => m.id === selectedId) ?? null;
 
@@ -60,16 +68,33 @@ export function InboxPage() {
     setEditedDraft(selected?.draftText ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
-  const filtered = messages.filter((m) => (tab === "all" ? true : m.priority === tab));
+
+  useEffect(() => {
+    if (selected?.unread) {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === selected.id ? { ...m, unread: false } : m)),
+      );
+      markMessageRead(selected.id).catch(() => {
+        // Low-stakes UX signal only; a failed mark-read just re-shows as
+        // unread on the next full refresh, no need to surface an error.
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  // Archived is a distinct server-side query (completed status), fetched
+  // fresh on tab switch above; Urgent is still a client-side priority
+  // filter over whichever set is currently loaded.
+  const filtered = tab === "urgent" ? messages.filter((m) => m.priority === "urgent") : messages;
   const unread = messages.filter((m) => m.unread).length;
   const urgent = messages.filter((m) => m.priority === "urgent").length;
   const canApprove = user?.role === "operator" || user?.role === "admin";
+  const canDelete = user?.role === "operator" || user?.role === "admin";
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: "all", label: `All (${messages.length})` },
-    { key: "urgent", label: `Urgent (${urgent})` },
-    { key: "normal", label: "Normal" },
-    { key: "fyi", label: "FYI" },
+    { key: "all", label: "All" },
+    { key: "urgent", label: "Urgent" },
+    { key: "archived", label: "Archived" },
   ];
 
   async function handleSend() {
@@ -121,6 +146,21 @@ export function InboxPage() {
     }
   }
 
+  async function handleDelete() {
+    if (!selected) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await deleteMessage(selected.id);
+      setShowReply(false);
+      await refresh(null);
+    } catch {
+      setActionError("Could not delete this message.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="p-6">
       <div className="flex items-start justify-between">
@@ -130,9 +170,14 @@ export function InboxPage() {
             {messages.length} conversations • {unread} unread • {urgent} urgent
           </p>
         </div>
-        <button onClick={() => navigate("/inbox/compose")} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover">
-          Compose
-        </button>
+        <div className="flex gap-3">
+          <button onClick={() => navigate("/inbox/log-call")} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            Log call
+          </button>
+          <button onClick={() => navigate("/inbox/compose")} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover">
+            Compose
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -303,6 +348,15 @@ export function InboxPage() {
                   >
                     Archive
                   </button>
+                  {canDelete && (
+                    <button
+                      onClick={handleDelete}
+                      disabled={busy}
+                      className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
 
                 <div className="mt-6 border-t border-slate-100 pt-4 text-xs text-slate-400">

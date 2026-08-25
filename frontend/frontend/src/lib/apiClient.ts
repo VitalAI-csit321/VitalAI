@@ -85,11 +85,28 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return handle(res) as Promise<T>;
 }
 
+export async function apiPostForm<T>(path: string, form: FormData): Promise<T> {
+  const res = await fetch(BASE_URL + path, {
+    method: "POST",
+    headers: { ...authHeaders() }, // no Content-Type — browser sets the multipart boundary
+    body: form,
+  });
+  return handle(res) as Promise<T>;
+}
+
 export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(BASE_URL + path, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  return handle(res) as Promise<T>;
+}
+
+export async function apiDelete<T>(path: string): Promise<T> {
+  const res = await fetch(BASE_URL + path, {
+    method: "DELETE",
+    headers: { ...authHeaders() },
   });
   return handle(res) as Promise<T>;
 }
