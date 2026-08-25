@@ -18,6 +18,7 @@ from app.services.appointment_service import (
     AppointmentStateError,
     CaseNotFoundError,
     DoctorNotFoundError,
+    DoctorPatientAccessError,
     NotADoctorError,
     SlotTakenError,
 )
@@ -53,6 +54,11 @@ async def book_appointment_endpoint(
         ) from exc
     except SlotTakenError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except DoctorPatientAccessError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get("", response_model=AppointmentListResponse)
@@ -66,7 +72,7 @@ async def list_appointments_endpoint(
     own_scope = _own_calendar_scope(actor)
     effective_doctor_id = own_scope if own_scope is not None else doctor_id
     items, total = await appointment_service.list_appointments(
-        db, doctor_id=effective_doctor_id, limit=limit, offset=offset
+        db, actor, doctor_id=effective_doctor_id, limit=limit, offset=offset
     )
     return AppointmentListResponse(
         items=[AppointmentOut.model_validate(a) for a in items], total=total

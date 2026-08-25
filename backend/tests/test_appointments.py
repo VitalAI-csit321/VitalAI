@@ -58,6 +58,14 @@ async def test_book_appointment_allowed_for_own_calendar_doctor(
     doctor_headers: dict,
     patient: Patient,
 ):
+    await client.post(
+        "/api/v1/assignments",
+        json={
+            "doctor_id": str(doctor_user.id),
+            "patient_id": str(patient.id),
+        },
+        headers=admin_headers,
+    )
     case_id = await _create_case(client, admin_headers, patient)
 
     response = await client.post(
@@ -66,6 +74,26 @@ async def test_book_appointment_allowed_for_own_calendar_doctor(
         headers=doctor_headers,
     )
     assert response.status_code == 201
+
+
+async def test_book_appointment_denied_for_unassigned_patient(
+    client: AsyncClient,
+    admin_headers: dict,
+    doctor_user: User,
+    doctor_headers: dict,
+    patient: Patient,
+):
+    case_id = await _create_case(client, admin_headers, patient)
+    response = await client.post(
+        "/api/v1/appointments",
+        json={
+            "doctor_id": str(doctor_user.id),
+            "case_id": case_id,
+            "time_slot": _slot(),
+        },
+        headers=doctor_headers,
+    )
+    assert response.status_code == 403
 
 
 async def test_book_appointment_denied_for_other_doctors_calendar(
@@ -139,6 +167,14 @@ async def test_list_appointments_scoped_to_doctor(
     doctor_headers: dict,
     patient: Patient,
 ):
+    await client.post(
+        "/api/v1/assignments",
+        json={
+            "doctor_id": str(doctor_user.id),
+            "patient_id": str(patient.id),
+        },
+        headers=admin_headers,
+    )
     case_id = await _create_case(client, admin_headers, patient)
     await client.post(
         "/api/v1/appointments",
@@ -151,6 +187,37 @@ async def test_list_appointments_scoped_to_doctor(
     body = response.json()
     assert body["total"] == 1
     assert body["items"][0]["doctor_id"] == str(doctor_user.id)
+
+
+async def test_list_appointments_hides_unassigned_patient(
+    client: AsyncClient,
+    admin_headers: dict,
+    doctor_user: User,
+    doctor_headers: dict,
+    patient: Patient,
+):
+    case_id = await _create_case(client, admin_headers, patient)
+
+    created = await client.post(
+        "/api/v1/appointments",
+        json={
+            "doctor_id": str(doctor_user.id),
+            "case_id": case_id,
+            "time_slot": _slot(1),
+        },
+        headers=admin_headers,
+    )
+    assert created.status_code == 201
+
+    response = await client.get(
+        "/api/v1/appointments",
+        headers=doctor_headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 0
+    assert body["items"] == []
 
 
 async def test_list_appointments_unscoped_for_admin_with_doctor_filter(
@@ -184,6 +251,14 @@ async def test_reschedule_appointment_allowed_for_owner_doctor(
     doctor_headers: dict,
     patient: Patient,
 ):
+    await client.post(
+        "/api/v1/assignments",
+        json={
+            "doctor_id": str(doctor_user.id),
+            "patient_id": str(patient.id),
+        },
+        headers=admin_headers,
+    )
     case_id = await _create_case(client, admin_headers, patient)
     created = await client.post(
         "/api/v1/appointments",
@@ -242,6 +317,35 @@ async def test_reschedule_appointment_denied_for_non_owner_doctor(
     assert response.status_code == 404
 
 
+async def test_reschedule_appointment_denied_for_unassigned_patient(
+    client: AsyncClient,
+    admin_headers: dict,
+    doctor_user: User,
+    doctor_headers: dict,
+    patient: Patient,
+):
+    case_id = await _create_case(client, admin_headers, patient)
+    created = await client.post(
+        "/api/v1/appointments",
+        json={
+            "doctor_id": str(doctor_user.id),
+            "case_id": case_id,
+            "time_slot": _slot(1),
+        },
+        headers=admin_headers,
+    )
+    assert created.status_code == 201
+    appointment_id = created.json()["id"]
+
+    response = await client.post(
+        f"/api/v1/appointments/{appointment_id}/reschedule",
+        json={"time_slot": _slot(3)},
+        headers=doctor_headers,
+    )
+
+    assert response.status_code == 404
+
+
 async def test_cancel_appointment_denied_for_non_owner_doctor(
     client: AsyncClient,
     admin_headers: dict,
@@ -265,6 +369,34 @@ async def test_cancel_appointment_denied_for_non_owner_doctor(
     assert response.status_code == 404
 
 
+async def test_cancel_appointment_denied_for_unassigned_patient(
+    client: AsyncClient,
+    admin_headers: dict,
+    doctor_user: User,
+    doctor_headers: dict,
+    patient: Patient,
+):
+    case_id = await _create_case(client, admin_headers, patient)
+
+    created = await client.post(
+        "/api/v1/appointments",
+        json={
+            "doctor_id": str(doctor_user.id),
+            "case_id": case_id,
+            "time_slot": _slot(1),
+        },
+        headers=admin_headers,
+    )
+    appointment_id = created.json()["id"]
+
+    response = await client.post(
+        f"/api/v1/appointments/{appointment_id}/cancel",
+        headers=doctor_headers,
+    )
+
+    assert response.status_code == 404
+
+
 async def test_reschedule_missing_appointment_returns_404(client: AsyncClient, admin_headers: dict):
     response = await client.post(
         f"/api/v1/appointments/{uuid.uuid4()}/reschedule",
@@ -281,6 +413,14 @@ async def test_cancel_appointment_allowed_for_owner_doctor(
     doctor_headers: dict,
     patient: Patient,
 ):
+    await client.post(
+        "/api/v1/assignments",
+        json={
+            "doctor_id": str(doctor_user.id),
+            "patient_id": str(patient.id),
+        },
+        headers=admin_headers,
+    )
     case_id = await _create_case(client, admin_headers, patient)
     created = await client.post(
         "/api/v1/appointments",
