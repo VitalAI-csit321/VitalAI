@@ -50,7 +50,7 @@ class SyncSummary:
 
 
 async def _already_ingested(db: AsyncSession, external_id: str) -> bool:
-    """Dedupe against the unique index from alembic 0021_outlook_email_dedup.
+    """Dedupe against the unique index from alembic 0024_outlook_email_dedup.
 
     This, not mark_as_read, is the real guarantee that a message is ingested
     once: marking read is a separate Graph call that can fail independently,

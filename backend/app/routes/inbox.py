@@ -15,8 +15,11 @@ router = APIRouter(prefix="/inbox", tags=["inbox"])
 async def list_inbox_endpoint(
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    archived: bool = Query(default=False),
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
 ):
-    items, total = await inbox_service.list_inbox(db, actor, limit=limit, offset=offset)
+    items, total = await inbox_service.list_inbox(
+        db, actor, limit=limit, offset=offset, archived=archived
+    )
     return InboxListResponse(items=items, total=total)

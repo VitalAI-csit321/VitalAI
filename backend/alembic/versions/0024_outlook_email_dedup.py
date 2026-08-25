@@ -1,13 +1,13 @@
 """add external message provenance to emails for Outlook dedupe
 
-Revision ID: 0021_outlook_email_dedup
-Revises: 0020_task_comments
+Revision ID: 0024_outlook_email_dedup
+Revises: 0023_chunks_hybrid_search
 Create Date: 2026-08-20 00:00:00.000000
 
-Renumber before merging to main if 0021_block_audit_truncate (on
-feature/rag-org-corpus-hardening) lands first: this must become
-0024_outlook_email_dedup with down_revision 0023_chunks_hybrid_search,
-otherwise alembic resolves two heads and `upgrade head` fails.
+Renumbered from 0021_outlook_email_dedup: feature/rag-org-corpus-hardening's
+0021_block_audit_truncate -> 0022_chunks_org_wide -> 0023_chunks_hybrid_search
+landed first off the same 0020_task_comments base, so this chain moves to
+0024/0025 to keep a single alembic head.
 """
 
 from collections.abc import Sequence
@@ -17,8 +17,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0021_outlook_email_dedup"
-down_revision: str | None = "0020_task_comments"
+revision: str = "0024_outlook_email_dedup"
+down_revision: str | None = "0023_chunks_hybrid_search"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

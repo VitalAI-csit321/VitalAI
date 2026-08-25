@@ -57,4 +57,6 @@ def test_total_route_count():
     # removed; an unexpected change here means the walker itself regressed
     # (e.g. double-counting via bad recursion), not that this number merely
     # went stale.
-    assert len({(e.method, e.path) for e in registry}) == 72
+    # 74 as of the inbox delete/read feature: +2 for DELETE /api/v1/tasks/{task_id}
+    # and POST /api/v1/tasks/{task_id}/read.
+    assert len({(e.method, e.path) for e in registry}) == 74

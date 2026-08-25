@@ -78,3 +78,27 @@ def test_operator_lacks_view_all_queues():
 
 def test_doctor_lacks_view_all_queues():
     assert VIEW_ALL_QUEUES not in effective_permissions(_user(UserRole.DOCTOR))
+
+
+def test_admin_has_delete_messages():
+    from app.auth.permissions import DELETE_MESSAGES
+
+    assert DELETE_MESSAGES in effective_permissions(_user(UserRole.ADMIN))
+
+
+def test_operator_has_delete_messages():
+    from app.auth.permissions import DELETE_MESSAGES
+
+    assert DELETE_MESSAGES in effective_permissions(_user(UserRole.OPERATOR))
+
+
+def test_front_desk_lacks_delete_messages():
+    from app.auth.permissions import DELETE_MESSAGES
+
+    assert DELETE_MESSAGES not in effective_permissions(_user(UserRole.FRONT_DESK))
+
+
+def test_doctor_lacks_delete_messages():
+    from app.auth.permissions import DELETE_MESSAGES
+
+    assert DELETE_MESSAGES not in effective_permissions(_user(UserRole.DOCTOR))
