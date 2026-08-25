@@ -1,5 +1,6 @@
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
@@ -34,6 +35,7 @@ from app.routes import (
     tasks,
     triage,
 )
+from app.services.outlook_poller import run_poller
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +60,20 @@ async def lifespan(application: FastAPI):
         "MINIO_SECRET_KEY": "***",
     }
     logger.info("startup config: %s", redacted)
+
+    # Inbound Outlook polling, off unless explicitly enabled for this
+    # environment. Held as a task so shutdown can cancel it rather than
+    # leaving the loop running against a closing event loop.
+    poller_task: asyncio.Task | None = None
+    if settings.outlook_enabled:
+        poller_task = asyncio.create_task(run_poller())
+
     yield
+
+    if poller_task is not None:
+        poller_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await poller_task
 
 
 async def _rate_limit_handler(request: Request, exc: Exception) -> Response:

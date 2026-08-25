@@ -18,3 +18,12 @@ class Email(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     subject: Mapped[str] = mapped_column(String(500), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    # Provenance for mail pulled from an external mailbox. NULL for emails
+    # created through POST /email/ingest directly (simulated/seeded), which is
+    # why these are nullable rather than defaulted. The unique index over the
+    # pair (see alembic 0021_outlook_email_dedup) is what actually stops the
+    # poller re-ingesting the same message: marking it read in the mailbox is a
+    # courtesy, not a correctness guarantee, since that call can fail.
+    external_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    external_source: Mapped[str | None] = mapped_column(String(50), nullable=True)

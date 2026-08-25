@@ -25,7 +25,7 @@ async def test_ingest_email_endpoint_creates_task(
     _mock_classifier(monkeypatch, "appointment_request", 0.95)
 
     with patch(
-        "app.services.email_service._generate_plain_reply",
+        "app.services.email_service._generate_org_grounded_reply",
         new=AsyncMock(return_value="Thanks, we'll confirm your appointment shortly."),
     ):
         response = await client.post(

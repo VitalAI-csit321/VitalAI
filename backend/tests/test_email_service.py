@@ -133,7 +133,7 @@ async def test_draft_reply_non_clinical_category_uses_plain_generation(
     )
 
     with patch(
-        "app.services.email_service._generate_plain_reply",
+        "app.services.email_service._generate_org_grounded_reply",
         new=AsyncMock(return_value="We open at 9am on Saturdays."),
     ):
         outcome = await email_service.draft_reply(
@@ -165,7 +165,7 @@ async def test_draft_reply_blocked_by_output_guardrail_routes_to_human(
     )
 
     with patch(
-        "app.services.email_service._generate_plain_reply",
+        "app.services.email_service._generate_org_grounded_reply",
         new=AsyncMock(return_value="Your prescription is ready for pickup."),
     ):
         outcome = await email_service.draft_reply(
@@ -175,3 +175,75 @@ async def test_draft_reply_blocked_by_output_guardrail_routes_to_human(
     assert outcome.blocked is True
     assert outcome.sent is False
     assert outcome.draft_text is None
+
+
+def _org_chunk(content: str, score: float):
+    from uuid import uuid4
+
+    from app.rag.retrieval import RetrievedChunk
+
+    return RetrievedChunk(
+        chunk_id=uuid4(),
+        patient_id=None,
+        access_scope="general",
+        source_document_id=uuid4(),
+        doc_type="clinic_identity",
+        chunk_index=0,
+        attachment_uri=None,
+        content=content,
+        score=score,
+        distance=1 - score,
+    )
+
+
+@pytest.mark.asyncio
+async def test_org_grounded_reply_includes_retrieved_context_when_sufficient(
+    db_session, front_desk_user, monkeypatch
+):
+    """Above sufficiency_floor: the org-wide chunk content must reach the LLM
+    prompt, so a general enquiry can be answered with real clinic facts
+    instead of an ungrounded guess."""
+    captured_prompt = {}
+
+    class _CapturingLLM:
+        async def ainvoke(self, prompt: str) -> str:
+            captured_prompt["text"] = prompt
+            return "Our hours are Mon-Fri 8:30-6:00."
+
+    monkeypatch.setattr(
+        "app.rag.retrieval.retrieve",
+        AsyncMock(return_value=[_org_chunk("Monday to Friday: 8:30 AM to 6:00 PM.", 0.70)]),
+    )
+    monkeypatch.setattr("app.services.email_service.get_llm", lambda: _CapturingLLM())
+
+    email = type("E", (), {"subject": "Hours?", "body": "What are your opening hours?"})()
+    draft = await email_service._generate_org_grounded_reply(db_session, email, front_desk_user)
+
+    assert "8:30 AM to 6:00 PM" in captured_prompt["text"]
+    assert draft == "Our hours are Mon-Fri 8:30-6:00."
+
+
+@pytest.mark.asyncio
+async def test_org_grounded_reply_falls_back_when_retrieval_insufficient(
+    db_session, front_desk_user, monkeypatch
+):
+    """Below sufficiency_floor: no context is injected, so the model is never
+    handed a low-confidence chunk to (mis)represent as fact."""
+    captured_prompt = {}
+
+    class _CapturingLLM:
+        async def ainvoke(self, prompt: str) -> str:
+            captured_prompt["text"] = prompt
+            return "Thank you for your email, we'll be in touch."
+
+    monkeypatch.setattr(
+        "app.rag.retrieval.retrieve",
+        AsyncMock(return_value=[_org_chunk("unrelated low-relevance content", 0.10)]),
+    )
+    monkeypatch.setattr("app.services.email_service.get_llm", lambda: _CapturingLLM())
+
+    email = type("E", (), {"subject": "Random", "body": "Do you sell parking permits?"})()
+    draft = await email_service._generate_org_grounded_reply(db_session, email, front_desk_user)
+
+    assert "CLINIC INFO" not in captured_prompt["text"]
+    assert draft == "Thank you for your email, we'll be in touch."

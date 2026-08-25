@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     llm_model: str = "gemma2:9b"
     ollama_base_url: str = "http://ollama:11434"
 
+    # Call transcription (Phase 1 MVP — local STT, no Twilio yet)
+    whisper_model: str = "base"
+
     # Bedrock
     aws_region: str = "ap-southeast-2"
     bedrock_model_id: str = "anthropic.claude-3-haiku-20240307-v1:0"
@@ -68,12 +71,35 @@ class Settings(BaseSettings):
     task_routing_auto_threshold: float = 0.90
     task_routing_floor: float = 0.70
 
+    # Outlook connector (inbound mail via Microsoft Graph).
+    # Defaults to disabled: every existing test, every other worktree, and CI
+    # run with the connector inert, so nothing here can reach a real mailbox
+    # unless an operator explicitly turns it on in that environment's .env.
+    # Enabling it also disables auto-send in email_service.draft_reply(), so a
+    # drafted reply only leaves the building after a human approves it.
+    outlook_enabled: bool = False
+    outlook_client_id: str = ""
+    # /consumers = personal Microsoft accounts. A work/school tenant would use
+    # https://login.microsoftonline.com/<tenant-id> instead.
+    outlook_authority: str = "https://login.microsoftonline.com/consumers"
+    # Written by scripts/outlook_login.py, read by outlook_auth.get_access_token().
+    # Holds a live refresh token: gitignored, never commit it.
+    outlook_token_cache_path: str = ".outlook_token_cache.json"
+    outlook_poll_interval_seconds: int = 60
+    outlook_max_messages_per_poll: int = 25
+    # The mailbox this connector reads. Used as the fallback recipient when a
+    # message arrives with toRecipients absent, which happens for mail sent to
+    # a shared mailbox.
+    outlook_mailbox_address: str = ""
+
     @model_validator(mode="after")
     def _require_runtime_secrets(self) -> "Settings":
         if not self.database_url:
             raise ValueError("DATABASE_URL must be set")
         if not self.jwt_secret_key:
             raise ValueError("JWT_SECRET_KEY must be set")
+        if self.outlook_enabled and not self.outlook_client_id:
+            raise ValueError("OUTLOOK_CLIENT_ID must be set when OUTLOOK_ENABLED=true")
         return self
 
 

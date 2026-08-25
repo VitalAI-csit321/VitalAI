@@ -23,6 +23,7 @@ MANAGE_USERS = "manage_users"
 CONFIGURE_GOVERNANCE = "configure_governance"
 READ_AUDIT = "read_audit"
 REGISTER_PATIENT = "register_patient"
+VIEW_ALL_QUEUES = "view_all_queues"
 
 ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
     UserRole.FRONT_DESK: {
@@ -59,6 +60,7 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         CONFIGURE_GOVERNANCE,
         READ_AUDIT,
         REGISTER_PATIENT,
+        VIEW_ALL_QUEUES,
     },
     UserRole.DOCTOR: {
         VIEW_CLINICAL,

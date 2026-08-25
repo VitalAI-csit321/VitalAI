@@ -67,7 +67,11 @@ async def ingest_email(
         recipient=payload.recipient,
         subject=payload.subject,
         body=payload.body,
-        received_at=datetime.now(UTC),
+        # A polled email carries the mailbox's own receipt time; a directly
+        # ingested one has no such timestamp, so fall back to now as before.
+        received_at=payload.received_at or datetime.now(UTC),
+        external_id=payload.external_id,
+        external_source=payload.external_source,
     )
     db.add(email)
     await db.flush()
@@ -120,17 +124,50 @@ class EmailDraftOutcome:
     blocked: bool
 
 
-async def _generate_plain_reply(email: Email, actor: User) -> str:
+async def _generate_plain_reply(email: Email, actor: User, context_text: str = "") -> str:
     llm = get_llm()
+    context_block = (
+        f"CLINIC INFO (use this for hours/policies/contact details, don't invent any):\n"
+        f"{context_text}\n\n"
+        if context_text
+        else ""
+    )
     prompt = (
         "You are a clinic administrator replying to a patient email. Write a short, "
         "polite, professional reply. Do not mention any clinical details.\n\n"
+        f"{context_block}"
         f"ORIGINAL EMAIL SUBJECT: {email.subject}\n"
         f"ORIGINAL EMAIL BODY: {email.body}\n\n"
         "REPLY:"
     )
     result = await llm.ainvoke(prompt)
     return result if isinstance(result, str) else getattr(result, "content", str(result))
+
+
+async def _generate_org_grounded_reply(db: AsyncSession, email: Email, actor: User) -> str:
+    """Non-clinical reply, grounded in the org-wide profile corpus (clinic
+    hours, policies) when retrieval clears the same sufficiency_floor gate
+    RAG patient queries use. Falls back to the plain ungrounded reply when
+    nothing relevant is retrieved.
+    """
+    from app.rag.answer import CONTEXT_SCORE_MARGIN
+    from app.rag.gating import evaluate_retrieval
+    from app.rag.retrieval import RetrievalContext, retrieve
+
+    ctx = RetrievalContext(
+        patient_id=None, allowed_scopes=["general"], role=actor.role.value, actor=actor.email
+    )
+    chunks = await retrieve(db, email.body, ctx)
+    gate_outcome = evaluate_retrieval(chunks)
+    if gate_outcome.decision == "manual_handling":
+        return await _generate_plain_reply(email, actor)
+
+    assert gate_outcome.top_score is not None
+    context_chunks = [
+        c for c in gate_outcome.chunks if c.score >= gate_outcome.top_score - CONTEXT_SCORE_MARGIN
+    ]
+    context_text = "\n\n".join(c.content for c in context_chunks)
+    return await _generate_plain_reply(email, actor, context_text=context_text)
 
 
 async def _persist_draft(db: AsyncSession, task: Task, outcome: EmailDraftOutcome) -> None:
@@ -175,9 +212,9 @@ async def draft_reply(
             result = await answer_question(db, email.body, ctx, actor)
             draft_text = result.answer
         else:
-            draft_text = await _generate_plain_reply(email, actor)
+            draft_text = await _generate_org_grounded_reply(db, email, actor)
     else:
-        draft_text = await _generate_plain_reply(email, actor)
+        draft_text = await _generate_org_grounded_reply(db, email, actor)
 
     try:
         await check_output(db, draft_text, actor=actor, case_id=email.case_id)
@@ -186,9 +223,15 @@ async def draft_reply(
         await _persist_draft(db, task, outcome)
         return outcome
 
+    # With the Outlook connector live, "sent" stops being a DB-level simulation
+    # and becomes a real message leaving for a real patient inbox, so the
+    # high-confidence auto-send shortcut is withdrawn: every reply goes through
+    # the approval gate instead. With the connector off this is unchanged, which
+    # is what keeps the existing suite's expectations intact.
     safe_to_send_immediately = (
         gate.outcome == TaskRoutingOutcome.AUTO_ROUTED
         and confidence >= settings.task_routing_auto_threshold
+        and not settings.outlook_enabled
     )
     if safe_to_send_immediately:
         outcome = EmailDraftOutcome(

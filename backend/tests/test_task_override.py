@@ -20,7 +20,7 @@ async def test_override_task_category_updates_target_role_and_audits(
         lambda: _FakeLLM(json.dumps({"category": "general_administrative", "confidence": 0.95})),
     )
     with patch(
-        "app.services.email_service._generate_plain_reply",
+        "app.services.email_service._generate_org_grounded_reply",
         new=AsyncMock(return_value="We're open 9-5."),
     ):
         ingest = await client.post(
@@ -61,7 +61,7 @@ async def test_override_task_requires_manage_cases(
         lambda: _FakeLLM(json.dumps({"category": "general_administrative", "confidence": 0.95})),
     )
     with patch(
-        "app.services.email_service._generate_plain_reply",
+        "app.services.email_service._generate_org_grounded_reply",
         new=AsyncMock(return_value="We're open 9-5."),
     ):
         ingest = await client.post(

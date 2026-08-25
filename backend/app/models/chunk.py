@@ -24,12 +24,16 @@ class Chunk(Base):
     as unconstrained text, source_document_id with no documents table) is a
     placeholder to unblock vector retrieval on synthetic data — none of it is
     ratified. See docs/FR-RAG-01_handoff.md.
+
+    patient_id is nullable: NULL means an org-wide chunk (clinic policy,
+    routing rules, guardrails, ...) visible in every patient's retrieval
+    context, still gated by access_scope.
     """
 
     __tablename__ = "chunks"
 
     id: Mapped[UUID] = mapped_column(_pg_uuid, primary_key=True, default=uuid4)
-    patient_id: Mapped[UUID] = mapped_column(_pg_uuid, nullable=False, index=True)
+    patient_id: Mapped[UUID | None] = mapped_column(_pg_uuid, nullable=True, index=True)
     doc_type: Mapped[str] = mapped_column(Text, nullable=False)
     access_scope: Mapped[str] = mapped_column(Text, nullable=False)
     source_document_id: Mapped[UUID] = mapped_column(_pg_uuid, nullable=False)

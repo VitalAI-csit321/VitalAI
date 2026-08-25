@@ -14,10 +14,18 @@ bcrypt>=4.1.0
 python-multipart>=0.0.9
 email-validator>=2.0.0
 
+# Outlook connector (Microsoft Graph inbound mail). msal handles the device-code
+# login and the token cache; httpx (listed under Testing below) is also the
+# runtime HTTP client for Graph calls, since the app is async throughout.
+msal>=1.28.0
+
 # LLM abstraction (Phase 0 — providers swap via env)
 langchain>=0.2.0
 langchain-community>=0.2.0
 langchain-aws>=0.1.0
+
+# Call transcription (Phase 1 MVP, local STT)
+faster-whisper>=1.0.0
 
 # Rate limiting
 slowapi>=0.1.9

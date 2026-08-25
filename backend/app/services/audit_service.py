@@ -8,7 +8,13 @@ from app.audit_context import get_ip_address, get_session_id
 from app.models.audit import AuditEvent
 from app.models.user import User
 
-_HIGH_RISK_ACTIONS = {"governance.access_denied", "governance.input_blocked"}
+_HIGH_RISK_ACTIONS = {
+    "governance.access_denied",
+    "governance.input_blocked",
+    # Mail the pipeline gave up on: silently dropped patient contact is the
+    # kind of thing that must not sit at the bottom of a Low-risk feed.
+    "email.ingest_abandoned",
+}
 _MEDIUM_RISK_KEYWORDS = ("escalat", "triage", "routing")
 _BLOCKED_ACTIONS = {"governance.access_denied", "governance.input_blocked"}
 

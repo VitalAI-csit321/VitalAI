@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Select, select, text
+from sqlalchemy import Select, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.chunk import Chunk
@@ -63,9 +63,13 @@ def _security_filter(stmt: Select[Any], ctx: RetrievalContext) -> Select[Any]:
     Every retrieval path (vector today, hybrid later) MUST filter through this
     function. Do not re-implement patient_id / access_scope filtering anywhere
     else a second copy is how a boundary check silently drifts out of sync.
+
+    A NULL patient_id is an org-wide chunk (clinic policy, routing rules,
+    guardrails, ...) and is visible from every patient context, still gated
+    by access_scope like any other chunk.
     """
     return stmt.where(
-        Chunk.patient_id == ctx.patient_id,
+        or_(Chunk.patient_id == ctx.patient_id, Chunk.patient_id.is_(None)),
         Chunk.access_scope.in_(ctx.allowed_scopes),
     )
 

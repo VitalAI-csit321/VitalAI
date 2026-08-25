@@ -22,7 +22,7 @@ def _mock_classifier(monkeypatch, category: str, confidence: float) -> None:
 
 async def _ingest(client: AsyncClient, headers: dict) -> dict:
     with patch(
-        "app.services.email_service._generate_plain_reply",
+        "app.services.email_service._generate_org_grounded_reply",
         new=AsyncMock(return_value="Reply body."),
     ):
         response = await client.post(

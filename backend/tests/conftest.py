@@ -18,6 +18,7 @@ from uuid import uuid4
 import pytest_asyncio
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from alembic import command
@@ -29,6 +30,7 @@ from app.auth.security import create_access_token, hash_password  # noqa: E402
 from app.database import get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Base, Patient, User, UserRole  # noqa: E402
+from app.models.chunk import Chunk  # noqa: E402
 from app.models.patient import Gender, PatientStatus  # noqa: E402
 from scripts.seed_synthetic_chunks import seed as seed_synthetic_corpus  # noqa: E402
 
@@ -261,7 +263,16 @@ async def pg_session():
 
 @pytest_asyncio.fixture
 async def seeded_chunks(pg_session: AsyncSession) -> AsyncSession:
-    """pg_session pre-loaded with the FR-RAG-01 synthetic corpus (scripts/synthetic_corpus)."""
+    """pg_session pre-loaded with the FR-RAG-01 synthetic corpus (scripts/synthetic_corpus).
+
+    Also hides any org-wide (patient_id IS NULL) chunks for this test only.
+    retrieval.py's _security_filter intentionally makes those visible from
+    every patient context, so real, permanently-committed org-profile content
+    would otherwise leak into these tests' exact-membership/count assertions.
+    Scoped to pg_session's rolled-back transaction -- never touches the real
+    committed rows.
+    """
+    await pg_session.execute(delete(Chunk).where(Chunk.patient_id.is_(None)))
     await seed_synthetic_corpus(pg_session)
     return pg_session
 

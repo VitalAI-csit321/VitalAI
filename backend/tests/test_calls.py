@@ -1,10 +1,13 @@
 import json
 import uuid
+from pathlib import Path
 from typing import cast
 
 from httpx import AsyncClient
 
 from app.models import Patient
+
+FIXTURE = Path(__file__).parent / "fixtures" / "chest_pain.wav"
 
 
 class _FakeLLM:
@@ -290,3 +293,24 @@ async def test_call_routing_and_escalation_require_manage_cases(
 
     assert route.status_code == 403
     assert escalate.status_code == 403
+
+
+async def test_transcribe_call_returns_transcript(client: AsyncClient, front_desk_headers: dict):
+    with open(FIXTURE, "rb") as f:
+        response = await client.post(
+            "/api/v1/calls/transcribe",
+            files={"audio": ("chest_pain.wav", f, "audio/wav")},
+            headers=front_desk_headers,
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["transcript"].strip()) > 0
+
+
+async def test_transcribe_call_rejects_empty_upload(client: AsyncClient, front_desk_headers: dict):
+    response = await client.post(
+        "/api/v1/calls/transcribe",
+        files={"audio": ("empty.wav", b"", "audio/wav")},
+        headers=front_desk_headers,
+    )
+    assert response.status_code == 422

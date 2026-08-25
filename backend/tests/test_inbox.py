@@ -25,7 +25,7 @@ async def test_inbox_filters_by_target_role(
 
     _mock_email_classifier(monkeypatch, "referral_request", 0.95)  # -> operator
     with patch(
-        "app.services.email_service._generate_plain_reply", new=AsyncMock(return_value="ok")
+        "app.services.email_service._generate_org_grounded_reply", new=AsyncMock(return_value="ok")
     ):
         await client.post(
             "/api/v1/email/ingest",
@@ -53,7 +53,7 @@ async def test_inbox_message_shape_matches_frontend_contract(
 
     _mock_email_classifier(monkeypatch, "medical_records_request", 0.95)  # -> operator
     with patch(
-        "app.services.email_service._generate_plain_reply", new=AsyncMock(return_value="ok")
+        "app.services.email_service._generate_org_grounded_reply", new=AsyncMock(return_value="ok")
     ):
         await client.post(
             "/api/v1/email/ingest",
@@ -92,6 +92,49 @@ async def test_inbox_message_shape_matches_frontend_contract(
 async def test_inbox_requires_view_queue_or_view_clinical(client: AsyncClient, admin_headers: dict):
     response = await client.get("/api/v1/inbox", headers=admin_headers)
     assert response.status_code == 200
+
+
+async def test_admin_sees_tasks_across_all_target_roles(
+    client: AsyncClient, operator_headers: dict, front_desk_headers: dict, admin_headers: dict, monkeypatch
+):
+    from unittest.mock import AsyncMock, patch
+
+    _mock_email_classifier(monkeypatch, "referral_request", 0.95)  # -> operator
+    with patch(
+        "app.services.email_service._generate_org_grounded_reply", new=AsyncMock(return_value="ok")
+    ):
+        await client.post(
+            "/api/v1/email/ingest",
+            json={
+                "sender": "patient@example.com",
+                "recipient": "clinic@example.com",
+                "subject": "Referral needed (admin visibility check)",
+                "body": "I need a referral to a specialist.",
+            },
+            headers=operator_headers,
+        )
+
+    _mock_email_classifier(monkeypatch, "appointment_request", 0.95)  # -> front_desk
+    with patch(
+        "app.services.email_service._generate_org_grounded_reply", new=AsyncMock(return_value="ok")
+    ):
+        await client.post(
+            "/api/v1/email/ingest",
+            json={
+                "sender": "patient2@example.com",
+                "recipient": "clinic@example.com",
+                "subject": "Reschedule request (admin visibility check)",
+                "body": "Can I move my appointment?",
+            },
+            headers=front_desk_headers,
+        )
+
+    admin_inbox = await client.get("/api/v1/inbox", headers=admin_headers)
+
+    assert admin_inbox.status_code == 200
+    subjects = {m["subject"] for m in admin_inbox.json()["items"]}
+    assert "Referral needed (admin visibility check)" in subjects
+    assert "Reschedule request (admin visibility check)" in subjects
 
 
 async def test_inbox_summarizes_call_transcripts(

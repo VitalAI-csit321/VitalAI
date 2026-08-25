@@ -3,6 +3,7 @@ from app.auth.permissions import (
     MANAGE_USERS,
     READ_AUDIT,
     REGISTER_PATIENT,
+    VIEW_ALL_QUEUES,
     VIEW_CLINICAL,
     effective_permissions,
 )
@@ -61,3 +62,19 @@ def test_admin_has_register_patient():
 
 def test_doctor_lacks_register_patient():
     assert REGISTER_PATIENT not in effective_permissions(_user(UserRole.DOCTOR))
+
+
+def test_admin_has_view_all_queues():
+    assert VIEW_ALL_QUEUES in effective_permissions(_user(UserRole.ADMIN))
+
+
+def test_front_desk_lacks_view_all_queues():
+    assert VIEW_ALL_QUEUES not in effective_permissions(_user(UserRole.FRONT_DESK))
+
+
+def test_operator_lacks_view_all_queues():
+    assert VIEW_ALL_QUEUES not in effective_permissions(_user(UserRole.OPERATOR))
+
+
+def test_doctor_lacks_view_all_queues():
+    assert VIEW_ALL_QUEUES not in effective_permissions(_user(UserRole.DOCTOR))
