@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Nancy Evans
+DOB: 2008-05-23
+Date: 15/08/2026
+Seen by: Dr Aisha Rahman
+
+Known conditions: Pregnancy, antenatal care, Seasonal allergic rhinitis
+Allergies: No known drug allergies
+
+Vitals: BP 105/81 mmHg, Weight 110.0 kg
+
+Chief Complaint:
+Sneezing, itchy eyes and nasal congestion, seasonal pattern.
+
+Assessment:
+Consistent with seasonal allergic rhinitis.
+
+Plan:
+- Review if not improving
+- Advise on allergen avoidance
+- Trial antihistamine

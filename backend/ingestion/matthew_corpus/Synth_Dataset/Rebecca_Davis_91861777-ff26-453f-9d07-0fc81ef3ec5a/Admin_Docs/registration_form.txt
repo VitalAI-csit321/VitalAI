@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Rebecca Davis
+DOB: 1943-05-22
+Gender: Female
+Phone: 0834957885
+Email: jbarajas@example.com
+Address: Level 4 31 Leslie Vale, South Javier, WA, 2898
+
+Medicare number: 6098 41748/6
+IHI: 8003602653954607
+Concession card: DVA Gold Card
+
+Emergency contact: Veronica Wall, (03)-5240-8240
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Audiological scientist
+Allergies: Penicillin
+Assigned doctor: Dr Samuel Osei

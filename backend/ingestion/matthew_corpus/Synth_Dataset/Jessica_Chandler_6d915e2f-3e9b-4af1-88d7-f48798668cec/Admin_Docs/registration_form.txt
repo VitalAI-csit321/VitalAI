@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Jessica Chandler
+DOB: 1933-06-11
+Gender: Female
+Phone: (08).9816.9340
+Email: zsmith@example.net
+Address: 15/5 Jennifer Garden, Elizabethmouth, VIC, 2928
+
+Medicare number: 8544 72880/8
+IHI: 8003246308127387
+Concession card: None
+
+Emergency contact: Jason Bentley, +61.429.946.804
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Historic buildings inspector/conservation officer
+Allergies: Aspirin (NSAIDs)
+Assigned doctor: Dr Samuel Osei

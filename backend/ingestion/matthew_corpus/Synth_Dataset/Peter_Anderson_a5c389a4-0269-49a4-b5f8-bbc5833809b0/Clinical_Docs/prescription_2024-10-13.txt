@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Peter Anderson
+DOB: 1967-05-24
+Date: 13/10/2024
+Prescribed by: Dr David Nguyen
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 30  Repeats: 0

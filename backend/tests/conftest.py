@@ -267,10 +267,13 @@ async def seeded_chunks(pg_session: AsyncSession) -> AsyncSession:
 
     Also hides any org-wide (patient_id IS NULL) chunks for this test only.
     retrieval.py's _security_filter intentionally makes those visible from
-    every patient context, so real, permanently-committed org-profile content
+    every patient context (alembic 0022_chunks_org_wide), so real,
+    permanently-committed org-profile content (scripts/ingest_org_profile.py)
     would otherwise leak into these tests' exact-membership/count assertions.
     Scoped to pg_session's rolled-back transaction -- never touches the real
-    committed rows.
+    committed rows, unlike scripts/seed_synthetic_chunks.py's own delete,
+    which intentionally stays scoped to SYNTHETIC_PATIENT_IDS because that
+    script also runs standalone against the live dev database.
     """
     await pg_session.execute(delete(Chunk).where(Chunk.patient_id.is_(None)))
     await seed_synthetic_corpus(pg_session)

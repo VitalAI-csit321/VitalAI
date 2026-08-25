@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Susan Turner
+DOB: 2009-12-31
+Date: 14/03/2026
+Prescribed by: Dr Priya Menon
+
+Salbutamol Inhaler 100mcg
+Inhale 2 puffs as needed for shortness of breath.
+Quantity: 60  Repeats: 0

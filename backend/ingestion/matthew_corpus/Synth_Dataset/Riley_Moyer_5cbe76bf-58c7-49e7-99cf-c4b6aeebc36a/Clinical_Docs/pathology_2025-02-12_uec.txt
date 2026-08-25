@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Riley Moyer
+DOB: 1964-02-21
+Date collected: 12/02/2025
+Requested by: Dr David Nguyen
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       132       mmol/L        135-145       L
+Potassium    3.7       mmol/L        3.5-5.2       -
+Chloride     105       mmol/L        95-110        -
+Bicarbonate  31        mmol/L        22-32         -
+Urea         6.4       mmol/L        2.5-8.0       -
+Creatinine   84        umol/L        60-110        -
+eGFR         87        mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

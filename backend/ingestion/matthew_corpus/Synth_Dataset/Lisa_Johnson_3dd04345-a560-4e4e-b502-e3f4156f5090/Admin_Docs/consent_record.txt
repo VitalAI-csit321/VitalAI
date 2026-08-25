@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Lisa Johnson
+DOB: 1994-01-30
+Date: 23/07/2025
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

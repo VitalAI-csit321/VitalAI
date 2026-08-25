@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Dawn Evans
+DOB: 1937-02-13
+Date collected: 31/05/2025
+Requested by: Dr Samuel Osei
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            14.9      %             4.5-11.0      H
+Fasting Glucose  13.8      mmol/L        3.5-15.0      -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

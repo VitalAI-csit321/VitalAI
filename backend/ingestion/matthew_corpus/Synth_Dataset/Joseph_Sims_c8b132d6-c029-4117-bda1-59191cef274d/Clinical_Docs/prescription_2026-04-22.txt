@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Joseph Sims
+DOB: 2002-01-09
+Date: 22/04/2026
+Prescribed by: Dr Marcus O'Connell
+
+Ibuprofen 400mg
+Take 1 tablet every 8 hours with food as needed.
+Quantity: 90  Repeats: 3

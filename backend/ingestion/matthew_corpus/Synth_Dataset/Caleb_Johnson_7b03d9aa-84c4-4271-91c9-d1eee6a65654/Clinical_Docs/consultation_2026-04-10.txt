@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Caleb Johnson
+DOB: 1982-01-04
+Date: 10/04/2026
+Seen by: Dr Priya Menon
+
+Known conditions: None recorded
+Allergies: No known drug allergies
+
+Vitals: BP 110/78 mmHg, Weight 101.4 kg
+
+Chief Complaint:
+Follow-up on previously monitored lesion.
+
+Assessment:
+No suspicious lesions identified.
+
+Plan:
+- Refer to dermatologist if changes noted
+- Photograph and monitor lesion
+- Review in 6 months

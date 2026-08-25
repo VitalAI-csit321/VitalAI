@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Michael Stewart
+DOB: 1972-04-12
+Date: 19/08/2024
+Prescribed by: Dr David Nguyen
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 90  Repeats: 3
+Continuing current dose, well tolerated.

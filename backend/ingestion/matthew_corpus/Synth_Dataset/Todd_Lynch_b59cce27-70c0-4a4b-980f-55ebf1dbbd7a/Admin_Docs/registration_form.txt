@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Todd Lynch
+DOB: 2012-03-02
+Gender: Male
+Phone: +61-2-4341-0369
+Email: fbrown@example.net
+Address: 2 Patterson Round, Johnchester, NT, 2485
+
+Medicare number: 9149 49983/5
+IHI: 8003030660677400
+Concession card: None
+
+Emergency contact: Joseph Romero, 0480 670 654
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Administrator, sports
+Allergies: No known drug allergies
+Assigned doctor: Dr Hannah Fitzgerald

@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Brandon Caldwell
+DOB: 1989-08-19
+Date: 04/09/2025
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

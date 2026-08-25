@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Michele Carr
+DOB: 1952-04-21
+Gender: Female
+Phone: +61-480-841-241
+Email: newtoneric@example.com
+Address: Unit 48 40 Cynthia Foreshore, North Matthewberg, SA, 2647
+
+Medicare number: 1919 21473/9
+IHI: 8003181045869714
+Concession card: None
+
+Emergency contact: Jessica Smith, 2805.9826
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Former smoker
+Alcohol use: Nil
+Occupation: Conference centre manager
+Allergies: No known drug allergies
+Assigned doctor: Dr Samuel Osei

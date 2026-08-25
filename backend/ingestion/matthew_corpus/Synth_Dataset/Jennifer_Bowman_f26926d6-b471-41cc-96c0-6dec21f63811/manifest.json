@@ -1,0 +1,106 @@
+{
+  "patient_id": "f26926d6-b471-41cc-96c0-6dec21f63811",
+  "name": "Jennifer Bowman",
+  "dob": "1959-08-31",
+  "gender": "Female",
+  "archetype": "hypertension",
+  "chronic_conditions": [
+    "Essential hypertension",
+    "Hypothyroidism"
+  ],
+  "secondary_condition": "Hypothyroidism",
+  "hospital_event_date": null,
+  "allergies": [
+    "Sulfa drugs"
+  ],
+  "assigned_doctor": "Dr David Nguyen",
+  "assigned_doctor_id": "doctor02",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-11-29.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-11-29"
+    },
+    {
+      "filename": "prescription_2025-11-29.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-11-29"
+    },
+    {
+      "filename": "pathology_2025-11-29_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-11-29"
+    },
+    {
+      "filename": "pathology_2025-11-29_lipids.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-11-29"
+    },
+    {
+      "filename": "consultation_2026-08-07.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-08-07"
+    },
+    {
+      "filename": "prescription_2026-08-07.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-08-07"
+    },
+    {
+      "filename": "pathology_2026-08-07_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-08-07"
+    },
+    {
+      "filename": "pathology_2026-08-07_tft.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-08-07"
+    },
+    {
+      "filename": "care_plan_2025-11-29.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-11-29"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-11-29"
+    }
+  ]
+}

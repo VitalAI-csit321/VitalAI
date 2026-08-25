@@ -1,0 +1,132 @@
+{
+  "patient_id": "16c2afa3-20df-4f5b-8c3e-7a8fc5505a33",
+  "name": "Kelli Williams",
+  "dob": "1948-02-15",
+  "gender": "Female",
+  "archetype": "hypertension",
+  "chronic_conditions": [
+    "Essential hypertension",
+    "Iron deficiency anaemia"
+  ],
+  "secondary_condition": "Iron deficiency anaemia",
+  "hospital_event_date": "2025-01-14",
+  "allergies": [],
+  "assigned_doctor": "Dr David Nguyen",
+  "assigned_doctor_id": "doctor02",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "hospital_discharge_2025-01-14.txt",
+      "doc_type": "hospital_discharge_summary",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-01-14"
+    },
+    {
+      "filename": "consultation_2024-10-17.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-17"
+    },
+    {
+      "filename": "prescription_2024-10-17.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-17"
+    },
+    {
+      "filename": "pathology_2024-10-17_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-17"
+    },
+    {
+      "filename": "pathology_2024-10-17_lipids.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-17"
+    },
+    {
+      "filename": "consultation_2024-10-24.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-24"
+    },
+    {
+      "filename": "prescription_2024-10-24.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-24"
+    },
+    {
+      "filename": "pathology_2024-10-24_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-24"
+    },
+    {
+      "filename": "pathology_2024-10-24_iron_studies.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-24"
+    },
+    {
+      "filename": "consultation_2026-07-29.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-07-29"
+    },
+    {
+      "filename": "prescription_2026-07-29.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-07-29"
+    },
+    {
+      "filename": "pathology_2026-07-29_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-07-29"
+    },
+    {
+      "filename": "care_plan_2024-10-17.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-17"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-10-17"
+    }
+  ]
+}

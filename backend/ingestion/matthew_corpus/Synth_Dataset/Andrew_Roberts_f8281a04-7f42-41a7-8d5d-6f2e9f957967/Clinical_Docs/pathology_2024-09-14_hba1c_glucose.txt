@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Andrew Roberts
+DOB: 1942-11-04
+Date collected: 14/09/2024
+Requested by: Dr Samuel Osei
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            15.6      %             4.5-11.0      H
+Fasting Glucose  12.0      mmol/L        3.5-15.0      -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Michelle Stanley
+DOB: 1941-06-25
+Date: 19/11/2024
+Prescribed by: Dr David Nguyen
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 90  Repeats: 4

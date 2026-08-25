@@ -54,17 +54,14 @@ class Settings(BaseSettings):
     embedding_provider: str = "nomic"  # nomic (dev) | bedrock (prod)
     embedding_model: str = "nomic-embed-text"
 
-    # RAG gating (FR-RAG-02 / FR-RAG-03)
+    # RAG gating (FR-RAG-02)
     # 0.44 is calibrated against nomic-embed-text (512-dim truncated) top_score on
     # real ingested chunks, not a guess: 5-patient calibration found easy-negative
     # (off-domain) queries top out at 0.43, true-positive natural-language questions
     # start at 0.4814; 0.50 sat inside that positive range and rejected legitimate
     # questions (e.g. broad phrasing like "tell me about this patient" scored 0.4933).
-    # Recalibrate if embedding_provider changes; the old 0.50/0.75 pair predates any
-    # such measurement.
+    # Recalibrate if embedding_provider changes.
     sufficiency_floor: float = 0.44
-    confidence_threshold: float = 0.75
-    confidence_source: str = "retrieval_similarity"
 
     # Task routing gate (FR-GOV-02), separate from the RAG gate above:
     # gates task-routing classification confidence, not RAG grounding.

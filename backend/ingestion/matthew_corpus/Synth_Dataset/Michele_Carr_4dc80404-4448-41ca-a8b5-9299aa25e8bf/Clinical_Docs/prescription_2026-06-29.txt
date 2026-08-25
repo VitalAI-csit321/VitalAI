@@ -1,0 +1,19 @@
+Prescription
+
+Patient: Michele Carr
+DOB: 1952-04-21
+Date: 29/06/2026
+Prescribed by: Dr Samuel Osei
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 60  Repeats: 3
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 60  Repeats: 1
+Continuing current dose, well tolerated.
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 60  Repeats: 3

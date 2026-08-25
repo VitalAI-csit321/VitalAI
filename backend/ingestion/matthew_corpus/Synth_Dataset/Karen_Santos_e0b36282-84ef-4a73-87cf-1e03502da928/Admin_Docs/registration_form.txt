@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Karen Santos
+DOB: 2024-08-05
+Gender: Female
+Phone: (07)-4019-3802
+Email: lkhan@example.org
+Address: Suite 400 99 Sarah Grove, Shawnside, WA, 2628
+
+Medicare number: 0130 38166/4
+IHI: 8003283153009455
+Concession card: Pensioner Concession Card
+
+Emergency contact: Corey Rodriguez, 08-4205-4932
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Tree surgeon
+Allergies: No known drug allergies
+Assigned doctor: Dr Hannah Fitzgerald

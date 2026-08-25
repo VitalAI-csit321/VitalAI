@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Rachel Walker
+DOB: 2006-05-10
+Date: 24/01/2026
+Prescribed by: Dr Priya Menon
+
+Sertraline 50mg
+Take 1 tablet once daily.
+Quantity: 60  Repeats: 0
+Continuing current dose, well tolerated.

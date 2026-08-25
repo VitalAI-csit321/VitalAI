@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Tammy Graham
+DOB: 1934-05-28
+Date collected: 05/01/2025
+Requested by: Dr Samuel Osei
+
+LFT
+
+Test             Result    Unit          Ref Range     Flag
+Total Protein    65        g/L           60-80         -
+Albumin          52        g/L           35-50         H
+Total Bilirubin  0         umol/L        2-20          L
+ALP              103       U/L           30-110        -
+GGT              32        U/L           5-35          -
+ALT              25        U/L           5-30          -
+AST              41        U/L           5-40          H
+
+Interpretation: Results within expected reference ranges.

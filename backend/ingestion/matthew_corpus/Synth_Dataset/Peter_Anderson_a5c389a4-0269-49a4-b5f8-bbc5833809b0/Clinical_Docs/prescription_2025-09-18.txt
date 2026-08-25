@@ -1,0 +1,15 @@
+Prescription
+
+Patient: Peter Anderson
+DOB: 1967-05-24
+Date: 18/09/2025
+Prescribed by: Dr David Nguyen
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 30  Repeats: 4
+Reviewed today, no change.
+
+Levothyroxine 50mcg
+Take 1 tablet once daily on an empty stomach.
+Quantity: 30  Repeats: 2

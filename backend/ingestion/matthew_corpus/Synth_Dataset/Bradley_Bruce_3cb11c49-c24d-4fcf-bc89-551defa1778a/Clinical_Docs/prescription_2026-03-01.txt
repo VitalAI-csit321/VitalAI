@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Bradley Bruce
+DOB: 1995-11-29
+Date: 01/03/2026
+Prescribed by: Dr Hannah Fitzgerald
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 90  Repeats: 3

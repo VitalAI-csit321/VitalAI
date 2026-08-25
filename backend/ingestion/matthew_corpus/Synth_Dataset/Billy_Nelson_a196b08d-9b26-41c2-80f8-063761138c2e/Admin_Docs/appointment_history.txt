@@ -1,8 +1,0 @@
-
-Appointment History
-
-13/07/2024 - Vaccination
-01/10/2024 - Minor Procedure
-03/02/2025 - Minor Procedure
-29/10/2025 - Specialist Referral
-24/12/2025 - Physiotherapy Session

@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Michael Stewart
+DOB: 1972-04-12
+Date: 19/08/2024
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

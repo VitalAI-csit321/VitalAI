@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Lisa Johnson
+DOB: 1994-01-30
+Date: 23/07/2025
+Prescribed by: Dr Marcus O'Connell
+
+Ibuprofen 400mg
+Take 1 tablet every 8 hours with food as needed.
+Quantity: 60  Repeats: 2

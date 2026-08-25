@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Matthew Fisher
+DOB: 1985-08-17
+Date collected: 02/07/2025
+Requested by: Dr David Nguyen
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            16.7      %             4.5-11.0      H
+Fasting Glucose  20.3      mmol/L        3.5-15.0      H
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

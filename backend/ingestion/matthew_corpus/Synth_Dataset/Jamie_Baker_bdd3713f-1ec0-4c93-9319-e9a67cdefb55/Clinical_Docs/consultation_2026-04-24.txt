@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Jamie Baker
+DOB: 1974-01-03
+Date: 24/04/2026
+Seen by: Dr Priya Menon
+
+Known conditions: Generalised anxiety, Low mood
+Allergies: Latex
+
+Vitals: BP 130/94 mmHg, Weight 74.9 kg
+
+Chief Complaint:
+Difficulty sleeping and low mood.
+
+Assessment:
+Mild to moderate anxiety, responding to treatment.
+
+Plan:
+- Continue current medication
+- Refer to psychologist

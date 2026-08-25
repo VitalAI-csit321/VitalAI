@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Stacey Wise
+DOB: 1973-05-13
+Gender: Female
+Phone: 5648 1491
+Email: xgibson@example.org
+Address: 24 Patricia Street, South Joycetown, ACT, 1307
+
+Medicare number: 4124 99926/4
+IHI: 8003709984342407
+Concession card: Pensioner Concession Card
+
+Emergency contact: Thomas White, 8635-3654
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Moderate, 5-10 standard drinks/week
+Occupation: Careers adviser
+Allergies: Penicillin
+Assigned doctor: Dr Hannah Fitzgerald

@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Julian Willis
+DOB: 1982-02-04
+Date collected: 08/10/2024
+Requested by: Dr David Nguyen
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       136       mmol/L        135-145       -
+Potassium    4.3       mmol/L        3.5-5.2       -
+Chloride     108       mmol/L        95-110        -
+Bicarbonate  22        mmol/L        22-32         -
+Urea         5.5       mmol/L        2.5-8.0       -
+Creatinine   99        umol/L        60-110        -
+eGFR         120       mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

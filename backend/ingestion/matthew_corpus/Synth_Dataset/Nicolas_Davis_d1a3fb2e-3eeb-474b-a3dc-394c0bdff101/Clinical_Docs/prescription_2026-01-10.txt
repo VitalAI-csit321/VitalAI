@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Nicolas Davis
+DOB: 1949-10-15
+Date: 10/01/2026
+Prescribed by: Dr David Nguyen
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 60  Repeats: 3

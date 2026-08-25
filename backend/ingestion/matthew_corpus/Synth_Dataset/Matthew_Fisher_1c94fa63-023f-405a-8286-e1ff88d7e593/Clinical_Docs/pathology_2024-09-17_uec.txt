@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Matthew Fisher
+DOB: 1985-08-17
+Date collected: 17/09/2024
+Requested by: Dr David Nguyen
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       143       mmol/L        135-145       -
+Potassium    5.6       mmol/L        3.5-5.2       H
+Chloride     108       mmol/L        95-110        -
+Bicarbonate  28        mmol/L        22-32         -
+Urea         7.8       mmol/L        2.5-8.0       -
+Creatinine   120       umol/L        60-110        H
+eGFR         95        mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

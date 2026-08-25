@@ -1,0 +1,16 @@
+Prescription
+
+Patient: Jamie Baker
+DOB: 1974-01-03
+Date: 12/07/2026
+Prescribed by: Dr Priya Menon
+
+Sertraline 50mg
+Take 1 tablet once daily.
+Quantity: 90  Repeats: 5
+Continuing current dose, well tolerated.
+
+Atorvastatin 20mg
+Take 1 tablet once daily at night.
+Quantity: 90  Repeats: 0
+Reviewed today, no change.

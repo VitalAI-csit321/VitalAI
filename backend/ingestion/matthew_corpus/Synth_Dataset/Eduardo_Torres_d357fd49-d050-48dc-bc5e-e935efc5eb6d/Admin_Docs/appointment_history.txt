@@ -1,8 +1,0 @@
-
-Appointment History
-
-14/11/2024 - Minor Procedure
-29/07/2025 - Blood Test
-05/10/2025 - Vaccination
-27/12/2025 - Blood Test
-05/05/2026 - Vaccination

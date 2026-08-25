@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Riley Moyer
+DOB: 1964-02-21
+Gender: Male
+Phone: 02-4895-1343
+Email: dylanwilliams@example.com
+Address: 93/6 Ross Court, East Kimberlybury, NT, 8708
+
+Medicare number: 5429 48944/6
+IHI: 8003683629854339
+Concession card: Pensioner Concession Card
+
+Emergency contact: Ryan Bryant, +61.7.7986.8727
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Former smoker
+Alcohol use: Moderate, 5-10 standard drinks/week
+Occupation: Production assistant, television
+Allergies: Penicillin
+Assigned doctor: Dr David Nguyen

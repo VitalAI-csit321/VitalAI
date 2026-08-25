@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Angela Bradley
+DOB: 1981-07-17
+Date: 20/09/2024
+Prescribed by: Dr David Nguyen
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 30  Repeats: 4
+Reviewed today, no change.

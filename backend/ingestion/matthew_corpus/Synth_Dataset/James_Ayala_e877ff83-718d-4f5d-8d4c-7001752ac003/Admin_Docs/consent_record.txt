@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: James Ayala
+DOB: 2021-02-10
+Date: 20/10/2024
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

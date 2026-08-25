@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Kathryn Gonzalez
+DOB: 2006-05-17
+Date collected: 11/11/2024
+Requested by: Dr Aisha Rahman
+
+FBC
+
+Test              Result    Unit          Ref Range     Flag
+Haemoglobin       47        g/L           115-165       L
+White Cell Count  9.8       x10^9/L       4.0-11.0      -
+Platelets         251       x10^9/L       150-400       -
+Haematocrit       0.43      L/L           0.37-0.47     -
+MCV               89.4      fL            80-100        -
+Neutrophils       6.6       x10^9/L       2.0-8.0       -
+Lymphocytes       2.2       x10^9/L       1.0-4.0       -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

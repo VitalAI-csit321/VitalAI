@@ -1,0 +1,9 @@
+Appointment History
+
+Patient: Gregory Rhodes
+
+01/10/2025 - Blood Test - Dr Samuel Osei
+25/11/2025 - Blood Test - Dr Samuel Osei
+07/12/2025 - Follow-up Review - Dr Samuel Osei
+28/05/2026 - Follow-up Review - Dr Samuel Osei
+21/07/2026 - Blood Test - Dr Samuel Osei

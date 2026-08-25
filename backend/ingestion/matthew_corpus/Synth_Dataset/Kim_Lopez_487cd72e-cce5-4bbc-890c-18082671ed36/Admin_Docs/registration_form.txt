@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Kim Lopez
+DOB: 2000-05-10
+Gender: Female
+Phone: 0439 288 619
+Email: emily61@example.org
+Address: 289/55 Kirk Mall, Mckenziemouth, QLD, 5836
+
+Medicare number: 8909 10965/3
+IHI: 8003640246963676
+Concession card: Health Care Card
+
+Emergency contact: Tammy King, +61.8.6004.9082
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Immigration officer
+Allergies: Latex
+Assigned doctor: Dr Marcus O'Connell

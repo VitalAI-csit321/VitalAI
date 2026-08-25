@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Gregory Rhodes
+DOB: 1937-02-01
+Date collected: 01/10/2025
+Requested by: Dr Samuel Osei
+
+LFT
+
+Test             Result    Unit          Ref Range     Flag
+Total Protein    71        g/L           60-80         -
+Albumin          36        g/L           35-50         -
+Total Bilirubin  14        umol/L        2-20          -
+ALP              70        U/L           30-110        -
+GGT              35        U/L           5-50          -
+ALT              15        U/L           5-40          -
+AST              12        U/L           5-40          -
+
+Interpretation: Results within expected reference ranges.

@@ -1,8 +1,0 @@
-
-Appointment History
-
-14/07/2024 - Specialist Referral
-24/03/2025 - Minor Procedure
-20/07/2025 - Vaccination
-30/09/2025 - General Consultation
-22/12/2025 - Minor Procedure

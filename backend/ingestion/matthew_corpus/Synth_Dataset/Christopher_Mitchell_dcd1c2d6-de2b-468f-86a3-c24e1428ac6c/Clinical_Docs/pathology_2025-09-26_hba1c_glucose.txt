@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Christopher Mitchell
+DOB: 1950-02-17
+Date collected: 26/09/2025
+Requested by: Dr Samuel Osei
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            13.7      %             4.5-11.0      H
+Fasting Glucose  0.7       mmol/L        3.5-15.0      L
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

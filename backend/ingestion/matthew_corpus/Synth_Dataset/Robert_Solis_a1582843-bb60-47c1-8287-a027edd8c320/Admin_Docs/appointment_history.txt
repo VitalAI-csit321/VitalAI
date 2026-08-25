@@ -1,0 +1,7 @@
+Appointment History
+
+Patient: Robert Solis
+
+29/08/2024 - General Consultation - Dr Samuel Osei
+20/01/2025 - Follow-up Review - Dr Samuel Osei
+09/06/2026 - Follow-up Review - Dr Samuel Osei

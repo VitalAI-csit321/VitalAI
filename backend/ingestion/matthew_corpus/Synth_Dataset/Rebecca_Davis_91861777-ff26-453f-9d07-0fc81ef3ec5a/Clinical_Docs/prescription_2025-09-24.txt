@@ -1,0 +1,21 @@
+Prescription
+
+Patient: Rebecca Davis
+DOB: 1943-05-22
+Date: 24/09/2025
+Prescribed by: Dr Samuel Osei
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 90  Repeats: 4
+Reviewed today, no change.
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 90  Repeats: 5
+Continuing current dose, well tolerated.
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 30  Repeats: 1
+Reviewed today, no change.

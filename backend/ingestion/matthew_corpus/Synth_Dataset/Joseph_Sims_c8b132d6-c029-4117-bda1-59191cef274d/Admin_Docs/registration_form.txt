@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Joseph Sims
+DOB: 2002-01-09
+Gender: Male
+Phone: (08) 1434 5581
+Email: edwardreyes@example.org
+Address: 65 Perry Dip, Priceshire, ACT, 5670
+
+Medicare number: 7783 68940/9
+IHI: 8003931809018907
+Concession card: None
+
+Emergency contact: Elizabeth Price, +61-3-7346-7065
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Ophthalmologist
+Allergies: No known drug allergies
+Assigned doctor: Dr Marcus O'Connell

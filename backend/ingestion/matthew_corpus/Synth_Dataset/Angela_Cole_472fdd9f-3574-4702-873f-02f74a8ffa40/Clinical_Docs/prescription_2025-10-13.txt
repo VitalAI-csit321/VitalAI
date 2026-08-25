@@ -1,0 +1,14 @@
+Prescription
+
+Patient: Angela Cole
+DOB: 1991-11-18
+Date: 13/10/2025
+Prescribed by: Dr Aisha Rahman
+
+Folic Acid 500mcg
+Take 1 tablet once daily.
+Quantity: 30  Repeats: 1
+
+Atorvastatin 20mg
+Take 1 tablet once daily at night.
+Quantity: 90  Repeats: 3

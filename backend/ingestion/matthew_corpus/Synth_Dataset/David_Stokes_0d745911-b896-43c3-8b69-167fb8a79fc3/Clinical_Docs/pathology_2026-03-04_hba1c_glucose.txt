@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: David Stokes
+DOB: 1946-07-06
+Date collected: 04/03/2026
+Requested by: Dr David Nguyen
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            12.9      %             4.5-11.0      H
+Fasting Glucose  18.8      mmol/L        3.5-15.0      H
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

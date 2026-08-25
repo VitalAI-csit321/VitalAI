@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Thomas Weaver
+DOB: 1979-12-04
+Date: 27/02/2025
+Prescribed by: Dr Priya Menon
+
+Sertraline 50mg
+Take 1 tablet once daily.
+Quantity: 30  Repeats: 0

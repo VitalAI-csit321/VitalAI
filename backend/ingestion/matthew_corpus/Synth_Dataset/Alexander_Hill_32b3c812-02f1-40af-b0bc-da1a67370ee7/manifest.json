@@ -1,0 +1,126 @@
+{
+  "patient_id": "32b3c812-02f1-40af-b0bc-da1a67370ee7",
+  "name": "Alexander Hill",
+  "dob": "1971-06-07",
+  "gender": "Male",
+  "archetype": "hypertension",
+  "chronic_conditions": [
+    "Essential hypertension"
+  ],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [
+    "Bee stings"
+  ],
+  "assigned_doctor": "Dr David Nguyen",
+  "assigned_doctor_id": "doctor02",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-09-18.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-18"
+    },
+    {
+      "filename": "prescription_2024-09-18.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-18"
+    },
+    {
+      "filename": "pathology_2024-09-18_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-18"
+    },
+    {
+      "filename": "pathology_2024-09-18_lipids.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-18"
+    },
+    {
+      "filename": "consultation_2025-01-29.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-29"
+    },
+    {
+      "filename": "prescription_2025-01-29.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-29"
+    },
+    {
+      "filename": "consultation_2025-03-15.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-03-15"
+    },
+    {
+      "filename": "prescription_2025-03-15.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-03-15"
+    },
+    {
+      "filename": "consultation_2026-01-13.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-13"
+    },
+    {
+      "filename": "prescription_2026-01-13.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-13"
+    },
+    {
+      "filename": "pathology_2026-01-13_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-13"
+    },
+    {
+      "filename": "care_plan_2024-09-18.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-18"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-09-18"
+    }
+  ]
+}

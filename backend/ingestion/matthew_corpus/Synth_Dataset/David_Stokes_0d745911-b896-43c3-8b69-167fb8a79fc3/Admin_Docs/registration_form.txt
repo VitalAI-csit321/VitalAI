@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: David Stokes
+DOB: 1946-07-06
+Gender: Male
+Phone: 07-1353-4655
+Email: brenda71@example.com
+Address: 38 Mikayla Laneway, Robertberg, NT, 2665
+
+Medicare number: 3631 50729/4
+IHI: 8003567787773854
+Concession card: None
+
+Emergency contact: Keith Knox, +61.3.5217.5250
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Accountant, chartered management
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

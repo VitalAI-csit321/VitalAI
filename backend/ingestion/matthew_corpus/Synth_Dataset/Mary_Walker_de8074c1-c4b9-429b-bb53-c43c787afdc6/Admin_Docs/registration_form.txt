@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Mary Walker
+DOB: 1963-05-23
+Gender: Female
+Phone: 58514936
+Email: lynchdiane@example.net
+Address: 445 Smith Corso, Jonestown, NSW, 8366
+
+Medicare number: 6417 17495/1
+IHI: 8003580800160124
+Concession card: None
+
+Emergency contact: Christopher Collins, (02).0229.0147
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Former smoker
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Photographer
+Allergies: Bee stings
+Assigned doctor: Dr Priya Menon

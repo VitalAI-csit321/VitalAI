@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Meghan Davis
+DOB: 2009-10-02
+Date collected: 01/05/2026
+Requested by: Dr Priya Menon
+
+FBC
+
+Test              Result    Unit          Ref Range     Flag
+Haemoglobin       155       g/L           115-165       -
+White Cell Count  5.6       x10^9/L       4.0-11.0      -
+Platelets         347       x10^9/L       150-400       -
+Haematocrit       0.45      L/L           0.37-0.47     -
+MCV               83.9      fL            80-100        -
+Neutrophils       4.1       x10^9/L       2.0-8.0       -
+Lymphocytes       3.7       x10^9/L       1.0-4.0       -
+
+Interpretation: Results within expected reference ranges.

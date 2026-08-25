@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Jessica Chandler
+DOB: 1933-06-11
+Date collected: 13/03/2026
+Requested by: Dr Samuel Osei
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            17.6      %             4.5-11.0      H
+Fasting Glucose  6.6       mmol/L        3.5-15.0      -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

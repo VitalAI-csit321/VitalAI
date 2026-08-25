@@ -1,0 +1,16 @@
+Pathology Report
+
+Patient: Kelli Williams
+DOB: 1948-02-15
+Date collected: 24/10/2024
+Requested by: Dr David Nguyen
+
+Iron Studies
+
+Test                    Result    Unit          Ref Range     Flag
+Iron                    4         umol/L        6-32          L
+Transferrin             3.9       g/L           2.0-3.6       H
+Transferrin Saturation  8         %             10-50         L
+Ferritin                10        ug/L          13-150        L
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

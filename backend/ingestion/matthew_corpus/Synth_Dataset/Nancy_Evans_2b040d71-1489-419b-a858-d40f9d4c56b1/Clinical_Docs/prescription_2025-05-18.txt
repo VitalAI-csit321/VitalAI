@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Nancy Evans
+DOB: 2008-05-23
+Date: 18/05/2025
+Prescribed by: Dr Aisha Rahman
+
+Folic Acid 500mcg
+Take 1 tablet once daily.
+Quantity: 30  Repeats: 3

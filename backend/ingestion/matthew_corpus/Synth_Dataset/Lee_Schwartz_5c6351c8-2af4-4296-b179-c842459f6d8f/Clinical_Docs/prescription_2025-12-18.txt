@@ -1,0 +1,15 @@
+Prescription
+
+Patient: Lee Schwartz
+DOB: 1967-06-29
+Date: 18/12/2025
+Prescribed by: Dr Priya Menon
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 60  Repeats: 2
+Reviewed today, no change.
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 90  Repeats: 2

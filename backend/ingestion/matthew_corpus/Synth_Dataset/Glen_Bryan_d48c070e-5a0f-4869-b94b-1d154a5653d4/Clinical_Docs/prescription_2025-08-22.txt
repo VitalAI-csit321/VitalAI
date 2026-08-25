@@ -1,0 +1,15 @@
+Prescription
+
+Patient: Glen Bryan
+DOB: 1961-08-11
+Date: 22/08/2025
+Prescribed by: Dr David Nguyen
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 60  Repeats: 4
+Continuing current dose, well tolerated.
+
+Levothyroxine 50mcg
+Take 1 tablet once daily on an empty stomach.
+Quantity: 60  Repeats: 5

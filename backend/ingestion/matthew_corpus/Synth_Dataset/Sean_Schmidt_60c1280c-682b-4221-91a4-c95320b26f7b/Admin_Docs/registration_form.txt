@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Sean Schmidt
+DOB: 1958-08-27
+Gender: Male
+Phone: 03-8780-0384
+Email: tracy20@example.com
+Address: Level 3 4 Connie Line, New Jeremiahmouth, VIC, 2621
+
+Medicare number: 3740 41584/8
+IHI: 8003072433852964
+Concession card: None
+
+Emergency contact: Kelly Gregory, +61-436-392-649
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Former smoker
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Landscape architect
+Allergies: No known drug allergies
+Assigned doctor: Dr Priya Menon

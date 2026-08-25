@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Ashley Hunt
+DOB: 2016-05-17
+Gender: Female
+Phone: +61.458.994.417
+Email: rogersjoshua@example.com
+Address: Level 3 830 Guerrero Subway, North Diana, SA, 2766
+
+Medicare number: 7723 58515/1
+IHI: 8003409754386040
+Concession card: None
+
+Emergency contact: Andrew Erickson, 0435.387.584
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Doctor, hospital
+Allergies: No known drug allergies
+Assigned doctor: Dr Hannah Fitzgerald

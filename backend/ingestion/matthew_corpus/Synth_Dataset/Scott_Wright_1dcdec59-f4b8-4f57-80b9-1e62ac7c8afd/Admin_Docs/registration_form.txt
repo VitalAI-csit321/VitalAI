@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Scott Wright
+DOB: 1959-07-23
+Gender: Male
+Phone: 08.2624.7317
+Email: williamsyvette@example.org
+Address: 677 Michelle Brae, Port Aaron, VIC, 2774
+
+Medicare number: 6532 63216/8
+IHI: 8003370499022988
+Concession card: None
+
+Emergency contact: Tyler Cowan, 0472-343-098
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Biochemist, clinical
+Allergies: No known drug allergies
+Assigned doctor: Dr Samuel Osei

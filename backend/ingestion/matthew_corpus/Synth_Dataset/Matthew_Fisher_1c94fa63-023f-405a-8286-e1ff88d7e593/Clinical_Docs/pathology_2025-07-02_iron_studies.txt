@@ -1,0 +1,16 @@
+Pathology Report
+
+Patient: Matthew Fisher
+DOB: 1985-08-17
+Date collected: 02/07/2025
+Requested by: Dr David Nguyen
+
+Iron Studies
+
+Test                    Result    Unit          Ref Range     Flag
+Iron                    5         umol/L        6-32          L
+Transferrin             3.2       g/L           2.0-3.6       -
+Transferrin Saturation  7         %             10-50         L
+Ferritin                22        ug/L          30-300        L
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

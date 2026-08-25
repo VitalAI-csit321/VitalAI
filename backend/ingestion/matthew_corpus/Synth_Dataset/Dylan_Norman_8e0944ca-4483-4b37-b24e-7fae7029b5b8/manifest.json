@@ -1,0 +1,92 @@
+{
+  "patient_id": "8e0944ca-4483-4b37-b24e-7fae7029b5b8",
+  "name": "Dylan Norman",
+  "dob": "1970-06-19",
+  "gender": "Male",
+  "archetype": "asthma",
+  "chronic_conditions": [
+    "Asthma",
+    "Hypothyroidism"
+  ],
+  "secondary_condition": "Hypothyroidism",
+  "hospital_event_date": null,
+  "allergies": [
+    "Sulfa drugs"
+  ],
+  "assigned_doctor": "Dr Marcus O'Connell",
+  "assigned_doctor_id": "doctor04",
+  "note_style": "terse",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-02-27.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-27"
+    },
+    {
+      "filename": "prescription_2025-02-27.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-27"
+    },
+    {
+      "filename": "consultation_2025-03-15.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-03-15"
+    },
+    {
+      "filename": "prescription_2025-03-15.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-03-15"
+    },
+    {
+      "filename": "pathology_2025-03-15_tft.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-03-15"
+    },
+    {
+      "filename": "consultation_2026-05-05.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-05-05"
+    },
+    {
+      "filename": "prescription_2026-05-05.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-05-05"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-02-27"
+    }
+  ]
+}

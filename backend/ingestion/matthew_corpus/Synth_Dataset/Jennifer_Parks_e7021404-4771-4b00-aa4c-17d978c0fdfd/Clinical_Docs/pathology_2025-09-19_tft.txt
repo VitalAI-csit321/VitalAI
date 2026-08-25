@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Jennifer Parks
+DOB: 1976-10-30
+Date collected: 19/09/2025
+Requested by: Dr Marcus O'Connell
+
+TFT
+
+Test     Result    Unit          Ref Range     Flag
+TSH      5.73      mIU/L         0.4-4.0       H
+Free T4  14.5      pmol/L        10-20         -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

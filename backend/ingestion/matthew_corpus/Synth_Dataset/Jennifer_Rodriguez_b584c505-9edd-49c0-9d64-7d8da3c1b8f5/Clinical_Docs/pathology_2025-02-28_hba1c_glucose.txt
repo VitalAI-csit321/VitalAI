@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Jennifer Rodriguez
+DOB: 1952-08-20
+Date collected: 28/02/2025
+Requested by: Dr David Nguyen
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            13.8      %             4.5-11.0      H
+Fasting Glucose  22.2      mmol/L        3.5-15.0      H
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

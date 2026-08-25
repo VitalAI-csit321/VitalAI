@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Michele Carr
+DOB: 1952-04-21
+Date collected: 14/09/2024
+Requested by: Dr Samuel Osei
+
+LFT
+
+Test             Result    Unit          Ref Range     Flag
+Total Protein    69        g/L           60-80         -
+Albumin          44        g/L           35-50         -
+Total Bilirubin  9         umol/L        2-20          -
+ALP              42        U/L           30-110        -
+GGT              32        U/L           5-35          -
+ALT              27        U/L           5-30          -
+AST              13        U/L           5-40          -
+
+Interpretation: Results within expected reference ranges.

@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Laura Harrison
+DOB: 2012-11-24
+Date: 10/06/2025
+Prescribed by: Dr Samuel Osei
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 90  Repeats: 2
+Continuing current dose, well tolerated.

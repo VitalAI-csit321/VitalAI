@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Jonathan Strong
+DOB: 1987-01-04
+Date: 14/07/2025
+Status: WITHDRAWN
+
+Patient withdrew consent to share records with other providers.

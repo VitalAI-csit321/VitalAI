@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Scott Wright
+DOB: 1959-07-23
+Date: 13/02/2026
+Prescribed by: Dr Samuel Osei
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 60  Repeats: 0

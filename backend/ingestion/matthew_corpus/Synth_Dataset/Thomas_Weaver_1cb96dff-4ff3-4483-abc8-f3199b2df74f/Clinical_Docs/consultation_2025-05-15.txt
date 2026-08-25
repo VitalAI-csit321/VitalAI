@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Thomas Weaver
+DOB: 1979-12-04
+Date: 15/05/2025
+Seen by: Dr Priya Menon
+
+Known conditions: Generalised anxiety, Low mood
+Allergies: Bee stings
+
+Vitals: BP 121/83 mmHg, Weight 82.7 kg
+
+Chief Complaint:
+Difficulty sleeping and low mood.
+
+Assessment:
+Stable, continue current plan.
+
+Plan:
+- Prepare Mental Health Treatment Plan
+- Continue current medication
+- Refer to psychologist

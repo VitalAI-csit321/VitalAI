@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Christopher Mitchell
+DOB: 1950-02-17
+Date collected: 19/11/2024
+Requested by: Dr Samuel Osei
+
+LFT
+
+Test             Result    Unit          Ref Range     Flag
+Total Protein    61        g/L           60-80         -
+Albumin          45        g/L           35-50         -
+Total Bilirubin  13        umol/L        2-20          -
+ALP              97        U/L           30-110        -
+GGT              9         U/L           5-50          -
+ALT              28        U/L           5-40          -
+AST              38        U/L           5-40          -
+
+Interpretation: Results within expected reference ranges.

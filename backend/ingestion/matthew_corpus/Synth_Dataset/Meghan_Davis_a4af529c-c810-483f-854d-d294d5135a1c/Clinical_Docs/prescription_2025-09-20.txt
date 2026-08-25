@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Meghan Davis
+DOB: 2009-10-02
+Date: 20/09/2025
+Prescribed by: Dr Priya Menon
+
+Sertraline 50mg
+Take 1 tablet once daily.
+Quantity: 60  Repeats: 0

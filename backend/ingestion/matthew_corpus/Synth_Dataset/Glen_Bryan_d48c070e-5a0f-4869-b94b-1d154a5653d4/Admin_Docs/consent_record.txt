@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Glen Bryan
+DOB: 1961-08-11
+Date: 20/09/2024
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

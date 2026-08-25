@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Benjamin Jackson
+DOB: 2020-10-16
+Date: 18/12/2024
+Prescribed by: Dr Aisha Rahman
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 60  Repeats: 2

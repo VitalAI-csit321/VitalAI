@@ -1,0 +1,6 @@
+Appointment History
+
+Patient: John Munoz
+
+01/10/2025 - General Consultation - Dr Marcus O'Connell
+28/10/2025 - Blood Test - Dr Marcus O'Connell

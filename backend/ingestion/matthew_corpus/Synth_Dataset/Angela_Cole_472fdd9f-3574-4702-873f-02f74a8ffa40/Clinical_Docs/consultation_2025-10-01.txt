@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Angela Cole
+DOB: 1991-11-18
+Date: 01/10/2025
+Seen by: Dr Aisha Rahman
+
+Known conditions: Pregnancy, antenatal care, Dyslipidaemia
+Allergies: No known drug allergies
+
+Vitals: BP 105/83 mmHg, Weight 85.8 kg
+
+Chief Complaint:
+Reviewed after elevated cholesterol noted on routine bloods.
+
+Assessment:
+Dyslipidaemia, above target on lipid profile.
+
+Plan:
+- Commence statin therapy
+- Continue current medication

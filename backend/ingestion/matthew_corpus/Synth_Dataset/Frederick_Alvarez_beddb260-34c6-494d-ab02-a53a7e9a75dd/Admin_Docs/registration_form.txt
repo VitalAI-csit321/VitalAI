@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Frederick Alvarez
+DOB: 2024-04-02
+Gender: Male
+Phone: 0448-728-299
+Email: owelch@example.net
+Address: 783/745 Green Gardens, North Alexandraberg, TAS, 2927
+
+Medicare number: 6260 84749/9
+IHI: 8003795203639711
+Concession card: None
+
+Emergency contact: Melissa Vasquez, +61706493085
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Energy engineer
+Allergies: No known drug allergies
+Assigned doctor: Dr Hannah Fitzgerald

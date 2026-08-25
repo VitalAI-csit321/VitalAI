@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Denise Schultz
+DOB: 1940-06-02
+Gender: Female
+Phone: 0456-984-789
+Email: sgarcia@example.org
+Address: 3/57 Perry Centreway, Ronaldview, TAS, 2637
+
+Medicare number: 2177 79673/4
+IHI: 8003573532540948
+Concession card: None
+
+Emergency contact: Ronald Davis, 52809885
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Community education officer
+Allergies: No known drug allergies
+Assigned doctor: Dr Hannah Fitzgerald

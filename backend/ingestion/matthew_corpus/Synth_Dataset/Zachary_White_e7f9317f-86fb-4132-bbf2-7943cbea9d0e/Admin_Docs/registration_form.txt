@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Zachary White
+DOB: 1945-08-09
+Gender: Male
+Phone: 0407-374-167
+Email: cynthiaallen@example.net
+Address: 17/7 Ferguson Thoroughfare, Stephensstad, NSW, 2535
+
+Medicare number: 0795 75538/4
+IHI: 8003619524102989
+Concession card: DVA Gold Card
+
+Emergency contact: Lonnie Hart, +61-465-610-143
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Former smoker
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Sales professional, IT
+Allergies: Sulfa drugs
+Assigned doctor: Dr Hannah Fitzgerald

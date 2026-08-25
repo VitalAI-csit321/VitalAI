@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Richard Shields
+DOB: 1995-02-05
+Gender: Male
+Phone: 4661 8398
+Email: ginajackson@example.com
+Address: 2/264 Evans Brow, Johnathanbury, WA, 7937
+
+Medicare number: 5515 49573/3
+IHI: 8003867461243567
+Concession card: None
+
+Emergency contact: Eric Rush, (08).5756.9245
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Former smoker
+Alcohol use: Nil
+Occupation: Toxicologist
+Allergies: No known drug allergies
+Assigned doctor: Dr Marcus O'Connell

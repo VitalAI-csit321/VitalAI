@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Alexander Hill
+DOB: 1971-06-07
+Date: 18/09/2024
+Prescribed by: Dr David Nguyen
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 90  Repeats: 4
+Continuing current dose, well tolerated.

@@ -1,0 +1,9 @@
+Appointment History
+
+Patient: Mary Walker
+
+07/11/2024 - Specialist Referral - Dr Priya Menon
+03/03/2025 - Specialist Referral - Dr Priya Menon
+05/07/2025 - Specialist Referral - Dr Priya Menon
+06/08/2025 - Follow-up Review - Dr Priya Menon
+18/02/2026 - Specialist Referral - Dr Priya Menon

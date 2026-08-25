@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Kelli Williams
+DOB: 1948-02-15
+Gender: Female
+Phone: +61 2 7445 1870
+Email: james94@example.net
+Address: 973/8 Edward Lower, South Ambertown, TAS, 1641
+
+Medicare number: 6977 11435/7
+IHI: 8003796150138811
+Concession card: None
+
+Emergency contact: William Barnes, 2410-3865
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Proofreader
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

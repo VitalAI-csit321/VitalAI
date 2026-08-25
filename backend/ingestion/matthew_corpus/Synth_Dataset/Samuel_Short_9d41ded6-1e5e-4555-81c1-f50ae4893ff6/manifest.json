@@ -1,0 +1,61 @@
+{
+  "patient_id": "9d41ded6-1e5e-4555-81c1-f50ae4893ff6",
+  "name": "Samuel Short",
+  "dob": "1960-07-14",
+  "gender": "Male",
+  "archetype": "skin_check",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [
+    "Penicillin"
+  ],
+  "assigned_doctor": "Dr Priya Menon",
+  "assigned_doctor_id": "doctor03",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-12-01.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-01"
+    },
+    {
+      "filename": "pathology_2025-12-01_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-01"
+    },
+    {
+      "filename": "referral_2025-12-01.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-12-01"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-12-01"
+    }
+  ]
+}

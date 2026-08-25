@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Dawn Rivera
+DOB: 2019-07-21
+Gender: Female
+Phone: 02 2590 9479
+Email: charles58@example.org
+Address: 2 Daniels Loop, Lake Jeffreyborough, TAS, 2955
+
+Medicare number: 2604 31605/8
+IHI: 8003667956040839
+Concession card: None
+
+Emergency contact: Travis Montgomery, +61215739930
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: IT sales professional
+Allergies: Penicillin
+Assigned doctor: Dr Hannah Fitzgerald

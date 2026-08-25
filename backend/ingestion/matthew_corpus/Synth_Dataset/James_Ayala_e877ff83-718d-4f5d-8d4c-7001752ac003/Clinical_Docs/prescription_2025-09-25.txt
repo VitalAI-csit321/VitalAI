@@ -1,0 +1,11 @@
+Prescription
+
+Patient: James Ayala
+DOB: 2021-02-10
+Date: 25/09/2025
+Prescribed by: Dr Aisha Rahman
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 90  Repeats: 3
+Continuing current dose, well tolerated.

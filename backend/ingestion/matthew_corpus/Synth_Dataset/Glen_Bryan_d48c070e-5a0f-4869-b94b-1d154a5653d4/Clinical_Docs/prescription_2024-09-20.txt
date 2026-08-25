@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Glen Bryan
+DOB: 1961-08-11
+Date: 20/09/2024
+Prescribed by: Dr David Nguyen
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 30  Repeats: 2
+Reviewed today, no change.

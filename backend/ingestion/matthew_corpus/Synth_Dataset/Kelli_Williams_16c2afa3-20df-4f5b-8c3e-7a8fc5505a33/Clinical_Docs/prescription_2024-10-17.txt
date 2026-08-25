@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Kelli Williams
+DOB: 1948-02-15
+Date: 17/10/2024
+Prescribed by: Dr David Nguyen
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 60  Repeats: 3
+Reviewed today, no change.

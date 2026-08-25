@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Christopher Glover
+DOB: 1967-02-19
+Gender: Male
+Phone: 2966.6676
+Email: johnsonjames@example.com
+Address: Unit 00 3 Heather Highroad, Davidfurt, SA, 2641
+
+Medicare number: 2961 51179/3
+IHI: 8003119543276914
+Concession card: None
+
+Emergency contact: Elizabeth Carter, 0498 562 575
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Emergency planning/management officer
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

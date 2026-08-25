@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Patrick Sanchez
+DOB: 1941-11-21
+Date: 30/07/2026
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

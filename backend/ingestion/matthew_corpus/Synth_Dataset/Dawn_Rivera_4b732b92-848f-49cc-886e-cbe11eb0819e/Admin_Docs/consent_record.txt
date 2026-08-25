@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Dawn Rivera
+DOB: 2019-07-21
+Date: 21/05/2025
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

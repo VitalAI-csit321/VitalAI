@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Angela Anthony
+DOB: 1954-01-18
+Date collected: 01/12/2024
+Requested by: Dr David Nguyen
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       138       mmol/L        135-145       -
+Potassium    3.6       mmol/L        3.5-5.2       -
+Chloride     105       mmol/L        95-110        -
+Bicarbonate  31        mmol/L        22-32         -
+Urea         7.1       mmol/L        2.5-8.0       -
+Creatinine   58        umol/L        45-90         -
+eGFR         93        mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

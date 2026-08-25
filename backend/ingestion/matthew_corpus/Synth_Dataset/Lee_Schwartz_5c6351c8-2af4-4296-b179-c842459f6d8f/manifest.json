@@ -1,0 +1,75 @@
+{
+  "patient_id": "5c6351c8-2af4-4296-b179-c842459f6d8f",
+  "name": "Lee Schwartz",
+  "dob": "1967-06-29",
+  "gender": "Male",
+  "archetype": "acute_general",
+  "chronic_conditions": [
+    "Osteoarthritis"
+  ],
+  "secondary_condition": "Osteoarthritis",
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr Priya Menon",
+  "assigned_doctor_id": "doctor03",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-01-09.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-09"
+    },
+    {
+      "filename": "prescription_2025-01-09.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-09"
+    },
+    {
+      "filename": "pathology_2025-01-09_crp.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-09"
+    },
+    {
+      "filename": "consultation_2025-12-18.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-18"
+    },
+    {
+      "filename": "prescription_2025-12-18.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-18"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-01-09"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Tammy Graham
+DOB: 1934-05-28
+Date collected: 21/07/2026
+Requested by: Dr Samuel Osei
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            13.5      %             4.5-11.0      H
+Fasting Glucose  13.6      mmol/L        3.5-15.0      -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

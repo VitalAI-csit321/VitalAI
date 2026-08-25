@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Mary Walker
+DOB: 1963-05-23
+Date collected: 18/02/2026
+Requested by: Dr Priya Menon
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       142       mmol/L        135-145       -
+Potassium    3.3       mmol/L        3.5-5.2       L
+Chloride     106       mmol/L        95-110        -
+Bicarbonate  23        mmol/L        22-32         -
+Urea         1.3       mmol/L        2.5-8.0       L
+Creatinine   51        umol/L        45-90         -
+eGFR         87        mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

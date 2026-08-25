@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Sara Caldwell
+DOB: 2001-10-30
+Gender: Female
+Phone: 02 8114 3744
+Email: lwilliams@example.org
+Address: 611/022 Howard Outlook, Natalieland, TAS, 2952
+
+Medicare number: 7043 47682/7
+IHI: 8003281084619414
+Concession card: None
+
+Emergency contact: James Bryant, +61 8 6212 0216
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Therapeutic radiographer
+Allergies: Sulfa drugs
+Assigned doctor: Dr Samuel Osei

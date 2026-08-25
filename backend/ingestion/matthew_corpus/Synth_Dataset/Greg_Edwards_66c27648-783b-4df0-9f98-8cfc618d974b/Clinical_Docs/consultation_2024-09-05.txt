@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Greg Edwards
+DOB: 1960-11-05
+Date: 05/09/2024
+Seen by: Dr Priya Menon
+
+Known conditions: Asthma
+Allergies: Latex
+
+Vitals: BP 140/85 mmHg, Weight 61.4 kg
+
+Chief Complaint:
+Wheeze and chest tightness.
+
+Assessment:
+Asthma review, technique reinforced.
+
+Plan:
+- Continue current medication
+- Provide asthma action plan

@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: James Thomas
+DOB: 1938-04-03
+Gender: Male
+Phone: 0469 222 196
+Email: tyleraguilar@example.org
+Address: 4/0 Santana Strip, East Scott, TAS, 6464
+
+Medicare number: 2141 09849/3
+IHI: 8003897119484034
+Concession card: None
+
+Emergency contact: Eric Kidd, +61236959440
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Occupational hygienist
+Allergies: No known drug allergies
+Assigned doctor: Dr Samuel Osei

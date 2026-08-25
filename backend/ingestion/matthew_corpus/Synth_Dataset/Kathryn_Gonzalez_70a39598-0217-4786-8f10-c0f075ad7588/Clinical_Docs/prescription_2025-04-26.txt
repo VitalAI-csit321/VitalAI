@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Kathryn Gonzalez
+DOB: 2006-05-17
+Date: 26/04/2025
+Prescribed by: Dr Aisha Rahman
+
+Folic Acid 500mcg
+Take 1 tablet once daily.
+Quantity: 90  Repeats: 0
+Reviewed today, no change.

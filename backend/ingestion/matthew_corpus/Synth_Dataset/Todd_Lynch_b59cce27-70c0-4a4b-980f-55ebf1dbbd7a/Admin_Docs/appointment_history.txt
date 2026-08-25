@@ -1,0 +1,9 @@
+Appointment History
+
+Patient: Todd Lynch
+
+04/10/2024 - Vaccination - Dr Hannah Fitzgerald
+30/10/2024 - Vaccination - Dr Hannah Fitzgerald
+08/02/2025 - Vaccination - Dr Hannah Fitzgerald
+04/05/2025 - Vaccination - Dr Hannah Fitzgerald
+09/12/2025 - Vaccination - Dr Hannah Fitzgerald

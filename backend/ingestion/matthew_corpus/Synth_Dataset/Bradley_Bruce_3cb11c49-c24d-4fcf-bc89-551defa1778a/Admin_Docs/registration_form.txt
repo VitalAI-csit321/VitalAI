@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Bradley Bruce
+DOB: 1995-11-29
+Gender: Male
+Phone: +61-459-180-339
+Email: enelson@example.net
+Address: 503 Karen Track, Hickmanport, NT, 5396
+
+Medicare number: 6050 21955/1
+IHI: 8003878926442415
+Concession card: None
+
+Emergency contact: Kimberly Reyes, 02 8501 6315
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Trade union research officer
+Allergies: No known drug allergies
+Assigned doctor: Dr Hannah Fitzgerald

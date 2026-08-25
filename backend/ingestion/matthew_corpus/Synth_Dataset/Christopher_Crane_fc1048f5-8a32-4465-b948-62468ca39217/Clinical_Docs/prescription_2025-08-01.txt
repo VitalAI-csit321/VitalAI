@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Christopher Crane
+DOB: 2009-10-01
+Date: 01/08/2025
+Prescribed by: Dr Samuel Osei
+
+Salbutamol Inhaler 100mcg
+Inhale 2 puffs as needed for shortness of breath.
+Quantity: 90  Repeats: 2
+Continuing current dose, well tolerated.

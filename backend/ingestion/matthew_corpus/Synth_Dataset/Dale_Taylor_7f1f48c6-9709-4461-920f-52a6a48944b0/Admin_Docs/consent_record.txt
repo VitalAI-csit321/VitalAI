@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Dale Taylor
+DOB: 1998-09-02
+Date: 04/01/2025
+Status: PENDING
+
+Consent form partially completed. Information-sharing section not yet signed.

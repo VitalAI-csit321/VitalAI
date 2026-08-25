@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Sara Caldwell
+DOB: 2001-10-30
+Date collected: 05/10/2025
+Requested by: Dr Samuel Osei
+
+FBC
+
+Test              Result    Unit          Ref Range     Flag
+Haemoglobin       140       g/L           115-165       -
+White Cell Count  3.0       x10^9/L       4.0-11.0      L
+Platelets         226       x10^9/L       150-400       -
+Haematocrit       0.45      L/L           0.37-0.47     -
+MCV               90.4      fL            80-100        -
+Neutrophils       4.8       x10^9/L       2.0-8.0       -
+Lymphocytes       2.5       x10^9/L       1.0-4.0       -
+
+Interpretation: Results within expected reference ranges.

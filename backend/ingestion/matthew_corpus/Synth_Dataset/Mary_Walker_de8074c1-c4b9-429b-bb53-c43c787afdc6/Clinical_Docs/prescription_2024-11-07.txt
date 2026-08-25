@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Mary Walker
+DOB: 1963-05-23
+Date: 07/11/2024
+Prescribed by: Dr Priya Menon
+
+Sertraline 50mg
+Take 1 tablet once daily.
+Quantity: 90  Repeats: 4
+Continuing current dose, well tolerated.

@@ -1,0 +1,23 @@
+Consultation Note
+
+Patient: Tricia Stewart
+DOB: 1991-09-15
+Date: 15/05/2025
+Seen by: Dr Aisha Rahman
+
+Known conditions: Pregnancy, antenatal care
+Allergies: Latex
+
+Vitals: BP 128/75 mmHg, Weight 61.8 kg
+
+Chief Complaint:
+Routine antenatal check.
+
+Assessment:
+Antenatal review, no concerns.
+
+Plan:
+- Order full blood count and iron studies
+- Shared care with hospital antenatal clinic
+- Follow up in 4 weeks
+- Refer for morphology scan

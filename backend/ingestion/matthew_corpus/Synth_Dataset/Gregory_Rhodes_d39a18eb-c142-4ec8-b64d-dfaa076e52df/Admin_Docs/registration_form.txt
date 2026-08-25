@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Gregory Rhodes
+DOB: 1937-02-01
+Gender: Male
+Phone: +61 3 8900 2877
+Email: charlesvasquez@example.org
+Address: Apt. 838 6 Montoya Bypass, Wallaceshire, WA, 2477
+
+Medicare number: 9814 84016/5
+IHI: 8003814337545545
+Concession card: None
+
+Emergency contact: William Mcgee, 1660 8801
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Trade mark attorney
+Allergies: No known drug allergies
+Assigned doctor: Dr Samuel Osei

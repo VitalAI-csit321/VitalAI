@@ -1,0 +1,82 @@
+{
+  "patient_id": "6ffc5e0d-165f-46f8-9181-c469c0233f82",
+  "name": "Angela Duncan",
+  "dob": "1964-05-07",
+  "gender": "Female",
+  "archetype": "asthma",
+  "chronic_conditions": [
+    "Asthma"
+  ],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr Priya Menon",
+  "assigned_doctor_id": "doctor03",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-12-08.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-12-08"
+    },
+    {
+      "filename": "prescription_2024-12-08.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-12-08"
+    },
+    {
+      "filename": "consultation_2025-12-29.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-29"
+    },
+    {
+      "filename": "prescription_2025-12-29.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-29"
+    },
+    {
+      "filename": "consultation_2026-01-30.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-30"
+    },
+    {
+      "filename": "prescription_2026-01-30.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-30"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-12-08"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Susan Turner
+DOB: 2009-12-31
+Date: 08/08/2026
+Seen by: Dr Priya Menon
+
+Known conditions: Asthma
+Allergies: No known drug allergies
+
+Vitals: BP 105/88 mmHg, Weight 63.1 kg
+
+Chief Complaint:
+Wheeze and chest tightness.
+
+Assessment:
+Asthma review, technique reinforced.
+
+Plan:
+- Review inhaler technique
+- Follow up in 4 weeks
+- Order spirometry

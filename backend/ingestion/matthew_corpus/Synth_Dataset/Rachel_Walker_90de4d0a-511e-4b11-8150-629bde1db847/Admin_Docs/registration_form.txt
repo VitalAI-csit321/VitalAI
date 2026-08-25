@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Rachel Walker
+DOB: 2006-05-10
+Gender: Female
+Phone: 0426.442.209
+Email: xrosales@example.net
+Address: 5 Danielle Circle, Taylorland, QLD, 2965
+
+Medicare number: 0115 14827/8
+IHI: 8003150995887436
+Concession card: None
+
+Emergency contact: Stephen Davis, +61.457.043.315
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Furniture conservator/restorer
+Allergies: No known drug allergies
+Assigned doctor: Dr Priya Menon

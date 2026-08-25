@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Paul Berger
+DOB: 1957-11-13
+Date collected: 02/02/2026
+Requested by: Dr Aisha Rahman
+
+TFT
+
+Test     Result    Unit          Ref Range     Flag
+TSH      4.95      mIU/L         0.4-4.0       H
+Free T4  10.9      pmol/L        10-20         -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

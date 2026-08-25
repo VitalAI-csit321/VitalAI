@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Glen Bryan
+DOB: 1961-08-11
+Date collected: 22/08/2025
+Requested by: Dr David Nguyen
+
+TFT
+
+Test     Result    Unit          Ref Range     Flag
+TSH      5.88      mIU/L         0.4-4.0       H
+Free T4  11.8      pmol/L        10-20         -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.
