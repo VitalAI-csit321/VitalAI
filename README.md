@@ -83,9 +83,10 @@ main    -> backend (this branch): FastAPI service, database, tests, CI
 master  -> frontend: React application
 ```
 
-If you are reading this on `main`, the `frontend/` folder here is empty on purpose. It is
-a placeholder so the layout is visible. The real frontend code lives on `master`, see
-the Frontend section below.
+On `main` alone, the `frontend/` folder is an empty placeholder; the real frontend code
+lives on `master`. This branch is a consolidated merge of both: `frontend/frontend/` here
+holds the real, checked-in frontend code, not a placeholder. See "Frontend" below for how
+to run it.
 
 ### Full directory tree (main branch)
 
@@ -101,7 +102,7 @@ the Frontend section below.
 ├── .github/
 │   └── workflows/
 │       └── backend-ci.yml         lint, type check, and test pipeline
-├── frontend/                      placeholder on this branch, real code is on master
+├── frontend/                      real Vite + React SPA at frontend/frontend/, see "Frontend" above
 │
 └── backend/
     ├── README.md                  full backend setup guide and API endpoint table
@@ -184,6 +185,48 @@ the Frontend section below.
     └── Dataset Generator Code/     the script that produced the synthetic corpus above
 ```
 
+## Frontend
+
+The frontend lives at `frontend/frontend/`, a Vite + React + TypeScript single-page app,
+brought onto this branch from `master` as part of the monorepo consolidation. It talks to
+the backend over the REST API documented in `backend/README.md`.
+
+### Running it
+
+```bash
+cd frontend/frontend
+cp .env.example .env      # VITE_API_BASE_URL=http://localhost:8000
+npm install
+npm run dev                # http://localhost:5173
+```
+
+`npm run build` type-checks with `tsc -b` (TypeScript strict) and then runs `vite build`,
+emitting a production bundle to `dist/`. `npm run lint` runs ESLint over the project. See
+"Frontend" under Getting started below for what to do if Vite picks a port other than
+5173.
+
+### Screens
+
+Two route shells, defined in `src/App.tsx`:
+
+**Main app:** Login, Forgot password, Dashboard, Patients list, Patient onboarding,
+Patient detail, Case detail, Consent queue, Consent capture, Consent success, Records
+(retrieval-based Q&A), Inbox, Compose, Review queue, Add case, Escalations (with a detail
+view), Calendar and appointments (list, new, detail, edit), and Settings. Audit log,
+Audit event detail, and Users are gated to the `admin` role and hidden from the sidebar
+for other roles.
+
+**Platform Operations:** a second shell with its own login (`/platform-ops/login`),
+covering System Health and Model & Risk Configuration. It shares the same auth session as
+the main app but renders its own layout (`PlatformOpsLayout`, in
+`src/pages/PlatformOps.tsx`).
+
+`frontend/frontend/README.md` additionally documents a `src/api/_placeholder.ts` seam for
+the handful of fields not yet backed by a real endpoint (the dashboard's weekly chart, the
+consent-form label rotation, and the forgot-password and platform-ops auth flows); that
+detail did not change during this merge, so read it there if you're wiring up new backend
+fields.
+
 ## Tech stack
 
 **Backend:** Python 3.13, FastAPI, async SQLAlchemy, Alembic, PostgreSQL with pgvector,
@@ -243,17 +286,9 @@ reference, and the complete API endpoint table, is documented in
 
 ### Frontend
 
-The frontend is on the `master` branch of this same repository. Keep the backend running
-in one terminal and do this in a second terminal, since the frontend needs the API to
-already be up.
-
-```bash
-git checkout master
-cd frontend/frontend
-cp .env.example .env
-npm install
-npm run dev
-```
+The frontend is checked in on this branch at `frontend/frontend/`; see "Frontend" above
+for install and run steps. Keep the backend running in one terminal and the frontend dev
+server in a second, since the frontend needs the API to already be up.
 
 Open the URL Vite prints in the terminal. By default that is `http://localhost:5173`.
 The frontend talks to the API at `http://localhost:8000` by default (set in the `.env`
@@ -266,12 +301,6 @@ requests will fail silently with a CORS error in the browser console, because th
 only trusts 5173 by default. Fix it by adding the actual port to `CORS_ORIGINS` in
 `backend/.env` (comma-separated, both `http://localhost:...` and `http://127.0.0.1:...`
 forms) and restarting the `api` container.
-
-To come back to the backend branch afterward:
-
-```bash
-git checkout main
-```
 
 ### Creating the first account
 
