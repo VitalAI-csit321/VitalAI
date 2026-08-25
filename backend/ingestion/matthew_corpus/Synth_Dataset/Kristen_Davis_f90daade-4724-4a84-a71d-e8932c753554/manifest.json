@@ -1,0 +1,85 @@
+{
+  "patient_id": "f90daade-4724-4a84-a71d-e8932c753554",
+  "name": "Kristen Davis",
+  "dob": "1991-12-25",
+  "gender": "Female",
+  "archetype": "asthma",
+  "chronic_conditions": [
+    "Asthma",
+    "Iron deficiency anaemia"
+  ],
+  "secondary_condition": "Iron deficiency anaemia",
+  "hospital_event_date": null,
+  "allergies": [
+    "Sulfa drugs"
+  ],
+  "assigned_doctor": "Dr Hannah Fitzgerald",
+  "assigned_doctor_id": "doctor05",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-02-02.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-02"
+    },
+    {
+      "filename": "prescription_2025-02-02.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-02-02"
+    },
+    {
+      "filename": "consultation_2025-10-07.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-07"
+    },
+    {
+      "filename": "prescription_2025-10-07.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-07"
+    },
+    {
+      "filename": "pathology_2025-10-07_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-07"
+    },
+    {
+      "filename": "pathology_2025-10-07_iron_studies.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-07"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-02-02"
+    }
+  ]
+}

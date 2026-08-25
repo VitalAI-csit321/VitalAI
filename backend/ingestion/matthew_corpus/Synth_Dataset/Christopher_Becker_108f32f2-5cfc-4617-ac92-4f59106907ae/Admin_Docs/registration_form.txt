@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Christopher Becker
+DOB: 1976-11-21
+Gender: Male
+Phone: +61 416 697 848
+Email: frazierdanny@example.net
+Address: Flat 46 704 William Circlet, Meaganhaven, QLD, 2635
+
+Medicare number: 7673 63842/2
+IHI: 8003352206298026
+Concession card: None
+
+Emergency contact: Kimberly Osborne, 0409 570 154
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Former smoker
+Alcohol use: Moderate, 5-10 standard drinks/week
+Occupation: Film/video editor
+Allergies: Sulfa drugs
+Assigned doctor: Dr Marcus O'Connell

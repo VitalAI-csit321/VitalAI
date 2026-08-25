@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Angela Bradley
+DOB: 1981-07-17
+Date: 20/09/2024
+Status: PENDING
+
+Consent form partially completed. Information-sharing section not yet signed.

@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Tammy Graham
+DOB: 1934-05-28
+Gender: Female
+Phone: 4351.9066
+Email: jennifer90@example.org
+Address: Apt. 384 098 Christina Street, Lake Johntown, NT, 2446
+
+Medicare number: 5656 50102/4
+IHI: 8003872809666804
+Concession card: None
+
+Emergency contact: James Willis, 0401 184 895
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Loss adjuster, chartered
+Allergies: No known drug allergies
+Assigned doctor: Dr Samuel Osei

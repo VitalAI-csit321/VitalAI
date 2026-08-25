@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Laura Harrison
+DOB: 2012-11-24
+Gender: Female
+Phone: +61.7.2047.1167
+Email: rayglenda@example.org
+Address: Flat 31 6 Kimberly Laneway, Kerrport, VIC, 2939
+
+Medicare number: 9082 55333/6
+IHI: 8003706517396112
+Concession card: None
+
+Emergency contact: Lisa Singh, 03.4123.2812
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Current smoker, 5-10 cigarettes/day
+Alcohol use: Nil
+Occupation: Accountant, chartered
+Allergies: Bee stings
+Assigned doctor: Dr Samuel Osei

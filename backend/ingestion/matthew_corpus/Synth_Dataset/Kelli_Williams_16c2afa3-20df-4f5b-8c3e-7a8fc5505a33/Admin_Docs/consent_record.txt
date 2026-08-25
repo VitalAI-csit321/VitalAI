@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Kelli Williams
+DOB: 1948-02-15
+Date: 17/10/2024
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

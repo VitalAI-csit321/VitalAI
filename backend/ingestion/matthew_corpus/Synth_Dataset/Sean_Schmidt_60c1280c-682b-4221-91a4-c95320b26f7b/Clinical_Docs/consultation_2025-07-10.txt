@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Sean Schmidt
+DOB: 1958-08-27
+Date: 10/07/2025
+Seen by: Dr Priya Menon
+
+Known conditions: None recorded
+Allergies: No known drug allergies
+
+Vitals: BP 112/95 mmHg, Weight 56.5 kg
+
+Chief Complaint:
+New mole noticed on forearm.
+
+Assessment:
+Lesion appears benign, monitor.
+
+Plan:
+- Refer to dermatologist if changes noted
+- Review in 6 months
+- Photograph and monitor lesion

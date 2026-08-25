@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Meghan Davis
+DOB: 2009-10-02
+Gender: Female
+Phone: +61-2-4223-2536
+Email: othomas@example.com
+Address: 1/1 Robertson Formation, Shawnfort, TAS, 6017
+
+Medicare number: 3190 92140/2
+IHI: 8003143379473890
+Concession card: Pensioner Concession Card
+
+Emergency contact: Melissa Horn, 0463-637-454
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Leisure centre manager
+Allergies: No known drug allergies
+Assigned doctor: Dr Priya Menon

@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Christopher Mitchell
+DOB: 1950-02-17
+Date collected: 19/11/2024
+Requested by: Dr Samuel Osei
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       146       mmol/L        135-145       H
+Potassium    4.4       mmol/L        3.5-5.2       -
+Chloride     108       mmol/L        95-110        -
+Bicarbonate  28        mmol/L        22-32         -
+Urea         5.4       mmol/L        2.5-8.0       -
+Creatinine   81        umol/L        60-110        -
+eGFR         134       mL/min/1.73m2 60-120        H
+
+Interpretation: Results within expected reference ranges.

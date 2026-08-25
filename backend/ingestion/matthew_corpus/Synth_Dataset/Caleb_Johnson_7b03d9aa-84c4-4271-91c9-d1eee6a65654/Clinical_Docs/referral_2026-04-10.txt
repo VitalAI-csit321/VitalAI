@@ -1,0 +1,13 @@
+Referral Letter
+
+Date: 10/04/2026
+Referring doctor: Dr Priya Menon
+Patient: Caleb Johnson
+DOB: 1982-01-04
+Medicare: 3078 32448/3
+
+Reason for referral:
+Refer to dermatologist if changes noted
+
+Relevant history: None recorded
+Allergies: No known drug allergies

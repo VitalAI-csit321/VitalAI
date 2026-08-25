@@ -1,0 +1,23 @@
+Consultation Note
+
+Patient: Ashley Hunt
+DOB: 2016-05-17
+Date: 26/12/2024
+Seen by: Dr Hannah Fitzgerald
+
+Known conditions: None recorded
+Allergies: No known drug allergies
+
+Vitals: BP 150/77 mmHg, Weight 61.1 kg
+
+Chief Complaint:
+Immunisation catch-up.
+
+Assessment:
+No concerns identified.
+
+Plan:
+- Administer scheduled vaccine
+- Update immunisation register
+- Provide next due date
+- Routine growth check

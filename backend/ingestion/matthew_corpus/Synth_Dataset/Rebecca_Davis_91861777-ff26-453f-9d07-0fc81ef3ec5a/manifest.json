@@ -1,0 +1,156 @@
+{
+  "patient_id": "91861777-ff26-453f-9d07-0fc81ef3ec5a",
+  "name": "Rebecca Davis",
+  "dob": "1943-05-22",
+  "gender": "Female",
+  "archetype": "aged_care_polypharmacy",
+  "chronic_conditions": [
+    "Essential hypertension",
+    "Type 2 diabetes mellitus",
+    "Osteoarthritis"
+  ],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [
+    "Penicillin"
+  ],
+  "assigned_doctor": "Dr Samuel Osei",
+  "assigned_doctor_id": "doctor06",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-11-16.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-16"
+    },
+    {
+      "filename": "prescription_2024-11-16.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-16"
+    },
+    {
+      "filename": "pathology_2024-11-16_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-16"
+    },
+    {
+      "filename": "pathology_2024-11-16_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-16"
+    },
+    {
+      "filename": "pathology_2024-11-16_lft.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-16"
+    },
+    {
+      "filename": "consultation_2025-08-09.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-08-09"
+    },
+    {
+      "filename": "prescription_2025-08-09.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-08-09"
+    },
+    {
+      "filename": "pathology_2025-08-09_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-08-09"
+    },
+    {
+      "filename": "consultation_2025-09-24.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-09-24"
+    },
+    {
+      "filename": "prescription_2025-09-24.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-09-24"
+    },
+    {
+      "filename": "consultation_2026-01-07.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-07"
+    },
+    {
+      "filename": "prescription_2026-01-07.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-07"
+    },
+    {
+      "filename": "consultation_2026-05-12.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-05-12"
+    },
+    {
+      "filename": "prescription_2026-05-12.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-05-12"
+    },
+    {
+      "filename": "pathology_2026-05-12_hba1c_glucose.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-05-12"
+    },
+    {
+      "filename": "care_plan_2024-11-16.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-16"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-11-16"
+    }
+  ]
+}

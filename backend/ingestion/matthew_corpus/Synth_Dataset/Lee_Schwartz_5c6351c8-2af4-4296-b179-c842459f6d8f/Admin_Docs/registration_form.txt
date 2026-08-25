@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Lee Schwartz
+DOB: 1967-06-29
+Gender: Male
+Phone: 0765472269
+Email: megan85@example.net
+Address: 945 Tina Spur, Lake Jennifer, TAS, 9799
+
+Medicare number: 7494 61718/5
+IHI: 8003241869264412
+Concession card: None
+
+Emergency contact: Michelle Craig, 0446-081-062
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Astronomer
+Allergies: No known drug allergies
+Assigned doctor: Dr Priya Menon

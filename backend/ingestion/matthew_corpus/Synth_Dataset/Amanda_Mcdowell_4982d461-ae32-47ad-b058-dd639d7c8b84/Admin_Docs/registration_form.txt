@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Amanda Mcdowell
+DOB: 1947-07-17
+Gender: Female
+Phone: (02) 9010 0167
+Email: qmartinez@example.com
+Address: 0 Fisher Chase, Cindyberg, VIC, 2589
+
+Medicare number: 9530 62145/3
+IHI: 8003182483547271
+Concession card: None
+
+Emergency contact: Brian Rodriguez, 03.4835.6420
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Sports therapist
+Allergies: No known drug allergies
+Assigned doctor: Dr Samuel Osei

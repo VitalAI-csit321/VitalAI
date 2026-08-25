@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: James Thomas
+DOB: 1938-04-03
+Date: 20/09/2024
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

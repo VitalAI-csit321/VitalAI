@@ -1,0 +1,23 @@
+Consultation Note
+
+Patient: Rachel Walker
+DOB: 2006-05-10
+Date: 24/01/2026
+Seen by: Dr Priya Menon
+
+Known conditions: Generalised anxiety, Low mood
+Allergies: No known drug allergies
+
+Vitals: BP 121/69 mmHg, Weight 81.8 kg
+
+Chief Complaint:
+Increased anxiety, affecting work.
+
+Assessment:
+Stable, continue current plan.
+
+Plan:
+- Refer to psychologist
+- Follow up in 2 weeks
+- Continue current medication
+- Prepare Mental Health Treatment Plan

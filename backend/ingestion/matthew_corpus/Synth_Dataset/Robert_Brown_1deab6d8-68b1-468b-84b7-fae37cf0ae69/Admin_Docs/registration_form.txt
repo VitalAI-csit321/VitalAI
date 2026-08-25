@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Robert Brown
+DOB: 1995-10-07
+Gender: Male
+Phone: 82553714
+Email: orose@example.com
+Address: Flat 55 92 Sellers Roads, West Lawrencebury, SA, 2619
+
+Medicare number: 4319 18149/9
+IHI: 8003534280012280
+Concession card: None
+
+Emergency contact: Michael Dixon, +61-3-9662-7828
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Dietitian
+Allergies: Sulfa drugs
+Assigned doctor: Dr Priya Menon

@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Dawn Evans
+DOB: 1937-02-13
+Date collected: 25/01/2025
+Requested by: Dr Samuel Osei
+
+LFT
+
+Test             Result    Unit          Ref Range     Flag
+Total Protein    64        g/L           60-80         -
+Albumin          39        g/L           35-50         -
+Total Bilirubin  14        umol/L        2-20          -
+ALP              75        U/L           30-110        -
+GGT              20        U/L           5-35          -
+ALT              26        U/L           5-30          -
+AST              33        U/L           5-40          -
+
+Interpretation: Results within expected reference ranges.

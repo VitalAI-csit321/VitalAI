@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: William Anderson
+DOB: 1989-10-15
+Gender: Male
+Phone: 1467.8669
+Email: martinezlogan@example.org
+Address: 289/268 Marie Quay, New Fred, TAS, 2685
+
+Medicare number: 1856 87973/9
+IHI: 8003735320508284
+Concession card: None
+
+Emergency contact: Kelly Campbell, 4384.2498
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Chief Financial Officer
+Allergies: No known drug allergies
+Assigned doctor: Dr Marcus O'Connell

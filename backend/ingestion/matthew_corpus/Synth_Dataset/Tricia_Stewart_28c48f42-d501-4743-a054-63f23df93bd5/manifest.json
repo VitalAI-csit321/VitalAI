@@ -1,0 +1,147 @@
+{
+  "patient_id": "28c48f42-d501-4743-a054-63f23df93bd5",
+  "name": "Tricia Stewart",
+  "dob": "1991-09-15",
+  "gender": "Female",
+  "archetype": "antenatal",
+  "chronic_conditions": [
+    "Pregnancy, antenatal care"
+  ],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [
+    "Latex"
+  ],
+  "assigned_doctor": "Dr Aisha Rahman",
+  "assigned_doctor_id": "doctor01",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-12-10.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-12-10"
+    },
+    {
+      "filename": "prescription_2024-12-10.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-12-10"
+    },
+    {
+      "filename": "pathology_2024-12-10_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-12-10"
+    },
+    {
+      "filename": "pathology_2024-12-10_iron_studies.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-12-10"
+    },
+    {
+      "filename": "referral_2024-12-10.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2024-12-10"
+    },
+    {
+      "filename": "specialist_letter_2025-01-21.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-01-21"
+    },
+    {
+      "filename": "imaging_2024-12-17.txt",
+      "doc_type": "external_imaging_report",
+      "classification": "High",
+      "source": "external",
+      "date": "2024-12-17"
+    },
+    {
+      "filename": "consultation_2025-05-15.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-05-15"
+    },
+    {
+      "filename": "prescription_2025-05-15.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-05-15"
+    },
+    {
+      "filename": "referral_2025-05-15.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-05-15"
+    },
+    {
+      "filename": "specialist_letter_2025-07-10.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-07-10"
+    },
+    {
+      "filename": "imaging_2025-05-29.txt",
+      "doc_type": "external_imaging_report",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-05-29"
+    },
+    {
+      "filename": "consultation_2025-09-02.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-09-02"
+    },
+    {
+      "filename": "prescription_2025-09-02.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-09-02"
+    },
+    {
+      "filename": "pathology_2025-09-02_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-09-02"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-12-10"
+    }
+  ]
+}

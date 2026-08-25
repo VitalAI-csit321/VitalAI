@@ -1,0 +1,13 @@
+Pathology Report
+
+Patient: Andrew Garner
+DOB: 2003-03-07
+Date collected: 20/03/2026
+Requested by: Dr Samuel Osei
+
+CRP
+
+Test                Result    Unit          Ref Range     Flag
+C-Reactive Protein  75        mg/L          0-60          H
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

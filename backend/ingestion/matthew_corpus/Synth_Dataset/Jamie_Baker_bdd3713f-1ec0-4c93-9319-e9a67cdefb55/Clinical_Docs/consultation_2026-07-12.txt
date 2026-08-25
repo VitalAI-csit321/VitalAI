@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Jamie Baker
+DOB: 1974-01-03
+Date: 12/07/2026
+Seen by: Dr Priya Menon
+
+Known conditions: Generalised anxiety, Low mood, Dyslipidaemia
+Allergies: Latex
+
+Vitals: BP 127/81 mmHg, Weight 92.5 kg
+
+Chief Complaint:
+Reviewed after elevated cholesterol noted on routine bloods.
+
+Assessment:
+Dyslipidaemia, above target on lipid profile.
+
+Plan:
+- Continue current medication
+- Dietary and lifestyle advice

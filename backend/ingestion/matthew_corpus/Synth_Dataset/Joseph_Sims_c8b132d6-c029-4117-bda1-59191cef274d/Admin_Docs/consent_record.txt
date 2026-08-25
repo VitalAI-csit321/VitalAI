@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Joseph Sims
+DOB: 2002-01-09
+Date: 27/01/2026
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

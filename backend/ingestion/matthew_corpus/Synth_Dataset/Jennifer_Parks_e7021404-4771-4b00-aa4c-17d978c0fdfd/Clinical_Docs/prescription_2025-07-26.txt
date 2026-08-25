@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Jennifer Parks
+DOB: 1976-10-30
+Date: 26/07/2025
+Prescribed by: Dr Marcus O'Connell
+
+Ibuprofen 400mg
+Take 1 tablet every 8 hours with food as needed.
+Quantity: 30  Repeats: 2

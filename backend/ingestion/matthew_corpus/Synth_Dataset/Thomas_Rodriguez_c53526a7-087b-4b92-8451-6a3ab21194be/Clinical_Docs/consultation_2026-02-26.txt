@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Thomas Rodriguez
+DOB: 1979-07-03
+Date: 26/02/2026
+Seen by: Dr Priya Menon
+
+Known conditions: Asthma
+Allergies: No known drug allergies
+
+Vitals: BP 137/92 mmHg, Weight 78.2 kg
+
+Chief Complaint:
+Asthma review.
+
+Assessment:
+Asthma review, technique reinforced.
+
+Plan:
+- Review inhaler technique
+- Order spirometry

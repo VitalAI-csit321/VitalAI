@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Richard Shields
+DOB: 1995-02-05
+Date: 09/01/2025
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

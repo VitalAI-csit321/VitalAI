@@ -1,0 +1,16 @@
+Prescription
+
+Patient: Matthew Fisher
+DOB: 1985-08-17
+Date: 02/07/2025
+Prescribed by: Dr David Nguyen
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 30  Repeats: 1
+Reviewed today, no change.
+
+Ferro-Grad C 325mg
+Take 1 tablet once daily with food.
+Quantity: 90  Repeats: 5
+Continuing current dose, well tolerated.

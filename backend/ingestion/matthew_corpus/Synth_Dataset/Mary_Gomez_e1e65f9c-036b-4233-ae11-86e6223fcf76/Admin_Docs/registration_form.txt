@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Mary Gomez
+DOB: 1998-08-03
+Gender: Female
+Phone: 0469-232-260
+Email: jillcook@example.com
+Address: Suite 160 33 Bailey End, North Donna, VIC, 2954
+
+Medicare number: 2005 93676/1
+IHI: 8003910116526716
+Concession card: None
+
+Emergency contact: Tracy Ramirez, +61-486-850-142
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Telecommunications researcher
+Allergies: No known drug allergies
+Assigned doctor: Dr Marcus O'Connell

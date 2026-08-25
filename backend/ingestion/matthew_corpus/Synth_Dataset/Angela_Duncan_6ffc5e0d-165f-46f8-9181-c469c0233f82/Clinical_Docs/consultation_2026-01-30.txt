@@ -1,0 +1,23 @@
+Consultation Note
+
+Patient: Angela Duncan
+DOB: 1964-05-07
+Date: 30/01/2026
+Seen by: Dr Priya Menon
+
+Known conditions: Asthma
+Allergies: No known drug allergies
+
+Vitals: BP 144/71 mmHg, Weight 104.7 kg
+
+Chief Complaint:
+Asthma review.
+
+Assessment:
+Asthma review, technique reinforced.
+
+Plan:
+- Provide asthma action plan
+- Review inhaler technique
+- Order spirometry
+- Follow up in 4 weeks

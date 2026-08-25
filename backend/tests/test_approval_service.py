@@ -1,11 +1,13 @@
+import asyncio
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.models.approval import ApprovalStatus
+from app.models.approval import ApprovalRequest, ApprovalStatus
 from app.models.audit import AuditEvent
+from app.models.base import utcnow
 from app.models.user import User, UserRole
 from app.services import approval_service
 from app.services.approval_service import (
@@ -13,6 +15,7 @@ from app.services.approval_service import (
     ApprovalNotFoundError,
     ApprovalNotGrantedError,
 )
+from tests.conftest import _PG_TEST_URL
 
 
 def _user(role: UserRole) -> User:
@@ -49,8 +52,13 @@ async def test_create_approval_request_defaults_to_pending_and_audits(db_session
         .scalars()
         .all()
     )
-    assert len(events) == 1
-    assert events[0].details["approval_id"] == str(request.id)
+    # Filtered by approval_id, not an unfiltered count: audit_events is
+    # append-only (no DELETE, see 0021_block_audit_truncate), so any other
+    # test that commits a real "governance.approval_requested" event against
+    # this same shared Postgres instance (e.g. a cross-connection concurrency
+    # test) leaves rows here permanently.
+    matching = [e for e in events if e.details.get("approval_id") == str(request.id)]
+    assert len(matching) == 1
 
 
 async def test_create_approval_request_with_no_requester_defaults_to_system_label(
@@ -89,7 +97,9 @@ async def test_approve_transitions_status_and_audits(db_session: AsyncSession):
         .scalars()
         .all()
     )
-    assert len(events) == 1
+    # Filtered, not an unfiltered count -- see the matching comment above.
+    matching = [e for e in events if e.details.get("approval_id") == str(request.id)]
+    assert len(matching) == 1
 
 
 async def test_approve_with_edited_payload_stores_resolved_payload(db_session: AsyncSession):
@@ -228,3 +238,83 @@ async def test_get_approval_returns_the_request(db_session: AsyncSession):
     fetched = await approval_service.get_approval(db_session, request.id)
     assert fetched is not None
     assert fetched.id == request.id
+
+
+async def test_approve_blocks_concurrent_decision_until_first_releases_lock():
+    """Deterministic proof of approve()'s with_for_update fix (F3).
+
+    Without a row lock, approve()'s db.get() -> status check -> mutate -> commit
+    is a classic lost-update race: a second approve() call that reads the row
+    before the first commits passes the PENDING guard, then blocks only at
+    commit() on the row lock -- and once unblocked, Postgres's EvalPlanQual
+    re-runs the UPDATE's WHERE id = :id clause (still true), so it silently
+    overwrites the already-decided row instead of raising
+    ApprovalAlreadyDecidedError. with_for_update=True moves the blocking point
+    to the initial read, so the second call wakes up, re-reads the now-committed
+    APPROVED status, and correctly raises.
+
+    Same technique as
+    test_clinical_document_service.test_ingest_document_blocks_concurrent_caller_until_first_releases_lock:
+    a manually-held SELECT ... FOR UPDATE stands in for "another decision in
+    flight" so the block is deterministic rather than relying on asyncio
+    scheduling luck. Real cross-connection test: db_session's savepoint
+    isolation can't prove this, since its writes never actually commit to the
+    base transaction.
+    """
+    engine = create_async_engine(_PG_TEST_URL, echo=False)
+    async_session = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with async_session() as setup_session:
+        admin = User(
+            email=f"lock-admin-{uuid4().hex[:8]}@example.com",
+            hashed_password="h",
+            full_name="Lock Admin",
+            role=UserRole.ADMIN,
+        )
+        setup_session.add(admin)
+        await setup_session.commit()
+        await setup_session.refresh(admin)
+
+        request = await approval_service.create_approval_request(
+            setup_session, action_type="email.reply.send", payload={"draft": "hello"}
+        )
+        request_id = request.id
+
+    locking_session = async_session()
+    second_session = async_session()
+    try:
+        locked_request = (
+            await locking_session.execute(
+                select(ApprovalRequest).where(ApprovalRequest.id == request_id).with_for_update()
+            )
+        ).scalar_one()
+
+        second_call = asyncio.create_task(
+            approval_service.approve(second_session, request_id, admin)
+        )
+
+        await asyncio.sleep(0.5)
+        assert not second_call.done(), (
+            "second approve() call should still be blocked on the row lock"
+        )
+
+        # Simulate the first decision winning while the lock is held.
+        locked_request.status = ApprovalStatus.APPROVED
+        locked_request.decided_at = utcnow()
+        await locking_session.commit()
+
+        with pytest.raises(ApprovalAlreadyDecidedError):
+            await asyncio.wait_for(second_call, timeout=10)
+    finally:
+        await locking_session.close()
+        await second_session.close()
+        # audit_events is append-only (DB trigger blocks DELETE and, since
+        # actor_id has ondelete="SET NULL", also blocks deleting the user that
+        # generated one). Same cleanup convention as the clinical_document
+        # lock test: the user and its audit rows are left in place.
+        async with async_session() as cleanup_session:
+            await cleanup_session.execute(
+                delete(ApprovalRequest).where(ApprovalRequest.id == request_id)
+            )
+            await cleanup_session.commit()
+        await engine.dispose()

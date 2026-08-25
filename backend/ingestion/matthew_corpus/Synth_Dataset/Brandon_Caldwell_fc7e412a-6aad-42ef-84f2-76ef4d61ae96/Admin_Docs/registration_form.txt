@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Brandon Caldwell
+DOB: 1989-08-19
+Gender: Male
+Phone: 03-7530-4637
+Email: stephanie49@example.net
+Address: 301/42 Parks Tor, Hannahport, TAS, 0833
+
+Medicare number: 6041 56748/9
+IHI: 8003711111252720
+Concession card: Health Care Card
+
+Emergency contact: Karen Gibson, +61 456 878 339
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Former smoker
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Ceramics designer
+Allergies: Bee stings
+Assigned doctor: Dr David Nguyen

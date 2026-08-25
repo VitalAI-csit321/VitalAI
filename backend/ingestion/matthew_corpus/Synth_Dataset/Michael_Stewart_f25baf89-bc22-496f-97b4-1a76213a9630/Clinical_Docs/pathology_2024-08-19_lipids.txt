@@ -1,0 +1,16 @@
+Pathology Report
+
+Patient: Michael Stewart
+DOB: 1972-04-12
+Date collected: 19/08/2024
+Requested by: Dr David Nguyen
+
+Lipids
+
+Test               Result    Unit          Ref Range     Flag
+Total Cholesterol  11.0      mmol/L        2.5-7.5       H
+HDL Cholesterol    1.72      mmol/L        0.7-2.0       -
+LDL Cholesterol    7.7       mmol/L        1.0-5.5       H
+Triglycerides      0.2       mmol/L        0.3-3.5       L
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

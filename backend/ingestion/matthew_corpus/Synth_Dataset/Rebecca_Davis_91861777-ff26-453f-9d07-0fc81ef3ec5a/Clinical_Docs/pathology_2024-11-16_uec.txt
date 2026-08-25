@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Rebecca Davis
+DOB: 1943-05-22
+Date collected: 16/11/2024
+Requested by: Dr Samuel Osei
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       138       mmol/L        135-145       -
+Potassium    4.1       mmol/L        3.5-5.2       -
+Chloride     106       mmol/L        95-110        -
+Bicarbonate  29        mmol/L        22-32         -
+Urea         5.8       mmol/L        2.5-8.0       -
+Creatinine   71        umol/L        45-90         -
+eGFR         99        mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Patrick Sanchez
+DOB: 1941-11-21
+Date: 30/07/2026
+Seen by: Dr Priya Menon
+
+Known conditions: None recorded
+Allergies: Bee stings
+
+Vitals: BP 108/76 mmHg, Weight 50.4 kg
+
+Chief Complaint:
+Follow-up on previously monitored lesion.
+
+Assessment:
+Lesion referred for biopsy as precaution.
+
+Plan:
+- Review in 6 months
+- Refer to dermatologist if changes noted

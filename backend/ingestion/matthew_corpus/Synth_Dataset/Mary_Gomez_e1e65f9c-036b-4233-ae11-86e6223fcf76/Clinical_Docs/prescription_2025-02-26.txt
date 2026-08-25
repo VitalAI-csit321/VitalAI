@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Mary Gomez
+DOB: 1998-08-03
+Date: 26/02/2025
+Prescribed by: Dr Marcus O'Connell
+
+Ibuprofen 400mg
+Take 1 tablet every 8 hours with food as needed.
+Quantity: 90  Repeats: 4

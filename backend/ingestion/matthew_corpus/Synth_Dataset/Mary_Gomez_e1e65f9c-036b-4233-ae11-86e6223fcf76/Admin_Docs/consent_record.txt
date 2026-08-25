@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Mary Gomez
+DOB: 1998-08-03
+Date: 26/02/2025
+Status: PENDING
+
+Consent form partially completed. Information-sharing section not yet signed.

@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Julian Willis
+DOB: 1982-02-04
+Date: 14/10/2024
+Prescribed by: Dr David Nguyen
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 90  Repeats: 4

@@ -1,0 +1,110 @@
+{
+  "patient_id": "60c1280c-682b-4221-91a4-c95320b26f7b",
+  "name": "Sean Schmidt",
+  "dob": "1958-08-27",
+  "gender": "Male",
+  "archetype": "skin_check",
+  "chronic_conditions": [
+    "Iron deficiency anaemia"
+  ],
+  "secondary_condition": "Iron deficiency anaemia",
+  "hospital_event_date": "2025-11-23",
+  "allergies": [],
+  "assigned_doctor": "Dr Priya Menon",
+  "assigned_doctor_id": "doctor03",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "hospital_discharge_2025-11-23.txt",
+      "doc_type": "hospital_discharge_summary",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-11-23"
+    },
+    {
+      "filename": "consultation_2024-11-20.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-11-20"
+    },
+    {
+      "filename": "referral_2024-11-20.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2024-11-20"
+    },
+    {
+      "filename": "consultation_2025-07-10.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-10"
+    },
+    {
+      "filename": "pathology_2025-07-10_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-10"
+    },
+    {
+      "filename": "referral_2025-07-10.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-07-10"
+    },
+    {
+      "filename": "consultation_2025-12-05.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-05"
+    },
+    {
+      "filename": "prescription_2025-12-05.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-05"
+    },
+    {
+      "filename": "pathology_2025-12-05_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-05"
+    },
+    {
+      "filename": "pathology_2025-12-05_iron_studies.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-05"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-11-20"
+    }
+  ]
+}

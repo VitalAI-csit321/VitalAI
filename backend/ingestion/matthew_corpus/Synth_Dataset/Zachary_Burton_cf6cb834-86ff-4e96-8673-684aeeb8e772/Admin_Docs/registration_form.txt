@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Zachary Burton
+DOB: 1969-03-01
+Gender: Male
+Phone: +61 445 116 868
+Email: melissa87@example.org
+Address: 22 Sara Right Of Way, New Mikaylastad, VIC, 2767
+
+Medicare number: 8775 31146/9
+IHI: 8003125176318009
+Concession card: None
+
+Emergency contact: Kara Jackson, +61 3 9960 6530
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Former smoker
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Public relations officer
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

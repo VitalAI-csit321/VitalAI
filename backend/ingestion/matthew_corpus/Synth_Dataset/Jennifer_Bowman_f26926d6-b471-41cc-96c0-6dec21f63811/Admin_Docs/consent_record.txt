@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Jennifer Bowman
+DOB: 1959-08-31
+Date: 29/11/2025
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

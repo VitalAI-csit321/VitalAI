@@ -1,0 +1,8 @@
+Appointment History
+
+Patient: Christopher Crane
+
+01/08/2025 - General Consultation - Dr Samuel Osei
+15/08/2025 - Follow-up Review - Dr Samuel Osei
+02/12/2025 - Follow-up Review - Dr Samuel Osei
+23/05/2026 - Follow-up Review - Dr Samuel Osei

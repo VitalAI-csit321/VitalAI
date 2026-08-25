@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Riley Moyer
+DOB: 1964-02-21
+Date collected: 25/11/2025
+Requested by: Dr David Nguyen
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            15.0      %             4.5-11.0      H
+Fasting Glucose  17.7      mmol/L        3.5-15.0      H
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

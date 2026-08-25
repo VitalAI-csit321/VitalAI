@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Sean Schmidt
+DOB: 1958-08-27
+Date collected: 05/12/2025
+Requested by: Dr Priya Menon
+
+FBC
+
+Test              Result    Unit          Ref Range     Flag
+Haemoglobin       65        g/L           130-180       L
+White Cell Count  8.4       x10^9/L       4.0-11.0      -
+Platelets         180       x10^9/L       150-400       -
+Haematocrit       0.44      L/L           0.4-0.54      -
+MCV               82.9      fL            80-100        -
+Neutrophils       1.7       x10^9/L       2.0-8.0       L
+Lymphocytes       2.6       x10^9/L       1.0-4.0       -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

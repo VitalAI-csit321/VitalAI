@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Jennifer Bowman
+DOB: 1959-08-31
+Date collected: 29/11/2025
+Requested by: Dr David Nguyen
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       137       mmol/L        135-145       -
+Potassium    4.0       mmol/L        3.5-5.2       -
+Chloride     104       mmol/L        95-110        -
+Bicarbonate  30        mmol/L        22-32         -
+Urea         4.0       mmol/L        2.5-8.0       -
+Creatinine   61        umol/L        45-90         -
+eGFR         72        mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

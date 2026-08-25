@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Angela Duncan
+DOB: 1964-05-07
+Gender: Female
+Phone: 8641-6862
+Email: timothygonzalez@example.com
+Address: 146 Cohen River, East Emilychester, TAS, 2963
+
+Medicare number: 1867 58452/9
+IHI: 8003761529637644
+Concession card: Health Care Card
+
+Emergency contact: Kirk Johnson, (03)-5979-2703
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Current smoker, 5-10 cigarettes/day
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Engineer, communications
+Allergies: No known drug allergies
+Assigned doctor: Dr Priya Menon

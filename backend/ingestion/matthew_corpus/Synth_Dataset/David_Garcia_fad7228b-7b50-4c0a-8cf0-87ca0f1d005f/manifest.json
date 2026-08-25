@@ -1,0 +1,45 @@
+{
+  "patient_id": "fad7228b-7b50-4c0a-8cf0-87ca0f1d005f",
+  "name": "David Garcia",
+  "dob": "1941-06-13",
+  "gender": "Male",
+  "archetype": "skin_check",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr Aisha Rahman",
+  "assigned_doctor_id": "doctor01",
+  "note_style": "prose",
+  "consent_status": "PENDING",
+  "documents": [
+    {
+      "filename": "consultation_2026-05-07.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-05-07"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2026-05-07"
+    }
+  ]
+}

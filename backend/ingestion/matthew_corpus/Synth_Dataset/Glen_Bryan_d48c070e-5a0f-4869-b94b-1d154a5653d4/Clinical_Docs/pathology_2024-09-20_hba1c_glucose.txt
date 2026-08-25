@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Glen Bryan
+DOB: 1961-08-11
+Date collected: 20/09/2024
+Requested by: Dr David Nguyen
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            14.4      %             4.5-11.0      H
+Fasting Glucose  17.8      mmol/L        3.5-15.0      H
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

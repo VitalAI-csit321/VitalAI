@@ -1,0 +1,23 @@
+Consultation Note
+
+Patient: Greg Edwards
+DOB: 1960-11-05
+Date: 20/04/2026
+Seen by: Dr Priya Menon
+
+Known conditions: Asthma
+Allergies: Latex
+
+Note: Aware of recent hospital presentation on 20/12/2025, no new concerns raised today.
+
+Vitals: BP 125/70 mmHg, Weight 50.9 kg
+
+Chief Complaint:
+Shortness of breath on exertion.
+
+Assessment:
+Asthma, well controlled.
+
+Plan:
+- Review inhaler technique
+- Continue current medication

@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Matthew Fisher
+DOB: 1985-08-17
+Date collected: 02/07/2025
+Requested by: Dr David Nguyen
+
+FBC
+
+Test              Result    Unit          Ref Range     Flag
+Haemoglobin       74        g/L           130-180       L
+White Cell Count  7.9       x10^9/L       4.0-11.0      -
+Platelets         202       x10^9/L       150-400       -
+Haematocrit       0.5       L/L           0.4-0.54      -
+MCV               82.7      fL            80-100        -
+Neutrophils       7.9       x10^9/L       2.0-8.0       -
+Lymphocytes       2.6       x10^9/L       1.0-4.0       -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

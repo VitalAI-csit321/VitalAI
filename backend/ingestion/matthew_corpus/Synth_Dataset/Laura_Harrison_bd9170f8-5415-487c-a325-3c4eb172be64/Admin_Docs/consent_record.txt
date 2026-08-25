@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Laura Harrison
+DOB: 2012-11-24
+Date: 10/06/2025
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

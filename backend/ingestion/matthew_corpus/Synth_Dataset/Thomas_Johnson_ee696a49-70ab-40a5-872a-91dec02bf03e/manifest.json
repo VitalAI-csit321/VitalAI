@@ -1,0 +1,126 @@
+{
+  "patient_id": "ee696a49-70ab-40a5-872a-91dec02bf03e",
+  "name": "Thomas Johnson",
+  "dob": "1974-09-10",
+  "gender": "Male",
+  "archetype": "hypertension",
+  "chronic_conditions": [
+    "Essential hypertension"
+  ],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [
+    "Aspirin (NSAIDs)"
+  ],
+  "assigned_doctor": "Dr David Nguyen",
+  "assigned_doctor_id": "doctor02",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-12-21.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-12-21"
+    },
+    {
+      "filename": "prescription_2024-12-21.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-12-21"
+    },
+    {
+      "filename": "pathology_2024-12-21_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-12-21"
+    },
+    {
+      "filename": "pathology_2024-12-21_lipids.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-12-21"
+    },
+    {
+      "filename": "consultation_2025-12-03.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-03"
+    },
+    {
+      "filename": "prescription_2025-12-03.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-12-03"
+    },
+    {
+      "filename": "consultation_2026-01-04.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-04"
+    },
+    {
+      "filename": "prescription_2026-01-04.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-04"
+    },
+    {
+      "filename": "consultation_2026-07-25.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-07-25"
+    },
+    {
+      "filename": "prescription_2026-07-25.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-07-25"
+    },
+    {
+      "filename": "pathology_2026-07-25_uec.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-07-25"
+    },
+    {
+      "filename": "care_plan_2024-12-21.txt",
+      "doc_type": "care_plan",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-12-21"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-12-21"
+    }
+  ]
+}

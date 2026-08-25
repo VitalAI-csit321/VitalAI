@@ -1,7 +1,0 @@
-
-Appointment History
-
-25/03/2025 - Vaccination
-27/07/2025 - Blood Test
-27/09/2025 - Health Check
-02/06/2026 - General Consultation

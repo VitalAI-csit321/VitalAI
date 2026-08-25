@@ -1,0 +1,16 @@
+Prescription
+
+Patient: Kathryn Farrell
+DOB: 1994-03-07
+Date: 13/05/2025
+Prescribed by: Dr Marcus O'Connell
+
+Salbutamol Inhaler 100mcg
+Inhale 2 puffs as needed for shortness of breath.
+Quantity: 60  Repeats: 0
+Continuing current dose, well tolerated.
+
+Omeprazole 20mg
+Take 1 capsule once daily before breakfast.
+Quantity: 60  Repeats: 5
+Reviewed today, no change.

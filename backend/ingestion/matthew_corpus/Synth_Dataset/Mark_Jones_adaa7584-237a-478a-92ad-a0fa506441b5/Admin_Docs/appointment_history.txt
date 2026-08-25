@@ -1,8 +1,0 @@
-
-Appointment History
-
-24/09/2024 - Blood Test
-21/11/2024 - Vaccination
-12/05/2025 - Follow-up Review
-03/05/2026 - Follow-up Review
-01/06/2026 - General Consultation

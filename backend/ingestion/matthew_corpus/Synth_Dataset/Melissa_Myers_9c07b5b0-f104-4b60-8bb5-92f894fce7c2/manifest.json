@@ -1,0 +1,68 @@
+{
+  "patient_id": "9c07b5b0-f104-4b60-8bb5-92f894fce7c2",
+  "name": "Melissa Myers",
+  "dob": "2006-04-08",
+  "gender": "Female",
+  "archetype": "skin_check",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [
+    "Aspirin (NSAIDs)"
+  ],
+  "assigned_doctor": "Dr Hannah Fitzgerald",
+  "assigned_doctor_id": "doctor05",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2026-02-16.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-16"
+    },
+    {
+      "filename": "referral_2026-02-16.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2026-02-16"
+    },
+    {
+      "filename": "specialist_letter_2026-03-09.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2026-03-09"
+    },
+    {
+      "filename": "consultation_2026-03-11.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-11"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2026-02-16"
+    }
+  ]
+}

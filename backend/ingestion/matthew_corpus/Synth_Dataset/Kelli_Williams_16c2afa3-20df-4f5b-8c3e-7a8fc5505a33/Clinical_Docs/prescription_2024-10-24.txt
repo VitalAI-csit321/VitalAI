@@ -1,0 +1,15 @@
+Prescription
+
+Patient: Kelli Williams
+DOB: 1948-02-15
+Date: 24/10/2024
+Prescribed by: Dr David Nguyen
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 30  Repeats: 2
+Continuing current dose, well tolerated.
+
+Ferro-Grad C 325mg
+Take 1 tablet once daily with food.
+Quantity: 60  Repeats: 3

@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Christina Gross
+DOB: 2007-03-03
+Gender: Female
+Phone: +61-411-080-996
+Email: rebeccaarnold@example.net
+Address: 63 Anderson Promenade, Port Michaeltown, QLD, 0828
+
+Medicare number: 9569 47750/6
+IHI: 8003391076690676
+Concession card: DVA Gold Card
+
+Emergency contact: Christopher Knight, 0427.503.731
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Geneticist, molecular
+Allergies: Penicillin
+Assigned doctor: Dr Marcus O'Connell

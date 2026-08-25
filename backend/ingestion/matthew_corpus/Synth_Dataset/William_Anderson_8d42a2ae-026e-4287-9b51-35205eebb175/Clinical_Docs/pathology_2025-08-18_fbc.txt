@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: William Anderson
+DOB: 1989-10-15
+Date collected: 18/08/2025
+Requested by: Dr Marcus O'Connell
+
+FBC
+
+Test              Result    Unit          Ref Range     Flag
+Haemoglobin       118       g/L           130-180       L
+White Cell Count  9.6       x10^9/L       4.0-11.0      -
+Platelets         194       x10^9/L       150-400       -
+Haematocrit       0.52      L/L           0.4-0.54      -
+MCV               77.9      fL            80-100        L
+Neutrophils       2.7       x10^9/L       2.0-8.0       -
+Lymphocytes       2.1       x10^9/L       1.0-4.0       -
+
+Interpretation: Results within expected reference ranges.

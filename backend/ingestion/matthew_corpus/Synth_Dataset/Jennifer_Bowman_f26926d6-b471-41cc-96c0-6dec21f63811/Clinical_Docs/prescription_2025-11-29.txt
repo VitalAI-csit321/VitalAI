@@ -1,0 +1,10 @@
+Prescription
+
+Patient: Jennifer Bowman
+DOB: 1959-08-31
+Date: 29/11/2025
+Prescribed by: Dr David Nguyen
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 60  Repeats: 4

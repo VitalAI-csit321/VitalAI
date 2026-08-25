@@ -1,0 +1,68 @@
+{
+  "patient_id": "e877ff83-718d-4f5d-8d4c-7001752ac003",
+  "name": "James Ayala",
+  "dob": "2021-02-10",
+  "gender": "Male",
+  "archetype": "acute_general",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [
+    "Sulfa drugs"
+  ],
+  "assigned_doctor": "Dr Aisha Rahman",
+  "assigned_doctor_id": "doctor01",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2024-10-20.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-20"
+    },
+    {
+      "filename": "prescription_2024-10-20.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-10-20"
+    },
+    {
+      "filename": "consultation_2025-09-25.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-09-25"
+    },
+    {
+      "filename": "prescription_2025-09-25.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-09-25"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-10-20"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Kristen Davis
+DOB: 1991-12-25
+Gender: Female
+Phone: 71274846
+Email: pbaird@example.com
+Address: Unit 98 2 Joshua Meander, Sarahhaven, SA, 1449
+
+Medicare number: 3522 49294/2
+IHI: 8003101798996752
+Concession card: None
+
+Emergency contact: Mary Grimes, +61.8.5588.6753
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Former smoker
+Alcohol use: Nil
+Occupation: Field trials officer
+Allergies: Sulfa drugs
+Assigned doctor: Dr Hannah Fitzgerald

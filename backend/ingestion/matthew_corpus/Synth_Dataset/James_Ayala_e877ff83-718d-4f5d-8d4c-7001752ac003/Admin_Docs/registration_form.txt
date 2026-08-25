@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: James Ayala
+DOB: 2021-02-10
+Gender: Male
+Phone: 4773 5866
+Email: eringuerrero@example.org
+Address: 1 Joseph Laneway, Port Levi, NSW, 2404
+
+Medicare number: 5141 68876/9
+IHI: 8003486494738985
+Concession card: Pensioner Concession Card
+
+Emergency contact: Philip Garcia, 2678.8861
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Agricultural engineer
+Allergies: Sulfa drugs
+Assigned doctor: Dr Aisha Rahman

@@ -1,0 +1,16 @@
+Pathology Report
+
+Patient: Tricia Stewart
+DOB: 1991-09-15
+Date collected: 10/12/2024
+Requested by: Dr Aisha Rahman
+
+Iron Studies
+
+Test                    Result    Unit          Ref Range     Flag
+Iron                    6         umol/L        6-32          -
+Transferrin             2.6       g/L           2.0-3.6       -
+Transferrin Saturation  5         %             10-50         L
+Ferritin                10        ug/L          13-150        L
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

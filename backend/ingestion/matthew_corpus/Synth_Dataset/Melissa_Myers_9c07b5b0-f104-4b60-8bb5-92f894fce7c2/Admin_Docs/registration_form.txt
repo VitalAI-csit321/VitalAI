@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Melissa Myers
+DOB: 2006-04-08
+Gender: Female
+Phone: +61 414 865 281
+Email: bromero@example.com
+Address: 573 Zoe Cove, New Meganville, ACT, 2959
+
+Medicare number: 0301 89546/7
+IHI: 8003741572022757
+Concession card: Health Care Card
+
+Emergency contact: James Martin, +61 427 065 379
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Higher education careers adviser
+Allergies: Aspirin (NSAIDs)
+Assigned doctor: Dr Hannah Fitzgerald

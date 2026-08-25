@@ -1,0 +1,20 @@
+Prescription
+
+Patient: Dawn Evans
+DOB: 1937-02-13
+Date: 15/03/2025
+Prescribed by: Dr Samuel Osei
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 60  Repeats: 0
+Continuing current dose, well tolerated.
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 90  Repeats: 0
+Continuing current dose, well tolerated.
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 60  Repeats: 2

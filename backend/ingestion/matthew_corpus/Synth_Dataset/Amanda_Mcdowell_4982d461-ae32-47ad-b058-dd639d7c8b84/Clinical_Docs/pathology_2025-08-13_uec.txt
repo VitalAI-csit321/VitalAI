@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Amanda Mcdowell
+DOB: 1947-07-17
+Date collected: 13/08/2025
+Requested by: Dr Samuel Osei
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       143       mmol/L        135-145       -
+Potassium    5.1       mmol/L        3.5-5.2       -
+Chloride     109       mmol/L        95-110        -
+Bicarbonate  26        mmol/L        22-32         -
+Urea         9.8       mmol/L        2.5-8.0       H
+Creatinine   61        umol/L        45-90         -
+eGFR         90        mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

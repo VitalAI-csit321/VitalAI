@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Alexander Hill
+DOB: 1971-06-07
+Date collected: 18/09/2024
+Requested by: Dr David Nguyen
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       142       mmol/L        135-145       -
+Potassium    3.1       mmol/L        3.5-5.2       L
+Chloride     90        mmol/L        95-110        L
+Bicarbonate  28        mmol/L        22-32         -
+Urea         4.5       mmol/L        2.5-8.0       -
+Creatinine   73        umol/L        60-110        -
+eGFR         99        mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

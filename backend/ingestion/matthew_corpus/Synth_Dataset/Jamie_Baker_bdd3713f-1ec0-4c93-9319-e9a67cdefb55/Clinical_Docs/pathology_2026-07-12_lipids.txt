@@ -1,0 +1,16 @@
+Pathology Report
+
+Patient: Jamie Baker
+DOB: 1974-01-03
+Date collected: 12/07/2026
+Requested by: Dr Priya Menon
+
+Lipids
+
+Test               Result    Unit          Ref Range     Flag
+Total Cholesterol  11.7      mmol/L        2.5-7.5       H
+HDL Cholesterol    1.22      mmol/L        0.9-2.2       -
+LDL Cholesterol    5.9       mmol/L        1.0-5.5       H
+Triglycerides      2.3       mmol/L        0.3-3.5       -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

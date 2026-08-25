@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Juan Austin
+DOB: 1991-01-09
+Gender: Male
+Phone: (08).5118.1022
+Email: harristodd@example.org
+Address: 8/9 Williams Edge, North Sarahborough, WA, 2470
+
+Medicare number: 1789 27978/7
+IHI: 8003289103443307
+Concession card: None
+
+Emergency contact: Patrick Zamora, (02)94801413
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Former smoker
+Alcohol use: Moderate, 5-10 standard drinks/week
+Occupation: Scientist, physiological
+Allergies: No known drug allergies
+Assigned doctor: Dr Marcus O'Connell

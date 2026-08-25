@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Zachary White
+DOB: 1945-08-09
+Date: 27/09/2025
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: John Munoz
+DOB: 1974-04-24
+Date: 01/10/2025
+Status: PENDING
+
+Consent form partially completed. Information-sharing section not yet signed.

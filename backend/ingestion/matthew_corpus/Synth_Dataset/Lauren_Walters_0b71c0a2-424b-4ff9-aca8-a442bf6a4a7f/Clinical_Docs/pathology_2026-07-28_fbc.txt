@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Lauren Walters
+DOB: 1967-08-09
+Date collected: 28/07/2026
+Requested by: Dr Priya Menon
+
+FBC
+
+Test              Result    Unit          Ref Range     Flag
+Haemoglobin       147       g/L           115-165       -
+White Cell Count  10.6      x10^9/L       4.0-11.0      -
+Platelets         102       x10^9/L       150-400       L
+Haematocrit       0.41      L/L           0.37-0.47     -
+MCV               75.6      fL            80-100        L
+Neutrophils       3.7       x10^9/L       2.0-8.0       -
+Lymphocytes       1.1       x10^9/L       1.0-4.0       -
+
+Interpretation: Results within expected reference ranges.

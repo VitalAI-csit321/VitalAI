@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Lisa Johnson
+DOB: 1994-01-30
+Gender: Female
+Phone: +61-484-473-647
+Email: barkereric@example.com
+Address: Unit 59 555 Anderson Key, Lake Johnville, SA, 2613
+
+Medicare number: 3758 63683/5
+IHI: 8003179939906992
+Concession card: None
+
+Emergency contact: Anthony Dougherty, +61 463 259 532
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Research scientist (physical sciences)
+Allergies: Latex
+Assigned doctor: Dr Marcus O'Connell

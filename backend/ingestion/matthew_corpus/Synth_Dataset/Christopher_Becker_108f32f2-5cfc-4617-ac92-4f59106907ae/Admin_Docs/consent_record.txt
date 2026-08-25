@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Christopher Becker
+DOB: 1976-11-21
+Date: 27/09/2024
+Status: PENDING
+
+Consent form partially completed. Information-sharing section not yet signed.

@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Julian Willis
+DOB: 1982-02-04
+Gender: Male
+Phone: 0729042284
+Email: danieldelacruz@example.org
+Address: Unit 95 240 Judy Ramble, East Thomasstad, NSW, 2618
+
+Medicare number: 9421 16793/7
+IHI: 8003493098181931
+Concession card: None
+
+Emergency contact: Luis Acosta, +61.484.700.766
+Preferred pharmacy: Priceline Pharmacy Town Hall
+
+Smoking status: Current smoker, 5-10 cigarettes/day
+Alcohol use: Nil
+Occupation: Clinical cytogeneticist
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

@@ -1,0 +1,110 @@
+{
+  "patient_id": "4df383d3-dd97-4517-ba76-1740b927ac94",
+  "name": "Susan Turner",
+  "dob": "2009-12-31",
+  "gender": "Female",
+  "archetype": "asthma",
+  "chronic_conditions": [
+    "Asthma"
+  ],
+  "secondary_condition": null,
+  "hospital_event_date": "2025-02-10",
+  "allergies": [],
+  "assigned_doctor": "Dr Priya Menon",
+  "assigned_doctor_id": "doctor03",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "hospital_discharge_2025-02-10.txt",
+      "doc_type": "hospital_discharge_summary",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-02-10"
+    },
+    {
+      "filename": "consultation_2024-09-21.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-21"
+    },
+    {
+      "filename": "prescription_2024-09-21.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2024-09-21"
+    },
+    {
+      "filename": "consultation_2025-04-16.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-04-16"
+    },
+    {
+      "filename": "prescription_2025-04-16.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-04-16"
+    },
+    {
+      "filename": "consultation_2026-03-14.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-14"
+    },
+    {
+      "filename": "prescription_2026-03-14.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-14"
+    },
+    {
+      "filename": "pathology_2026-03-14_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-03-14"
+    },
+    {
+      "filename": "consultation_2026-08-08.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-08-08"
+    },
+    {
+      "filename": "prescription_2026-08-08.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-08-08"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2024-09-21"
+    }
+  ]
+}

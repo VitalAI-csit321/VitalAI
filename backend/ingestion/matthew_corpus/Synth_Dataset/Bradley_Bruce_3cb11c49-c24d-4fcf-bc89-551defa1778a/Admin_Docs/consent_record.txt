@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Bradley Bruce
+DOB: 1995-11-29
+Date: 01/03/2026
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

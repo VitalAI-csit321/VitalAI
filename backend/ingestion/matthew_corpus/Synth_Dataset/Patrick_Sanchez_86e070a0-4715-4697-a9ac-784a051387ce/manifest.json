@@ -1,0 +1,61 @@
+{
+  "patient_id": "86e070a0-4715-4697-a9ac-784a051387ce",
+  "name": "Patrick Sanchez",
+  "dob": "1941-11-21",
+  "gender": "Male",
+  "archetype": "skin_check",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": "2026-07-31",
+  "allergies": [
+    "Bee stings"
+  ],
+  "assigned_doctor": "Dr Priya Menon",
+  "assigned_doctor_id": "doctor03",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "hospital_discharge_2026-07-31.txt",
+      "doc_type": "hospital_discharge_summary",
+      "classification": "High",
+      "source": "external",
+      "date": "2026-07-31"
+    },
+    {
+      "filename": "consultation_2026-07-30.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-07-30"
+    },
+    {
+      "filename": "referral_2026-07-30.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2026-07-30"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2026-07-30"
+    }
+  ]
+}

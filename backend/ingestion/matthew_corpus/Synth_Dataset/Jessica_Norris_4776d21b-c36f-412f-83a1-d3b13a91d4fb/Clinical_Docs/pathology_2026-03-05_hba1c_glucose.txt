@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Jessica Norris
+DOB: 1968-05-06
+Date collected: 05/03/2026
+Requested by: Dr David Nguyen
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            15.5      %             4.5-11.0      H
+Fasting Glucose  19.9      mmol/L        3.5-15.0      H
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

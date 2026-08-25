@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Lauren Walters
+DOB: 1967-08-09
+Date: 28/07/2026
+Seen by: Dr Priya Menon
+
+Known conditions: Asthma, Dyslipidaemia
+Allergies: No known drug allergies
+
+Vitals: BP 145/77 mmHg, Weight 71.8 kg
+
+Chief Complaint:
+Asthma review.
+
+Assessment:
+Mild exacerbation, likely viral trigger.
+
+Plan:
+- Review inhaler technique
+- Provide asthma action plan
+- Continue current medication

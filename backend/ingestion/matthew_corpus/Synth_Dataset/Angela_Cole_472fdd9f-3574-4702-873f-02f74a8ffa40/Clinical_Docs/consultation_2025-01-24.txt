@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Angela Cole
+DOB: 1991-11-18
+Date: 24/01/2025
+Seen by: Dr Aisha Rahman
+
+Known conditions: Pregnancy, antenatal care
+Allergies: No known drug allergies
+
+Vitals: BP 139/65 mmHg, Weight 88.5 kg
+
+Chief Complaint:
+Mild nausea, otherwise well.
+
+Assessment:
+Antenatal review, no concerns.
+
+Plan:
+- Order full blood count and iron studies
+- Refer for morphology scan
+- Follow up in 4 weeks

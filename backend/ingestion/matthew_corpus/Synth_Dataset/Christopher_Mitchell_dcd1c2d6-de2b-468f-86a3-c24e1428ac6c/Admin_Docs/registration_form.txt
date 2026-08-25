@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Christopher Mitchell
+DOB: 1950-02-17
+Gender: Male
+Phone: (03) 0438 0571
+Email: juliahoffman@example.org
+Address: 66 Church Boulevard, New Jamesmouth, QLD, 0959
+
+Medicare number: 1143 40742/6
+IHI: 8003018879286723
+Concession card: None
+
+Emergency contact: Lindsey Parsons, 07.7212.2816
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Former smoker
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Architect
+Allergies: Aspirin (NSAIDs)
+Assigned doctor: Dr Samuel Osei

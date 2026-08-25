@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Dylan Norman
+DOB: 1970-06-19
+Date: 27/02/2025
+Prescribed by: Dr Marcus O'Connell
+
+Salbutamol Inhaler 100mcg
+Inhale 2 puffs as needed for shortness of breath.
+Quantity: 60  Repeats: 0
+Reviewed today, no change.

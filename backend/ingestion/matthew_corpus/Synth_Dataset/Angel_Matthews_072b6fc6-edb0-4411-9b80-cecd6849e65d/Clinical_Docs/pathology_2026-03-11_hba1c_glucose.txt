@@ -1,0 +1,14 @@
+Pathology Report
+
+Patient: Angel Matthews
+DOB: 1986-01-16
+Date collected: 11/03/2026
+Requested by: Dr David Nguyen
+
+HbA1c_Glucose
+
+Test             Result    Unit          Ref Range     Flag
+HbA1c            14.6      %             4.5-11.0      H
+Fasting Glucose  20.7      mmol/L        3.5-15.0      H
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

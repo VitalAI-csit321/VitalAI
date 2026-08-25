@@ -1,0 +1,6 @@
+Appointment History
+
+Patient: William Anderson
+
+17/12/2024 - General Consultation - Dr Marcus O'Connell
+18/08/2025 - Specialist Referral - Dr Marcus O'Connell

@@ -1,0 +1,9 @@
+Appointment History
+
+Patient: James Thomas
+
+20/09/2024 - Blood Test - Dr Samuel Osei
+04/03/2025 - Follow-up Review - Dr Samuel Osei
+03/10/2025 - Follow-up Review - Dr Samuel Osei
+30/12/2025 - Follow-up Review - Dr Samuel Osei
+11/02/2026 - Blood Test - Dr Samuel Osei

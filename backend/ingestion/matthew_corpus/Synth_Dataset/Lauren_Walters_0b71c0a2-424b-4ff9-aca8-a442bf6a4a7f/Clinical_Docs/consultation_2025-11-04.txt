@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Lauren Walters
+DOB: 1967-08-09
+Date: 04/11/2025
+Seen by: Dr Priya Menon
+
+Known conditions: Asthma, Dyslipidaemia
+Allergies: No known drug allergies
+
+Vitals: BP 116/82 mmHg, Weight 67.6 kg
+
+Chief Complaint:
+Reviewed after elevated cholesterol noted on routine bloods.
+
+Assessment:
+Dyslipidaemia, above target on lipid profile.
+
+Plan:
+- Continue current medication
+- Repeat lipids in 3 months

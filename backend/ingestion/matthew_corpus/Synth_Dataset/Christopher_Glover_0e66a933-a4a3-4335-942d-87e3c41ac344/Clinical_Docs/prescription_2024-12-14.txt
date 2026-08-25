@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Christopher Glover
+DOB: 1967-02-19
+Date: 14/12/2024
+Prescribed by: Dr David Nguyen
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 90  Repeats: 0
+Continuing current dose, well tolerated.

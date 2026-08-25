@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Christopher Crane
+DOB: 2009-10-01
+Date: 01/08/2025
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

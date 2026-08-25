@@ -1,0 +1,10 @@
+Appointment History
+
+Patient: Amanda Mcdowell
+
+18/08/2024 - Blood Test - Dr Samuel Osei
+14/01/2025 - Follow-up Review - Dr Samuel Osei
+14/04/2025 - Follow-up Review - Dr Samuel Osei
+13/08/2025 - Blood Test - Dr Samuel Osei
+19/12/2025 - Follow-up Review - Dr Samuel Osei
+29/06/2026 - Blood Test - Dr Samuel Osei

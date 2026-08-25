@@ -1,0 +1,23 @@
+Consultation Note
+
+Patient: Alice Nunez
+DOB: 1984-03-15
+Date: 26/10/2025
+Seen by: Dr Aisha Rahman
+
+Known conditions: Asthma
+Allergies: No known drug allergies
+
+Vitals: BP 123/87 mmHg, Weight 95.0 kg
+
+Chief Complaint:
+Asthma review.
+
+Assessment:
+Asthma review, technique reinforced.
+
+Plan:
+- Continue current medication
+- Follow up in 4 weeks
+- Review inhaler technique
+- Provide asthma action plan

@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: Melissa Myers
+DOB: 2006-04-08
+Date: 11/03/2026
+Seen by: Dr Hannah Fitzgerald
+
+Known conditions: None recorded
+Allergies: Aspirin (NSAIDs)
+
+Vitals: BP 150/84 mmHg, Weight 88.0 kg
+
+Chief Complaint:
+New mole noticed on forearm.
+
+Assessment:
+No suspicious lesions identified.
+
+Plan:
+- Photograph and monitor lesion
+- Review in 6 months

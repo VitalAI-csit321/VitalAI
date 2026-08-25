@@ -1,0 +1,7 @@
+Appointment History
+
+Patient: Jennifer Parks
+
+20/12/2024 - General Consultation - Dr Marcus O'Connell
+26/07/2025 - Specialist Referral - Dr Marcus O'Connell
+19/09/2025 - Blood Test - Dr Marcus O'Connell

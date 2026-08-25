@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Angela Anthony
+DOB: 1954-01-18
+Gender: Female
+Phone: (08)-7741-8625
+Email: cwood@example.org
+Address: 4/490 Karen Steps, East Elizabethside, VIC, 6380
+
+Medicare number: 3092 44961/8
+IHI: 8003154614200770
+Concession card: Health Care Card
+
+Emergency contact: Sabrina Barnes, 0479-374-160
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Former smoker
+Alcohol use: Nil
+Occupation: Retail buyer
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

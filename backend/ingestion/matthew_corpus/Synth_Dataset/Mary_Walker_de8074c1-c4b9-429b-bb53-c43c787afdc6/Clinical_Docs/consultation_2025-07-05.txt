@@ -1,0 +1,23 @@
+Consultation Note
+
+Patient: Mary Walker
+DOB: 1963-05-23
+Date: 05/07/2025
+Seen by: Dr Priya Menon
+
+Known conditions: Generalised anxiety, Low mood
+Allergies: Bee stings
+
+Vitals: BP 118/93 mmHg, Weight 102.1 kg
+
+Chief Complaint:
+Follow-up mental health review.
+
+Assessment:
+Low mood, plan supportive management.
+
+Plan:
+- Prepare Mental Health Treatment Plan
+- Continue current medication
+- Follow up in 2 weeks
+- Refer to psychologist

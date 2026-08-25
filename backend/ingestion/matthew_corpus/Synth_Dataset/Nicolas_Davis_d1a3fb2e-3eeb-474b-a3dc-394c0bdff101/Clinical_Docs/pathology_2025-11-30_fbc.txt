@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Nicolas Davis
+DOB: 1949-10-15
+Date collected: 30/11/2025
+Requested by: Dr David Nguyen
+
+FBC
+
+Test              Result    Unit          Ref Range     Flag
+Haemoglobin       164       g/L           130-180       -
+White Cell Count  4.4       x10^9/L       4.0-11.0      -
+Platelets         152       x10^9/L       150-400       -
+Haematocrit       0.54      L/L           0.4-0.54      -
+MCV               100.1     fL            80-100        H
+Neutrophils       7.9       x10^9/L       2.0-8.0       -
+Lymphocytes       3.8       x10^9/L       1.0-4.0       -
+
+Interpretation: Results within expected reference ranges.

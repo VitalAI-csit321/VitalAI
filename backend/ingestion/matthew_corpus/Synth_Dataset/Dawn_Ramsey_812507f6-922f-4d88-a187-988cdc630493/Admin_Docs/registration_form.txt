@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Dawn Ramsey
+DOB: 1943-11-26
+Gender: Female
+Phone: 8588 7704
+Email: lukemiller@example.org
+Address: 1 Ellen Way, Port Mary, QLD, 4612
+
+Medicare number: 4839 82092/2
+IHI: 8003403064467738
+Concession card: None
+
+Emergency contact: Mitchell Johnson, 0248.1934
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Current smoker, 5-10 cigarettes/day
+Alcohol use: Nil
+Occupation: Orthoptist
+Allergies: Latex
+Assigned doctor: Dr David Nguyen

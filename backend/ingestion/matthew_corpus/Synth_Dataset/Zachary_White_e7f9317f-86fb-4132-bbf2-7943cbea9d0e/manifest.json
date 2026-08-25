@@ -1,0 +1,68 @@
+{
+  "patient_id": "e7f9317f-86fb-4132-bbf2-7943cbea9d0e",
+  "name": "Zachary White",
+  "dob": "1945-08-09",
+  "gender": "Male",
+  "archetype": "acute_general",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [
+    "Sulfa drugs"
+  ],
+  "assigned_doctor": "Dr Hannah Fitzgerald",
+  "assigned_doctor_id": "doctor05",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-09-27.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-09-27"
+    },
+    {
+      "filename": "prescription_2025-09-27.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-09-27"
+    },
+    {
+      "filename": "consultation_2026-02-12.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-12"
+    },
+    {
+      "filename": "prescription_2026-02-12.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-02-12"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-09-27"
+    }
+  ]
+}

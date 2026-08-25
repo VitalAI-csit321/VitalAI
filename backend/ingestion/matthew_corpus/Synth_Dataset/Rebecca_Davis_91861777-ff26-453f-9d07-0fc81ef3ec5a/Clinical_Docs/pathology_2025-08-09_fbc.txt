@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Rebecca Davis
+DOB: 1943-05-22
+Date collected: 09/08/2025
+Requested by: Dr Samuel Osei
+
+FBC
+
+Test              Result    Unit          Ref Range     Flag
+Haemoglobin       138       g/L           115-165       -
+White Cell Count  6.2       x10^9/L       4.0-11.0      -
+Platelets         385       x10^9/L       150-400       -
+Haematocrit       0.46      L/L           0.37-0.47     -
+MCV               95.1      fL            80-100        -
+Neutrophils       0.9       x10^9/L       2.0-8.0       L
+Lymphocytes       2.8       x10^9/L       1.0-4.0       -
+
+Interpretation: Results within expected reference ranges.

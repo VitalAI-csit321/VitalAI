@@ -1,0 +1,16 @@
+Pathology Report
+
+Patient: Julian Willis
+DOB: 1982-02-04
+Date collected: 08/10/2024
+Requested by: Dr David Nguyen
+
+Lipids
+
+Test               Result    Unit          Ref Range     Flag
+Total Cholesterol  8.8       mmol/L        2.5-7.5       H
+HDL Cholesterol    1.45      mmol/L        0.7-2.0       -
+LDL Cholesterol    7.5       mmol/L        1.0-5.5       H
+Triglycerides      2.9       mmol/L        0.3-3.5       -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

@@ -1,0 +1,19 @@
+Prescription
+
+Patient: Gregory Rhodes
+DOB: 1937-02-01
+Date: 07/12/2025
+Prescribed by: Dr Samuel Osei
+
+Perindopril 5mg
+Take 1 tablet once daily in the morning.
+Quantity: 60  Repeats: 4
+
+Metformin 500mg
+Take 1 tablet twice daily with meals.
+Quantity: 90  Repeats: 1
+Continuing current dose, well tolerated.
+
+Paracetamol 500mg
+Take 2 tablets every 6 hours as needed.
+Quantity: 60  Repeats: 1

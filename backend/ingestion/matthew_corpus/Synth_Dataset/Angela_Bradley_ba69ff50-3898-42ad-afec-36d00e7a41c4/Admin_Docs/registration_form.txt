@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Angela Bradley
+DOB: 1981-07-17
+Gender: Female
+Phone: +61-3-3445-6557
+Email: jesus32@example.net
+Address: 277 Russell Reach, Tamiborough, WA, 2937
+
+Medicare number: 5306 37601/6
+IHI: 8003894401148848
+Concession card: None
+
+Emergency contact: Bryan Moore, +61.449.035.213
+Preferred pharmacy: Sydney CBD Pharmacy
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Market researcher
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

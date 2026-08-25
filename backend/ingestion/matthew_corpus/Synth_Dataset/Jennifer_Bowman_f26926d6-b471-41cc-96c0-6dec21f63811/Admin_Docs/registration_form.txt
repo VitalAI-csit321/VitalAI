@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Jennifer Bowman
+DOB: 1959-08-31
+Gender: Female
+Phone: (02)-6052-9751
+Email: prichard@example.com
+Address: 45 Mason Crossing, East Alyssaborough, TAS, 2962
+
+Medicare number: 0533 23099/4
+IHI: 8003513134044402
+Concession card: None
+
+Emergency contact: Charles Gonzalez, +61 421 277 997
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Moderate, 5-10 standard drinks/week
+Occupation: Systems analyst
+Allergies: Sulfa drugs
+Assigned doctor: Dr David Nguyen

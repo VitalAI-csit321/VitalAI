@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Andrew Garner
+DOB: 2003-03-07
+Gender: Male
+Phone: +61 8 2702 8951
+Email: dgarcia@example.org
+Address: Suite 174 96 Melissa Street, Finleyfort, ACT, 0813
+
+Medicare number: 6551 69390/1
+IHI: 8003097225608563
+Concession card: None
+
+Emergency contact: Tammie Bright, 6117.2400
+Preferred pharmacy: Amcal Pharmacy George St
+
+Smoking status: Never smoked
+Alcohol use: Social, 1-2 standard drinks/week
+Occupation: Journalist, broadcasting
+Allergies: Sulfa drugs
+Assigned doctor: Dr Samuel Osei

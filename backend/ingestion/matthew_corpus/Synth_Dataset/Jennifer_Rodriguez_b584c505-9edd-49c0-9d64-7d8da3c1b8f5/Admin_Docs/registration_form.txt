@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Jennifer Rodriguez
+DOB: 1952-08-20
+Gender: Female
+Phone: 8451.8489
+Email: heather69@example.com
+Address: 7/0 Wilson Bridge, Schultzbury, QLD, 2946
+
+Medicare number: 9664 24788/7
+IHI: 8003219300121570
+Concession card: None
+
+Emergency contact: Kelli Smith, (03) 4165 1827
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Interior and spatial designer
+Allergies: No known drug allergies
+Assigned doctor: Dr David Nguyen

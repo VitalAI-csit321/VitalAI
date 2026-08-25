@@ -1,0 +1,11 @@
+Prescription
+
+Patient: Jamie Baker
+DOB: 1974-01-03
+Date: 24/04/2026
+Prescribed by: Dr Priya Menon
+
+Sertraline 50mg
+Take 1 tablet once daily.
+Quantity: 60  Repeats: 5
+Continuing current dose, well tolerated.

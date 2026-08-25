@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Angel Matthews
+DOB: 1986-01-16
+Date: 16/11/2024
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

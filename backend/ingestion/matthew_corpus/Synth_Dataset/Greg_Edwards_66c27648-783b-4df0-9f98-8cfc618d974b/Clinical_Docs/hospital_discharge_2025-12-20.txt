@@ -1,0 +1,16 @@
+HARBOURVIEW HOSPITAL
+EMERGENCY DEPARTMENT DISCHARGE SUMMARY
+
+UR Number: UR1738407
+Patient: EDWARDS, Greg
+DOB: 05/11/1960
+Presented: 20/12/2025
+Discharged: 20/12/2025
+
+Presenting complaint: Chest pain, query cardiac
+
+Findings: ECG and troponin normal, non-cardiac chest pain.
+
+Management: Discharged with GP follow-up advised.
+
+Discharge plan: Follow up with regular GP within one week. Copy forwarded to GreenCare Family Medical Clinic.

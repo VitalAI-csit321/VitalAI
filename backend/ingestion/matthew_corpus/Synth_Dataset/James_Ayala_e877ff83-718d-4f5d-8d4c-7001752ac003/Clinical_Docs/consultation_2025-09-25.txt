@@ -1,0 +1,21 @@
+Consultation Note
+
+Patient: James Ayala
+DOB: 2021-02-10
+Date: 25/09/2025
+Seen by: Dr Aisha Rahman
+
+Known conditions: None recorded
+Allergies: Sulfa drugs
+
+Vitals: BP 142/73 mmHg, Weight 65.7 kg
+
+Chief Complaint:
+Abdominal pain and nausea.
+
+Assessment:
+Likely viral infection.
+
+Plan:
+- Symptomatic relief advised
+- Follow up if not improving in a week

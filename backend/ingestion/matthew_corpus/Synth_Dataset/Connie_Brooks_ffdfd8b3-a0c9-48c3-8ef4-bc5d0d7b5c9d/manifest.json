@@ -1,0 +1,96 @@
+{
+  "patient_id": "ffdfd8b3-a0c9-48c3-8ef4-bc5d0d7b5c9d",
+  "name": "Connie Brooks",
+  "dob": "2001-01-04",
+  "gender": "Female",
+  "archetype": "asthma",
+  "chronic_conditions": [
+    "Asthma"
+  ],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr Marcus O'Connell",
+  "assigned_doctor_id": "doctor04",
+  "note_style": "terse",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-01-13.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-13"
+    },
+    {
+      "filename": "prescription_2025-01-13.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-01-13"
+    },
+    {
+      "filename": "consultation_2025-05-27.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-05-27"
+    },
+    {
+      "filename": "prescription_2025-05-27.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-05-27"
+    },
+    {
+      "filename": "consultation_2025-10-22.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-22"
+    },
+    {
+      "filename": "prescription_2025-10-22.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-22"
+    },
+    {
+      "filename": "consultation_2026-01-13.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-13"
+    },
+    {
+      "filename": "prescription_2026-01-13.txt",
+      "doc_type": "prescription",
+      "classification": "High",
+      "source": "internal",
+      "date": "2026-01-13"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-01-13"
+    }
+  ]
+}

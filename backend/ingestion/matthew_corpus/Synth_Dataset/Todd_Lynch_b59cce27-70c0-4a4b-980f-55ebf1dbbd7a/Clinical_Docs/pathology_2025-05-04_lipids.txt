@@ -1,0 +1,16 @@
+Pathology Report
+
+Patient: Todd Lynch
+DOB: 2012-03-02
+Date collected: 04/05/2025
+Requested by: Dr Hannah Fitzgerald
+
+Lipids
+
+Test               Result    Unit          Ref Range     Flag
+Total Cholesterol  9.3       mmol/L        2.5-7.5       H
+HDL Cholesterol    1.73      mmol/L        0.7-2.0       -
+LDL Cholesterol    6.5       mmol/L        1.0-5.5       H
+Triglycerides      1.1       mmol/L        0.3-3.5       -
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.

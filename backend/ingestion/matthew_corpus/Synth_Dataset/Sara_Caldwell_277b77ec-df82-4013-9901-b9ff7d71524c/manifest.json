@@ -1,0 +1,103 @@
+{
+  "patient_id": "277b77ec-df82-4013-9901-b9ff7d71524c",
+  "name": "Sara Caldwell",
+  "dob": "2001-10-30",
+  "gender": "Female",
+  "archetype": "skin_check",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [
+    "Sulfa drugs"
+  ],
+  "assigned_doctor": "Dr Samuel Osei",
+  "assigned_doctor_id": "doctor06",
+  "note_style": "soap",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-07-02.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-07-02"
+    },
+    {
+      "filename": "referral_2025-07-02.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-07-02"
+    },
+    {
+      "filename": "consultation_2025-08-03.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-08-03"
+    },
+    {
+      "filename": "referral_2025-08-03.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-08-03"
+    },
+    {
+      "filename": "specialist_letter_2025-09-14.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-09-14"
+    },
+    {
+      "filename": "consultation_2025-10-05.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-05"
+    },
+    {
+      "filename": "pathology_2025-10-05_fbc.txt",
+      "doc_type": "pathology_report",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-10-05"
+    },
+    {
+      "filename": "referral_2025-10-05.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-10-05"
+    },
+    {
+      "filename": "specialist_letter_2025-11-23.txt",
+      "doc_type": "specialist_letter",
+      "classification": "High",
+      "source": "external",
+      "date": "2025-11-23"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-07-02"
+    }
+  ]
+}

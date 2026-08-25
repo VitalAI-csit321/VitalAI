@@ -1,0 +1,21 @@
+Patient Registration Form
+
+Name: Jennifer Parks
+DOB: 1976-10-30
+Gender: Female
+Phone: 02.1219.6565
+Email: johnnewman@example.org
+Address: 4 April Quadrangle, Port Kenneth, ACT, 2697
+
+Medicare number: 8266 07330/9
+IHI: 8003536169975047
+Concession card: None
+
+Emergency contact: David Little, 8055.2696
+Preferred pharmacy: Chemist Warehouse Liverpool St
+
+Smoking status: Never smoked
+Alcohol use: Nil
+Occupation: Medical secretary
+Allergies: No known drug allergies
+Assigned doctor: Dr Marcus O'Connell

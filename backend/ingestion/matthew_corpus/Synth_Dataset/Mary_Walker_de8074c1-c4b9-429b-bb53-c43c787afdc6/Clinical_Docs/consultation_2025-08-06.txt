@@ -1,0 +1,22 @@
+Consultation Note
+
+Patient: Mary Walker
+DOB: 1963-05-23
+Date: 06/08/2025
+Seen by: Dr Priya Menon
+
+Known conditions: Generalised anxiety, Low mood, Seasonal allergic rhinitis
+Allergies: Bee stings
+
+Vitals: BP 137/88 mmHg, Weight 108.5 kg
+
+Chief Complaint:
+Sneezing, itchy eyes and nasal congestion, seasonal pattern.
+
+Assessment:
+Consistent with seasonal allergic rhinitis.
+
+Plan:
+- Advise on allergen avoidance
+- Trial antihistamine
+- Review if not improving

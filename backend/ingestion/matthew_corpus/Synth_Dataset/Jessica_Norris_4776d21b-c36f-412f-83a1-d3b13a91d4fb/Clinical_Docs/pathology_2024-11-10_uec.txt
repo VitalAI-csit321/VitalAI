@@ -1,0 +1,19 @@
+Pathology Report
+
+Patient: Jessica Norris
+DOB: 1968-05-06
+Date collected: 10/11/2024
+Requested by: Dr David Nguyen
+
+UEC
+
+Test         Result    Unit          Ref Range     Flag
+Sodium       139       mmol/L        135-145       -
+Potassium    3.6       mmol/L        3.5-5.2       -
+Chloride     97        mmol/L        95-110        -
+Bicarbonate  31        mmol/L        22-32         -
+Urea         4.7       mmol/L        2.5-8.0       -
+Creatinine   60        umol/L        45-90         -
+eGFR         74        mL/min/1.73m2 60-120        -
+
+Interpretation: Results within expected reference ranges.

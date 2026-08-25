@@ -1,0 +1,52 @@
+{
+  "patient_id": "3f9a451e-b578-4e12-8393-798d35487f43",
+  "name": "Alicia Roth",
+  "dob": "2001-02-09",
+  "gender": "Female",
+  "archetype": "skin_check",
+  "chronic_conditions": [],
+  "secondary_condition": null,
+  "hospital_event_date": null,
+  "allergies": [],
+  "assigned_doctor": "Dr Hannah Fitzgerald",
+  "assigned_doctor_id": "doctor05",
+  "note_style": "prose",
+  "consent_status": "CAPTURED",
+  "documents": [
+    {
+      "filename": "consultation_2025-08-20.txt",
+      "doc_type": "consultation_note",
+      "classification": "High",
+      "source": "internal",
+      "date": "2025-08-20"
+    },
+    {
+      "filename": "referral_2025-08-20.txt",
+      "doc_type": "referral_letter",
+      "classification": "Medium",
+      "source": "internal",
+      "date": "2025-08-20"
+    },
+    {
+      "filename": "registration_form.txt",
+      "doc_type": "registration_form",
+      "classification": "Medium",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "appointment_history.txt",
+      "doc_type": "appointment_history",
+      "classification": "Low",
+      "source": "internal",
+      "date": null
+    },
+    {
+      "filename": "consent_record.txt",
+      "doc_type": "consent_record",
+      "classification": "Critical",
+      "source": "internal",
+      "date": "2025-08-20"
+    }
+  ]
+}

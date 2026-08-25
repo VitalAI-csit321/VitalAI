@@ -56,6 +56,11 @@ htmlcov/
 
 # Personal tracking (shared with team separately, not via git)
 /WORKLOG.md
-/council-transcript-20260716-111511.md
+/council-transcript-*.md
 /docs/backend_gap_analysis.md
 /VitalAI RBAC Report - Audit Trail.md
+/DEMO_PRESENTATION.md
+/authorship.txt
+
+# Local database dumps (regenerate with pg_dump, too large for git)
+backend/vitalai_snapshot.sql

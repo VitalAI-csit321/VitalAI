@@ -1,0 +1,8 @@
+Consent Record
+
+Patient: Nicolas Davis
+DOB: 1949-10-15
+Date: 28/09/2024
+Status: CAPTURED
+
+Patient confirmed they read the consent form, had the opportunity to ask questions, and agreed to share records with other treating providers. Research participation: declined.

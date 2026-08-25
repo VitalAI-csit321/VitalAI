@@ -1,0 +1,9 @@
+Appointment History
+
+Patient: Kathryn Gonzalez
+
+11/11/2024 - Specialist Referral - Dr Aisha Rahman
+26/04/2025 - Specialist Referral - Dr Aisha Rahman
+16/07/2025 - Specialist Referral - Dr Aisha Rahman
+06/03/2026 - Specialist Referral - Dr Aisha Rahman
+06/05/2026 - Specialist Referral - Dr Aisha Rahman

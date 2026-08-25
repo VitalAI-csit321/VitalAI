@@ -1,0 +1,13 @@
+Pathology Report
+
+Patient: Lee Schwartz
+DOB: 1967-06-29
+Date collected: 09/01/2025
+Requested by: Dr Priya Menon
+
+CRP
+
+Test                Result    Unit          Ref Range     Flag
+C-Reactive Protein  94        mg/L          0-60          H
+
+Interpretation: One or more results outside reference range, recommend clinical correlation.
