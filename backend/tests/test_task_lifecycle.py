@@ -158,9 +158,7 @@ async def test_admin_can_delete_task(client: AsyncClient, admin_headers: dict, m
     assert response.status_code == 200
 
 
-async def test_operator_can_delete_task(
-    client: AsyncClient, operator_headers: dict, monkeypatch
-):
+async def test_operator_can_delete_task(client: AsyncClient, operator_headers: dict, monkeypatch):
     _mock_classifier(monkeypatch, "general_administrative", 0.95)
     ingest = await _ingest(client, operator_headers)
     task_id = ingest["task_id"]
