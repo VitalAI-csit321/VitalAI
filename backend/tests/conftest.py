@@ -225,6 +225,12 @@ def doctor_headers(doctor_user: User) -> dict[str, str]:
 
 
 @pytest_asyncio.fixture
+def seeded_doctor(doctor_user: User) -> User:
+    """Alias for doctor_user to match task brief naming."""
+    return doctor_user
+
+
+@pytest_asyncio.fixture
 def role_headers(
     front_desk_headers: dict, operator_headers: dict, admin_headers: dict, doctor_headers: dict
 ) -> dict[UserRole, dict]:
