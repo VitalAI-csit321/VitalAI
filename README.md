@@ -75,20 +75,24 @@ attached.
 
 ## Repository layout
 
-This repository has two independent branches. They do not share git history, because the
-backend and frontend were built and versioned separately during the project.
+`main` is a monorepo: it carries both the backend and the frontend, so one checkout runs
+the whole application.
 
 ```
-main    -> backend (this branch): FastAPI service, database, tests, CI
-master  -> frontend: React application
+main
+├── backend/            FastAPI service, database, tests
+└── frontend/frontend/  React application
 ```
 
-On `main` alone, the `frontend/` folder is an empty placeholder; the real frontend code
-lives on `master`. This branch is a consolidated merge of both: `frontend/frontend/` here
-holds the real, checked-in frontend code, not a placeholder. See "Frontend" below for how
-to run it.
+This was not always true. The backend and frontend were built and versioned separately, on
+two branches with no shared git history: `main` held the backend with an empty `frontend/`
+placeholder, and `master` held the real frontend plus a stale copy of the backend that
+could not serve it. They were consolidated onto `main` in August 2026. `master` is retained
+but archival, frozen at the tag `archive/master-final`; do not start new work there.
 
-### Full directory tree (main branch)
+See "Frontend" below for how to run the React application.
+
+### Full directory tree
 
 ```
 /
@@ -101,7 +105,8 @@ to run it.
 │   └── backend_gap_analysis.md    page-by-page design decisions (Patients, Audit, Consent, Records, Users)
 ├── .github/
 │   └── workflows/
-│       └── backend-ci.yml         lint, type check, and test pipeline
+│       ├── backend-ci.yml         backend lint, type check, and test pipeline
+│       └── frontend-ci.yml        frontend lint and type-checked build
 ├── frontend/                      real Vite + React SPA at frontend/frontend/, see "Frontend" above
 │
 └── backend/
