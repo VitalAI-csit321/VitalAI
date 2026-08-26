@@ -43,9 +43,10 @@ async def book_appointment_endpoint(
         )
 
     try:
-        return await appointment_service.book_appointment(
+        appointment = await appointment_service.book_appointment(
             db, payload.doctor_id, payload.case_id, payload.time_slot, actor
         )
+        return await appointment_service.serialize_appointment(db, appointment)
     except (DoctorNotFoundError, CaseNotFoundError) as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except NotADoctorError as exc:
@@ -75,7 +76,7 @@ async def list_appointments_endpoint(
         db, actor, doctor_id=effective_doctor_id, limit=limit, offset=offset
     )
     return AppointmentListResponse(
-        items=[AppointmentOut.model_validate(a) for a in items], total=total
+        items=await appointment_service.serialize_many(db, items), total=total
     )
 
 
@@ -97,7 +98,7 @@ async def reschedule_appointment_endpoint(
 
     if appointment is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
-    return appointment
+    return await appointment_service.serialize_appointment(db, appointment)
 
 
 @router.post("/{appointment_id}/cancel", response_model=AppointmentOut)
@@ -115,4 +116,4 @@ async def cancel_appointment_endpoint(
 
     if appointment is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
-    return appointment
+    return await appointment_service.serialize_appointment(db, appointment)

@@ -356,3 +356,38 @@ async def pg_client(pg_session):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def booked_appointment(client, admin_headers, doctor_user, patient):
+    """One confirmed appointment created through the real API.
+
+    `seeded_doctor`/`seeded_case` (as named in the task brief) don't exist in
+    this file; this reuses the real `doctor_user`/`patient` fixtures above and
+    builds a case over HTTP the same way tests/test_appointments.py's own
+    `_create_case` helper does (contact_channel is NOT NULL on IntakeCase).
+    """
+    case_response = await client.post(
+        "/api/v1/intake",
+        json={
+            "patient_id": str(patient.id),
+            "contact_reason": "Visit",
+            "contact_channel": "phone",
+        },
+        headers=admin_headers,
+    )
+    assert case_response.status_code == 201, case_response.text
+    case_id = case_response.json()["id"]
+
+    response = await client.post(
+        "/api/v1/appointments",
+        headers=admin_headers,
+        json={
+            "doctor_id": str(doctor_user.id),
+            "case_id": case_id,
+            "time_slot": "2026-09-01T09:00:00Z",
+            "duration_minutes": 30,
+        },
+    )
+    assert response.status_code == 201, response.text
+    return response.json()

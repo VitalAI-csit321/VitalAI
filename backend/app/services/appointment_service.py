@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime
 from uuid import UUID
 
@@ -6,9 +7,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.scoping import assigned_patient_ids_subquery, is_assigned
-from app.models.appointment import Appointment, AppointmentStatus
+from app.models.appointment import Appointment, AppointmentStatus, AppointmentType
 from app.models.case import IntakeCase
+from app.models.patient import Patient
 from app.models.user import User, UserRole
+from app.schemas.appointment import AppointmentOut
 from app.services.audit_service import record_event
 
 
@@ -36,8 +39,38 @@ class DoctorPatientAccessError(Exception):
     """Raised when a Doctor tries to manage a patient who is not assigned to them."""
 
 
+_REFERENCE_CODE_ATTEMPTS = 10
+
+
+async def _generate_unique_reference_code(db: AsyncSession) -> str:
+    for _ in range(_REFERENCE_CODE_ATTEMPTS):
+        candidate = f"APT-{secrets.token_hex(3).upper()}"
+        existing = await db.execute(
+            select(Appointment.id).where(Appointment.reference_code == candidate)
+        )
+        if existing.scalar_one_or_none() is None:
+            return candidate
+    raise RuntimeError(
+        "Could not generate a unique appointment reference after "
+        f"{_REFERENCE_CODE_ATTEMPTS} attempts"
+    )
+
+
 async def book_appointment(
-    db: AsyncSession, doctor_id: UUID, case_id: UUID, time_slot: datetime, actor: User
+    db: AsyncSession,
+    doctor_id: UUID,
+    case_id: UUID,
+    time_slot: datetime,
+    actor: User,
+    duration_minutes: int = 30,
+    appointment_type: AppointmentType = AppointmentType.OTHER,
+    location: str | None = None,
+    reason: str | None = None,
+    internal_notes: str | None = None,
+    status: AppointmentStatus = AppointmentStatus.CONFIRMED,
+    notify_patient: bool = True,
+    notify_provider: bool = True,
+    series_id: UUID | None = None,
 ) -> Appointment:
     # Validated up front so a bogus doctor_id/case_id can't slip through as a
     # "successful" booking, and so the later IntegrityError catch can only
@@ -61,7 +94,16 @@ async def book_appointment(
         doctor_id=doctor_id,
         case_id=case_id,
         time_slot=time_slot,
-        status=AppointmentStatus.CONFIRMED,
+        duration_minutes=duration_minutes,
+        appointment_type=appointment_type,
+        location=location,
+        reason=reason,
+        internal_notes=internal_notes,
+        status=status,
+        reference_code=await _generate_unique_reference_code(db),
+        notify_patient=notify_patient,
+        notify_provider=notify_provider,
+        series_id=series_id,
     )
     db.add(appointment)
     try:
@@ -203,3 +245,68 @@ async def cancel_appointment(
     await db.commit()
     await db.refresh(appointment)
     return appointment
+
+
+async def serialize_appointment(db: AsyncSession, appointment: Appointment) -> AppointmentOut:
+    """Attach the three joined labels and the derived end_time.
+
+    doctor_name / patient_name / patient_mrn are joined per call rather than
+    stored: storing them creates a second source of truth that drifts the
+    first time a user or patient is renamed.
+    """
+    return (await serialize_many(db, [appointment]))[0]
+
+
+async def serialize_many(
+    db: AsyncSession, appointments: list[Appointment]
+) -> list[AppointmentOut]:
+    if not appointments:
+        return []
+
+    doctor_ids = {a.doctor_id for a in appointments}
+    case_ids = {a.case_id for a in appointments}
+
+    doctors = (
+        (await db.execute(select(User.id, User.full_name).where(User.id.in_(doctor_ids))))
+        .all()
+    )
+    doctor_names = {row[0]: row[1] for row in doctors}
+
+    patient_rows = (
+        await db.execute(
+            select(IntakeCase.id, Patient.name, Patient.mrn)
+            .select_from(IntakeCase)
+            .outerjoin(Patient, IntakeCase.patient_id == Patient.id)
+            .where(IntakeCase.id.in_(case_ids))
+        )
+    ).all()
+    patients_by_case = {row[0]: (row[1], row[2]) for row in patient_rows}
+
+    out: list[AppointmentOut] = []
+    for a in appointments:
+        patient_name, patient_mrn = patients_by_case.get(a.case_id, (None, None))
+        out.append(
+            AppointmentOut(
+                id=a.id,
+                case_id=a.case_id,
+                doctor_id=a.doctor_id,
+                time_slot=a.time_slot,
+                end_time=a.end_time,
+                duration_minutes=a.duration_minutes,
+                appointment_type=a.appointment_type,
+                location=a.location,
+                reason=a.reason,
+                internal_notes=a.internal_notes,
+                status=a.status,
+                reference_code=a.reference_code,
+                notify_patient=a.notify_patient,
+                notify_provider=a.notify_provider,
+                series_id=a.series_id,
+                created_at=a.created_at,
+                updated_at=a.updated_at,
+                doctor_name=doctor_names.get(a.doctor_id),
+                patient_name=patient_name,
+                patient_mrn=patient_mrn,
+            )
+        )
+    return out
