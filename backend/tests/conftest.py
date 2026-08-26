@@ -313,6 +313,41 @@ async def pg_make_user(pg_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
+async def pg_appointment_fixture(pg_session):
+    """A real-Postgres session plus a doctor and case for appointment FK targets.
+
+    Yields (session, doctor_id, case_id). Rows are removed afterwards so the
+    exclusion-constraint tests start from an empty appointments table.
+    """
+    from app.models.appointment import Appointment
+    from app.models.case import IntakeCase
+    from app.models.user import User, UserRole
+
+    doctor = User(
+        email=f"pg-doctor-{uuid4()}@example.com",
+        hashed_password=hash_password("test-password"),
+        full_name="PG Fixture Doctor",
+        role=UserRole.DOCTOR,
+    )
+    pg_session.add(doctor)
+    await pg_session.flush()
+
+    # contact_channel is NOT NULL on IntakeCase; the brief's fixture snippet
+    # omitted it. Added per the brief's own escape hatch instruction.
+    case = IntakeCase(contact_reason="fixture", contact_channel="test", patient_id=None)
+    pg_session.add(case)
+    await pg_session.flush()
+
+    yield pg_session, doctor.id, case.id
+
+    await pg_session.rollback()
+    await pg_session.execute(delete(Appointment))
+    await pg_session.execute(delete(IntakeCase).where(IntakeCase.id == case.id))
+    await pg_session.execute(delete(User).where(User.id == doctor.id))
+    await pg_session.commit()
+
+
+@pytest_asyncio.fixture
 async def pg_client(pg_session):
     async def override_get_db():
         yield pg_session
