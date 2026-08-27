@@ -404,6 +404,20 @@ async def test_patch_reassigns_to_valid_doctor(
     assert response.json()["doctor_id"] == str(second_doctor.id)
 
 
+async def test_patch_reassign_denied_for_doctor_actor(
+    client: AsyncClient, doctor_headers: dict, booked_appointment, db_session: AsyncSession
+):
+    """A doctor may not reassign their own appointment onto another doctor's calendar."""
+    other_doctor = await _second_doctor(db_session, "patch-reassign-denied@example.com")
+
+    response = await client.patch(
+        f"/api/v1/appointments/{booked_appointment['id']}",
+        headers=doctor_headers,
+        json={"doctor_id": str(other_doctor.id)},
+    )
+    assert response.status_code == 403
+
+
 async def test_patch_rejects_unknown_doctor_id(client, admin_headers, booked_appointment):
     """C2: an unknown doctor_id on PATCH is now validated, mirroring POST."""
     response = await client.patch(

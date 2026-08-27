@@ -183,6 +183,16 @@ async def update_appointment_endpoint(
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_any_permission(MANAGE_APPOINTMENTS_ALL, MANAGE_OWN_CALENDAR)),
 ):
+    if (
+        actor.role == UserRole.DOCTOR
+        and payload.doctor_id is not None
+        and payload.doctor_id != actor.id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Doctors may only reassign appointments to their own calendar",
+        )
+
     try:
         appointment = await appointment_service.update_appointment(
             db, appointment_id, payload, actor, _own_calendar_scope(actor)
