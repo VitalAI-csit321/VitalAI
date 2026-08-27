@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import require_any_permission
 from app.auth.permissions import MANAGE_APPOINTMENTS_ALL, MANAGE_OWN_CALENDAR
 from app.database import get_db
+from app.models.appointment import AppointmentStatus, AppointmentType
 from app.models.user import User, UserRole
 from app.schemas.appointment import (
     AppointmentCreate,
@@ -65,6 +67,11 @@ async def book_appointment_endpoint(
 @router.get("", response_model=AppointmentListResponse)
 async def list_appointments_endpoint(
     doctor_id: UUID | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    appointment_type: AppointmentType | None = None,
+    status_filter: AppointmentStatus | None = Query(default=None, alias="status"),
+    search: str | None = None,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -73,7 +80,16 @@ async def list_appointments_endpoint(
     own_scope = _own_calendar_scope(actor)
     effective_doctor_id = own_scope if own_scope is not None else doctor_id
     items, total = await appointment_service.list_appointments(
-        db, actor, doctor_id=effective_doctor_id, limit=limit, offset=offset
+        db,
+        actor,
+        doctor_id=effective_doctor_id,
+        date_from=date_from,
+        date_to=date_to,
+        appointment_type=appointment_type,
+        status=status_filter,
+        search=search,
+        limit=limit,
+        offset=offset,
     )
     return AppointmentListResponse(
         items=await appointment_service.serialize_many(db, items), total=total

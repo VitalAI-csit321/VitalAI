@@ -131,27 +131,43 @@ async def book_appointment(
 
 
 async def list_appointments(
-    db: AsyncSession, actor: User, doctor_id: UUID | None = None, limit: int = 20, offset: int = 0
+    db: AsyncSession,
+    actor: User,
+    doctor_id: UUID | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    appointment_type: AppointmentType | None = None,
+    status: AppointmentStatus | None = None,
+    search: str | None = None,
+    limit: int = 20,
+    offset: int = 0,
 ) -> tuple[list[Appointment], int]:
     query = select(Appointment)
     count_query = select(func.count()).select_from(Appointment)
 
-    if doctor_id is not None:
-        query = query.where(Appointment.doctor_id == doctor_id)
-        count_query = count_query.where(Appointment.doctor_id == doctor_id)
+    def apply(q, is_count: bool):
+        if doctor_id is not None:
+            q = q.where(Appointment.doctor_id == doctor_id)
+        if date_from is not None:
+            q = q.where(Appointment.time_slot >= date_from)
+        if date_to is not None:
+            q = q.where(Appointment.time_slot < date_to)
+        if appointment_type is not None:
+            q = q.where(Appointment.appointment_type == appointment_type)
+        if status is not None:
+            q = q.where(Appointment.status == status)
+        if search or actor.role == UserRole.DOCTOR:
+            q = q.join(IntakeCase, Appointment.case_id == IntakeCase.id)
+        if search:
+            q = q.outerjoin(Patient, IntakeCase.patient_id == Patient.id).where(
+                Patient.name.ilike(f"%{search}%")
+            )
+        if actor.role == UserRole.DOCTOR:
+            q = q.where(IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id)))
+        return q
 
-    if actor.role == UserRole.DOCTOR:
-        assigned_patient_ids = assigned_patient_ids_subquery(actor.id)
-
-        query = query.join(
-            IntakeCase,
-            Appointment.case_id == IntakeCase.id,
-        ).where(IntakeCase.patient_id.in_(assigned_patient_ids))
-
-        count_query = count_query.join(
-            IntakeCase,
-            Appointment.case_id == IntakeCase.id,
-        ).where(IntakeCase.patient_id.in_(assigned_patient_ids))
+    query = apply(query, False)
+    count_query = apply(count_query, True)
 
     items_result = await db.execute(
         query.order_by(Appointment.time_slot.asc()).limit(limit).offset(offset)
