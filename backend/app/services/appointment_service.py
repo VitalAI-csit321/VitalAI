@@ -91,6 +91,7 @@ async def book_appointment(
     notify_patient: bool = True,
     notify_provider: bool = True,
     series_id: UUID | None = None,
+    commit: bool = True,
 ) -> Appointment:
     # Validated up front so a bogus doctor_id/case_id can't slip through as a
     # "successful" booking, and so the later IntegrityError catch can only
@@ -145,8 +146,9 @@ async def book_appointment(
             "time_slot": time_slot.isoformat(),
         },
     )
-    await db.commit()
-    await db.refresh(appointment)
+    if commit:
+        await db.commit()
+        await db.refresh(appointment)
     return appointment
 
 
@@ -156,8 +158,10 @@ async def book_appointment_series(
     """Book one appointment, or a linked series when payload.repeat is set.
 
     Every occurrence shares one series_id. The whole series is one transaction:
-    if occurrence three collides, nothing is booked, so the caller never has to
-    reason about a half-created series.
+    each occurrence flushes but does not commit individually, so if occurrence
+    three collides, book_appointment's own IntegrityError handler rolls back
+    the entire uncommitted transaction -- including occurrences one and two --
+    before re-raising. Nothing is booked unless every occurrence succeeds.
     """
     series_id = uuid.uuid4() if payload.repeat else None
     occurrences = payload.repeat.occurrences if payload.repeat else 1
@@ -181,8 +185,13 @@ async def book_appointment_series(
                 notify_patient=payload.notify_patient,
                 notify_provider=payload.notify_provider,
                 series_id=series_id,
+                commit=False,
             )
         )
+
+    await db.commit()
+    for appointment in created:
+        await db.refresh(appointment)
     return created
 
 
