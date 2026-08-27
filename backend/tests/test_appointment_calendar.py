@@ -209,3 +209,41 @@ async def test_cancel_accepts_a_reason(client, admin_headers, booked_appointment
     )
     assert response.status_code == 200
     assert response.json()["status"] == "cancelled"
+
+
+async def test_patch_ignores_status_field(client, admin_headers, booked_appointment):
+    """Verify PATCH cannot change status via state bypass attack."""
+    original_status = booked_appointment["status"]
+    response = await client.patch(
+        f"/api/v1/appointments/{booked_appointment['id']}",
+        headers=admin_headers,
+        json={"status": "completed"},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == original_status
+
+
+async def test_patch_ignores_doctor_id_field(client, admin_headers, booked_appointment):
+    """Verify PATCH cannot reassign doctor, maintaining RBAC scoping."""
+    from uuid import uuid4
+    original_doctor_id = booked_appointment["doctor_id"]
+    response = await client.patch(
+        f"/api/v1/appointments/{booked_appointment['id']}",
+        headers=admin_headers,
+        json={"doctor_id": str(uuid4())},
+    )
+    assert response.status_code == 200
+    assert response.json()["doctor_id"] == original_doctor_id
+
+
+async def test_patch_rejects_completed_appointment(client, admin_headers, booked_appointment):
+    """Verify PATCH cannot edit a completed appointment."""
+    await client.post(
+        f"/api/v1/appointments/{booked_appointment['id']}/complete", headers=admin_headers
+    )
+    response = await client.patch(
+        f"/api/v1/appointments/{booked_appointment['id']}",
+        headers=admin_headers,
+        json={"duration_minutes": 60},
+    )
+    assert response.status_code == 409

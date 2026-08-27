@@ -270,10 +270,14 @@ async def update_appointment(
     appointment = await _get_scoped(db, appointment_id, actor, scoped_doctor_id)
     if appointment is None:
         return None
-    if appointment.status == AppointmentStatus.CANCELLED:
-        raise AppointmentStateError("Cannot edit a cancelled appointment")
+    if appointment.status in (AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED):
+        raise AppointmentStateError(
+            f"Cannot edit a {appointment.status.value} appointment"
+        )
 
-    changes = payload.model_dump(exclude_unset=True, exclude={"reschedule_reason"})
+    changes = payload.model_dump(
+        exclude_unset=True, exclude={"reschedule_reason", "doctor_id", "status"}
+    )
     doctor_id = appointment.doctor_id
     for field, value in changes.items():
         setattr(appointment, field, value)
