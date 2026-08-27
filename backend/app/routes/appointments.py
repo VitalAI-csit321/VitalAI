@@ -14,6 +14,7 @@ from app.schemas.appointment import (
     AppointmentListResponse,
     AppointmentOut,
     AppointmentReschedule,
+    AvailabilityOut,
     CalendarMarkerOut,
     CalendarMonthOut,
     DayViewOut,
@@ -138,6 +139,17 @@ async def get_day_endpoint(
     return await appointment_service.get_day_view(
         db, actor, day, own_scope if own_scope is not None else doctor_id
     )
+
+
+@router.get("/availability", response_model=AvailabilityOut)
+async def get_availability_endpoint(
+    doctor_id: UUID,
+    day: date = Query(alias="date"),
+    slot_minutes: int = Query(default=30, ge=5, le=240),
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(MANAGE_APPOINTMENTS_ALL, MANAGE_OWN_CALENDAR)),
+):
+    return await appointment_service.get_availability(db, actor, doctor_id, day, slot_minutes)
 
 
 @router.post("/{appointment_id}/reschedule", response_model=AppointmentOut)

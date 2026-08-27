@@ -9,12 +9,15 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.scoping import assigned_patient_ids_subquery, is_assigned
+from app.config import settings
 from app.models.appointment import Appointment, AppointmentStatus, AppointmentType
 from app.models.case import IntakeCase
 from app.models.patient import Patient
 from app.models.user import User, UserRole
 from app.schemas.appointment import (
     AppointmentOut,
+    AvailabilityOut,
+    AvailabilitySlotOut,
     CalendarDayCell,
     CalendarMarkerOut,
     CalendarMonthOut,
@@ -467,4 +470,47 @@ async def get_day_view(
             )
             for did, count in sorted(per_doctor.items(), key=lambda kv: -kv[1])
         ],
+    )
+
+
+async def get_availability(
+    db: AsyncSession,
+    actor: User,
+    doctor_id: UUID,
+    day: date,
+    slot_minutes: int = 30,
+) -> AvailabilityOut:
+    start = datetime.combine(day, time.min, tzinfo=UTC)
+    end = start + timedelta(days=1)
+    appointments = await _appointments_in_range(db, actor, start, end, doctor_id)
+
+    # Only confirmed/completed reserve a slot. Pending suggestions are advisory
+    # and must not remove slots from the calendar (ADR-003).
+    blocking = [
+        a
+        for a in appointments
+        if a.status in (AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED)
+    ]
+
+    # Guard against SQLite's naive datetime round-trip (known issue in test backend).
+    # The real Postgres+asyncpg driver does not have this problem.
+    for a in blocking:
+        if a.time_slot.tzinfo is None:
+            a.time_slot = a.time_slot.replace(tzinfo=UTC)
+        if a.end_time.tzinfo is None:
+            a.end_time = a.end_time.replace(tzinfo=UTC)
+
+    slots: list[AvailabilitySlotOut] = []
+    cursor = datetime.combine(day, time(hour=settings.clinic_open_hour), tzinfo=UTC)
+    closing = datetime.combine(day, time(hour=settings.clinic_close_hour), tzinfo=UTC)
+    step = timedelta(minutes=slot_minutes)
+
+    while cursor + step <= closing:
+        slot_end = cursor + step
+        overlaps = any(a.time_slot < slot_end and a.end_time > cursor for a in blocking)
+        slots.append(AvailabilitySlotOut(start=cursor, end=slot_end, available=not overlaps))
+        cursor = slot_end
+
+    return AvailabilityOut(
+        doctor_id=doctor_id, date=day.isoformat(), slot_minutes=slot_minutes, slots=slots
     )

@@ -68,6 +68,11 @@ class Settings(BaseSettings):
     task_routing_auto_threshold: float = 0.90
     task_routing_floor: float = 0.70
 
+    # Clinic hours. The calendar UI renders an 8am-6pm grid; these are the
+    # single source of truth so a clinic that opens at 7 needs no code change.
+    clinic_open_hour: int = 8
+    clinic_close_hour: int = 18
+
     # Outlook connector (inbound mail via Microsoft Graph).
     # Defaults to disabled: every existing test, every other worktree, and CI
     # run with the connector inert, so nothing here can reach a real mailbox

@@ -101,3 +101,39 @@ async def test_day_view_reports_totals_and_providers(client, admin_headers, book
     assert body["status_breakdown"]["confirmed"] == 1
     assert body["providers"][0]["appointment_count"] == 1
     assert body["providers"][0]["doctor_name"]
+
+
+async def test_availability_marks_booked_slots_unavailable(
+    client, admin_headers, seeded_doctor, booked_appointment
+):
+    response = await client.get(
+        "/api/v1/appointments/availability",
+        headers=admin_headers,
+        params={"doctor_id": str(seeded_doctor.id), "date": "2026-09-01", "slot_minutes": 30},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["slot_minutes"] == 30
+    # 8am to 6pm in 30 minute slots.
+    assert len(body["slots"]) == 20
+    booked = next(s for s in body["slots"] if s["start"].startswith("2026-09-01T09:00"))
+    assert booked["available"] is False
+    free = next(s for s in body["slots"] if s["start"].startswith("2026-09-01T11:00"))
+    assert free["available"] is True
+
+
+async def test_availability_ignores_cancelled_appointments(
+    client, admin_headers, seeded_doctor, booked_appointment
+):
+    await client.post(
+        f"/api/v1/appointments/{booked_appointment['id']}/cancel",
+        headers=admin_headers,
+        json={"cancel_reason": "patient rescheduled"},
+    )
+    response = await client.get(
+        "/api/v1/appointments/availability",
+        headers=admin_headers,
+        params={"doctor_id": str(seeded_doctor.id), "date": "2026-09-01"},
+    )
+    slot = next(s for s in response.json()["slots"] if s["start"].startswith("2026-09-01T09:00"))
+    assert slot["available"] is True
