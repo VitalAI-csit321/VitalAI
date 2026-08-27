@@ -15,7 +15,11 @@ from app.models.case import IntakeCase
 from app.models.patient import Patient
 from app.models.user import User, UserRole
 from app.schemas.appointment import (
+    AppointmentConsentSummary,
+    AppointmentDetailOut,
+    AppointmentHistoryEntry,
     AppointmentOut,
+    AppointmentPatientSummary,
     AvailabilityOut,
     AvailabilitySlotOut,
     CalendarDayCell,
@@ -25,7 +29,8 @@ from app.schemas.appointment import (
     DayViewOut,
     ProviderDayLoad,
 )
-from app.services.audit_service import record_event
+from app.services.audit_service import get_events_for_case, record_event
+from app.services.consent_service import get_consent_for_case
 
 
 class DoctorNotFoundError(Exception):
@@ -513,4 +518,65 @@ async def get_availability(
 
     return AvailabilityOut(
         doctor_id=doctor_id, date=day.isoformat(), slot_minutes=slot_minutes, slots=slots
+    )
+
+
+_HISTORY_LABELS = {
+    "appointment.booked": "Booked",
+    "appointment.rescheduled": "Rescheduled",
+    "appointment.cancelled": "Cancelled",
+    "appointment.updated": "Updated",
+    "appointment.completed": "Completed",
+}
+
+
+async def get_appointment_detail(
+    db: AsyncSession, actor: User, appointment_id: UUID, scoped_doctor_id: UUID | None
+) -> AppointmentDetailOut | None:
+    appointment = await _get_scoped(db, appointment_id, actor, scoped_doctor_id)
+    if appointment is None:
+        return None
+
+    base = await serialize_appointment(db, appointment)
+
+    patient_summary = None
+    case = await db.get(IntakeCase, appointment.case_id)
+    if case is not None and case.patient_id is not None:
+        patient = await db.get(Patient, case.patient_id)
+        if patient is not None:
+            patient_summary = AppointmentPatientSummary(
+                id=patient.id,
+                mrn=patient.mrn,
+                name=patient.name,
+                dob=patient.dob.isoformat() if patient.dob else None,
+                gender=patient.gender.value if patient.gender else None,
+            )
+
+    consent = await get_consent_for_case(db, appointment.case_id)
+    consent_summary = (
+        AppointmentConsentSummary(status=consent.status.value, captured_at=consent.captured_at)
+        if consent is not None
+        else None
+    )
+
+    # Audit rows are scoped to the case, not the appointment, so filter on the
+    # appointment_id every appointment.* writer puts in details.
+    history = [
+        AppointmentHistoryEntry(
+            action=e.action,
+            label=_HISTORY_LABELS.get(e.action, e.action),
+            actor_label=e.actor_label,
+            timestamp=e.timestamp,
+            details=e.details or {},
+        )
+        for e in await get_events_for_case(db, appointment.case_id)
+        if e.action.startswith("appointment.")
+        and (e.details or {}).get("appointment_id") in (None, str(appointment_id))
+    ]
+
+    return AppointmentDetailOut(
+        **base.model_dump(),
+        patient=patient_summary,
+        consent=consent_summary,
+        history=history,
     )

@@ -11,6 +11,7 @@ from app.models.appointment import AppointmentStatus, AppointmentType
 from app.models.user import User, UserRole
 from app.schemas.appointment import (
     AppointmentCreate,
+    AppointmentDetailOut,
     AppointmentListResponse,
     AppointmentOut,
     AppointmentReschedule,
@@ -150,6 +151,20 @@ async def get_availability_endpoint(
     actor: User = Depends(require_any_permission(MANAGE_APPOINTMENTS_ALL, MANAGE_OWN_CALENDAR)),
 ):
     return await appointment_service.get_availability(db, actor, doctor_id, day, slot_minutes)
+
+
+@router.get("/{appointment_id}", response_model=AppointmentDetailOut)
+async def get_appointment_endpoint(
+    appointment_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(MANAGE_APPOINTMENTS_ALL, MANAGE_OWN_CALENDAR)),
+):
+    detail = await appointment_service.get_appointment_detail(
+        db, actor, appointment_id, _own_calendar_scope(actor)
+    )
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
+    return detail
 
 
 @router.post("/{appointment_id}/reschedule", response_model=AppointmentOut)

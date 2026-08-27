@@ -137,3 +137,24 @@ async def test_availability_ignores_cancelled_appointments(
     )
     slot = next(s for s in response.json()["slots"] if s["start"].startswith("2026-09-01T09:00"))
     assert slot["available"] is True
+
+
+async def test_appointment_detail_includes_patient_consent_and_history(
+    client, admin_headers, booked_appointment
+):
+    response = await client.get(
+        f"/api/v1/appointments/{booked_appointment['id']}", headers=admin_headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == booked_appointment["id"]
+    assert "patient" in body and "consent" in body
+    # The booking itself was audited, so history is never empty.
+    assert any(h["action"] == "appointment.booked" for h in body["history"])
+
+
+async def test_appointment_detail_404_for_unknown_id(client, admin_headers):
+    response = await client.get(
+        "/api/v1/appointments/00000000-0000-0000-0000-000000000000", headers=admin_headers
+    )
+    assert response.status_code == 404
