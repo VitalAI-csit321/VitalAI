@@ -77,7 +77,10 @@ async def list_appointments_endpoint(
     appointment_type: AppointmentType | None = None,
     status_filter: AppointmentStatus | None = Query(default=None, alias="status"),
     search: str | None = None,
-    limit: int = Query(default=20, ge=1, le=100),
+    # le=200, not the usual 100: CalendarPage's week view (limit: 200 in
+    # frontend/frontend/src/pages/CalendarPage.tsx) legitimately needs to fetch
+    # a whole week's appointments across every doctor in one page.
+    limit: int = Query(default=20, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_any_permission(MANAGE_APPOINTMENTS_ALL, MANAGE_OWN_CALENDAR)),
