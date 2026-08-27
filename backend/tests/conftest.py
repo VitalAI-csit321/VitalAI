@@ -397,3 +397,36 @@ async def booked_appointment(client, admin_headers, doctor_user, patient):
     )
     assert response.status_code == 201, response.text
     return response.json()
+
+
+@pytest_asyncio.fixture
+async def assigned_doctor_headers(client, admin_headers, doctor_user, patient):
+    """doctor_user with a real DoctorPatientAssignment to `patient`.
+
+    booked_appointment books for doctor_user against a case for `patient`, so
+    this is the doctor who should be able to see it. Assignment is created
+    over HTTP the same way tests/test_appointments.py's scoping cases do.
+    """
+    response = await client.post(
+        "/api/v1/assignments",
+        json={"doctor_id": str(doctor_user.id), "patient_id": str(patient.id)},
+        headers=admin_headers,
+    )
+    assert response.status_code == 201, response.text
+    return {
+        "Authorization": f"Bearer {create_access_token(doctor_user.id, doctor_user.role)}"
+    }
+
+
+@pytest_asyncio.fixture
+def unassigned_doctor_headers(doctor_headers: dict[str, str]) -> dict[str, str]:
+    """doctor_user with NO assignment row -- conftest never creates one by default.
+
+    Deliberately the SAME doctor booked_appointment belongs to, so the
+    doctor_id filter in _own_calendar_scope cannot mask a missing
+    is_assigned() check: the appointment's doctor_id matches this doctor, so
+    it must be excluded purely by the patient-assignment check, not by
+    doctor identity. This is what makes these tests a real confidentiality
+    gate rather than a vacuous pass.
+    """
+    return doctor_headers
