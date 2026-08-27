@@ -1,7 +1,7 @@
 import calendar as _calendar
 import secrets
 from collections import defaultdict
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -19,6 +19,8 @@ from app.schemas.appointment import (
     CalendarMarkerOut,
     CalendarMonthOut,
     CalendarStats,
+    DayViewOut,
+    ProviderDayLoad,
 )
 from app.services.audit_service import record_event
 
@@ -424,3 +426,45 @@ async def get_calendar_markers(
         CalendarMarkerOut(date=day.isoformat(), count=count)
         for day, count in sorted(counts.items())
     ]
+
+
+async def get_day_view(
+    db: AsyncSession, actor: User, day: date, doctor_id: UUID | None = None
+) -> DayViewOut:
+    start = datetime.combine(day, time.min, tzinfo=UTC)
+    end = start + timedelta(days=1)
+    appointments = await _appointments_in_range(db, actor, start, end, doctor_id)
+
+    counted = [a for a in appointments if a.status != AppointmentStatus.CANCELLED]
+    status_breakdown: dict[str, int] = defaultdict(int)
+    for a in appointments:
+        status_breakdown[a.status.value] += 1
+
+    per_doctor: dict[UUID, int] = defaultdict(int)
+    for a in counted:
+        per_doctor[a.doctor_id] += 1
+
+    doctor_names = {
+        row[0]: row[1]
+        for row in (
+            await db.execute(
+                select(User.id, User.full_name).where(User.id.in_(per_doctor.keys() or [None]))
+            )
+        ).all()
+    }
+
+    return DayViewOut(
+        date=day.isoformat(),
+        stats=_stats(appointments),
+        appointments=await serialize_many(db, appointments),
+        total_booked_minutes=sum(a.duration_minutes for a in counted),
+        status_breakdown=dict(status_breakdown),
+        providers=[
+            ProviderDayLoad(
+                doctor_id=did,
+                doctor_name=doctor_names.get(did, "Unknown"),
+                appointment_count=count,
+            )
+            for did, count in sorted(per_doctor.items(), key=lambda kv: -kv[1])
+        ],
+    )

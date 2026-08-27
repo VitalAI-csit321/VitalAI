@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -16,6 +16,7 @@ from app.schemas.appointment import (
     AppointmentReschedule,
     CalendarMarkerOut,
     CalendarMonthOut,
+    DayViewOut,
 )
 from app.services import appointment_service
 from app.services.appointment_service import (
@@ -123,6 +124,19 @@ async def get_calendar_markers_endpoint(
     own_scope = _own_calendar_scope(actor)
     return await appointment_service.get_calendar_markers(
         db, actor, year, month, own_scope if own_scope is not None else doctor_id
+    )
+
+
+@router.get("/day", response_model=DayViewOut)
+async def get_day_endpoint(
+    day: date = Query(alias="date"),
+    doctor_id: UUID | None = None,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(MANAGE_APPOINTMENTS_ALL, MANAGE_OWN_CALENDAR)),
+):
+    own_scope = _own_calendar_scope(actor)
+    return await appointment_service.get_day_view(
+        db, actor, day, own_scope if own_scope is not None else doctor_id
     )
 
 

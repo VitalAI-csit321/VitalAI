@@ -88,3 +88,16 @@ async def test_calendar_markers_returns_only_days_with_appointments(
     )
     assert response.status_code == 200
     assert response.json() == [{"date": "2026-09-01", "count": 1}]
+
+
+async def test_day_view_reports_totals_and_providers(client, admin_headers, booked_appointment):
+    response = await client.get(
+        "/api/v1/appointments/day", headers=admin_headers, params={"date": "2026-09-01"}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["date"] == "2026-09-01"
+    assert body["total_booked_minutes"] == 30
+    assert body["status_breakdown"]["confirmed"] == 1
+    assert body["providers"][0]["appointment_count"] == 1
+    assert body["providers"][0]["doctor_name"]
