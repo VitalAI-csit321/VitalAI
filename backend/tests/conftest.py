@@ -413,9 +413,7 @@ async def assigned_doctor_headers(client, admin_headers, doctor_user, patient):
         headers=admin_headers,
     )
     assert response.status_code == 201, response.text
-    return {
-        "Authorization": f"Bearer {create_access_token(doctor_user.id, doctor_user.role)}"
-    }
+    return {"Authorization": f"Bearer {create_access_token(doctor_user.id, doctor_user.role)}"}
 
 
 @pytest_asyncio.fixture

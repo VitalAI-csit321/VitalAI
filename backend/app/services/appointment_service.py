@@ -17,6 +17,7 @@ from app.models.patient import Patient
 from app.models.user import User, UserRole
 from app.schemas.appointment import (
     AppointmentConsentSummary,
+    AppointmentCreate,
     AppointmentDetailOut,
     AppointmentHistoryEntry,
     AppointmentOut,
@@ -153,7 +154,7 @@ async def book_appointment(
 
 
 async def book_appointment_series(
-    db: AsyncSession, payload: "AppointmentCreate", actor: User
+    db: AsyncSession, payload: AppointmentCreate, actor: User
 ) -> list[Appointment]:
     """Book one appointment, or a linked series when payload.repeat is set.
 
@@ -317,9 +318,7 @@ async def update_appointment(
     if appointment is None:
         return None
     if appointment.status in (AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED):
-        raise AppointmentStateError(
-            f"Cannot edit a {appointment.status.value} appointment"
-        )
+        raise AppointmentStateError(f"Cannot edit a {appointment.status.value} appointment")
 
     changes = payload.model_dump(
         exclude_unset=True, exclude={"reschedule_reason", "doctor_id", "status"}
@@ -416,9 +415,7 @@ async def serialize_appointment(db: AsyncSession, appointment: Appointment) -> A
     return (await serialize_many(db, [appointment]))[0]
 
 
-async def serialize_many(
-    db: AsyncSession, appointments: list[Appointment]
-) -> list[AppointmentOut]:
+async def serialize_many(db: AsyncSession, appointments: list[Appointment]) -> list[AppointmentOut]:
     if not appointments:
         return []
 
@@ -426,9 +423,8 @@ async def serialize_many(
     case_ids = {a.case_id for a in appointments}
 
     doctors = (
-        (await db.execute(select(User.id, User.full_name).where(User.id.in_(doctor_ids))))
-        .all()
-    )
+        await db.execute(select(User.id, User.full_name).where(User.id.in_(doctor_ids)))
+    ).all()
     doctor_names = {row[0]: row[1] for row in doctors}
 
     patient_rows = (
@@ -486,9 +482,7 @@ def _stats(appointments: list[Appointment]) -> CalendarStats:
             for a in appointments
             if a.status in (AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED)
         ),
-        pending_confirmation=sum(
-            1 for a in appointments if a.status == AppointmentStatus.PENDING
-        ),
+        pending_confirmation=sum(1 for a in appointments if a.status == AppointmentStatus.PENDING),
         confirmed_today=sum(
             1
             for a in appointments

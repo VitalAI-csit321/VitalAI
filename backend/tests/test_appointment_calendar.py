@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 
 from app.models import Patient, User
-from tests.test_appointments import _create_case, _slot
+from tests.test_appointments import _create_case
 
 pytestmark = pytest.mark.asyncio
 
@@ -332,6 +332,7 @@ async def test_patch_ignores_status_field(client, admin_headers, booked_appointm
 async def test_patch_ignores_doctor_id_field(client, admin_headers, booked_appointment):
     """Verify PATCH cannot reassign doctor, maintaining RBAC scoping."""
     from uuid import uuid4
+
     original_doctor_id = booked_appointment["doctor_id"]
     response = await client.patch(
         f"/api/v1/appointments/{booked_appointment['id']}",
