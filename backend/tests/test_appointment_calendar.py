@@ -158,3 +158,54 @@ async def test_appointment_detail_404_for_unknown_id(client, admin_headers):
         "/api/v1/appointments/00000000-0000-0000-0000-000000000000", headers=admin_headers
     )
     assert response.status_code == 404
+
+
+async def test_patch_updates_mutable_fields(client, admin_headers, booked_appointment):
+    response = await client.patch(
+        f"/api/v1/appointments/{booked_appointment['id']}",
+        headers=admin_headers,
+        json={"duration_minutes": 45, "location": "Room 3", "appointment_type": "follow_up"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["duration_minutes"] == 45
+    assert body["location"] == "Room 3"
+    assert body["appointment_type"] == "follow_up"
+
+
+async def test_patch_rejects_zero_duration(client, admin_headers, booked_appointment):
+    """F4: rejected at the schema layer with 422, never reaching the DB."""
+    response = await client.patch(
+        f"/api/v1/appointments/{booked_appointment['id']}",
+        headers=admin_headers,
+        json={"duration_minutes": 0},
+    )
+    assert response.status_code == 422
+
+
+async def test_patch_rejects_negative_duration(client, admin_headers, booked_appointment):
+    """F5: would raise DataError, not IntegrityError, if it reached the DB."""
+    response = await client.patch(
+        f"/api/v1/appointments/{booked_appointment['id']}",
+        headers=admin_headers,
+        json={"duration_minutes": -30},
+    )
+    assert response.status_code == 422
+
+
+async def test_complete_marks_appointment_completed(client, admin_headers, booked_appointment):
+    response = await client.post(
+        f"/api/v1/appointments/{booked_appointment['id']}/complete", headers=admin_headers
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "completed"
+
+
+async def test_cancel_accepts_a_reason(client, admin_headers, booked_appointment):
+    response = await client.post(
+        f"/api/v1/appointments/{booked_appointment['id']}/cancel",
+        headers=admin_headers,
+        json={"cancel_reason": "patient unwell", "notify_patient": False},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "cancelled"

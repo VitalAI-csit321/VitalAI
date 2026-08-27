@@ -20,6 +20,7 @@ from app.schemas.appointment import (
     AppointmentHistoryEntry,
     AppointmentOut,
     AppointmentPatientSummary,
+    AppointmentUpdate,
     AvailabilityOut,
     AvailabilitySlotOut,
     CalendarDayCell,
@@ -259,8 +260,78 @@ async def reschedule_appointment(
     return appointment
 
 
-async def cancel_appointment(
+async def update_appointment(
+    db: AsyncSession,
+    appointment_id: UUID,
+    payload: AppointmentUpdate,
+    actor: User,
+    scoped_doctor_id: UUID | None,
+) -> Appointment | None:
+    appointment = await _get_scoped(db, appointment_id, actor, scoped_doctor_id)
+    if appointment is None:
+        return None
+    if appointment.status == AppointmentStatus.CANCELLED:
+        raise AppointmentStateError("Cannot edit a cancelled appointment")
+
+    changes = payload.model_dump(exclude_unset=True, exclude={"reschedule_reason"})
+    doctor_id = appointment.doctor_id
+    for field, value in changes.items():
+        setattr(appointment, field, value)
+
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise SlotTakenError(f"Doctor {doctor_id} already has an appointment at that time") from exc
+
+    await record_event(
+        db,
+        case_id=appointment.case_id,
+        actor=actor,
+        action="appointment.updated",
+        details={
+            "appointment_id": str(appointment_id),
+            "fields": sorted(changes.keys()),
+            "reschedule_reason": payload.reschedule_reason,
+        },
+    )
+    await db.commit()
+    await db.refresh(appointment)
+    return appointment
+
+
+async def complete_appointment(
     db: AsyncSession, appointment_id: UUID, actor: User, scoped_doctor_id: UUID | None
+) -> Appointment | None:
+    appointment = await _get_scoped(db, appointment_id, actor, scoped_doctor_id)
+    if appointment is None:
+        return None
+    if appointment.status != AppointmentStatus.CONFIRMED:
+        raise AppointmentStateError(
+            f"Only a confirmed appointment can be completed "
+            f"(this one is '{appointment.status.value}')"
+        )
+
+    appointment.status = AppointmentStatus.COMPLETED
+    await record_event(
+        db,
+        case_id=appointment.case_id,
+        actor=actor,
+        action="appointment.completed",
+        details={"appointment_id": str(appointment_id)},
+    )
+    await db.commit()
+    await db.refresh(appointment)
+    return appointment
+
+
+async def cancel_appointment(
+    db: AsyncSession,
+    appointment_id: UUID,
+    actor: User,
+    scoped_doctor_id: UUID | None,
+    cancel_reason: str | None = None,
+    notify_patient: bool = True,
 ) -> Appointment | None:
     appointment = await _get_scoped(db, appointment_id, actor, scoped_doctor_id)
     if appointment is None:
@@ -274,7 +345,11 @@ async def cancel_appointment(
         case_id=appointment.case_id,
         actor=actor,
         action="appointment.cancelled",
-        details={"appointment_id": str(appointment_id)},
+        details={
+            "appointment_id": str(appointment_id),
+            "cancel_reason": cancel_reason,
+            "notify_patient": notify_patient,
+        },
     )
     await db.commit()
     await db.refresh(appointment)

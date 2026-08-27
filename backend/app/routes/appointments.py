@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_any_permission
@@ -10,11 +10,13 @@ from app.database import get_db
 from app.models.appointment import AppointmentStatus, AppointmentType
 from app.models.user import User, UserRole
 from app.schemas.appointment import (
+    AppointmentCancel,
     AppointmentCreate,
     AppointmentDetailOut,
     AppointmentListResponse,
     AppointmentOut,
     AppointmentReschedule,
+    AppointmentUpdate,
     AvailabilityOut,
     CalendarMarkerOut,
     CalendarMonthOut,
@@ -167,6 +169,43 @@ async def get_appointment_endpoint(
     return detail
 
 
+@router.patch("/{appointment_id}", response_model=AppointmentOut)
+async def update_appointment_endpoint(
+    appointment_id: UUID,
+    payload: AppointmentUpdate,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(MANAGE_APPOINTMENTS_ALL, MANAGE_OWN_CALENDAR)),
+):
+    try:
+        appointment = await appointment_service.update_appointment(
+            db, appointment_id, payload, actor, _own_calendar_scope(actor)
+        )
+    except SlotTakenError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except AppointmentStateError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if appointment is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
+    return await appointment_service.serialize_appointment(db, appointment)
+
+
+@router.post("/{appointment_id}/complete", response_model=AppointmentOut)
+async def complete_appointment_endpoint(
+    appointment_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(MANAGE_APPOINTMENTS_ALL, MANAGE_OWN_CALENDAR)),
+):
+    try:
+        appointment = await appointment_service.complete_appointment(
+            db, appointment_id, actor, _own_calendar_scope(actor)
+        )
+    except AppointmentStateError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if appointment is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
+    return await appointment_service.serialize_appointment(db, appointment)
+
+
 @router.post("/{appointment_id}/reschedule", response_model=AppointmentOut)
 async def reschedule_appointment_endpoint(
     appointment_id: UUID,
@@ -193,10 +232,16 @@ async def cancel_appointment_endpoint(
     appointment_id: UUID,
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_any_permission(MANAGE_APPOINTMENTS_ALL, MANAGE_OWN_CALENDAR)),
+    payload: AppointmentCancel | None = Body(None),
 ):
     try:
         appointment = await appointment_service.cancel_appointment(
-            db, appointment_id, actor, _own_calendar_scope(actor)
+            db,
+            appointment_id,
+            actor,
+            _own_calendar_scope(actor),
+            cancel_reason=payload.cancel_reason if payload else None,
+            notify_patient=payload.notify_patient if payload else True,
         )
     except AppointmentStateError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
