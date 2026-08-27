@@ -1,5 +1,7 @@
+import calendar as _calendar
 import secrets
-from datetime import datetime
+from collections import defaultdict
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -11,7 +13,13 @@ from app.models.appointment import Appointment, AppointmentStatus, AppointmentTy
 from app.models.case import IntakeCase
 from app.models.patient import Patient
 from app.models.user import User, UserRole
-from app.schemas.appointment import AppointmentOut
+from app.schemas.appointment import (
+    AppointmentOut,
+    CalendarDayCell,
+    CalendarMarkerOut,
+    CalendarMonthOut,
+    CalendarStats,
+)
 from app.services.audit_service import record_event
 
 
@@ -326,3 +334,93 @@ async def serialize_many(
             )
         )
     return out
+
+
+def _month_bounds(year: int, month: int) -> tuple[datetime, datetime]:
+    first = datetime(year, month, 1, tzinfo=UTC)
+    last_day = _calendar.monthrange(year, month)[1]
+    end = datetime(year, month, last_day, tzinfo=UTC) + timedelta(days=1)
+    return first, end
+
+
+def _stats(appointments: list[Appointment]) -> CalendarStats:
+    today = datetime.now(UTC).date()
+    return CalendarStats(
+        scheduled=sum(
+            1
+            for a in appointments
+            if a.status in (AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED)
+        ),
+        pending_confirmation=sum(
+            1 for a in appointments if a.status == AppointmentStatus.PENDING
+        ),
+        confirmed_today=sum(
+            1
+            for a in appointments
+            if a.status == AppointmentStatus.CONFIRMED and a.time_slot.date() == today
+        ),
+        cancellations=sum(1 for a in appointments if a.status == AppointmentStatus.CANCELLED),
+    )
+
+
+async def _appointments_in_range(
+    db: AsyncSession,
+    actor: User,
+    start: datetime,
+    end: datetime,
+    doctor_id: UUID | None,
+) -> list[Appointment]:
+    # limit is deliberately high: a month view must not paginate.
+    items, _ = await list_appointments(
+        db, actor, doctor_id=doctor_id, date_from=start, date_to=end, limit=1000
+    )
+    return items
+
+
+async def get_calendar_month(
+    db: AsyncSession, actor: User, year: int, month: int, doctor_id: UUID | None = None
+) -> CalendarMonthOut:
+    start, end = _month_bounds(year, month)
+    appointments = await _appointments_in_range(db, actor, start, end, doctor_id)
+
+    # Serialize the whole month in ONE pass, then group. Calling serialize_many
+    # per day would fire two extra queries per day (about 60 for a month).
+    serialized = await serialize_many(db, appointments)
+    by_day: dict[date, list] = defaultdict(list)
+    for item in serialized:
+        ts = item.time_slot
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=UTC)
+        by_day[ts.astimezone(UTC).date()].append(item)
+
+    days: list[CalendarDayCell] = []
+    for day_number in range(1, _calendar.monthrange(year, month)[1] + 1):
+        day = date(year, month, day_number)
+        day_appointments = by_day.get(day, [])
+        days.append(
+            CalendarDayCell(
+                date=day.isoformat(),
+                appointments=day_appointments,
+                total=len(day_appointments),
+            )
+        )
+
+    return CalendarMonthOut(year=year, month=month, stats=_stats(appointments), days=days)
+
+
+async def get_calendar_markers(
+    db: AsyncSession, actor: User, year: int, month: int, doctor_id: UUID | None = None
+) -> list[CalendarMarkerOut]:
+    start, end = _month_bounds(year, month)
+    appointments = await _appointments_in_range(db, actor, start, end, doctor_id)
+
+    counts: dict[date, int] = defaultdict(int)
+    for a in appointments:
+        ts = a.time_slot
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=UTC)
+        counts[ts.astimezone(UTC).date()] += 1
+    return [
+        CalendarMarkerOut(date=day.isoformat(), count=count)
+        for day, count in sorted(counts.items())
+    ]
