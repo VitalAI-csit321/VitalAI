@@ -126,6 +126,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # NOT SAFE against a database with any real post-migration activity:
+    # (1) recreating unq_doctor_timeslot fails if two pending rows share
+    #     (doctor_id, time_slot), which ADR-003 deliberately allows;
+    # (2) Postgres cannot drop the 'completed' enum value, and any row
+    #     already marked completed becomes undeserializable by pre-0026 code.
+    # This downgrade is best-effort for an unused/empty database only.
     bind = op.get_bind()
     bind.exec_driver_sql("ALTER TABLE appointments DROP CONSTRAINT excl_doctor_overlap")
     op.create_unique_constraint(

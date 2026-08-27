@@ -365,6 +365,27 @@ async def pg_client(pg_session):
 
 
 @pytest_asyncio.fixture
+async def pg_admin_headers(pg_make_user) -> dict[str, str]:
+    """admin_headers's real-Postgres equivalent -- pair with pg_client.
+
+    C1 (final appointments review): the double-booking constraint added in
+    migration 0026 is a Postgres-only EXCLUDE USING gist with no SQLite
+    equivalent, so tests that must exercise it need the whole request bound
+    to pg_session regardless of what DATABASE_URL the rest of the suite runs
+    under -- admin_headers/client are bound to the default db_session/SQLite
+    track and can't be reused here.
+    """
+    user = await pg_make_user(UserRole.ADMIN, f"pg-admin-{uuid4()}@example.com")
+    return {"Authorization": f"Bearer {create_access_token(user.id, user.role)}"}
+
+
+@pytest_asyncio.fixture
+async def pg_doctor_user(pg_make_user) -> User:
+    """doctor_user's real-Postgres equivalent -- see pg_admin_headers."""
+    return await pg_make_user(UserRole.DOCTOR, f"pg-doctor-{uuid4()}@example.com")
+
+
+@pytest_asyncio.fixture
 async def booked_appointment(client, admin_headers, doctor_user, patient):
     """One confirmed appointment created through the real API.
 

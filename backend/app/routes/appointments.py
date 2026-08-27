@@ -153,6 +153,12 @@ async def get_availability_endpoint(
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_any_permission(MANAGE_APPOINTMENTS_ALL, MANAGE_OWN_CALENDAR)),
 ):
+    own_scope = _own_calendar_scope(actor)
+    if own_scope is not None and own_scope != doctor_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Doctors may only view their own calendar's availability",
+        )
     return await appointment_service.get_availability(db, actor, doctor_id, day, slot_minutes)
 
 
@@ -185,6 +191,12 @@ async def update_appointment_endpoint(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except AppointmentStateError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except DoctorNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except NotADoctorError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
     if appointment is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
     return await appointment_service.serialize_appointment(db, appointment)

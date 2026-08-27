@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.appointment import AppointmentStatus, AppointmentType
 
@@ -26,6 +26,18 @@ class AppointmentCreate(BaseModel):
     notify_patient: bool = True
     notify_provider: bool = True
     repeat: AppointmentRepeat | None = None
+
+    @field_validator("status")
+    @classmethod
+    def _status_must_be_creatable(cls, v: AppointmentStatus) -> AppointmentStatus:
+        # completed/cancelled are reached via complete_appointment/cancel_appointment,
+        # which enforce their own state guards (e.g. only a CONFIRMED appointment
+        # can be completed) and the overlap constraint (0026) only covers
+        # confirmed/completed rows -- creating straight into either state on POST
+        # would bypass both.
+        if v not in (AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED):
+            raise ValueError("New appointments can only be created as pending or confirmed")
+        return v
 
 
 class AppointmentUpdate(BaseModel):

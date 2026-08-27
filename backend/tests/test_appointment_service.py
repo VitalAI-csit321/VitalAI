@@ -105,18 +105,24 @@ async def test_book_appointment_missing_case_raises(db_session: AsyncSession):
         await appointment_service.book_appointment(db_session, doctor.id, uuid4(), _slot(), admin)
 
 
-async def test_book_appointment_duplicate_slot_raises(db_session: AsyncSession):
+async def test_book_appointment_duplicate_slot_raises(pg_session: AsyncSession):
+    """C1: forced onto real Postgres (pg_session) so this always exercises
+    migration 0026's EXCLUDE USING gist constraint, regardless of what
+    DATABASE_URL the rest of the suite runs under -- SQLite has no
+    equivalent, so on the default backend this would pass without testing
+    anything.
+    """
     admin = _user(UserRole.ADMIN)
     doctor = _user(UserRole.DOCTOR)
-    db_session.add_all([admin, doctor])
-    await db_session.commit()
-    case1 = await _case(db_session)
-    case2 = await _case(db_session)
+    pg_session.add_all([admin, doctor])
+    await pg_session.commit()
+    case1 = await _case(pg_session)
+    case2 = await _case(pg_session)
     slot = _slot()
 
-    await appointment_service.book_appointment(db_session, doctor.id, case1.id, slot, admin)
+    await appointment_service.book_appointment(pg_session, doctor.id, case1.id, slot, admin)
     with pytest.raises(SlotTakenError):
-        await appointment_service.book_appointment(db_session, doctor.id, case2.id, slot, admin)
+        await appointment_service.book_appointment(pg_session, doctor.id, case2.id, slot, admin)
 
 
 async def test_list_appointments_scoped_to_doctor(db_session: AsyncSession):
@@ -218,22 +224,25 @@ async def test_reschedule_cancelled_appointment_raises(db_session: AsyncSession)
         )
 
 
-async def test_reschedule_into_taken_slot_raises(db_session: AsyncSession):
+async def test_reschedule_into_taken_slot_raises(pg_session: AsyncSession):
+    """C1: forced onto real Postgres (pg_session) -- see
+    test_book_appointment_duplicate_slot_raises above for why.
+    """
     admin = _user(UserRole.ADMIN)
     doctor = _user(UserRole.DOCTOR)
-    db_session.add_all([admin, doctor])
-    await db_session.commit()
-    case = await _case(db_session)
+    pg_session.add_all([admin, doctor])
+    await pg_session.commit()
+    case = await _case(pg_session)
     slot_a = _slot(1)
     slot_b = _slot(2)
-    await appointment_service.book_appointment(db_session, doctor.id, case.id, slot_a, admin)
+    await appointment_service.book_appointment(pg_session, doctor.id, case.id, slot_a, admin)
     appointment_b = await appointment_service.book_appointment(
-        db_session, doctor.id, case.id, slot_b, admin
+        pg_session, doctor.id, case.id, slot_b, admin
     )
 
     with pytest.raises(SlotTakenError):
         await appointment_service.reschedule_appointment(
-            db_session, appointment_b.id, slot_a, admin, scoped_doctor_id=None
+            pg_session, appointment_b.id, slot_a, admin, scoped_doctor_id=None
         )
 
 

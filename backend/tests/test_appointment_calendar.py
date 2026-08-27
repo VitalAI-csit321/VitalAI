@@ -1,10 +1,31 @@
+from uuid import uuid4
+
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.security import hash_password
 from app.models import Patient, User
+from app.models.user import UserRole
 from tests.test_appointments import _create_case
 
 pytestmark = pytest.mark.asyncio
+
+
+async def _second_doctor(
+    db_session: AsyncSession, email: str = "second-doctor@example.com"
+) -> User:
+    """A distinct DOCTOR user, for PATCH doctor_id reassignment tests."""
+    doctor = User(
+        email=email,
+        hashed_password=hash_password("password123"),
+        full_name="Second Doctor",
+        role=UserRole.DOCTOR,
+    )
+    db_session.add(doctor)
+    await db_session.commit()
+    await db_session.refresh(doctor)
+    return doctor
 
 
 async def test_appointment_response_includes_derived_and_joined_fields(
@@ -143,6 +164,21 @@ async def test_availability_ignores_cancelled_appointments(
     assert slot["available"] is True
 
 
+async def test_availability_denies_doctor_for_other_doctors_calendar(
+    client, doctor_headers, db_session: AsyncSession
+):
+    """I1: /availability now has the same own-calendar-only parity check as
+    every other doctor-scoped endpoint.
+    """
+    other_doctor = await _second_doctor(db_session, "availability-other-doctor@example.com")
+    response = await client.get(
+        "/api/v1/appointments/availability",
+        headers=doctor_headers,
+        params={"doctor_id": str(other_doctor.id), "date": "2026-09-01"},
+    )
+    assert response.status_code == 403
+
+
 async def test_appointment_detail_includes_patient_consent_and_history(
     client, admin_headers, booked_appointment
 ):
@@ -232,22 +268,29 @@ async def test_single_booking_has_no_series_id(client, admin_headers, booked_app
 
 
 async def test_repeat_series_collision_leaves_no_partial_series(
-    client: AsyncClient, admin_headers: dict, seeded_doctor: User, patient: Patient
+    pg_client: AsyncClient, pg_admin_headers: dict, pg_doctor_user: User, pg_patient: Patient
 ):
     """Verify series atomicity: if any occurrence collides, nothing is booked.
 
     When DB constraint (Postgres EXCLUDE) detects a collision during flush,
     IntegrityError is caught and the entire series transaction rolls back.
+
+    C1: forced onto real Postgres (pg_client/pg_session) unconditionally, so
+    this always exercises migration 0026's EXCLUDE USING gist constraint
+    regardless of what DATABASE_URL the rest of the suite runs under. That
+    constraint has no SQLite equivalent, so the old SQLite branch (series
+    always succeeds, nothing to assert about collisions) is gone -- this test
+    now only has one path to verify.
     """
-    case_id = await _create_case(client, admin_headers, patient)
+    case_id = await _create_case(pg_client, pg_admin_headers, pg_patient)
 
     # Create a standalone appointment at a specific time slot.
     collision_slot = "2026-11-09T10:00:00Z"
-    standalone = await client.post(
+    standalone = await pg_client.post(
         "/api/v1/appointments",
-        headers=admin_headers,
+        headers=pg_admin_headers,
         json={
-            "doctor_id": str(seeded_doctor.id),
+            "doctor_id": str(pg_doctor_user.id),
             "case_id": case_id,
             "time_slot": collision_slot,
             "duration_minutes": 30,
@@ -260,11 +303,11 @@ async def test_repeat_series_collision_leaves_no_partial_series(
     # Occurrence 1: 2026-11-02T10:00:00Z (free)
     # Occurrence 2: 2026-11-09T10:00:00Z (collision!)
     # Occurrence 3: 2026-11-16T10:00:00Z (free)
-    response = await client.post(
+    response = await pg_client.post(
         "/api/v1/appointments",
-        headers=admin_headers,
+        headers=pg_admin_headers,
         json={
-            "doctor_id": str(seeded_doctor.id),
+            "doctor_id": str(pg_doctor_user.id),
             "case_id": case_id,
             "time_slot": "2026-11-02T10:00:00Z",
             "duration_minutes": 30,
@@ -272,31 +315,15 @@ async def test_repeat_series_collision_leaves_no_partial_series(
         },
     )
 
-    # Postgres with EXCLUDE constraint will return 409 on collision.
-    # SQLite has no EXCLUDE constraint, so collision goes undetected at DB level,
-    # but atomicity is still guaranteed: if flush had failed, nothing would commit.
-    if response.status_code == 409:
-        # Collision detected, verify no partial series was created.
-        listed = await client.get(
-            "/api/v1/appointments",
-            headers=admin_headers,
-            params={"date_from": "2026-11-01T00:00:00Z", "date_to": "2026-11-30T00:00:00Z"},
-        )
-        items = listed.json()["items"]
-        assert len(items) == 1
-        assert items[0]["id"] == standalone_id
-    else:
-        # SQLite: no constraint, but series should still exist (all slots were free there).
-        # Verify all 3 occurrences were created.
-        assert response.status_code == 201
-        listed = await client.get(
-            "/api/v1/appointments",
-            headers=admin_headers,
-            params={"date_from": "2026-11-01T00:00:00Z", "date_to": "2026-11-30T00:00:00Z"},
-        )
-        series_id = response.json()["series_id"]
-        series_items = [a for a in listed.json()["items"] if a["series_id"] == series_id]
-        assert len(series_items) == 3
+    assert response.status_code == 409
+    listed = await pg_client.get(
+        "/api/v1/appointments",
+        headers=pg_admin_headers,
+        params={"date_from": "2026-11-01T00:00:00Z", "date_to": "2026-11-30T00:00:00Z"},
+    )
+    items = listed.json()["items"]
+    assert len(items) == 1
+    assert items[0]["id"] == standalone_id
 
 
 async def test_complete_marks_appointment_completed(client, admin_headers, booked_appointment):
@@ -317,30 +344,74 @@ async def test_cancel_accepts_a_reason(client, admin_headers, booked_appointment
     assert response.json()["status"] == "cancelled"
 
 
-async def test_patch_ignores_status_field(client, admin_headers, booked_appointment):
-    """Verify PATCH cannot change status via state bypass attack."""
-    original_status = booked_appointment["status"]
+async def test_patch_status_pending_to_confirmed_succeeds(
+    client: AsyncClient, admin_headers: dict, doctor_user: User, patient: Patient
+):
+    """C2: status is no longer silently dropped -- the Edit page's own
+    pending<->confirmed transition must actually apply.
+    """
+    case_id = await _create_case(client, admin_headers, patient)
+    created = await client.post(
+        "/api/v1/appointments",
+        headers=admin_headers,
+        json={
+            "doctor_id": str(doctor_user.id),
+            "case_id": case_id,
+            "time_slot": "2026-09-05T09:00:00Z",
+            "duration_minutes": 30,
+            "status": "pending",
+        },
+    )
+    assert created.status_code == 201
+    assert created.json()["status"] == "pending"
+
+    response = await client.patch(
+        f"/api/v1/appointments/{created.json()['id']}",
+        headers=admin_headers,
+        json={"status": "confirmed"},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "confirmed"
+
+
+async def test_patch_rejects_terminal_status_transition(client, admin_headers, booked_appointment):
+    """C2: PATCH still cannot bounce status straight to a terminal state --
+    that must go through the dedicated /complete or /cancel endpoint -- but
+    now it's a clear 409 instead of a silent no-op.
+    """
     response = await client.patch(
         f"/api/v1/appointments/{booked_appointment['id']}",
         headers=admin_headers,
         json={"status": "completed"},
     )
+    assert response.status_code == 409
+    detail = response.json()["detail"]
+    assert "/complete" in detail or "/cancel" in detail
+
+
+async def test_patch_reassigns_to_valid_doctor(
+    client: AsyncClient, admin_headers: dict, booked_appointment, db_session: AsyncSession
+):
+    """C2: a valid doctor_id on PATCH is validated and applied, not dropped."""
+    second_doctor = await _second_doctor(db_session, "patch-reassign-target@example.com")
+
+    response = await client.patch(
+        f"/api/v1/appointments/{booked_appointment['id']}",
+        headers=admin_headers,
+        json={"doctor_id": str(second_doctor.id)},
+    )
     assert response.status_code == 200
-    assert response.json()["status"] == original_status
+    assert response.json()["doctor_id"] == str(second_doctor.id)
 
 
-async def test_patch_ignores_doctor_id_field(client, admin_headers, booked_appointment):
-    """Verify PATCH cannot reassign doctor, maintaining RBAC scoping."""
-    from uuid import uuid4
-
-    original_doctor_id = booked_appointment["doctor_id"]
+async def test_patch_rejects_unknown_doctor_id(client, admin_headers, booked_appointment):
+    """C2: an unknown doctor_id on PATCH is now validated, mirroring POST."""
     response = await client.patch(
         f"/api/v1/appointments/{booked_appointment['id']}",
         headers=admin_headers,
         json={"doctor_id": str(uuid4())},
     )
-    assert response.status_code == 200
-    assert response.json()["doctor_id"] == original_doctor_id
+    assert response.status_code == 404
 
 
 async def test_patch_rejects_completed_appointment(client, admin_headers, booked_appointment):

@@ -320,10 +320,38 @@ async def update_appointment(
     if appointment.status in (AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED):
         raise AppointmentStateError(f"Cannot edit a {appointment.status.value} appointment")
 
-    changes = payload.model_dump(
-        exclude_unset=True, exclude={"reschedule_reason", "doctor_id", "status"}
-    )
-    doctor_id = appointment.doctor_id
+    # doctor_id/status are pulled out before the blanket setattr loop below so
+    # each gets its own validation -- book_appointment's checks for doctor_id,
+    # and an explicit allow-list for status -- before being applied. Both were
+    # excluded from `changes` entirely by Task 9's fix for a real bypass (PATCH
+    # silently writing an unvalidated doctor_id/status straight onto the row);
+    # that exclusion still stands, this just makes the two fields usable again
+    # instead of being silently dropped, since the Edit page always sends both.
+    changes = payload.model_dump(exclude_unset=True, exclude={"reschedule_reason"})
+    new_status = changes.pop("status", None)
+    new_doctor_id = changes.pop("doctor_id", None)
+
+    if new_status is not None and new_status != appointment.status:
+        if new_status not in (AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED):
+            raise AppointmentStateError(
+                f"Cannot set status to '{new_status.value}' via PATCH; use the "
+                "/complete or /cancel endpoint instead"
+            )
+        changes["status"] = new_status
+
+    if new_doctor_id is not None and new_doctor_id != appointment.doctor_id:
+        doctor = await db.get(User, new_doctor_id)
+        if doctor is None:
+            raise DoctorNotFoundError(f"No user with id {new_doctor_id}")
+        if doctor.role != UserRole.DOCTOR:
+            raise NotADoctorError(
+                f"User {new_doctor_id} has role '{doctor.role.value}', not 'doctor'"
+            )
+        changes["doctor_id"] = new_doctor_id
+
+    # The doctor who'd actually hold the colliding slot: the new one if this
+    # PATCH is reassigning, otherwise the appointment's existing doctor.
+    doctor_id = new_doctor_id if new_doctor_id is not None else appointment.doctor_id
     for field, value in changes.items():
         setattr(appointment, field, value)
 
@@ -500,9 +528,15 @@ async def _appointments_in_range(
     doctor_id: UUID | None,
 ) -> list[Appointment]:
     # limit is deliberately high: a month view must not paginate.
-    items, _ = await list_appointments(
+    items, total = await list_appointments(
         db, actor, doctor_id=doctor_id, date_from=start, date_to=end, limit=1000
     )
+    if len(items) < total:
+        raise RuntimeError(
+            f"Range {start}..{end} for doctor_id={doctor_id} has {total} appointments, "
+            f"exceeding the 1000-row limit used for calendar/day/availability views. "
+            "This view needs pagination or a narrower range."
+        )
     return items
 
 
@@ -597,6 +631,31 @@ async def get_day_view(
     )
 
 
+async def _doctor_busy_slots(
+    db: AsyncSession, doctor_id: UUID, start: datetime, end: datetime
+) -> list[Appointment]:
+    """Appointments blocking doctor_id's calendar in [start, end).
+
+    Deliberately unscoped by patient assignment: this feeds an aggregate
+    free/busy answer (no patient identity in the response), and the
+    corresponding route now enforces a doctor may only query their own
+    doctor_id (see get_availability_endpoint), so there's no confidentiality
+    concern here -- only a correctness one. Scoping this the way list
+    endpoints are scoped would make a doctor's own availability check blind
+    to their own appointments for patients not assigned to them, understating
+    how busy they actually are.
+    """
+    result = await db.execute(
+        select(Appointment).where(
+            Appointment.doctor_id == doctor_id,
+            Appointment.time_slot >= start,
+            Appointment.time_slot < end,
+            Appointment.status.in_([AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED]),
+        )
+    )
+    return list(result.scalars().all())
+
+
 async def get_availability(
     db: AsyncSession,
     actor: User,
@@ -606,23 +665,19 @@ async def get_availability(
 ) -> AvailabilityOut:
     start = datetime.combine(day, time.min, tzinfo=UTC)
     end = start + timedelta(days=1)
-    appointments = await _appointments_in_range(db, actor, start, end, doctor_id)
+    blocking = await _doctor_busy_slots(db, doctor_id, start, end)
 
-    # Only confirmed/completed reserve a slot. Pending suggestions are advisory
-    # and must not remove slots from the calendar (ADR-003).
-    blocking = [
-        a
-        for a in appointments
-        if a.status in (AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED)
-    ]
-
-    # Guard against SQLite's naive datetime round-trip (known issue in test backend).
-    # The real Postgres+asyncpg driver does not have this problem.
+    # Guard against SQLite's naive datetime round-trip (known issue in test
+    # backend); the real Postgres+asyncpg driver does not have this problem.
+    # Copied into local tuples rather than mutating the ORM objects in place,
+    # since end_time is a read-only derived property with no setter.
+    busy_ranges: list[tuple[datetime, datetime]] = []
     for a in blocking:
-        if a.time_slot.tzinfo is None:
-            a.time_slot = a.time_slot.replace(tzinfo=UTC)
-        if a.end_time.tzinfo is None:
-            a.end_time = a.end_time.replace(tzinfo=UTC)
+        slot_start = (
+            a.time_slot if a.time_slot.tzinfo is not None else a.time_slot.replace(tzinfo=UTC)
+        )
+        slot_end = slot_start + timedelta(minutes=a.duration_minutes)
+        busy_ranges.append((slot_start, slot_end))
 
     slots: list[AvailabilitySlotOut] = []
     cursor = datetime.combine(day, time(hour=settings.clinic_open_hour), tzinfo=UTC)
@@ -631,7 +686,7 @@ async def get_availability(
 
     while cursor + step <= closing:
         slot_end = cursor + step
-        overlaps = any(a.time_slot < slot_end and a.end_time > cursor for a in blocking)
+        overlaps = any(bstart < slot_end and bend > cursor for bstart, bend in busy_ranges)
         slots.append(AvailabilitySlotOut(start=cursor, end=slot_end, available=not overlaps))
         cursor = slot_end
 
@@ -690,7 +745,7 @@ async def get_appointment_detail(
         )
         for e in await get_events_for_case(db, appointment.case_id)
         if e.action.startswith("appointment.")
-        and (e.details or {}).get("appointment_id") in (None, str(appointment_id))
+        and (e.details or {}).get("appointment_id") == str(appointment_id)
     ]
 
     return AppointmentDetailOut(
