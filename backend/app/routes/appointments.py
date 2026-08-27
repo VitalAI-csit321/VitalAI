@@ -52,10 +52,8 @@ async def book_appointment_endpoint(
         )
 
     try:
-        appointment = await appointment_service.book_appointment(
-            db, payload.doctor_id, payload.case_id, payload.time_slot, actor
-        )
-        return await appointment_service.serialize_appointment(db, appointment)
+        created = await appointment_service.book_appointment_series(db, payload, actor)
+        return await appointment_service.serialize_appointment(db, created[0])
     except (DoctorNotFoundError, CaseNotFoundError) as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except NotADoctorError as exc:

@@ -1,4 +1,8 @@
 import pytest
+from httpx import AsyncClient
+
+from app.models import Patient, User
+from tests.test_appointments import _create_case, _slot
 
 pytestmark = pytest.mark.asyncio
 
@@ -191,6 +195,40 @@ async def test_patch_rejects_negative_duration(client, admin_headers, booked_app
         json={"duration_minutes": -30},
     )
     assert response.status_code == 422
+
+
+async def test_repeat_creates_a_linked_series(
+    client: AsyncClient, admin_headers: dict, seeded_doctor: User, patient: Patient
+):
+    case_id = await _create_case(client, admin_headers, patient)
+
+    response = await client.post(
+        "/api/v1/appointments",
+        headers=admin_headers,
+        json={
+            "doctor_id": str(seeded_doctor.id),
+            "case_id": case_id,
+            "time_slot": "2026-11-02T09:00:00Z",
+            "duration_minutes": 30,
+            "repeat": {"interval_days": 7, "occurrences": 3},
+        },
+    )
+    assert response.status_code == 201
+    first = response.json()
+    assert first["series_id"] is not None
+
+    listed = await client.get(
+        "/api/v1/appointments",
+        headers=admin_headers,
+        params={"date_from": "2026-11-01T00:00:00Z", "date_to": "2026-11-30T00:00:00Z"},
+    )
+    series = [a for a in listed.json()["items"] if a["series_id"] == first["series_id"]]
+    assert len(series) == 3
+    assert sorted(a["time_slot"][:10] for a in series) == ["2026-11-02", "2026-11-09", "2026-11-16"]
+
+
+async def test_single_booking_has_no_series_id(client, admin_headers, booked_appointment):
+    assert booked_appointment["series_id"] is None
 
 
 async def test_complete_marks_appointment_completed(client, admin_headers, booked_appointment):

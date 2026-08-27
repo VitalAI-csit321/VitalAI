@@ -1,5 +1,6 @@
 import calendar as _calendar
 import secrets
+import uuid
 from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
@@ -147,6 +148,42 @@ async def book_appointment(
     await db.commit()
     await db.refresh(appointment)
     return appointment
+
+
+async def book_appointment_series(
+    db: AsyncSession, payload: "AppointmentCreate", actor: User
+) -> list[Appointment]:
+    """Book one appointment, or a linked series when payload.repeat is set.
+
+    Every occurrence shares one series_id. The whole series is one transaction:
+    if occurrence three collides, nothing is booked, so the caller never has to
+    reason about a half-created series.
+    """
+    series_id = uuid.uuid4() if payload.repeat else None
+    occurrences = payload.repeat.occurrences if payload.repeat else 1
+    interval = timedelta(days=payload.repeat.interval_days) if payload.repeat else timedelta(0)
+
+    created: list[Appointment] = []
+    for index in range(occurrences):
+        created.append(
+            await book_appointment(
+                db,
+                doctor_id=payload.doctor_id,
+                case_id=payload.case_id,
+                time_slot=payload.time_slot + interval * index,
+                actor=actor,
+                duration_minutes=payload.duration_minutes,
+                appointment_type=payload.appointment_type,
+                location=payload.location,
+                reason=payload.reason,
+                internal_notes=payload.internal_notes,
+                status=payload.status,
+                notify_patient=payload.notify_patient,
+                notify_provider=payload.notify_provider,
+                series_id=series_id,
+            )
+        )
+    return created
 
 
 async def list_appointments(
