@@ -167,7 +167,13 @@ export interface RagAnswer {
   citations: RagCitation[];
 }
 
+export type ClinicalDocType = "consultation" | "pathology_report" | "prescription";
+
 export interface ClinicalDocument {
   id: string; patientId: string; docType: string; filename: string;
   createdAt: string; ingestedAt: string | null;
+}
+
+export interface IngestResult {
+  documentId: string; chunkCount: number; ingestedAt: string;
 }
