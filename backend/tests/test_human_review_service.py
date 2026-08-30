@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -338,3 +339,55 @@ async def test_escalate_task_doctor_denied_when_not_assigned(
 async def test_escalate_task_missing_raises(db_session: AsyncSession, front_desk_user: User):
     with pytest.raises(HumanReviewTaskNotFoundError):
         await human_review_service.escalate_task(db_session, uuid.uuid4(), front_desk_user)
+
+
+async def test_count_tasks_by_day_buckets_by_date(
+    db_session: AsyncSession, patient: Patient, admin_user: User
+):
+    case = await _make_case(db_session, patient)
+    week_start = datetime(2026, 8, 24, tzinfo=UTC)  # a Monday
+    monday_task_1 = await _make_task(db_session, case, UserRole.FRONT_DESK)
+    monday_task_1.created_at = week_start + timedelta(hours=9)
+    monday_task_2 = await _make_task(db_session, case, UserRole.FRONT_DESK)
+    monday_task_2.created_at = week_start + timedelta(hours=15)
+    wednesday_task = await _make_task(db_session, case, UserRole.FRONT_DESK)
+    wednesday_task.created_at = week_start + timedelta(days=2, hours=9)
+    await db_session.commit()
+
+    counts = await human_review_service.count_tasks_by_day(db_session, admin_user, week_start)
+
+    assert counts == {date(2026, 8, 24): 2, date(2026, 8, 26): 1}
+
+
+async def test_count_tasks_by_day_excludes_tasks_outside_the_week(
+    db_session: AsyncSession, patient: Patient, admin_user: User
+):
+    case = await _make_case(db_session, patient)
+    week_start = datetime(2026, 8, 24, tzinfo=UTC)
+    before = await _make_task(db_session, case, UserRole.FRONT_DESK)
+    before.created_at = week_start - timedelta(hours=1)
+    after = await _make_task(db_session, case, UserRole.FRONT_DESK)
+    after.created_at = week_start + timedelta(days=7)
+    await db_session.commit()
+
+    counts = await human_review_service.count_tasks_by_day(db_session, admin_user, week_start)
+
+    assert counts == {}
+
+
+async def test_count_tasks_by_day_scoped_to_actor_role(
+    db_session: AsyncSession, patient: Patient, front_desk_user: User
+):
+    case = await _make_case(db_session, patient)
+    week_start = datetime(2026, 8, 24, tzinfo=UTC)
+    mine = await _make_task(db_session, case, UserRole.FRONT_DESK)
+    mine.created_at = week_start + timedelta(hours=9)
+    other = await _make_task(db_session, case, UserRole.OPERATOR)
+    other.created_at = week_start + timedelta(hours=9)
+    await db_session.commit()
+
+    counts = await human_review_service.count_tasks_by_day(
+        db_session, front_desk_user, week_start
+    )
+
+    assert counts == {date(2026, 8, 24): 1}

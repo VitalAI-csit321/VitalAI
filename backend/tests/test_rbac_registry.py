@@ -66,4 +66,5 @@ def test_total_route_count():
     # and POST /appointments/{appointment_id}/complete.
     # 83 as of the appointments data-paths feature (Plan 3): +1 for
     # POST /appointments/suggest.
-    assert len({(e.method, e.path) for e in registry}) == 83
+    # 84 as of the dashboard workflow-status fix: +1 for GET /human-review/stats/daily.
+    assert len({(e.method, e.path) for e in registry}) == 84

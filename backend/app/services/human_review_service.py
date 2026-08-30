@@ -18,6 +18,7 @@ actor.role` (own queue only), except for actors holding VIEW_ALL_QUEUES
 currently ADMIN only. See _check_target_role().
 """
 
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -75,6 +76,37 @@ async def list_tasks(
     query = query.order_by(HumanReviewTask.created_at).limit(limit).offset(offset)
     items = (await db.execute(query)).scalars().all()
     return list(items), total
+
+
+async def count_tasks_by_day(
+    db: AsyncSession, actor: User, week_start: datetime
+) -> dict[date, int]:
+    """Task volume per day for the Mon-Sun week starting at week_start (UTC
+    midnight). Bucketed in Python rather than a DB date_trunc so this behaves
+    identically on SQLite (the test default) and Postgres, matching this
+    module's existing SQLite/Postgres portability elsewhere in the codebase.
+
+    Same visibility scoping as list_tasks -- a doctor's dashboard should not
+    reflect volume from queues or patients they cannot otherwise see.
+    """
+    week_end = week_start + timedelta(days=7)
+    query = select(HumanReviewTask.created_at).where(
+        HumanReviewTask.created_at >= week_start,
+        HumanReviewTask.created_at < week_end,
+    )
+    if VIEW_ALL_QUEUES not in effective_permissions(actor):
+        query = query.where(HumanReviewTask.target_role == actor.role)
+    if actor.role == UserRole.DOCTOR:
+        query = query.join(IntakeCase, HumanReviewTask.case_id == IntakeCase.id).where(
+            IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id))
+        )
+
+    timestamps = (await db.execute(query)).scalars().all()
+    counts: dict[date, int] = {}
+    for ts in timestamps:
+        day = ts.date()
+        counts[day] = counts.get(day, 0) + 1
+    return counts
 
 
 async def create_task(

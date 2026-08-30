@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -277,3 +278,34 @@ async def test_escalate_endpoint_missing_task_returns_404(
     )
 
     assert response.status_code == 404
+
+
+async def test_workflow_daily_stats_returns_seven_days_in_order(
+    client: AsyncClient, front_desk_headers: dict, db_session: AsyncSession, patient: Patient
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.FRONT_DESK)
+    today = datetime.now(UTC).replace(hour=12, minute=0, second=0, microsecond=0)
+    task.created_at = today
+    await db_session.commit()
+
+    response = await client.get("/api/v1/human-review/stats/daily", headers=front_desk_headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [d["day"] for d in body] == ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    assert sum(d["value"] for d in body) == 1
+
+
+async def test_workflow_daily_stats_excludes_other_roles(
+    client: AsyncClient, front_desk_headers: dict, db_session: AsyncSession, patient: Patient
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.OPERATOR)
+    task.created_at = datetime.now(UTC)
+    await db_session.commit()
+
+    response = await client.get("/api/v1/human-review/stats/daily", headers=front_desk_headers)
+
+    assert response.status_code == 200
+    assert sum(d["value"] for d in response.json()) == 0

@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -13,6 +14,7 @@ from app.schemas.human_review import (
     HumanReviewTaskCreate,
     HumanReviewTaskListResponse,
     HumanReviewTaskOut,
+    WorkflowDailyCount,
 )
 from app.services import human_review_service
 from app.services.human_review_service import (
@@ -44,6 +46,26 @@ async def list_tasks_endpoint(
     return HumanReviewTaskListResponse(
         items=[HumanReviewTaskOut.model_validate(i) for i in items], total=total
     )
+
+
+_DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+@router.get("/stats/daily", response_model=list[WorkflowDailyCount])
+async def get_workflow_daily_stats_endpoint(
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
+):
+    today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today - timedelta(days=today.weekday())
+    counts = await human_review_service.count_tasks_by_day(db, actor, week_start)
+    return [
+        WorkflowDailyCount(
+            day=_DAY_LABELS[offset],
+            value=counts.get((week_start + timedelta(days=offset)).date(), 0),
+        )
+        for offset in range(7)
+    ]
 
 
 @router.post("", response_model=HumanReviewTaskOut, status_code=status.HTTP_201_CREATED)
