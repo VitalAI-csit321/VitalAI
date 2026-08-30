@@ -59,21 +59,34 @@ async def test_list_filters_by_date_range(client, admin_headers, booked_appointm
     assert outside.json()["total"] == 0
 
 
-async def test_list_filters_by_status(client, admin_headers, booked_appointment):
+async def test_list_filters_by_status(client, admin_headers, booked_appointment, doctor_user):
+    # Scoped to doctor_user's id: the dev/CI Postgres this suite runs against
+    # also carries product demo/corpus data (real confirmed appointments for
+    # other doctors), so an unscoped total would count those too. doctor_user
+    # is a fresh row for this test only, so filtering by it isolates exactly
+    # what this test itself created.
     confirmed = await client.get(
-        "/api/v1/appointments", headers=admin_headers, params={"status": "confirmed"}
+        "/api/v1/appointments",
+        headers=admin_headers,
+        params={"status": "confirmed", "doctor_id": str(doctor_user.id)},
     )
     assert confirmed.json()["total"] == 1
 
     cancelled = await client.get(
-        "/api/v1/appointments", headers=admin_headers, params={"status": "cancelled"}
+        "/api/v1/appointments",
+        headers=admin_headers,
+        params={"status": "cancelled", "doctor_id": str(doctor_user.id)},
     )
     assert cancelled.json()["total"] == 0
 
 
-async def test_list_filters_by_appointment_type(client, admin_headers, booked_appointment):
+async def test_list_filters_by_appointment_type(
+    client, admin_headers, booked_appointment, doctor_user
+):
     response = await client.get(
-        "/api/v1/appointments", headers=admin_headers, params={"appointment_type": "procedure"}
+        "/api/v1/appointments",
+        headers=admin_headers,
+        params={"appointment_type": "procedure", "doctor_id": str(doctor_user.id)},
     )
     assert response.json()["total"] == 0
 

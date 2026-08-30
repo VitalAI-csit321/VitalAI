@@ -192,37 +192,49 @@ async def test_ensure_approved_passes_only_when_approved(db_session: AsyncSessio
 
 
 async def test_list_approvals_filters_by_status_and_action_type(db_session: AsyncSession):
+    # Suffixed with a fresh uuid: the dev/CI Postgres this suite runs against
+    # also carries real approval requests from product usage, so a bare
+    # "email.reply.send" would match those too, not just this test's own rows.
     admin = _user(UserRole.ADMIN)
     db_session.add(admin)
     await db_session.commit()
+    suffix = uuid4().hex[:8]
+    email_type = f"email.reply.send.{suffix}"
+    call_type = f"call.escalation.route.{suffix}"
     a = await approval_service.create_approval_request(
-        db_session, action_type="email.reply.send", payload={}
+        db_session, action_type=email_type, payload={}
     )
     b = await approval_service.create_approval_request(
-        db_session, action_type="call.escalation.route", payload={}
+        db_session, action_type=call_type, payload={}
     )
     await approval_service.approve(db_session, a.id, admin)
 
     pending_items, pending_total = await approval_service.list_approvals(
-        db_session, status=ApprovalStatus.PENDING
+        db_session, status=ApprovalStatus.PENDING, action_type=call_type
     )
     assert pending_total == 1
     assert pending_items[0].id == b.id
 
     email_items, email_total = await approval_service.list_approvals(
-        db_session, action_type="email.reply.send"
+        db_session, action_type=email_type
     )
     assert email_total == 1
     assert email_items[0].id == a.id
 
 
 async def test_list_approvals_paginates(db_session: AsyncSession):
-    for i in range(3):
+    # Shared action_type is a fresh uuid per run so the count/pagination is
+    # scoped to just these 3 rows, immune to real approval requests already
+    # in the shared dev/CI Postgres.
+    action_type = f"email.reply.send.{uuid4().hex[:8]}"
+    for _ in range(3):
         await approval_service.create_approval_request(
-            db_session, action_type=f"email.reply.send.{i}", payload={}
+            db_session, action_type=action_type, payload={}
         )
 
-    items, total = await approval_service.list_approvals(db_session, limit=2, offset=0)
+    items, total = await approval_service.list_approvals(
+        db_session, action_type=action_type, limit=2, offset=0
+    )
     assert total == 3
     assert len(items) == 2
 
