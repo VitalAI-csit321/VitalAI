@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { listPatients } from "../../api/cases";
-import { uploadClinicalDocument } from "../../api/records";
+import { ingestClinicalDocument, listClinicalDocuments, uploadClinicalDocument } from "../../api/records";
 import type { ClinicalDocType, ClinicalDocument, Patient } from "../../api/types";
 import { ApiError, describeApiError } from "../../lib/apiClient";
+import { useAuth } from "../../lib/auth";
 import { Spinner } from "../../components/ui";
 
 const DOC_TYPES: { value: ClinicalDocType; label: string }[] = [
@@ -38,6 +39,42 @@ export function ManualImportSection() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploaded, setUploaded] = useState<ClinicalDocument[]>([]);
+  const { user } = useAuth();
+  const [ingesting, setIngesting] = useState<string | null>(null);
+  const [ingestNote, setIngestNote] = useState<Record<string, string>>({});
+
+  // Upload needs UPLOAD_CLINICAL; listing needs VIEW_CLINICAL. Most uploaders
+  // (operator, admin) do not have VIEW_CLINICAL, so the server-side list is a
+  // bonus for those who do, never a dependency. Mirrors effective_permissions()
+  // in backend/app/auth/permissions.py: role base set plus explicit grants.
+  const canViewClinical =
+    user?.role === "doctor" || (user?.grantedPermissions ?? []).includes("view_clinical");
+
+  useEffect(() => {
+    if (!canViewClinical || !patientId) return;
+    let active = true;
+    listClinicalDocuments(patientId)
+      .then(docs => { if (active) setUploaded(docs); })
+      .catch(() => { /* a 403 here is expected and not worth surfacing */ });
+    return () => { active = false; };
+  }, [canViewClinical, patientId]);
+
+  async function onIngest(documentId: string) {
+    setIngesting(documentId);
+    setIngestNote(prev => ({ ...prev, [documentId]: "" }));
+    try {
+      const res = await ingestClinicalDocument(documentId);
+      setIngestNote(prev => ({ ...prev, [documentId]: `Ingested, ${res.chunkCount} chunks` }));
+      setUploaded(prev => prev.map(d => d.id === documentId ? { ...d, ingestedAt: res.ingestedAt } : d));
+    } catch (err) {
+      const msg = err instanceof ApiError && err.status === 409
+        ? "Already ingested"
+        : describeApiError(err, "Ingest failed");
+      setIngestNote(prev => ({ ...prev, [documentId]: msg }));
+    } finally {
+      setIngesting(null);
+    }
+  }
 
   // The patients endpoint caps limit at 100 (backend/app/routes/patients.py:36)
   // and the demo database holds more patients than that, so the list is
@@ -130,7 +167,39 @@ export function ManualImportSection() {
       </form>
 
       {uploaded.length > 0 && (
-        <p className="mt-4 text-sm text-slate-500">{uploaded.length} document(s) uploaded this session.</p>
+        <div className="mt-6 rounded-xl border border-slate-200 overflow-hidden">
+          <div className="flex items-baseline justify-between px-5 py-3 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900">Documents</h3>
+            {!canViewClinical && <span className="text-xs text-slate-400">Uploaded this session</span>}
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {["File", "Type", "Status", ""].map(h => <th key={h} className="px-5 py-2.5">{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {uploaded.map(d => (
+                <tr key={d.id} className="border-t border-slate-100">
+                  <td className="px-5 py-3 font-medium text-slate-900">{d.filename}</td>
+                  <td className="px-5 py-3 text-slate-600">{d.docType.replace(/_/g, " ")}</td>
+                  <td className="px-5 py-3 text-slate-600">
+                    {d.ingestedAt ? "Ingested" : "Not ingested"}
+                    {ingestNote[d.id] && <span className="ml-2 text-xs text-slate-400">{ingestNote[d.id]}</span>}
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    {!d.ingestedAt && (
+                      <button onClick={() => onIngest(d.id)} disabled={ingesting === d.id}
+                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40">
+                        {ingesting === d.id ? "Ingesting..." : "Ingest into assistant"}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
