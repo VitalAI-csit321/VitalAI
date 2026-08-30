@@ -10,18 +10,24 @@ from app.models.user import User
 from app.services import approval_service
 
 
-async def _pending_approval(db_session: AsyncSession):
+async def _pending_approval(db_session: AsyncSession, action_type: str = "email.reply.send"):
     return await approval_service.create_approval_request(
-        db_session, action_type="email.reply.send", payload={"draft": "hello"}
+        db_session, action_type=action_type, payload={"draft": "hello"}
     )
 
 
 async def test_list_approvals_allowed_for_operator(
     client: AsyncClient, operator_headers: dict, db_session: AsyncSession
 ):
-    await _pending_approval(db_session)
+    # Unique action_type: the dev/CI Postgres this suite runs against also
+    # carries real pending approval requests from product usage, so an
+    # unscoped total would count those too.
+    action_type = f"email.reply.send.{uuid.uuid4().hex[:8]}"
+    await _pending_approval(db_session, action_type=action_type)
 
-    response = await client.get("/api/v1/approvals", headers=operator_headers)
+    response = await client.get(
+        "/api/v1/approvals", headers=operator_headers, params={"action_type": action_type}
+    )
 
     assert response.status_code == 200
     body = response.json()

@@ -16,13 +16,14 @@ from app.schemas.appointment import (
     AppointmentListResponse,
     AppointmentOut,
     AppointmentReschedule,
+    AppointmentSuggestRequest,
     AppointmentUpdate,
     AvailabilityOut,
     CalendarMarkerOut,
     CalendarMonthOut,
     DayViewOut,
 )
-from app.services import appointment_service
+from app.services import appointment_service, appointment_suggestion_service
 from app.services.appointment_service import (
     AppointmentStateError,
     CaseNotFoundError,
@@ -160,6 +161,25 @@ async def get_availability_endpoint(
             detail="Doctors may only view their own calendar's availability",
         )
     return await appointment_service.get_availability(db, actor, doctor_id, day, slot_minutes)
+
+
+@router.post("/suggest", response_model=list[AppointmentOut], status_code=status.HTTP_201_CREATED)
+async def suggest_appointments_endpoint(
+    payload: AppointmentSuggestRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(MANAGE_APPOINTMENTS_ALL, MANAGE_OWN_CALENDAR)),
+):
+    suggestions = await appointment_suggestion_service.suggest_slots(
+        db,
+        actor,
+        case_id=payload.case_id,
+        doctor_id=payload.doctor_id,
+        from_date=payload.from_date,
+        count=payload.count,
+        duration_minutes=payload.duration_minutes,
+        search_days=payload.search_days,
+    )
+    return await appointment_service.serialize_many(db, suggestions)
 
 
 @router.get("/{appointment_id}", response_model=AppointmentDetailOut)

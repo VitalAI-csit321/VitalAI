@@ -56,7 +56,10 @@ class RetrievalContext:
     the allowed_scopes vocabulary are placeholders.
     """
 
-    patient_id: UUID
+    # None scopes retrieval to org-wide chunks only (Chunk.patient_id == None
+    # compiles to IS NULL in SQLAlchemy), used by non-patient-specific
+    # queries like _generate_org_grounded_reply's clinic-hours/policy lookup.
+    patient_id: UUID | None
     allowed_scopes: list[str]
     role: str
     actor: str = "system"

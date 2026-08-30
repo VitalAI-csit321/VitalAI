@@ -96,7 +96,7 @@ export interface RecordDocument {
 export type MessagePriority = "urgent" | "normal" | "fyi";
 export type TaskStatus = "pending" | "in_progress" | "completed" | "escalated";
 export interface Message {
-  id: string; fromName: string; fromInitials: string; toName: string;
+  id: string; caseId: string; fromName: string; fromInitials: string; toName: string;
   subject: string; body: string; priority: MessagePriority; category: string;
   unread: boolean; receivedLabel: string; threadReference: string; avatarColor: string;
   draftText: string | null; draftApprovalId: string | null; draftSent: boolean;

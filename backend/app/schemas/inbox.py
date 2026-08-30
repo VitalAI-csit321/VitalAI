@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 class InboxMessageOut(BaseModel):
     id: str
+    caseId: str  # noqa: N815
     fromName: str  # noqa: N815
     fromInitials: str  # noqa: N815
     toName: str  # noqa: N815

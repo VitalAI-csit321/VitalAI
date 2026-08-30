@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -169,3 +169,12 @@ class AvailabilityOut(BaseModel):
     date: str
     slot_minutes: int
     slots: list[AvailabilitySlotOut]
+
+
+class AppointmentSuggestRequest(BaseModel):
+    case_id: UUID
+    doctor_id: UUID
+    from_date: date
+    count: int = Field(default=3, ge=1, le=5)
+    duration_minutes: int = Field(default=30, gt=0, le=480)
+    search_days: int = Field(default=14, ge=1, le=60)

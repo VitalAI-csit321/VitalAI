@@ -103,10 +103,25 @@ async def test_create_task_rejects_missing_assignee(
     assert response.status_code == 404
 
 
-async def test_list_tasks_allowed_for_front_desk(client: AsyncClient, front_desk_headers: dict):
+async def test_list_tasks_allowed_for_front_desk(
+    client: AsyncClient, admin_headers: dict, front_desk_headers: dict, patient: Patient
+):
+    # list_tasks has no role-based scoping (unlike the newer inbox_service),
+    # so it returns every task in the dev/CI Postgres this suite runs
+    # against, including real ones from product usage -- asserting an empty
+    # list was only ever incidentally true while that table was empty.
+    # What this endpoint's permission gate actually promises is that
+    # front_desk is authorized to call it and sees its own task in the result.
+    case_id = await _create_case(client, admin_headers, patient)
+    create_response = await client.post(
+        "/api/v1/tasks", json={"case_id": case_id, "source": "call"}, headers=admin_headers
+    )
+    assert create_response.status_code == 201
+    task_id = create_response.json()["id"]
+
     response = await client.get("/api/v1/tasks", headers=front_desk_headers)
     assert response.status_code == 200
-    assert response.json() == []
+    assert any(t["id"] == task_id for t in response.json())
 
 
 async def test_list_tasks_denied_for_doctor(client: AsyncClient, doctor_headers: dict):

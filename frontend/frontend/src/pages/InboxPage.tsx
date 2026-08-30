@@ -348,6 +348,19 @@ export function InboxPage() {
                   >
                     Archive
                   </button>
+                  {selected.category === "appointment_request" && (
+                    <button
+                      onClick={() =>
+                        navigate(
+                          `/calendar/new?caseId=${selected.caseId}` +
+                            `&reason=${encodeURIComponent(selected.subject ?? "")}`,
+                        )
+                      }
+                      className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      Book appointment
+                    </button>
+                  )}
                   {canDelete && (
                     <button
                       onClick={handleDelete}

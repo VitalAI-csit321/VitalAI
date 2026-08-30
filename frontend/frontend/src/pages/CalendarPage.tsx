@@ -182,7 +182,11 @@ function WeekView({ appointments, weekStart, onOpen }: { appointments: Appointme
                 ))}
                 {items.map(a => {
                   const start = new Date(a.timeSlot);
-                  const startHour = start.getHours() + start.getMinutes() / 60;
+                  // UTC: the clinic's 8am-6pm business hours (and this grid's
+                  // 8-18 rows) are defined in UTC, not the viewer's local
+                  // timezone -- reading local hours here silently dropped
+                  // every booking once the browser's timezone wasn't UTC.
+                  const startHour = start.getUTCHours() + start.getUTCMinutes() / 60;
                   if (startHour < hours[0] || startHour > hours[hours.length - 1] + 1) return null;
                   const top = (startHour - hours[0]) * HOUR_PX;
                   const height = Math.max((a.durationMinutes / 60) * HOUR_PX, 20);
@@ -215,7 +219,8 @@ function DayViewPanel({ data, onOpen, onNew }: { data: DayView; onOpen: (id: str
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
         {hours.map(h => {
           const isLunch = h === 12;
-          const items = data.appointments.filter(a => new Date(a.timeSlot).getHours() === h);
+          // UTC, same reasoning as WeekView above.
+          const items = data.appointments.filter(a => new Date(a.timeSlot).getUTCHours() === h);
           return (
             <div key={h} className="flex border-b border-slate-100 last:border-0" style={{ minHeight: HOUR_PX }}>
               <div className="w-20 shrink-0 border-r border-slate-100 px-3 py-2 text-xs text-slate-400">
