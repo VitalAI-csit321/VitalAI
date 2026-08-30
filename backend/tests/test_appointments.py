@@ -147,16 +147,22 @@ async def test_book_appointment_non_doctor_target_returns_422(
 
 
 async def test_book_appointment_duplicate_slot_returns_409(
-    client: AsyncClient, admin_headers: dict, doctor_user: User, patient: Patient
+    pg_client: AsyncClient, pg_admin_headers: dict, pg_doctor_user: User, pg_patient: Patient
 ):
-    case_id = await _create_case(client, admin_headers, patient)
+    """C1: forced onto real Postgres (pg_client/pg_session) so this always
+    exercises migration 0026's EXCLUDE USING gist constraint, regardless of
+    what DATABASE_URL the rest of the suite runs under. On the default
+    SQLite backend there is no equivalent constraint, so this would silently
+    stop testing anything.
+    """
+    case_id = await _create_case(pg_client, pg_admin_headers, pg_patient)
     slot = _slot()
-    payload = {"doctor_id": str(doctor_user.id), "case_id": case_id, "time_slot": slot}
+    payload = {"doctor_id": str(pg_doctor_user.id), "case_id": case_id, "time_slot": slot}
 
-    first = await client.post("/api/v1/appointments", json=payload, headers=admin_headers)
+    first = await pg_client.post("/api/v1/appointments", json=payload, headers=pg_admin_headers)
     assert first.status_code == 201
 
-    second = await client.post("/api/v1/appointments", json=payload, headers=admin_headers)
+    second = await pg_client.post("/api/v1/appointments", json=payload, headers=pg_admin_headers)
     assert second.status_code == 409
 
 
@@ -461,3 +467,24 @@ async def test_cancel_appointment_twice_returns_409(
 async def test_appointments_denied_without_permission(client: AsyncClient):
     response = await client.get("/api/v1/appointments")
     assert response.status_code == 401
+
+
+async def test_book_appointment_completed_status_returns_422(
+    client: AsyncClient, admin_headers: dict, doctor_user: User, patient: Patient
+):
+    """I3: POST cannot create straight into completed/cancelled -- those bypass
+    complete_appointment's CONFIRMED-only guard and (for cancelled) the
+    overlap constraint entirely.
+    """
+    case_id = await _create_case(client, admin_headers, patient)
+    response = await client.post(
+        "/api/v1/appointments",
+        json={
+            "doctor_id": str(doctor_user.id),
+            "case_id": case_id,
+            "time_slot": _slot(),
+            "status": "completed",
+        },
+        headers=admin_headers,
+    )
+    assert response.status_code == 422

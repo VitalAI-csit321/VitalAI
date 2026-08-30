@@ -29,7 +29,7 @@ export async function findLatestCaseForPatient(patientId: string): Promise<Case 
   return cases[0] ?? null;
 }
 
-export async function createCase(input:{patient_name:string;contact_reason:string;contact_channel:string;notes?:string}):Promise<Case> {
+export async function createCase(input:{patient_id:string;patient_name:string;contact_reason:string;contact_channel:string;notes?:string}):Promise<Case> {
   return toCase(await apiPost<RawCase>("/api/v1/intake",input));
 }
 

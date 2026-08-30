@@ -225,6 +225,12 @@ def doctor_headers(doctor_user: User) -> dict[str, str]:
 
 
 @pytest_asyncio.fixture
+def seeded_doctor(doctor_user: User) -> User:
+    """Alias for doctor_user to match task brief naming."""
+    return doctor_user
+
+
+@pytest_asyncio.fixture
 def role_headers(
     front_desk_headers: dict, operator_headers: dict, admin_headers: dict, doctor_headers: dict
 ) -> dict[UserRole, dict]:
@@ -313,6 +319,41 @@ async def pg_make_user(pg_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
+async def pg_appointment_fixture(pg_session):
+    """A real-Postgres session plus a doctor and case for appointment FK targets.
+
+    Yields (session, doctor_id, case_id). Rows are removed afterwards so the
+    exclusion-constraint tests start from an empty appointments table.
+    """
+    from app.models.appointment import Appointment
+    from app.models.case import IntakeCase
+    from app.models.user import User, UserRole
+
+    doctor = User(
+        email=f"pg-doctor-{uuid4()}@example.com",
+        hashed_password=hash_password("test-password"),
+        full_name="PG Fixture Doctor",
+        role=UserRole.DOCTOR,
+    )
+    pg_session.add(doctor)
+    await pg_session.flush()
+
+    # contact_channel is NOT NULL on IntakeCase; the brief's fixture snippet
+    # omitted it. Added per the brief's own escape hatch instruction.
+    case = IntakeCase(contact_reason="fixture", contact_channel="test", patient_id=None)
+    pg_session.add(case)
+    await pg_session.flush()
+
+    yield pg_session, doctor.id, case.id
+
+    await pg_session.rollback()
+    await pg_session.execute(delete(Appointment))
+    await pg_session.execute(delete(IntakeCase).where(IntakeCase.id == case.id))
+    await pg_session.execute(delete(User).where(User.id == doctor.id))
+    await pg_session.commit()
+
+
+@pytest_asyncio.fixture
 async def pg_client(pg_session):
     async def override_get_db():
         yield pg_session
@@ -321,3 +362,90 @@ async def pg_client(pg_session):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def pg_admin_headers(pg_make_user) -> dict[str, str]:
+    """admin_headers's real-Postgres equivalent -- pair with pg_client.
+
+    C1 (final appointments review): the double-booking constraint added in
+    migration 0026 is a Postgres-only EXCLUDE USING gist with no SQLite
+    equivalent, so tests that must exercise it need the whole request bound
+    to pg_session regardless of what DATABASE_URL the rest of the suite runs
+    under -- admin_headers/client are bound to the default db_session/SQLite
+    track and can't be reused here.
+    """
+    user = await pg_make_user(UserRole.ADMIN, f"pg-admin-{uuid4()}@example.com")
+    return {"Authorization": f"Bearer {create_access_token(user.id, user.role)}"}
+
+
+@pytest_asyncio.fixture
+async def pg_doctor_user(pg_make_user) -> User:
+    """doctor_user's real-Postgres equivalent -- see pg_admin_headers."""
+    return await pg_make_user(UserRole.DOCTOR, f"pg-doctor-{uuid4()}@example.com")
+
+
+@pytest_asyncio.fixture
+async def booked_appointment(client, admin_headers, doctor_user, patient):
+    """One confirmed appointment created through the real API.
+
+    `seeded_doctor`/`seeded_case` (as named in the task brief) don't exist in
+    this file; this reuses the real `doctor_user`/`patient` fixtures above and
+    builds a case over HTTP the same way tests/test_appointments.py's own
+    `_create_case` helper does (contact_channel is NOT NULL on IntakeCase).
+    """
+    case_response = await client.post(
+        "/api/v1/intake",
+        json={
+            "patient_id": str(patient.id),
+            "contact_reason": "Visit",
+            "contact_channel": "phone",
+        },
+        headers=admin_headers,
+    )
+    assert case_response.status_code == 201, case_response.text
+    case_id = case_response.json()["id"]
+
+    response = await client.post(
+        "/api/v1/appointments",
+        headers=admin_headers,
+        json={
+            "doctor_id": str(doctor_user.id),
+            "case_id": case_id,
+            "time_slot": "2026-09-01T09:00:00Z",
+            "duration_minutes": 30,
+        },
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+@pytest_asyncio.fixture
+async def assigned_doctor_headers(client, admin_headers, doctor_user, patient):
+    """doctor_user with a real DoctorPatientAssignment to `patient`.
+
+    booked_appointment books for doctor_user against a case for `patient`, so
+    this is the doctor who should be able to see it. Assignment is created
+    over HTTP the same way tests/test_appointments.py's scoping cases do.
+    """
+    response = await client.post(
+        "/api/v1/assignments",
+        json={"doctor_id": str(doctor_user.id), "patient_id": str(patient.id)},
+        headers=admin_headers,
+    )
+    assert response.status_code == 201, response.text
+    return {"Authorization": f"Bearer {create_access_token(doctor_user.id, doctor_user.role)}"}
+
+
+@pytest_asyncio.fixture
+def unassigned_doctor_headers(doctor_headers: dict[str, str]) -> dict[str, str]:
+    """doctor_user with NO assignment row -- conftest never creates one by default.
+
+    Deliberately the SAME doctor booked_appointment belongs to, so the
+    doctor_id filter in _own_calendar_scope cannot mask a missing
+    is_assigned() check: the appointment's doctor_id matches this doctor, so
+    it must be excluded purely by the patient-assignment check, not by
+    doctor identity. This is what makes these tests a real confidentiality
+    gate rather than a vacuous pass.
+    """
+    return doctor_headers

@@ -23,6 +23,7 @@ from app.routes import (
     calls,
     clinical_documents,
     consent,
+    doctors,
     email,
     health,
     human_review,
@@ -157,6 +158,7 @@ app.include_router(assignments.router, prefix=API_PREFIX)
 app.include_router(rag.router, prefix=API_PREFIX)
 app.include_router(appointments.router, prefix=API_PREFIX)
 app.include_router(clinical_documents.router, prefix=API_PREFIX)
+app.include_router(doctors.router, prefix=API_PREFIX)
 app.include_router(approvals.router, prefix=API_PREFIX)
 app.include_router(human_review.router, prefix=API_PREFIX)
 

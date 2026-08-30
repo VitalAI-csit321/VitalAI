@@ -59,4 +59,9 @@ def test_total_route_count():
     # went stale.
     # 74 as of the inbox delete/read feature: +2 for DELETE /api/v1/tasks/{task_id}
     # and POST /api/v1/tasks/{task_id}/read.
-    assert len({(e.method, e.path) for e in registry}) == 74
+    # 82 as of the appointments calendar feature (Plan 2): +8 for GET /doctors,
+    # GET /appointments/calendar, GET /appointments/calendar/markers,
+    # GET /appointments/day, GET /appointments/availability,
+    # GET /appointments/{appointment_id}, PATCH /appointments/{appointment_id},
+    # and POST /appointments/{appointment_id}/complete.
+    assert len({(e.method, e.path) for e in registry}) == 82
