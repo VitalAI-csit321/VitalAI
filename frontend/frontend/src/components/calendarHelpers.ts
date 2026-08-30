@@ -29,7 +29,15 @@ export const STATUS_TONE: Record<AppointmentStatus, "green" | "amber" | "red" | 
 };
 
 export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  // UTC, not the viewer's local timezone: appointment times are stored and
+  // scheduled against the clinic's fixed 8am-6pm UTC business hours
+  // (settings.clinic_open_hour/close_hour), so a browser outside UTC would
+  // otherwise show clinic-hours bookings at shifted, misleading clock times.
+  return new Date(iso).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
 }
 
 export function formatDateLong(iso: string): string {
