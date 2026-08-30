@@ -85,6 +85,7 @@ export function AppointmentNewPage() {
           caseId = existingCase.id;
         } else {
           const newCase = await createCase({
+            patient_id: selectedPatient.id,
             patient_name: selectedPatient.name,
             contact_reason: reason || `${TYPE_LABEL[appointmentType]} appointment`,
             contact_channel: "calendar",
