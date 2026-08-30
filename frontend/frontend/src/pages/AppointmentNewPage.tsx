@@ -4,10 +4,11 @@ import { createAppointment, getAvailability } from "../api/appointments";
 import { findLatestCaseForPatient, createCase, listPatients } from "../api/cases";
 import { listDoctors } from "../api/doctors";
 import { isDemoMode } from "../lib/demoMode";
+import { ApiError, describeApiError } from "../lib/apiClient";
 import { demoPatients } from "../data/demoData";
 import type { AppointmentType, Availability, Doctor, Patient } from "../api/types";
 import { Spinner } from "../components/ui";
-import { TYPE_LABEL, formatTime, toDateInputValue } from "../components/calendarHelpers";
+import { TYPE_LABEL, formatTime, parseClinicDateTime, toDateInputValue, toTimeInputValueUTC } from "../components/calendarHelpers";
 
 const DURATIONS = [15, 30, 45, 60, 90, 120];
 
@@ -84,13 +85,22 @@ export function AppointmentNewPage() {
 
   const endTimeLabel = useMemo(() => {
     if (!date || !startTime) return "";
-    const start = new Date(`${date}T${startTime}:00`);
+    const start = parseClinicDateTime(date, startTime);
     return formatTime(new Date(start.getTime() + durationMinutes * 60000).toISOString());
   }, [date, startTime, durationMinutes]);
 
   async function handleSave() {
     if (!selectedPatient || !doctorId || !date || !startTime) {
       setError("Please select a patient, provider, date and time.");
+      return;
+    }
+    if (repeatOn && repeatOccurrences < 2) {
+      // The backend rejects occurrences <= 1 (a "repeat" of one is just a
+      // normal booking), but the number input's min={2} doesn't stop someone
+      // typing/backspacing below it. Catching it here gives a clear message
+      // instead of a raw 422 -- and, critically, avoids silently rounding up
+      // to 2 and booking a second appointment nobody asked for.
+      setError("Repeat occurrences must be at least 2, or turn off Repeat.");
       return;
     }
     setSaving(true); setError(null);
@@ -121,15 +131,19 @@ export function AppointmentNewPage() {
       }
 
       await createAppointment({
-        doctorId, caseId, timeSlot: new Date(`${date}T${startTime}:00`).toISOString(),
+        doctorId, caseId, timeSlot: parseClinicDateTime(date, startTime).toISOString(),
         durationMinutes, appointmentType, location: location || undefined,
         reason: reason || undefined, internalNotes: internalNotes || undefined,
         notifyPatient, notifyProvider: notifyReminder,
         repeat: repeatOn ? { intervalDays: repeatIntervalDays, occurrences: repeatOccurrences } : undefined,
       });
       navigate("/calendar");
-    } catch {
-      setError("Could not book this appointment. The slot may already be taken.");
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 409
+          ? "Could not book this appointment. The slot may already be taken."
+          : describeApiError(err, "Could not book this appointment."),
+      );
     } finally {
       setSaving(false);
     }
@@ -255,9 +269,9 @@ export function AppointmentNewPage() {
             <div className="text-sm font-semibold text-slate-900">Availability Check</div>
             <p className="mt-1 text-xs text-slate-500">{selectedDoctor?.fullName ?? "Select a provider"} · {date}</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              {availability?.slots.filter(s => new Date(s.start).getMinutes() === 0 || new Date(s.start).getMinutes() === 30).map(s => {
+              {availability?.slots.filter(s => new Date(s.start).getUTCMinutes() === 0 || new Date(s.start).getUTCMinutes() === 30).map(s => {
                 const t = new Date(s.start);
-                const hhmm = `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
+                const hhmm = toTimeInputValueUTC(t);
                 const isSelected = hhmm === startTime;
                 return (
                   <button key={s.start} disabled={!s.available && !isSelected} onClick={() => setStartTime(hhmm)}

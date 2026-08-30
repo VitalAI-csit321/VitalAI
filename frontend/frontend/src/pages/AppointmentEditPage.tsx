@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getAppointment, getAvailability, updateAppointment } from "../api/appointments";
 import { listDoctors } from "../api/doctors";
+import { ApiError, describeApiError } from "../lib/apiClient";
 import type { AppointmentDetail, AppointmentStatus, AppointmentType, Availability, Doctor } from "../api/types";
 import { Spinner } from "../components/ui";
-import { TYPE_LABEL, formatTime, patientDisplayName, toDateInputValue } from "../components/calendarHelpers";
+import { TYPE_LABEL, formatTime, parseClinicDateTime, patientDisplayName, toDateInputValueUTC, toTimeInputValueUTC } from "../components/calendarHelpers";
 
 const DURATIONS = [15, 30, 45, 60, 90, 120];
 
@@ -40,8 +41,8 @@ export function AppointmentEditPage() {
         setOriginal(a); setDoctors(docs);
         setAppointmentType(a.appointmentType); setDoctorId(a.doctorId);
         const d = new Date(a.timeSlot);
-        setDate(toDateInputValue(d));
-        setStartTime(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`);
+        setDate(toDateInputValueUTC(d));
+        setStartTime(toTimeInputValueUTC(d));
         setDurationMinutes(a.durationMinutes); setLocation(a.location ?? "");
         setStatus(a.status === "confirmed" || a.status === "pending" ? a.status : "confirmed");
         setReason(a.reason ?? ""); setInternalNotes(a.internalNotes ?? "");
@@ -57,27 +58,31 @@ export function AppointmentEditPage() {
 
   const endTimeLabel = useMemo(() => {
     if (!date || !startTime) return "";
-    const start = new Date(`${date}T${startTime}:00`);
+    const start = parseClinicDateTime(date, startTime);
     const end = new Date(start.getTime() + durationMinutes * 60000);
     return formatTime(end.toISOString());
   }, [date, startTime, durationMinutes]);
 
-  const timeChanged = original && (toDateInputValue(new Date(original.timeSlot)) !== date ||
-    `${String(new Date(original.timeSlot).getHours()).padStart(2, "0")}:${String(new Date(original.timeSlot).getMinutes()).padStart(2, "0")}` !== startTime);
+  const timeChanged = original && (toDateInputValueUTC(new Date(original.timeSlot)) !== date ||
+    toTimeInputValueUTC(new Date(original.timeSlot)) !== startTime);
 
   async function handleSave() {
     if (!id || !date || !startTime) return;
     setSaving(true); setError(null);
     try {
       await updateAppointment(id, {
-        doctorId, timeSlot: new Date(`${date}T${startTime}:00`).toISOString(), durationMinutes,
+        doctorId, timeSlot: parseClinicDateTime(date, startTime).toISOString(), durationMinutes,
         appointmentType, location: location || undefined, status, reason: reason || undefined,
         internalNotes: internalNotes || undefined, notifyPatient, notifyProvider,
         rescheduleReason: timeChanged ? (rescheduleReason || undefined) : undefined,
       });
       navigate(`/calendar/${id}`);
-    } catch {
-      setError("Could not save changes. The slot may already be taken.");
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 409
+          ? "Could not save changes. The slot may already be taken."
+          : describeApiError(err, "Could not save changes."),
+      );
     } finally {
       setSaving(false);
     }
@@ -171,9 +176,9 @@ export function AppointmentEditPage() {
             <div className="text-sm font-semibold text-slate-900">Reschedule Assistant</div>
             <p className="mt-1 text-xs text-slate-500">Pick a date above, then choose an available time.</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              {availability?.slots.filter(s => new Date(s.start).getMinutes() === 0 || new Date(s.start).getMinutes() === 30).map(s => {
+              {availability?.slots.filter(s => new Date(s.start).getUTCMinutes() === 0 || new Date(s.start).getUTCMinutes() === 30).map(s => {
                 const t = new Date(s.start);
-                const hhmm = `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
+                const hhmm = toTimeInputValueUTC(t);
                 const isCurrent = hhmm === startTime;
                 return (
                   <button key={s.start} disabled={!s.available && !isCurrent} onClick={() => setStartTime(hhmm)}
