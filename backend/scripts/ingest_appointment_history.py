@@ -6,7 +6,9 @@ These are historical visits, so they are written past-dated and completed.
 
 The corpus names doctors that may not exist as users. Rather than dropping
 those visits, the matching doctor user is created once per name (this is a
-synthetic-only dataset; see settings.synthetic_only).
+synthetic-only dataset; see settings.synthetic_only). The synthetic email
+domain uses .example (RFC 2606) rather than .local: pydantic's EmailStr
+rejects .local as a reserved mDNS name, which broke GET /auth/users.
 
 Idempotent: reference codes are derived from patient + date + doctor.
 
@@ -144,7 +146,7 @@ async def ingest() -> None:
                 if visit.doctor_name not in doctor_cache:
                     email = (
                         re.sub(r"[^a-z0-9]+", ".", visit.doctor_name.lower()).strip(".")
-                        + "@corpus.vitalai.local"
+                        + "@corpus.vitalai.example"
                     )
                     resolved_doctor_id = (
                         await session.execute(select(User.id).where(User.email == email))
