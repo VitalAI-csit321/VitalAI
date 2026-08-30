@@ -74,18 +74,23 @@ pip-compile requirements.txt --output-file requirements.lock
 Most of the suite runs against SQLite and needs no setup. Some tests need real
 infrastructure and are not skipped automatically if it's missing: anything
 touching `app.rag.retrieval`/the `chunks` table needs real Postgres+pgvector
-(the `pg_session`/`seeded_chunks`/`pg_client` fixtures), and the clinical
+(the `pg_session`/`seeded_chunks`/`pg_client` fixtures), the clinical
 document upload tests (`test_object_storage.py`, plus the upload-success paths
 in `test_clinical_documents.py`/`test_clinical_document_service.py`) need a
-real MinIO instance:
+real MinIO instance, and anything that classifies or summarizes text through
+the LLM switch (`test_inbox.py`, `test_content_classifier.py`,
+`test_rag_answer.py`, `test_email_routes.py`, and others that route through
+`get_llm()`) needs a real Ollama instance with the dev model pulled:
 
 ```bash
-docker compose up -d db minio
-pytest
+docker compose up -d db minio ollama
+docker exec $(docker compose ps -q ollama) ollama pull gemma2:2b   # once; persists in the ollama_data volume
+OLLAMA_BASE_URL=http://localhost:11434 pytest
 ```
 
-Without `db`/`minio` running, the affected tests fail with connection errors
-rather than skipping.
+Without `db`/`minio`/`ollama` running, the affected tests fail with connection
+errors (or, for `ollama`, a DNS/connection-refused error resolving the
+docker-internal `ollama` hostname from the host) rather than skipping.
 
 Three tests prove the audit log's append-only guarantee and need a real Postgres
 instance, since SQLite does not enforce the database trigger they're checking. The

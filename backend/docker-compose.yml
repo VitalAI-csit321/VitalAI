@@ -1,6 +1,7 @@
 services:
   db:
     image: pgvector/pgvector:pg16
+    restart: unless-stopped
     environment:
       POSTGRES_USER: vitalai
       POSTGRES_PASSWORD: vitalai
@@ -18,6 +19,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
@@ -30,6 +32,7 @@ services:
 
   minio:
     image: minio/minio
+    restart: unless-stopped
     ports:
       # Host side only (9002), not the container's internal 9000: this
       # machine already has another service (a local Hadoop NameNode)
@@ -73,6 +76,7 @@ services:
 
   ollama:
     image: ollama/ollama:latest
+    restart: unless-stopped
     ports:
       - "11434:11434"
     volumes:

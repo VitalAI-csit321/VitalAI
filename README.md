@@ -355,14 +355,15 @@ the database and reaches it by the service name, the same way the API container 
 
 ```bash
 cd backend
-docker compose up -d db minio
-pytest
+docker compose up -d db minio ollama
+OLLAMA_BASE_URL=http://localhost:11434 pytest
 ```
 
 Most of the suite runs against an in-memory database and needs nothing extra. A handful
-of tests need real Postgres and MinIO, which is what `docker compose up -d db minio`
-provides. Without them, the affected tests fail with connection errors instead of
-skipping.
+of tests need real Postgres, MinIO, and Ollama (anything that classifies or summarizes
+text through the LLM switch, e.g. the inbox/classifier/RAG-answer tests), which is what
+`docker compose up -d db minio ollama` provides. Without them, the affected tests fail
+with connection errors instead of skipping.
 
 Lint and type checks, both required in CI:
 
