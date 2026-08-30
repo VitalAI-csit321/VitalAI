@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listPatients } from "../../api/cases";
 import { ingestClinicalDocument, listClinicalDocuments, uploadClinicalDocument } from "../../api/records";
 import type { ClinicalDocType, ClinicalDocument, Patient } from "../../api/types";
@@ -39,6 +39,10 @@ export function ManualImportSection() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploaded, setUploaded] = useState<ClinicalDocument[]>([]);
+  // Clearing just this input after a successful upload. form.reset() would also
+  // work but it fires a reset over every field, and on a file input that is
+  // enough to make the browser re-open a file chooser.
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
   const [ingesting, setIngesting] = useState<string | null>(null);
   const [ingestNote, setIngestNote] = useState<Record<string, string>>({});
@@ -64,7 +68,9 @@ export function ManualImportSection() {
     setIngestNote(prev => ({ ...prev, [documentId]: "" }));
     try {
       const res = await ingestClinicalDocument(documentId);
-      setIngestNote(prev => ({ ...prev, [documentId]: `Ingested, ${res.chunkCount} chunks` }));
+      // The Status cell already says "Ingested"; this note only adds the count.
+      const chunks = `${res.chunkCount} chunk${res.chunkCount === 1 ? "" : "s"}`;
+      setIngestNote(prev => ({ ...prev, [documentId]: chunks }));
       setUploaded(prev => prev.map(d => d.id === documentId ? { ...d, ingestedAt: res.ingestedAt } : d));
     } catch (err) {
       const msg = err instanceof ApiError && err.status === 409
@@ -103,14 +109,13 @@ export function ManualImportSection() {
   async function onUpload(e: React.FormEvent) {
     e.preventDefault();
     if (!patientId || !file) return;
-    const form = e.target as HTMLFormElement;
     setUploading(true);
     setError(null);
     try {
       const doc = await uploadClinicalDocument({ patientId, docType, file });
       setUploaded(prev => [doc, ...prev]);
       setFile(null);
-      form.reset();
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err) {
       setError(uploadErrorMessage(err));
     } finally {
@@ -153,7 +158,7 @@ export function ManualImportSection() {
 
         <div>
           <label className="block text-xs font-bold text-brand uppercase tracking-wide mb-1.5">File</label>
-          <input type="file" accept="application/pdf" onChange={onFileChange}
+          <input ref={fileInputRef} type="file" accept="application/pdf" onChange={onFileChange}
             className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200" />
           <p className="mt-1 text-xs text-slate-500">PDF only, up to 20 MB. The PDF must contain selectable text, not just scanned images.</p>
         </div>
