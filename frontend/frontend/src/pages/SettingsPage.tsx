@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ManualImportSection } from "./settings/ManualImportSection";
 
 type SettingsSection = "General" | "Security" | "Manual import" | "Routing rules" | "Approval tiers" | "Operational Settings" | "Future state";
 
@@ -45,7 +46,8 @@ export function SettingsPage() {
         </nav>
         <div className="flex-1 rounded-xl border border-slate-200 bg-white p-6">
           {active === "Operational Settings" && <OperationalSettingsSection />}
-          {!["Operational Settings"].includes(active) && <PlaceholderSection title={active} />}
+          {active === "Manual import" && <ManualImportSection />}
+          {!["Operational Settings", "Manual import"].includes(active) && <PlaceholderSection title={active} />}
         </div>
       </div>
     </div>
