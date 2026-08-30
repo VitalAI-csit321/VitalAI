@@ -30,6 +30,23 @@ export class ApiError extends Error {
   }
 }
 
+// FastAPI's own 422s carry `detail` as a list of {loc, msg} pydantic errors,
+// not a string. Surfacing "Request failed (422)" (or worse, an unrelated
+// canned message a caller wrote for a different status) hides the actual
+// validation reason from the user. Use this in a catch block instead of
+// guessing a message from the HTTP status alone.
+export function describeApiError(err: unknown, fallback: string): string {
+  if (!(err instanceof ApiError)) return fallback;
+  if (typeof err.detail === "string") return err.detail;
+  if (Array.isArray(err.detail)) {
+    const messages = err.detail
+      .map((e) => (e && typeof e === "object" && "msg" in e ? String((e as { msg: unknown }).msg) : null))
+      .filter((m): m is string => m !== null);
+    if (messages.length) return messages.join("; ");
+  }
+  return fallback;
+}
+
 function authHeaders(): Record<string, string> {
   const token = getToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
