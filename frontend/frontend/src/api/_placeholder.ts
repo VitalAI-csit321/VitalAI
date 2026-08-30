@@ -168,18 +168,6 @@ export const placeholderMessages: Message[] = [
   },
 ];
 
-// Dashboard weekly workflow bars (design 3). No time-series endpoint exists;
-// these values match the approved chart. Replace via the dashboard adapter.
-export const placeholderWorkflowByDay = [
-  { day: "Mon", value: 24 },
-  { day: "Tue", value: 32 },
-  { day: "Wed", value: 28 },
-  { day: "Thu", value: 35 },
-  { day: "Fri", value: 29 },
-  { day: "Sat", value: 18 },
-  { day: "Sun", value: 22 },
-];
-
 // Consent queue form labels + records browser (designs 6 & 9) also have no
 // dedicated backend; kept here so the adapters stay declarative.
 export const placeholderConsentForms = [

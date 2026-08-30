@@ -1,6 +1,5 @@
 import { apiDelete, apiGet, apiPost } from "../lib/apiClient";
 import type { DashboardSummary, Message } from "./types";
-import { placeholderWorkflowByDay } from "./_placeholder";
 
 const TASK_TYPE_LABEL: Record<string, string> = {
   triage_review: "HITL Approval",
@@ -11,7 +10,7 @@ const TASK_TYPE_LABEL: Record<string, string> = {
 
 export async function getDashboard(): Promise<DashboardSummary> {
   // Fetch real data in parallel, fall back gracefully
-  const [intakeRes, auditRes, pendingRes, inProgressRes, escalatedRes, reviewListRes] =
+  const [intakeRes, auditRes, pendingRes, inProgressRes, escalatedRes, reviewListRes, dailyRes] =
     await Promise.allSettled([
       apiGet<{items:unknown[];total:number}>("/api/v1/intake?limit=1"),
       apiGet<{total:number}>("/api/v1/audit?limit=1"),
@@ -21,6 +20,7 @@ export async function getDashboard(): Promise<DashboardSummary> {
       apiGet<{items:{id:string;case_id:string;task_type:string;status:string}[];total:number}>(
         "/api/v1/human-review", {limit:20}
       ),
+      apiGet<{day:string;value:number}[]>("/api/v1/human-review/stats/daily"),
     ]);
 
   const openCases = intakeRes.status==="fulfilled" ? intakeRes.value.total : 0;
@@ -28,6 +28,7 @@ export async function getDashboard(): Promise<DashboardSummary> {
   const pending = pendingRes.status==="fulfilled" ? pendingRes.value.total : 0;
   const inProgress = inProgressRes.status==="fulfilled" ? inProgressRes.value.total : 0;
   const escalated = escalatedRes.status==="fulfilled" ? escalatedRes.value.total : 0;
+  const workflowByDay = dailyRes.status==="fulfilled" ? dailyRes.value : [];
 
   // Pending Reviews list: real human-review tasks, enriched with the real
   // patient name from each task's linked case (the task itself only carries
@@ -62,7 +63,7 @@ export async function getDashboard(): Promise<DashboardSummary> {
     awaitingApproval: pending + inProgress,
     escalations: escalated,
     auditEvents,
-    workflowByDay: placeholderWorkflowByDay,
+    workflowByDay,
     pendingReviews,
   };
 }
