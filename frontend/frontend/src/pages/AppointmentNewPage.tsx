@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { createAppointment, getAvailability } from "../api/appointments";
 import { findLatestCaseForPatient, createCase, listPatients } from "../api/cases";
 import { listDoctors } from "../api/doctors";
@@ -13,6 +13,10 @@ const DURATIONS = [15, 30, 45, 60, 90, 120];
 
 export function AppointmentNewPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const prefillCaseId = searchParams.get("caseId");
+  const prefillPatientId = searchParams.get("patientId");
+  const prefillReason = searchParams.get("reason");
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loadingDoctors, setLoadingDoctors] = useState(true);
 
@@ -41,6 +45,24 @@ export function AppointmentNewPage() {
   useEffect(() => {
     listDoctors().then(docs => { setDoctors(docs); if (docs[0]) setDoctorId(docs[0].id); }).catch(() => {}).finally(() => setLoadingDoctors(false));
   }, []);
+
+  // Arriving from a task's "Book appointment" action: preselect the patient
+  // and carry the request text across so front desk does not retype it.
+  useEffect(() => {
+    if (prefillReason) setReason(prefillReason);
+    if (!prefillPatientId) return;
+    if (isDemoMode()) {
+      const match = demoPatients.find(p => p.id === prefillPatientId);
+      if (match) setSelectedPatient(match);
+      return;
+    }
+    listPatients({ search: "", limit: 200 })
+      .then(res => {
+        const match = res.items.find(p => p.id === prefillPatientId);
+        if (match) setSelectedPatient(match);
+      })
+      .catch(() => {});
+  }, [prefillPatientId, prefillReason]);
 
   useEffect(() => {
     if (patientQuery.trim().length < 2) { setPatientResults([]); return; }
@@ -77,7 +99,11 @@ export function AppointmentNewPage() {
       // The calendar UI only exposes patient search, so reuse the patient's
       // most recent case, or open a lightweight new one for this booking.
       let caseId: string;
-      if (isDemoMode()) {
+      if (prefillCaseId) {
+        // Booking against the task's existing case keeps the audit trail and
+        // the task linked to the appointment.
+        caseId = prefillCaseId;
+      } else if (isDemoMode()) {
         caseId = `demo-case-${selectedPatient.id}`;
       } else {
         const existingCase = await findLatestCaseForPatient(selectedPatient.id);

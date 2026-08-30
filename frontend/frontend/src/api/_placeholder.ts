@@ -48,6 +48,7 @@ export function placeholderPatientFields(id: string, seedIndex: number): {
 export const placeholderMessages: Message[] = [
   {
     id: "m1",
+    caseId: "case-m1",
     category: "medical_records_request",
     draftText: null,
     draftApprovalId: null,
@@ -67,6 +68,7 @@ export const placeholderMessages: Message[] = [
   },
   {
     id: "m2",
+    caseId: "case-m2",
     category: "new_patient_onboarding",
     draftText: null,
     draftApprovalId: null,
@@ -86,6 +88,7 @@ export const placeholderMessages: Message[] = [
   },
   {
     id: "m3",
+    caseId: "case-m3",
     category: "results_enquiry",
     draftText: null,
     draftApprovalId: null,
@@ -105,6 +108,7 @@ export const placeholderMessages: Message[] = [
   },
   {
     id: "m4",
+    caseId: "case-m4",
     category: "general_administrative",
     draftText: null,
     draftApprovalId: null,
@@ -124,6 +128,7 @@ export const placeholderMessages: Message[] = [
   },
   {
     id: "m5",
+    caseId: "case-m5",
     category: "urgent_emergency",
     draftText: null,
     draftApprovalId: null,
@@ -143,6 +148,7 @@ export const placeholderMessages: Message[] = [
   },
   {
     id: "m6",
+    caseId: "case-m6",
     category: "general_administrative",
     draftText: null,
     draftApprovalId: null,

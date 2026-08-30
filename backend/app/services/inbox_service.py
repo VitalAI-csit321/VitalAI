@@ -81,6 +81,7 @@ async def _to_message(db: AsyncSession, task: Task) -> InboxMessageOut | None:
             return None
         return InboxMessageOut(
             id=str(task.id),
+            caseId=str(task.case_id),
             fromName=email.sender,
             fromInitials=_initials(email.sender.split("@")[0].replace(".", " ")),
             toName=email.recipient,
@@ -106,6 +107,7 @@ async def _to_message(db: AsyncSession, task: Task) -> InboxMessageOut | None:
         return None
     return InboxMessageOut(
         id=str(task.id),
+        caseId=str(task.case_id),
         fromName=call.phone_number,
         fromInitials="CL",
         toName="Clinic",
