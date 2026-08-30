@@ -36,9 +36,7 @@ _SLOT_MINUTES = 30
 _TYPES = ["new_patient", "follow_up", "procedure", "other"]
 # Weighted so most appointments look normal: 60% confirmed, 20% completed,
 # 13% cancelled, 7% pending. Deterministic, not random.
-_STATUS_CYCLE = (
-    ["confirmed"] * 9 + ["completed"] * 3 + ["cancelled"] * 2 + ["pending"] * 1
-)
+_STATUS_CYCLE = ["confirmed"] * 9 + ["completed"] * 3 + ["cancelled"] * 2 + ["pending"] * 1
 
 
 def _stable_index(*parts: object) -> int:
@@ -86,7 +84,9 @@ def build_demo_appointments(
                 "duration_minutes": _SLOT_MINUTES,
                 "appointment_type": _TYPES[_stable_index(slot, patient_id) % len(_TYPES)],
                 "status": _STATUS_CYCLE[_stable_index(slot, doctor_id) % len(_STATUS_CYCLE)],
-                "reference_code": f"APT-{hashlib.sha256(f'{doctor_id}{slot}'.encode()).hexdigest()[:6].upper()}",
+                "reference_code": (
+                    f"APT-{hashlib.sha256(f'{doctor_id}{slot}'.encode()).hexdigest()[:6].upper()}"
+                ),
             }
         )
     return plan
