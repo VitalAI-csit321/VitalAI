@@ -29,7 +29,7 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key")
 from app.auth.security import create_access_token, hash_password  # noqa: E402
 from app.database import get_db  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import Base, Patient, User, UserRole  # noqa: E402
+from app.models import Base, IntakeCase, Patient, User, UserRole  # noqa: E402
 from app.models.chunk import Chunk  # noqa: E402
 from app.models.patient import Gender, PatientStatus  # noqa: E402
 from scripts.seed_synthetic_chunks import seed as seed_synthetic_corpus  # noqa: E402
@@ -228,6 +228,19 @@ def doctor_headers(doctor_user: User) -> dict[str, str]:
 def seeded_doctor(doctor_user: User) -> User:
     """Alias for doctor_user to match task brief naming."""
     return doctor_user
+
+
+@pytest_asyncio.fixture
+async def seeded_case(db_session: AsyncSession, patient: Patient) -> IntakeCase:
+    case = IntakeCase(
+        patient_id=patient.id,
+        contact_reason="Visit",
+        contact_channel="phone",
+    )
+    db_session.add(case)
+    await db_session.commit()
+    await db_session.refresh(case)
+    return case
 
 
 @pytest_asyncio.fixture
