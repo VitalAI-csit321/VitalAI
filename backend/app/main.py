@@ -35,10 +35,10 @@ from app.routes import (
     patients,
     rag,
     routing,
-    settings as settings_routes,
     tasks,
     triage,
 )
+from app.routes import settings as settings_routes
 from app.services.outlook_poller import run_poller
 
 logger = logging.getLogger(__name__)

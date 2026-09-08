@@ -29,6 +29,7 @@ from app.services.task_routing_gate import (
 )
 from app.services.task_routing_rules import resolve_target_role
 
+
 def _clinical_categories() -> frozenset[TaskCategory]:
     """Categories whose replies must be grounded and never auto-send.
 
