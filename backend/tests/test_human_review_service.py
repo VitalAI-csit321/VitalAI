@@ -386,8 +386,6 @@ async def test_count_tasks_by_day_scoped_to_actor_role(
     other.created_at = week_start + timedelta(hours=9)
     await db_session.commit()
 
-    counts = await human_review_service.count_tasks_by_day(
-        db_session, front_desk_user, week_start
-    )
+    counts = await human_review_service.count_tasks_by_day(db_session, front_desk_user, week_start)
 
     assert counts == {date(2026, 8, 24): 1}

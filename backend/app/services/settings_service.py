@@ -43,91 +43,140 @@ class SettingSpec:
 SETTINGS_REGISTRY: dict[str, SettingSpec] = {
     # General
     "clinic_open_hour": SettingSpec(
-        int, "General", "Clinic opens", "Hour the calendar grid and slot suggestions start from.",
-        minimum=0, maximum=23,
+        int,
+        "General",
+        "Clinic opens",
+        "Hour the calendar grid and slot suggestions start from.",
+        minimum=0,
+        maximum=23,
     ),
     "clinic_close_hour": SettingSpec(
-        int, "General", "Clinic closes", "Must be later than the opening hour.",
-        minimum=0, maximum=23,
+        int,
+        "General",
+        "Clinic closes",
+        "Must be later than the opening hour.",
+        minimum=0,
+        maximum=23,
     ),
     "default_appointment_duration_minutes": SettingSpec(
-        int, "General", "Default appointment length", "Used when a booking does not specify one.",
-        minimum=5, maximum=240,
+        int,
+        "General",
+        "Default appointment length",
+        "Used when a booking does not specify one.",
+        minimum=5,
+        maximum=240,
     ),
     "synthetic_only": SettingSpec(
-        bool, "General", "Synthetic data only",
+        bool,
+        "General",
+        "Synthetic data only",
         "Read-only. Set by environment; production refuses to start when true.",
         editable=False,
     ),
     # Security
     "jwt_access_token_expire_minutes": SettingSpec(
-        int, "Security", "Session length (minutes)",
+        int,
+        "Security",
+        "Session length (minutes)",
         "Applies to tokens minted after the change. Existing sessions keep their original expiry.",
-        minimum=5, maximum=1440,
+        minimum=5,
+        maximum=1440,
     ),
     "login_rate_limit": SettingSpec(
-        str, "Security", "Login rate limit",
+        str,
+        "Security",
+        "Login rate limit",
         "Read-only. Applied by a decorator evaluated at import time, so a stored value would "
         "never take effect. Change it in .env and restart.",
         editable=False,
     ),
     # Approval tiers
     "task_routing_auto_threshold": SettingSpec(
-        float, "Approval tiers", "Auto-route above",
+        float,
+        "Approval tiers",
+        "Auto-route above",
         "Confidence at or above which a task routes with no human review. Lowering this means "
         "more work proceeds unreviewed.",
-        minimum=0.0, maximum=1.0,
+        minimum=0.0,
+        maximum=1.0,
     ),
     "task_routing_floor": SettingSpec(
-        float, "Approval tiers", "Human review below",
+        float,
+        "Approval tiers",
+        "Human review below",
         "Below this, a task always goes to a human. Must not exceed the auto-route threshold.",
-        minimum=0.0, maximum=1.0,
+        minimum=0.0,
+        maximum=1.0,
     ),
     "email_auto_send_enabled": SettingSpec(
-        bool, "Approval tiers", "Allow automatic replies",
+        bool,
+        "Approval tiers",
+        "Allow automatic replies",
         "Master switch. Off means every drafted reply waits for human approval, whatever the "
         "confidence.",
     ),
     "email_no_autosend_categories": SettingSpec(
-        list, "Approval tiers", "Categories needing grounded, approved replies",
+        list,
+        "Approval tiers",
+        "Categories needing grounded, approved replies",
         "These never auto-send AND their replies must be grounded in retrieved records. "
         "Editing this moves both behaviours.",
     ),
     "sufficiency_floor": SettingSpec(
-        float, "Approval tiers", "RAG sufficiency floor",
+        float,
+        "Approval tiers",
+        "RAG sufficiency floor",
         "Read-only. Calibrated at 0.44 against nomic-embed-text; recalibrate in code if the "
         "embedding provider changes.",
         editable=False,
     ),
     # Routing rules
     "task_routing_category_roles": SettingSpec(
-        dict, "Routing rules", "Category to role overrides",
+        dict,
+        "Routing rules",
+        "Category to role overrides",
         "Only categories you change are stored; the rest fall through to the built-in table.",
     ),
     # Integrations
     "outlook_poll_interval_seconds": SettingSpec(
-        int, "Integrations", "Mailbox poll interval (seconds)",
+        int,
+        "Integrations",
+        "Mailbox poll interval (seconds)",
         "Takes effect on the next poll, no restart needed.",
-        minimum=15, maximum=3600,
+        minimum=15,
+        maximum=3600,
     ),
     "outlook_max_messages_per_poll": SettingSpec(
-        int, "Integrations", "Messages per poll", minimum=1, maximum=100,
+        int,
+        "Integrations",
+        "Messages per poll",
+        minimum=1,
+        maximum=100,
     ),
     "outlook_enabled": SettingSpec(
-        bool, "Integrations", "Outlook connector",
+        bool,
+        "Integrations",
+        "Outlook connector",
         "Read-only. Enabling needs a token cache file written by scripts/outlook_login.py.",
         editable=False,
     ),
     "outlook_mailbox_address": SettingSpec(
-        str, "Integrations", "Mailbox", "Read-only.", editable=False,
+        str,
+        "Integrations",
+        "Mailbox",
+        "Read-only.",
+        editable=False,
     ),
     # Model configuration
     "llm_model": SettingSpec(str, "Model", "Model", "Ollama model tag."),
     "llm_temperature": SettingSpec(
-        float, "Model", "Temperature",
+        float,
+        "Model",
+        "Temperature",
         "Affects every LLM call including triage classification. Above about 0.6 classification "
         "becomes unreliable, so the range is capped.",
-        minimum=0.0, maximum=0.6,
+        minimum=0.0,
+        maximum=0.6,
     ),
     "llm_max_tokens": SettingSpec(int, "Model", "Max tokens", minimum=256, maximum=8192),
     "llm_timeout_seconds": SettingSpec(int, "Model", "Timeout (seconds)", minimum=5, maximum=300),
@@ -232,9 +281,7 @@ def _clear_llm_cache_if_needed(changed: set[str]) -> None:
         get_llm.cache_clear()
 
 
-async def set_settings(
-    db: AsyncSession, values: dict[str, Any], actor: User
-) -> dict[str, Any]:
+async def set_settings(db: AsyncSession, values: dict[str, Any], actor: User) -> dict[str, Any]:
     """Validate, persist, audit and apply a batch of settings.
 
     All or nothing: one bad key rejects the whole request before any write.

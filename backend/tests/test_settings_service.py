@@ -33,9 +33,7 @@ async def test_value_outside_declared_range_is_rejected(db_session, admin_user):
 @pytest.mark.asyncio
 async def test_wrong_type_is_rejected(db_session, admin_user):
     with pytest.raises(SettingsValidationError):
-        await settings_service.set_settings(
-            db_session, {"clinic_open_hour": "eight"}, admin_user
-        )
+        await settings_service.set_settings(db_session, {"clinic_open_hour": "eight"}, admin_user)
 
 
 @pytest.mark.asyncio
@@ -110,8 +108,10 @@ async def test_write_records_an_audit_event(db_session, admin_user):
 
     await settings_service.set_settings(db_session, {"clinic_open_hour": 7}, admin_user)
     events = (
-        await db_session.execute(select(AuditEvent).where(AuditEvent.action == "settings.update"))
-    ).scalars().all()
+        (await db_session.execute(select(AuditEvent).where(AuditEvent.action == "settings.update")))
+        .scalars()
+        .all()
+    )
     assert len(events) == 1
     assert events[0].details["key"] == "clinic_open_hour"
     assert events[0].details["new"] == 7
