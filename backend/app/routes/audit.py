@@ -5,11 +5,13 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_permission
 from app.auth.permissions import READ_AUDIT
 from app.database import get_db
+from app.models.audit import AuditEvent
 from app.models.user import User
 from app.schemas.audit import AuditEventListResponse, AuditEventOut
 from app.services import audit_service
@@ -93,6 +95,33 @@ async def verify_audit_chain_route(
     actor: User = Depends(require_permission(READ_AUDIT)),
 ) -> dict:
     return await audit_service.verify_chain(db)
+
+
+@router.get("/incidents", response_model=AuditEventListResponse)
+async def list_incidents_endpoint(
+    limit: int = Query(default=20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_permission(READ_AUDIT)),
+):
+    """Governance blocks, newest first, for the Platform Ops incident feed.
+
+    'BLOCKED' is the only failure outcome audit_service records
+    (_BLOCKED_ACTIONS = access_denied, input_blocked). There is no 'denied'.
+
+    Ordered by sequence_number, the server-side monotonic counter, because
+    `timestamp` is assigned in Python and can diverge from true insert order
+    under concurrent writers. See migration 0018.
+    """
+    stmt = (
+        select(AuditEvent)
+        .where(AuditEvent.outcome == "BLOCKED")
+        .order_by(AuditEvent.sequence_number.desc().nullslast(), AuditEvent.timestamp.desc())
+        .limit(limit)
+    )
+    events = (await db.execute(stmt)).scalars().all()
+    return AuditEventListResponse(
+        items=[AuditEventOut.model_validate(e) for e in events], total=len(events)
+    )
 
 
 @router.get("/by-case/{case_id}", response_model=list[AuditEventOut])
