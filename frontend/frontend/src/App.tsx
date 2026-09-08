@@ -51,12 +51,13 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-          {/* Platform Operations — separate shell, own login */}
+          {/* Platform Operations — separate shell. Its endpoints require
+              READ_AUDIT (admin only), so the whole shell is admin-gated. */}
           <Route path="/platform-ops/login" element={<PlatformOpsLoginPage />} />
           <Route
             path="/platform-ops"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute roles={["admin"]}>
                 <PlatformOpsLayout />
               </ProtectedRoute>
             }

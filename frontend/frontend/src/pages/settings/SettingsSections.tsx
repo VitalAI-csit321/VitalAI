@@ -25,8 +25,12 @@ const ROLES: { value: string; label: string }[] = [
   { value: "doctor", label: "Doctor" },
 ];
 
-// The two thresholds rendered as sliders rather than plain number inputs.
-const RANGE_KEYS = new Set(["task_routing_auto_threshold", "task_routing_floor"]);
+// Bounded numeric settings rendered as sliders rather than plain number inputs.
+const RANGE_KEYS = new Set([
+  "task_routing_auto_threshold",
+  "task_routing_floor",
+  "llm_temperature",
+]);
 
 function sameValue(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
