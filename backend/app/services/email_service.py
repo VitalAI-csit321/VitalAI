@@ -29,9 +29,20 @@ from app.services.task_routing_gate import (
 )
 from app.services.task_routing_rules import resolve_target_role
 
-_CLINICAL_CATEGORIES = frozenset(
-    {TaskCategory.PRESCRIPTION_RENEWAL, TaskCategory.RESULTS_ENQUIRY, TaskCategory.REFERRAL_REQUEST}
-)
+def _clinical_categories() -> frozenset[TaskCategory]:
+    """Categories whose replies must be grounded and never auto-send.
+
+    Configurable via settings.email_no_autosend_categories. Unknown values are
+    dropped rather than raising, so a bad row degrades to the built-in set.
+    """
+    values = settings.email_no_autosend_categories
+    out = set()
+    for v in values:
+        try:
+            out.add(TaskCategory(v))
+        except ValueError:
+            continue
+    return frozenset(out)
 
 
 class CaseNotFoundError(Exception):
@@ -215,7 +226,7 @@ async def draft_reply(
         await _persist_draft(db, task, outcome)
         return outcome
 
-    if task.category in _CLINICAL_CATEGORIES and email.case_id is not None:
+    if task.category in _clinical_categories() and email.case_id is not None:
         case = await db.get(IntakeCase, email.case_id)
         if case is not None and case.patient_id is not None:
             from app.rag.answer import answer_question
@@ -252,11 +263,12 @@ async def draft_reply(
     # isn't clinical -- prescription/results/referral replies never auto-send
     # regardless of confidence, per Amin's explicit call.
     safe_to_send_immediately = (
-        reply_verdict.verdict == ReplyWorthiness.WORTHY
+        settings.email_auto_send_enabled
+        and reply_verdict.verdict == ReplyWorthiness.WORTHY
         and gate.outcome == TaskRoutingOutcome.AUTO_ROUTED
         and confidence >= settings.task_routing_auto_threshold
         and grounded
-        and task.category not in _CLINICAL_CATEGORIES
+        and task.category not in _clinical_categories()
     )
     if safe_to_send_immediately:
         outcome = EmailDraftOutcome(

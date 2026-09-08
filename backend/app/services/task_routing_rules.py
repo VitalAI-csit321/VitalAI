@@ -29,7 +29,17 @@ _CATEGORY_TO_ROLE: dict[TaskCategory, UserRole] = {
 def resolve_target_role(category: TaskCategory) -> UserRole:
     """Map a task category to the role whose queue it lands in.
 
-    Pure function of the category table in
-    docs/superpowers/specs/2026-07-20-ai-task-routing-design.md section 12.
+    The built-in table above is the default. An admin-configured override in
+    settings.task_routing_category_roles wins for the categories it names; a
+    value that is not a real role is ignored rather than raising, because a bad
+    row must never take routing down.
     """
+    from app.config import settings
+
+    override = settings.task_routing_category_roles.get(category.value)
+    if override is not None:
+        try:
+            return UserRole(override)
+        except ValueError:
+            pass
     return _CATEGORY_TO_ROLE[category]
