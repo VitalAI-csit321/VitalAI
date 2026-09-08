@@ -72,6 +72,8 @@ class Settings(BaseSettings):
     # single source of truth so a clinic that opens at 7 needs no code change.
     clinic_open_hour: int = 8
     clinic_close_hour: int = 18
+    # Used when a booking does not specify a duration explicitly.
+    default_appointment_duration_minutes: int = 30
 
     # Outlook connector (inbound mail via Microsoft Graph).
     # Defaults to disabled: every existing test, every other worktree, and CI
@@ -93,6 +95,28 @@ class Settings(BaseSettings):
     # message arrives with toRecipients absent, which happens for mail sent to
     # a shared mailbox.
     outlook_mailbox_address: str = ""
+
+    # LLM generation params. Previously never passed to the provider at all;
+    # get_llm() now forwards them, and settings_service clears its lru_cache
+    # whenever one changes. Temperature is capped at 0.6 in SETTINGS_REGISTRY
+    # because it affects every LLM call including triage classification.
+    llm_temperature: float = 0.3
+    llm_max_tokens: int = 2048
+    llm_timeout_seconds: int = 30
+
+    # Governance kill switch for autonomous outbound email. ANDed into
+    # email_service.draft_reply()'s safe_to_send_immediately.
+    email_auto_send_enabled: bool = True
+
+    # Overrides for the hardcoded category tables. Empty dict = no override.
+    # {task_category_value: user_role_value}
+    task_routing_category_roles: dict[str, str] = {}
+    # Categories whose replies must be RAG-grounded and never auto-send.
+    email_no_autosend_categories: list[str] = [
+        "prescription_renewal",
+        "results_enquiry",
+        "referral_request",
+    ]
 
     @model_validator(mode="after")
     def _require_runtime_secrets(self) -> "Settings":
