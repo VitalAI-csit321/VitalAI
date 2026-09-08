@@ -1,15 +1,21 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ManualImportSection } from "./settings/ManualImportSection";
+import { SettingsSection as SettingsSectionPanel } from "./settings/SettingsSections";
 
-type SettingsSection = "General" | "Security" | "Manual import" | "Routing rules" | "Approval tiers" | "Operational Settings" | "Future state";
+type SettingsSection = "General" | "Security" | "Manual import" | "Routing rules" | "Approval tiers" | "Integrations" | "Operational Settings";
 
-const NAV_ITEMS: SettingsSection[] = ["General", "Security", "Manual import", "Routing rules", "Approval tiers", "Operational Settings", "Future state"];
+const NAV_ITEMS: SettingsSection[] = ["General", "Security", "Manual import", "Routing rules", "Approval tiers", "Integrations", "Operational Settings"];
 
-function PlaceholderSection({ title }: { title: string }) {
-  return <div className="text-sm text-slate-500 py-8 text-center">{title} configuration coming soon.</div>;
-}
-
+// Nav label to backend `group` field. One-to-one except Manual import and
+// Operational Settings, which are not registry-backed.
+const GROUP_BY_NAV: Partial<Record<SettingsSection, string>> = {
+  General: "General",
+  Security: "Security",
+  "Routing rules": "Routing rules",
+  "Approval tiers": "Approval tiers",
+  Integrations: "Integrations",
+};
 
 function OperationalSettingsSection() {
   const navigate = useNavigate();
@@ -47,7 +53,7 @@ export function SettingsPage() {
         <div className="flex-1 rounded-xl border border-slate-200 bg-white p-6">
           {active === "Operational Settings" && <OperationalSettingsSection />}
           {active === "Manual import" && <ManualImportSection />}
-          {!["Operational Settings", "Manual import"].includes(active) && <PlaceholderSection title={active} />}
+          {GROUP_BY_NAV[active] && <SettingsSectionPanel group={GROUP_BY_NAV[active]!} />}
         </div>
       </div>
     </div>

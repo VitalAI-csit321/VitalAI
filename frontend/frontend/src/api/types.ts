@@ -167,6 +167,13 @@ export interface RagAnswer {
   citations: RagCitation[];
 }
 
+// A document that exists only as retrievable chunks. The synthetic corpus and
+// any offline ingest write these with no ClinicalDocument row behind them, so
+// they never appear in listClinicalDocuments().
+export interface IndexedDocument {
+  sourceDocumentId: string; docType: string; chunkCount: number; indexedAt: string;
+}
+
 export type ClinicalDocType = "consultation" | "pathology_report" | "prescription";
 
 export interface ClinicalDocument {
@@ -176,4 +183,32 @@ export interface ClinicalDocument {
 
 export interface IngestResult {
   documentId: string; chunkCount: number; ingestedAt: string;
+}
+
+export interface ServiceStatus {
+  name: string; detail: string;
+  status: "operational" | "degraded" | "down" | "disabled";
+  latencyMs: number | null; note: string | null;
+}
+
+export interface DetailedHealth {
+  services: ServiceStatus[];
+  uptimeSeconds: number | null;
+  latency: { count: number; avgMs: number | null; p95Ms: number | null };
+  activeSessions: number;
+}
+
+export interface AppSettingItem {
+  key: string;
+  value: unknown;
+  default: unknown;
+  type: "bool" | "int" | "float" | "str" | "list" | "dict";
+  group: string;
+  label: string;
+  help: string;
+  minimum: number | null;
+  maximum: number | null;
+  editable: boolean;
+  updatedBy: string | null;
+  updatedAt: string | null;
 }
