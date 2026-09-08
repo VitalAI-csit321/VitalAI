@@ -13,6 +13,11 @@ class UserRegister(BaseModel):
     role: UserRole = UserRole.FRONT_DESK  # ignored on register — always forced to FRONT_DESK
 
 
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class ElevateRoleRequest(BaseModel):
     new_role: UserRole
 
