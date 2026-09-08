@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from contextlib import asynccontextmanager, suppress
 from uuid import uuid4
 
@@ -10,6 +11,7 @@ from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
+from app import observability
 from app.audit_context import reset_audit_context, set_audit_context
 from app.auth.security import decode_access_token
 from app.config import settings
@@ -33,6 +35,7 @@ from app.routes import (
     patients,
     rag,
     routing,
+    settings as settings_routes,
     tasks,
     triage,
 )
@@ -61,6 +64,15 @@ async def lifespan(application: FastAPI):
         "MINIO_SECRET_KEY": "***",
     }
     logger.info("startup config: %s", redacted)
+    observability.mark_started()
+
+    # Load stored runtime overrides before serving traffic, so the first
+    # request already sees whatever an admin last configured.
+    from app.database import AsyncSessionLocal
+    from app.services import settings_service
+
+    async with AsyncSessionLocal() as db:
+        await settings_service.hydrate(db)
 
     # Inbound Outlook polling, off unless explicitly enabled for this
     # environment. Held as a task so shutdown can cancel it rather than
@@ -137,6 +149,15 @@ async def audit_context_middleware(
         reset_audit_context(ip_token, session_token)
 
 
+@app.middleware("http")
+async def latency_middleware(request: Request, call_next: RequestResponseEndpoint) -> Response:
+    start = time.perf_counter()
+    try:
+        return await call_next(request)
+    finally:
+        observability.record_latency((time.perf_counter() - start) * 1000)
+
+
 # Public
 app.include_router(health.router)
 
@@ -161,6 +182,8 @@ app.include_router(clinical_documents.router, prefix=API_PREFIX)
 app.include_router(doctors.router, prefix=API_PREFIX)
 app.include_router(approvals.router, prefix=API_PREFIX)
 app.include_router(human_review.router, prefix=API_PREFIX)
+app.include_router(settings_routes.router, prefix=API_PREFIX)
+app.include_router(health.detailed_router, prefix=API_PREFIX)
 
 
 @app.get("/")
