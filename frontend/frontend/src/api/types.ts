@@ -26,6 +26,25 @@ export interface Patient {
   gender: Gender;
   status: PatientStatus;
   createdAt: string;
+  address: string | null;
+  indigenousStatus: string | null;
+  preferredLanguage: string | null;
+  phone: string | null;
+  email: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  preferredCommunication: string | null;
+  bestTimeToContact: string | null;
+  knownConditions: string | null;
+  currentMedications: string | null;
+  allergies: string | null;
+  insuranceProvider: string | null;
+  policyNumber: string | null;
+  groupNumber: string | null;
+  expiryDate: string | null;
+  medicareNumber: string | null;
+  concessionCard: string | null;
+  missingFields: string[];
 }
 
 export interface PatientCounts { active: number; pending: number; inactive: number; }
@@ -105,7 +124,7 @@ export interface Message {
 
 export interface DashboardSummary {
   openCases: number; awaitingApproval: number; escalations: number; auditEvents: number;
-  workflowByDay: { day: string; value: number }[];
+  workflowByDay: { day: string; date: string; value: number }[];
   pendingReviews: { id: string; name: string; kind: string; isNew: boolean }[];
 }
 
