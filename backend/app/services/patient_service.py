@@ -5,7 +5,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.scoping import assigned_patient_ids_subquery
-from app.models.patient import Patient, PatientStatus
+from app.models.patient import PROFILE_FIELDS, Patient, PatientStatus
 from app.models.user import User
 from app.schemas.patient import PatientCreate, PatientUpdate
 from app.services.audit_service import record_event
@@ -22,6 +22,16 @@ async def _generate_unique_mrn(db: AsyncSession) -> str:
     raise RuntimeError(f"Could not generate a unique MRN after {_MRN_GENERATION_ATTEMPTS} attempts")
 
 
+def missing_profile_fields(patient: Patient) -> list[str]:
+    return [f for f in PROFILE_FIELDS if not getattr(patient, f)]
+
+
+def is_profile_complete(patient: Patient) -> bool:
+    return not missing_profile_fields(patient) and bool(
+        patient.name and patient.dob and patient.gender
+    )
+
+
 async def create_patient(db: AsyncSession, payload: PatientCreate, actor: User) -> Patient:
     mrn = await _generate_unique_mrn(db)
     patient = Patient(
@@ -31,6 +41,11 @@ async def create_patient(db: AsyncSession, payload: PatientCreate, actor: User) 
         gender=payload.gender,
         status=PatientStatus.PENDING,
     )
+    for field in PROFILE_FIELDS:
+        value = getattr(payload, field, None)
+        if value is not None:
+            setattr(patient, field, value)
+    patient.status = PatientStatus.ACTIVE if is_profile_complete(patient) else PatientStatus.PENDING
     db.add(patient)
     await db.flush()
 

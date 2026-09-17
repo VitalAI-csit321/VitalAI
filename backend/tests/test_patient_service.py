@@ -150,6 +150,49 @@ async def test_list_patients_counts_are_global_not_filtered(db_session: AsyncSes
     assert after["pending"] == before["pending"]
 
 
+def _complete_profile_kwargs() -> dict:
+    return dict(
+        address="1 Test St", indigenous_status="Not stated", preferred_language="English",
+        phone="0400000000", email="test@example.com",
+        emergency_contact_name="Jo", emergency_contact_phone="0400000001",
+        preferred_communication="Phone", best_time_to_contact="Morning",
+        known_conditions="None", current_medications="None", allergies="None",
+        insurance_provider="BUPA", policy_number="P1", group_number="N/A",
+        insurance_expiry=date(2030, 1, 1), medicare_number="123456789", concession_card="None",
+    )
+
+
+async def test_create_patient_partial_payload_is_pending(db_session: AsyncSession):
+    actor = _actor()
+    db_session.add(actor)
+    await db_session.commit()
+
+    patient = await patient_service.create_patient(
+        db_session,
+        PatientCreate(name="Partial", dob=date(1990, 1, 1), gender=Gender.MALE, phone="0400000000"),
+        actor,
+    )
+    assert patient.status == PatientStatus.PENDING
+    assert "phone" not in patient_service.missing_profile_fields(patient)
+    assert "email" in patient_service.missing_profile_fields(patient)
+
+
+async def test_create_patient_full_payload_is_active(db_session: AsyncSession):
+    actor = _actor()
+    db_session.add(actor)
+    await db_session.commit()
+
+    patient = await patient_service.create_patient(
+        db_session,
+        PatientCreate(
+            name="Complete", dob=date(1990, 1, 1), gender=Gender.MALE, **_complete_profile_kwargs()
+        ),
+        actor,
+    )
+    assert patient.status == PatientStatus.ACTIVE
+    assert patient_service.missing_profile_fields(patient) == []
+
+
 async def test_list_patients_pagination(db_session: AsyncSession):
     actor = _actor()
     db_session.add(actor)
