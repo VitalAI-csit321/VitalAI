@@ -1,7 +1,7 @@
 import secrets
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.scoping import assigned_patient_ids_subquery
@@ -115,6 +115,7 @@ async def list_patients(
     db: AsyncSession,
     search: str | None = None,
     status: PatientStatus | None = None,
+    sort: str | None = None,
     limit: int = 20,
     offset: int = 0,
     doctor_id: UUID | None = None,
@@ -144,9 +145,16 @@ async def list_patients(
         items_query = items_query.where(condition)
         count_query = count_query.where(condition)
 
-    items_result = await db.execute(
-        items_query.order_by(Patient.created_at.desc()).limit(limit).offset(offset)
-    )
+    if sort == "missing_fields":
+        missing_count = sum(
+            case((or_(getattr(Patient, f).is_(None), getattr(Patient, f) == ""), 1), else_=0)
+            for f in PROFILE_FIELDS
+        )
+        items_query = items_query.order_by(missing_count.asc(), Patient.created_at.desc())
+    else:
+        items_query = items_query.order_by(Patient.created_at.desc())
+
+    items_result = await db.execute(items_query.limit(limit).offset(offset))
     items = list(items_result.scalars().all())
     total = (await db.execute(count_query)).scalar_one()
 

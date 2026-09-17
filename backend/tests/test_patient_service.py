@@ -250,6 +250,30 @@ async def test_update_patient_completes_profile_and_activates(db_session: AsyncS
     assert updated.status == PatientStatus.ACTIVE
 
 
+async def test_list_patients_sort_by_missing_fields(db_session: AsyncSession):
+    actor = _actor()
+    db_session.add(actor)
+    await db_session.commit()
+
+    unique = uuid4().hex[:8]
+    most_missing = await patient_service.create_patient(
+        db_session,
+        PatientCreate(name=f"MostMissing{unique}", dob=date(1990, 1, 1), gender=Gender.MALE),
+        actor,
+    )
+    least_missing_kwargs = {k: v for k, v in _complete_profile_kwargs().items() if k != "concession_card"}
+    least_missing = await patient_service.create_patient(
+        db_session,
+        PatientCreate(
+            name=f"LeastMissing{unique}", dob=date(1990, 1, 1), gender=Gender.MALE, **least_missing_kwargs
+        ),
+        actor,
+    )
+
+    items, _, _ = await patient_service.list_patients(db_session, search=unique, sort="missing_fields")
+    assert [p.id for p in items] == [least_missing.id, most_missing.id]
+
+
 async def test_list_patients_pagination(db_session: AsyncSession):
     actor = _actor()
     db_session.add(actor)

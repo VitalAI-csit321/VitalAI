@@ -33,6 +33,7 @@ async def create_patient_endpoint(
 async def list_patients_endpoint(
     search: str | None = None,
     status: PatientStatus | None = None,
+    sort: str | None = None,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -40,7 +41,7 @@ async def list_patients_endpoint(
 ):
     doctor_id = actor.id if actor.role == UserRole.DOCTOR else None
     items, total, counts = await patient_service.list_patients(
-        db, search=search, status=status, limit=limit, offset=offset, doctor_id=doctor_id
+        db, search=search, status=status, sort=sort, limit=limit, offset=offset, doctor_id=doctor_id
     )
     return PatientListResponse(
         items=[PatientOut.model_validate(p) for p in items],
