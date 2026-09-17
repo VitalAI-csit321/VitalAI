@@ -78,6 +78,11 @@ services:
   ollama:
     image: ollama/ollama:latest
     restart: unless-stopped
+    environment:
+      # -1 = never unload the model on idle. Default 5m unload means every
+      # gap between requests pays a multi-second reload cost from disk,
+      # which was eating most of the client's own request timeout.
+      OLLAMA_KEEP_ALIVE: "-1"
     ports:
       - "11434:11434"
     volumes:

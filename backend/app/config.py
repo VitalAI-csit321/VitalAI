@@ -102,7 +102,11 @@ class Settings(BaseSettings):
     # because it affects every LLM call including triage classification.
     llm_temperature: float = 0.3
     llm_max_tokens: int = 2048
-    llm_timeout_seconds: int = 30
+    # 30s wasn't enough headroom for a cold Ollama model load on a modest
+    # dev machine (~30-40s just to reload from disk before generating a
+    # token); paired with OLLAMA_KEEP_ALIVE=-1 on the ollama compose service
+    # so this only matters once per container start, not once per idle gap.
+    llm_timeout_seconds: int = 90
 
     # Governance kill switch for autonomous outbound email. ANDed into
     # email_service.draft_reply()'s safe_to_send_immediately.

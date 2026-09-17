@@ -185,6 +185,85 @@ async def test_draft_reply_blocked_by_output_guardrail_routes_to_human(
     assert outcome.draft_text is None
 
 
+@pytest.mark.asyncio
+async def test_draft_reply_llm_failure_falls_back_to_human_review(
+    db_session, front_desk_user, monkeypatch
+):
+    """A transient LLM failure (Ollama timeout, connection drop, etc.) during
+    draft generation must not crash the request and orphan the task with no
+    draft, no approval, and no error surfaced -- it should degrade to the
+    same "needs a manual reply" shape as any other no-draft outcome.
+    """
+    monkeypatch.setattr(
+        "app.services.email_service.get_llm",
+        lambda: _FakeLLM(json.dumps({"category": "general_administrative", "confidence": 0.95})),
+    )
+    payload = EmailIngestRequest(
+        sender="patient@example.com",
+        recipient="clinic@example.com",
+        subject="Opening hours",
+        body="What time do you open on Saturdays?",
+    )
+    email, task, gate, confidence = await email_service.ingest_email(
+        db_session, payload, front_desk_user
+    )
+
+    with patch(
+        "app.services.email_service._generate_org_grounded_reply",
+        new=AsyncMock(side_effect=TimeoutError("Ollama timed out")),
+    ):
+        outcome = await email_service.draft_reply(
+            db_session, task, email, front_desk_user, gate, confidence
+        )
+
+    assert outcome.draft_text is None
+    assert outcome.sent is False
+    assert outcome.blocked is False
+    assert outcome.approval_id is None
+    await db_session.refresh(task)
+    assert task.draft_text is None
+
+
+@pytest.mark.asyncio
+async def test_draft_reply_worthiness_gate_llm_failure_falls_back_to_human_review(
+    db_session, front_desk_user, monkeypatch
+):
+    """Same failure mode as the drafting step above, but from the earlier
+    reply-worthiness gate call -- a real gap the first fix missed, since
+    evaluate_reply_worthiness() runs before the drafting try/except and its
+    own internal handling only catches InputBlockedError, not a generic LLM
+    timeout/connection failure.
+    """
+    monkeypatch.setattr(
+        "app.services.email_service.get_llm",
+        lambda: _FakeLLM(json.dumps({"category": "general_administrative", "confidence": 0.95})),
+    )
+    payload = EmailIngestRequest(
+        sender="patient@example.com",
+        recipient="clinic@example.com",
+        subject="Opening hours",
+        body="What time do you open on Saturdays?",
+    )
+    email, task, gate, confidence = await email_service.ingest_email(
+        db_session, payload, front_desk_user
+    )
+
+    with patch(
+        "app.services.email_service.evaluate_reply_worthiness",
+        new=AsyncMock(side_effect=TimeoutError("Ollama timed out")),
+    ):
+        outcome = await email_service.draft_reply(
+            db_session, task, email, front_desk_user, gate, confidence
+        )
+
+    assert outcome.draft_text is None
+    assert outcome.sent is False
+    assert outcome.blocked is False
+    assert outcome.approval_id is None
+    await db_session.refresh(task)
+    assert task.draft_text is None
+
+
 def _org_chunk(content: str, score: float):
     from uuid import uuid4
 
