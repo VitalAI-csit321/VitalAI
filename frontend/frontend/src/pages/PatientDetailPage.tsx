@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { getPatient, listCasesForPatient } from "../api/cases";
 import type { Patient, Case } from "../api/types";
 import { StatusBadge, Spinner } from "../components/ui";
+import { PROFILE_FIELD_GROUPS, PROFILE_FIELD_LABELS_BY_API_KEY } from "../components/patientProfileFields";
 
 export function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +31,8 @@ export function PatientDetailPage() {
     </div>
   );
 
+  const values = patient as unknown as Record<string, string | null>;
+
   return (
     <div className="p-6">
       <button onClick={() => navigate("/patients")} className="text-sm text-slate-500 hover:text-slate-700">← Back to patients</button>
@@ -39,12 +42,37 @@ export function PatientDetailPage() {
           <h1 className="text-2xl font-bold text-slate-900">{patient.name}</h1>
           <p className="mt-1 text-sm text-slate-500 font-mono">{patient.mrn}</p>
         </div>
-        <StatusBadge tone={patient.status === "active" ? "green" : patient.status === "pending" ? "amber" : "gray"}>{patient.status}</StatusBadge>
+        <div className="flex items-center gap-3">
+          <StatusBadge tone={patient.status === "active" ? "green" : patient.status === "pending" ? "amber" : "gray"}>{patient.status}</StatusBadge>
+          <button onClick={() => navigate(`/patients/${patient.id}/edit`)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Edit</button>
+        </div>
       </div>
+
+      {patient.missingFields.length > 0 && (
+        <div className="mt-4 max-w-lg rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Pending — missing: {patient.missingFields.map(f => PROFILE_FIELD_LABELS_BY_API_KEY[f] ?? f).join(", ")}
+        </div>
+      )}
 
       <div className="mt-6 grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-white p-5 max-w-lg text-sm">
         <div><div className="text-xs text-slate-500 uppercase tracking-wide">Date of birth</div><div className="font-medium text-slate-900 mt-0.5">{patient.dob ? new Date(patient.dob).toLocaleDateString("en-GB") : "—"}</div></div>
         <div><div className="text-xs text-slate-500 uppercase tracking-wide">Gender</div><div className="font-medium text-slate-900 mt-0.5 capitalize">{patient.gender?.replace("_", " ") ?? "—"}</div></div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2 max-w-4xl">
+        {PROFILE_FIELD_GROUPS.map(group => (
+          <div key={group.title} className="rounded-xl border border-slate-200 bg-white p-5 text-sm">
+            <h2 className="text-sm font-semibold text-slate-900 mb-3">{group.title}</h2>
+            <div className="space-y-3">
+              {group.fields.map(def => (
+                <div key={def.key}>
+                  <div className="text-xs text-slate-500 uppercase tracking-wide">{def.label}</div>
+                  <div className="font-medium text-slate-900 mt-0.5 whitespace-pre-line">{values[def.key] || "Not provided"}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="mt-6">
