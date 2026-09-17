@@ -76,9 +76,19 @@ async def update_patient(
     if payload.gender is not None:
         patient.gender = payload.gender
         changes["gender"] = payload.gender.value
+
+    for field in PROFILE_FIELDS:
+        value = getattr(payload, field, None)
+        if value is not None:
+            setattr(patient, field, value)
+            changes[field] = str(value)
+
     if payload.status is not None:
         patient.status = payload.status
         changes["status"] = payload.status.value
+    elif patient.status != PatientStatus.INACTIVE:
+        patient.status = PatientStatus.ACTIVE if is_profile_complete(patient) else PatientStatus.PENDING
+
     await db.flush()
 
     await record_event(

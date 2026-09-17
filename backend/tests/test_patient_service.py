@@ -8,7 +8,7 @@ from app.auth.security import hash_password
 from app.models.audit import AuditEvent
 from app.models.patient import Gender, PatientStatus
 from app.models.user import User, UserRole
-from app.schemas.patient import PatientCreate
+from app.schemas.patient import PatientCreate, PatientUpdate
 from app.services import patient_service
 
 
@@ -191,6 +191,63 @@ async def test_create_patient_full_payload_is_active(db_session: AsyncSession):
     )
     assert patient.status == PatientStatus.ACTIVE
     assert patient_service.missing_profile_fields(patient) == []
+
+
+async def test_update_patient_explicit_status_overrides_completeness(db_session: AsyncSession):
+    actor = _actor()
+    db_session.add(actor)
+    await db_session.commit()
+
+    patient = await patient_service.create_patient(
+        db_session,
+        PatientCreate(name="Full", dob=date(1990, 1, 1), gender=Gender.MALE, **_complete_profile_kwargs()),
+        actor,
+    )
+    assert patient.status == PatientStatus.ACTIVE
+
+    updated = await patient_service.update_patient(
+        db_session, patient, PatientUpdate(status=PatientStatus.INACTIVE), actor
+    )
+    assert updated.status == PatientStatus.INACTIVE
+
+
+async def test_update_patient_field_edit_does_not_reactivate_inactive(db_session: AsyncSession):
+    actor = _actor()
+    db_session.add(actor)
+    await db_session.commit()
+
+    patient = await patient_service.create_patient(
+        db_session,
+        PatientCreate(
+            name="StaysInactive", dob=date(1990, 1, 1), gender=Gender.MALE, **_complete_profile_kwargs()
+        ),
+        actor,
+    )
+    await patient_service.update_patient(
+        db_session, patient, PatientUpdate(status=PatientStatus.INACTIVE), actor
+    )
+    assert patient.status == PatientStatus.INACTIVE
+
+    updated = await patient_service.update_patient(
+        db_session, patient, PatientUpdate(phone="0499999999"), actor
+    )
+    assert updated.status == PatientStatus.INACTIVE
+
+
+async def test_update_patient_completes_profile_and_activates(db_session: AsyncSession):
+    actor = _actor()
+    db_session.add(actor)
+    await db_session.commit()
+
+    patient = await patient_service.create_patient(
+        db_session, PatientCreate(name="Filling In", dob=date(1990, 1, 1), gender=Gender.MALE), actor
+    )
+    assert patient.status == PatientStatus.PENDING
+
+    updated = await patient_service.update_patient(
+        db_session, patient, PatientUpdate(**_complete_profile_kwargs()), actor
+    )
+    assert updated.status == PatientStatus.ACTIVE
 
 
 async def test_list_patients_pagination(db_session: AsyncSession):
