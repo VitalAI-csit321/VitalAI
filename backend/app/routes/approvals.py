@@ -63,7 +63,15 @@ async def _execute_email_draft_reply(
     payload = request.resolved_payload or request.payload
     draft = payload.get("draft")
     email_id = payload.get("email_id")
+    task_id = payload.get("task_id")
     delivered = False
+
+    # Read the delivery record before acting. A retried executor or a resumed
+    # graph can land here twice on one approval, and draft_sent is the only
+    # thing that knows the patient already got this reply.
+    task = await db.get(Task, UUID(task_id)) if task_id is not None else None
+    if task is not None and task.draft_sent:
+        return
 
     if settings.outlook_enabled and email_id is not None and draft:
         email = await db.get(Email, UUID(email_id))
@@ -77,13 +85,12 @@ async def _execute_email_draft_reply(
                 ) from exc
             delivered = True
 
-    task_id = payload.get("task_id")
-    if task_id is not None:
-        task = await db.get(Task, UUID(task_id))
-        if task is not None:
-            task.draft_sent = True
-            if draft is not None:
-                task.draft_text = draft
+    # Only reached on a successful send: EmailSendError propagates above, so a
+    # failed delivery never records draft_sent.
+    if task is not None:
+        task.draft_sent = True
+        if draft is not None:
+            task.draft_text = draft
     await record_event(
         db,
         actor=actor,
