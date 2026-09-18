@@ -13,7 +13,13 @@ config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False, not fileConfig's default of True: conftest
+    # runs `alembic upgrade head` in-process on the Postgres track, and the
+    # default would set .disabled on every logger already created at import
+    # time -- every module-level logging.getLogger(__name__) in the app. caplog
+    # then reads empty for the rest of the pytest session and a test looks
+    # exactly like the code under test never ran. See tests/test_alembic_logging.py.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
