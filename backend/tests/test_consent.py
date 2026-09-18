@@ -1,9 +1,8 @@
 import uuid
 
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import HumanReviewTask, Patient, TaskType, User
 from app.models.case import IntakeCase

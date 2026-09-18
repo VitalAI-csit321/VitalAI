@@ -152,13 +152,24 @@ async def test_list_patients_counts_are_global_not_filtered(db_session: AsyncSes
 
 def _complete_profile_kwargs() -> dict:
     return dict(
-        address="1 Test St", indigenous_status="Not stated", preferred_language="English",
-        phone="0400000000", email="test@example.com",
-        emergency_contact_name="Jo", emergency_contact_phone="0400000001",
-        preferred_communication="Phone", best_time_to_contact="Morning",
-        known_conditions="None", current_medications="None", allergies="None",
-        insurance_provider="BUPA", policy_number="P1", group_number="N/A",
-        insurance_expiry=date(2030, 1, 1), medicare_number="123456789", concession_card="None",
+        address="1 Test St",
+        indigenous_status="Not stated",
+        preferred_language="English",
+        phone="0400000000",
+        email="test@example.com",
+        emergency_contact_name="Jo",
+        emergency_contact_phone="0400000001",
+        preferred_communication="Phone",
+        best_time_to_contact="Morning",
+        known_conditions="None",
+        current_medications="None",
+        allergies="None",
+        insurance_provider="BUPA",
+        policy_number="P1",
+        group_number="N/A",
+        insurance_expiry=date(2030, 1, 1),
+        medicare_number="123456789",
+        concession_card="None",
     )
 
 
@@ -200,7 +211,9 @@ async def test_update_patient_explicit_status_overrides_completeness(db_session:
 
     patient = await patient_service.create_patient(
         db_session,
-        PatientCreate(name="Full", dob=date(1990, 1, 1), gender=Gender.MALE, **_complete_profile_kwargs()),
+        PatientCreate(
+            name="Full", dob=date(1990, 1, 1), gender=Gender.MALE, **_complete_profile_kwargs()
+        ),
         actor,
     )
     assert patient.status == PatientStatus.ACTIVE
@@ -219,7 +232,10 @@ async def test_update_patient_field_edit_does_not_reactivate_inactive(db_session
     patient = await patient_service.create_patient(
         db_session,
         PatientCreate(
-            name="StaysInactive", dob=date(1990, 1, 1), gender=Gender.MALE, **_complete_profile_kwargs()
+            name="StaysInactive",
+            dob=date(1990, 1, 1),
+            gender=Gender.MALE,
+            **_complete_profile_kwargs(),
         ),
         actor,
     )
@@ -240,7 +256,9 @@ async def test_update_patient_completes_profile_and_activates(db_session: AsyncS
     await db_session.commit()
 
     patient = await patient_service.create_patient(
-        db_session, PatientCreate(name="Filling In", dob=date(1990, 1, 1), gender=Gender.MALE), actor
+        db_session,
+        PatientCreate(name="Filling In", dob=date(1990, 1, 1), gender=Gender.MALE),
+        actor,
     )
     assert patient.status == PatientStatus.PENDING
 
@@ -261,16 +279,23 @@ async def test_list_patients_sort_by_missing_fields(db_session: AsyncSession):
         PatientCreate(name=f"MostMissing{unique}", dob=date(1990, 1, 1), gender=Gender.MALE),
         actor,
     )
-    least_missing_kwargs = {k: v for k, v in _complete_profile_kwargs().items() if k != "concession_card"}
+    least_missing_kwargs = {
+        k: v for k, v in _complete_profile_kwargs().items() if k != "concession_card"
+    }
     least_missing = await patient_service.create_patient(
         db_session,
         PatientCreate(
-            name=f"LeastMissing{unique}", dob=date(1990, 1, 1), gender=Gender.MALE, **least_missing_kwargs
+            name=f"LeastMissing{unique}",
+            dob=date(1990, 1, 1),
+            gender=Gender.MALE,
+            **least_missing_kwargs,
         ),
         actor,
     )
 
-    items, _, _ = await patient_service.list_patients(db_session, search=unique, sort="missing_fields")
+    items, _, _ = await patient_service.list_patients(
+        db_session, search=unique, sort="missing_fields"
+    )
     assert [p.id for p in items] == [least_missing.id, most_missing.id]
 
 

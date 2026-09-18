@@ -76,9 +76,7 @@ async def capture_consent(
         details={"consent_id": str(consent_id)},
     )
 
-    unchecked = [
-        c["label"] for c in (form_snapshot or {}).get("checks", []) if not c["checked"]
-    ]
+    unchecked = [c["label"] for c in (form_snapshot or {}).get("checks", []) if not c["checked"]]
     if unchecked:
         db.add(
             HumanReviewTask(

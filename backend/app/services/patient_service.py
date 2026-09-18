@@ -1,4 +1,6 @@
+import operator
 import secrets
+from functools import reduce
 from uuid import UUID
 
 from sqlalchemy import case, func, or_, select
@@ -87,7 +89,9 @@ async def update_patient(
         patient.status = payload.status
         changes["status"] = payload.status.value
     elif patient.status != PatientStatus.INACTIVE:
-        patient.status = PatientStatus.ACTIVE if is_profile_complete(patient) else PatientStatus.PENDING
+        patient.status = (
+            PatientStatus.ACTIVE if is_profile_complete(patient) else PatientStatus.PENDING
+        )
 
     await db.flush()
 
@@ -156,7 +160,9 @@ async def list_patients(
                 return column.is_(None)
             return or_(column.is_(None), column == "")
 
-        missing_count = sum(case((_is_missing(f), 1), else_=0) for f in PROFILE_FIELDS)
+        missing_count = reduce(
+            operator.add, (case((_is_missing(f), 1), else_=0) for f in PROFILE_FIELDS)
+        )
         items_query = items_query.order_by(missing_count.asc(), Patient.created_at.desc())
     else:
         items_query = items_query.order_by(Patient.created_at.desc())

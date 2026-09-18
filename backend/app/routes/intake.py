@@ -38,8 +38,13 @@ async def list_intake_endpoint(
     _: User = Depends(require_permission(VIEW_QUEUE)),
 ):
     items, total = await intake_service.list_cases(
-        db, search=search, status=status, channel=channel, patient_id=patient_id,
-        limit=limit, offset=offset,
+        db,
+        search=search,
+        status=status,
+        channel=channel,
+        patient_id=patient_id,
+        limit=limit,
+        offset=offset,
     )
     return IntakeCaseListResponse(
         items=[IntakeCaseOut.model_validate(c) for c in items],

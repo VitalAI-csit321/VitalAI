@@ -63,7 +63,9 @@ async def capture_consent_endpoint(
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_permission(CAPTURE_CONSENT)),
 ):
-    form_snapshot = payload.form_snapshot.model_dump() if payload and payload.form_snapshot else None
+    form_snapshot = (
+        payload.form_snapshot.model_dump() if payload and payload.form_snapshot else None
+    )
     try:
         record = await consent_service.capture_consent(db, consent_id, actor, form_snapshot)
     except ConsentStateError as exc:
