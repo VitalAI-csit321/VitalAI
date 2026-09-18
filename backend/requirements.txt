@@ -35,7 +35,8 @@ faster-whisper>=1.0.0
 slowapi>=0.1.9
 
 # Phase 3 — orchestration, RAG, observability
-langgraph>=0.1.0
+langgraph>=1.2.1
+langgraph-checkpoint-postgres>=3.0.0
 langsmith>=0.1.0
 langchain-postgres>=0.0.6
 # Bounded like fastapi above: nomic-embed-text-v1's trust_remote_code model

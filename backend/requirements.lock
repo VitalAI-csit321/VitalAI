@@ -183,7 +183,10 @@ langgraph==1.2.1
 langgraph-checkpoint==4.1.1
     # via
     #   langgraph
+    #   langgraph-checkpoint-postgres
     #   langgraph-prebuilt
+langgraph-checkpoint-postgres==3.1.2
+    # via -r requirements.txt
 langgraph-prebuilt==1.1.0
     # via langgraph
 langgraph-sdk==0.3.15
@@ -240,6 +243,7 @@ onnxruntime==1.30.0
     # via faster-whisper
 orjson==3.11.9
     # via
+    #   langgraph-checkpoint-postgres
     #   langgraph-sdk
     #   langsmith
 ormsgpack==1.12.2
@@ -273,11 +277,15 @@ protobuf==7.35.1
     #   onnxruntime
     #   ray
 psycopg[binary]==3.3.4
-    # via langchain-postgres
+    # via
+    #   langchain-postgres
+    #   langgraph-checkpoint-postgres
 psycopg-binary==3.3.4
     # via psycopg
 psycopg-pool==3.3.1
-    # via langchain-postgres
+    # via
+    #   langchain-postgres
+    #   langgraph-checkpoint-postgres
 pyasn1==0.6.3
     # via
     #   python-jose
