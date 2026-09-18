@@ -146,10 +146,17 @@ async def list_patients(
         count_query = count_query.where(condition)
 
     if sort == "missing_fields":
-        missing_count = sum(
-            case((or_(getattr(Patient, f).is_(None), getattr(Patient, f) == ""), 1), else_=0)
-            for f in PROFILE_FIELDS
-        )
+        # insurance_expiry is the one Date column in PROFILE_FIELDS (the rest are
+        # String/Text): comparing a date column to "" is valid under SQLite's
+        # dynamic typing but raises "operator does not exist: date = character
+        # varying" on Postgres, so it only checks IS NULL.
+        def _is_missing(field: str):
+            column = getattr(Patient, field)
+            if field == "insurance_expiry":
+                return column.is_(None)
+            return or_(column.is_(None), column == "")
+
+        missing_count = sum(case((_is_missing(f), 1), else_=0) for f in PROFILE_FIELDS)
         items_query = items_query.order_by(missing_count.asc(), Patient.created_at.desc())
     else:
         items_query = items_query.order_by(Patient.created_at.desc())
