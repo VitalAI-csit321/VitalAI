@@ -50,6 +50,12 @@ class UserOut(BaseModel):
     role: UserRole
     is_active: bool
     created_at: datetime
+    # Extra per-user grants on top of the role's base permissions (User.
+    # granted_permissions, an association_proxy over permission_grants). The
+    # frontend's own /auth/me call is the only way it learns about a grant on
+    # the logged-in user - e.g. whether it can render a doctor-only action for
+    # an admin/operator who's been granted view_clinical.
+    granted_permissions: list[str] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 
