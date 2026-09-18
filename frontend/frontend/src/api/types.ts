@@ -58,9 +58,15 @@ export interface Case {
 export type ConsentStatus = "pending" | "captured" | "withdrawn" | "not_required";
 export type ConsentQueueStatus = "pending" | "review" | "complete";
 
+export interface ConsentFormSnapshot {
+  checks: { label: string; checked: boolean }[];
+  signature: string;
+}
+
 export interface Consent {
   id: string; caseId: string; status: ConsentStatus;
   capturedAt: string | null; consentType: string; notes: string | null;
+  formSnapshot: ConsentFormSnapshot | null;
   createdAt: string; updatedAt: string;
 }
 

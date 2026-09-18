@@ -13,7 +13,7 @@ from uuid import UUID
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.permissions import VIEW_CLINICAL, effective_permissions
+from app.auth.permissions import UPLOAD_CLINICAL, VIEW_CLINICAL, effective_permissions
 from app.models.assignment import DoctorPatientAssignment
 from app.models.user import User, UserRole
 
@@ -34,6 +34,19 @@ async def can_read_clinical(db: AsyncSession, user: User, patient_id: UUID) -> b
     if user.role == UserRole.DOCTOR:
         return await is_assigned(db, user.id, patient_id)
     return True
+
+
+# Metadata-only visibility (filename, doc_type - never extracted_text/storage_key,
+# see ClinicalDocumentOut): operators/admins can see what exists via their
+# UPLOAD_CLINICAL permission even without a VIEW_CLINICAL grant, they just can't
+# open the content (can_read_clinical, above, still gates GET .../file). Doctors
+# are unaffected here - VIEW_CLINICAL is already their default permission - but
+# still scoped to their assigned patients.
+async def can_list_clinical(db: AsyncSession, user: User, patient_id: UUID) -> bool:
+    perms = effective_permissions(user)
+    if user.role == UserRole.DOCTOR:
+        return VIEW_CLINICAL in perms and await is_assigned(db, user.id, patient_id)
+    return VIEW_CLINICAL in perms or UPLOAD_CLINICAL in perms
 
 
 def allowed_scopes(user: User) -> set[str]:

@@ -3,7 +3,9 @@ import uuid
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Patient, User
+from sqlalchemy import select
+
+from app.models import HumanReviewTask, Patient, TaskType, User
 from app.models.case import IntakeCase
 from app.models.consent import ConsentRecord
 
@@ -37,6 +39,132 @@ async def test_consent_capture_flow(client: AsyncClient, admin_headers: dict, pa
     assert capture.status_code == 200
     assert capture.json()["status"] == "captured"
     assert capture.json()["captured_at"] is not None
+
+
+async def test_consent_capture_stores_form_snapshot(
+    client: AsyncClient, admin_headers: dict, patient: Patient
+):
+    case_id = await _create_case(client, admin_headers, patient)
+    create = await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
+    consent_id = create.json()["id"]
+
+    snapshot = {
+        "checks": [{"label": "I have read and understood the consent form", "checked": True}],
+        "signature": "data:image/png;base64,abc123",
+    }
+    capture = await client.post(
+        f"/api/v1/consent/{consent_id}/capture",
+        json={"form_snapshot": snapshot},
+        headers=admin_headers,
+    )
+    assert capture.status_code == 200
+    assert capture.json()["form_snapshot"] == snapshot
+
+
+async def test_consent_capture_with_unchecked_item_creates_review_task(
+    client: AsyncClient, admin_headers: dict, patient: Patient, db_session: AsyncSession
+):
+    case_id = await _create_case(client, admin_headers, patient)
+    create = await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
+    consent_id = create.json()["id"]
+
+    snapshot = {
+        "checks": [
+            {"label": "I have read and understood the consent form", "checked": True},
+            {"label": "I consent to be contacted for research purposes", "checked": False},
+        ],
+        "signature": "data:image/png;base64,abc123",
+    }
+    capture = await client.post(
+        f"/api/v1/consent/{consent_id}/capture",
+        json={"form_snapshot": snapshot},
+        headers=admin_headers,
+    )
+    assert capture.status_code == 200
+
+    result = await db_session.execute(
+        select(HumanReviewTask).where(HumanReviewTask.case_id == uuid.UUID(case_id))
+    )
+    task = result.scalars().first()
+    assert task is not None
+    assert task.task_type == TaskType.CONSENT_REVIEW
+
+
+async def test_consent_capture_fully_checked_creates_no_review_task(
+    client: AsyncClient, admin_headers: dict, patient: Patient, db_session: AsyncSession
+):
+    case_id = await _create_case(client, admin_headers, patient)
+    create = await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
+    consent_id = create.json()["id"]
+
+    snapshot = {
+        "checks": [{"label": "I have read and understood the consent form", "checked": True}],
+        "signature": "data:image/png;base64,abc123",
+    }
+    await client.post(
+        f"/api/v1/consent/{consent_id}/capture",
+        json={"form_snapshot": snapshot},
+        headers=admin_headers,
+    )
+
+    result = await db_session.execute(
+        select(HumanReviewTask).where(HumanReviewTask.case_id == uuid.UUID(case_id))
+    )
+    assert result.scalars().first() is None
+
+
+async def test_consent_resolve_review_completes_task_once_fully_checked(
+    client: AsyncClient, admin_headers: dict, patient: Patient, db_session: AsyncSession
+):
+    case_id = await _create_case(client, admin_headers, patient)
+    create = await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
+    consent_id = create.json()["id"]
+
+    checks = [
+        {"label": "I have read and understood the consent form", "checked": True},
+        {"label": "I consent to be contacted for research purposes", "checked": False},
+    ]
+    await client.post(
+        f"/api/v1/consent/{consent_id}/capture",
+        json={"form_snapshot": {"checks": checks, "signature": "data:image/png;base64,abc123"}},
+        headers=admin_headers,
+    )
+
+    checks[1]["checked"] = True
+    resolve = await client.post(
+        f"/api/v1/consent/{consent_id}/resolve-review",
+        json={"form_snapshot": {"checks": checks, "signature": "data:image/png;base64,abc123"}},
+        headers=admin_headers,
+    )
+    assert resolve.status_code == 200
+    assert all(c["checked"] for c in resolve.json()["form_snapshot"]["checks"])
+
+    result = await db_session.execute(
+        select(HumanReviewTask).where(HumanReviewTask.case_id == uuid.UUID(case_id))
+    )
+    task = result.scalars().first()
+    assert task is not None
+    assert task.status == "completed"
+
+
+async def test_consent_resolve_review_before_capture_returns_409(
+    client: AsyncClient, admin_headers: dict, patient: Patient
+):
+    case_id = await _create_case(client, admin_headers, patient)
+    create = await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
+    consent_id = create.json()["id"]
+
+    response = await client.post(
+        f"/api/v1/consent/{consent_id}/resolve-review",
+        json={
+            "form_snapshot": {
+                "checks": [{"label": "x", "checked": True}],
+                "signature": "data:image/png;base64,abc123",
+            }
+        },
+        headers=admin_headers,
+    )
+    assert response.status_code == 409
 
 
 async def test_consent_capture_twice_returns_409(

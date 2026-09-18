@@ -20,6 +20,15 @@ export function setToken(token: string | null): void {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
+// AuthProvider registers a listener here so a 401 from ANY authenticated call
+// (session expired, token invalidated) clears the logged-in state everywhere,
+// instead of each page's own catch block showing a confusing, unrelated error.
+let onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedHandler(fn: (() => void) | null): void {
+  onUnauthorized = fn;
+}
+
 export class ApiError extends Error {
   status: number;
   detail: unknown;
@@ -65,6 +74,10 @@ async function parse(res: Response): Promise<unknown> {
 async function handle(res: Response): Promise<unknown> {
   const body = await parse(res);
   if (!res.ok) {
+    if (res.status === 401) {
+      setToken(null);
+      onUnauthorized?.();
+    }
     const detail =
       body && typeof body === "object" && "detail" in body
         ? (body as { detail: unknown }).detail
@@ -91,6 +104,19 @@ export async function apiGet<T>(
   }
   const res = await fetch(url.toString(), { headers: { ...authHeaders() } });
   return handle(res) as Promise<T>;
+}
+
+// For binary responses (file downloads) that don't fit the JSON handle() path.
+export async function apiGetBlob(path: string): Promise<Blob> {
+  const res = await fetch(BASE_URL + path, { headers: { ...authHeaders() } });
+  if (!res.ok) {
+    if (res.status === 401) {
+      setToken(null);
+      onUnauthorized?.();
+    }
+    throw new ApiError(res.status, await res.text().catch(() => null));
+  }
+  return res.blob();
 }
 
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {

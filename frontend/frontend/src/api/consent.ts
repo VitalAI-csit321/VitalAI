@@ -1,6 +1,6 @@
 import { apiGet, apiPost, type ApiPage } from "../lib/apiClient";
 import { placeholderConsentForms } from "./_placeholder";
-import type { Consent, ConsentQueueRow, ConsentQueueStatus } from "./types";
+import type { Consent, ConsentFormSnapshot, ConsentQueueRow, ConsentQueueStatus } from "./types";
 
 interface RawConsent {
   id: string;
@@ -9,6 +9,7 @@ interface RawConsent {
   captured_at: string | null;
   consent_type: string;
   notes: string | null;
+  form_snapshot: ConsentFormSnapshot | null;
   created_at: string;
   updated_at: string;
 }
@@ -21,6 +22,7 @@ function toConsent(raw: RawConsent): Consent {
     capturedAt: raw.captured_at,
     consentType: raw.consent_type,
     notes: raw.notes,
+    formSnapshot: raw.form_snapshot,
     createdAt: raw.created_at,
     updatedAt: raw.updated_at,
   };
@@ -42,8 +44,26 @@ export async function createConsent(input: {
   return toConsent(await apiPost<RawConsent>("/api/v1/consent", input));
 }
 
-export async function captureConsent(consentId: string): Promise<Consent> {
-  return toConsent(await apiPost<RawConsent>(`/api/v1/consent/${consentId}/capture`));
+export async function captureConsent(
+  consentId: string,
+  formSnapshot?: ConsentFormSnapshot,
+): Promise<Consent> {
+  return toConsent(
+    await apiPost<RawConsent>(`/api/v1/consent/${consentId}/capture`, {
+      form_snapshot: formSnapshot ?? null,
+    }),
+  );
+}
+
+export async function resolveConsentReview(
+  consentId: string,
+  formSnapshot: ConsentFormSnapshot,
+): Promise<Consent> {
+  return toConsent(
+    await apiPost<RawConsent>(`/api/v1/consent/${consentId}/resolve-review`, {
+      form_snapshot: formSnapshot,
+    }),
+  );
 }
 
 export async function withdrawConsent(consentId: string): Promise<Consent> {
@@ -56,9 +76,12 @@ export async function withdrawConsent(consentId: string): Promise<Consent> {
 // we build the queue from recent cases and their consent record, projecting the
 // real ConsentStatus onto the queue's pending/review/complete display states.
 // The form label is placeholder until a forms backend exists.
-function toQueueStatus(status: Consent["status"]): ConsentQueueStatus {
-  if (status === "captured") return "complete";
-  if (status === "withdrawn") return "review";
+function toQueueStatus(consent: Consent): ConsentQueueStatus {
+  if (consent.status === "captured") {
+    const allChecked = consent.formSnapshot?.checks.every((c) => c.checked) ?? true;
+    return allChecked ? "complete" : "review";
+  }
+  if (consent.status === "withdrawn") return "review";
   return "pending";
 }
 
@@ -79,7 +102,7 @@ export async function listConsentQueue(): Promise<ConsentQueueRow[]> {
         patientName: c.patient_name ?? "Unknown patient",
         form: placeholderConsentForms[i % placeholderConsentForms.length],
         submitted: c.created_at,
-        status: consent ? toQueueStatus(consent.status) : "pending",
+        status: consent ? toQueueStatus(consent) : "pending",
       };
     }),
   );

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.appointment import AppointmentStatus
 from app.models.audit import AuditEvent
 from app.models.case import IntakeCase
+from app.models.patient import Gender, Patient, PatientStatus
 from app.models.user import User, UserRole
 from app.services import appointment_service
 from app.services.appointment_service import (
@@ -28,12 +29,26 @@ def _user(role: UserRole) -> User:
     )
 
 
-async def _case(db_session: AsyncSession) -> IntakeCase:
-    case = IntakeCase(contact_reason="Checkup", contact_channel="phone")
+async def _case(db_session: AsyncSession, patient_id=None) -> IntakeCase:
+    case = IntakeCase(contact_reason="Checkup", contact_channel="phone", patient_id=patient_id)
     db_session.add(case)
     await db_session.commit()
     await db_session.refresh(case)
     return case
+
+
+async def _patient(db_session: AsyncSession) -> Patient:
+    p = Patient(
+        mrn=f"MRN-{uuid4().hex[:8].upper()}",
+        name="Appointment Test Patient",
+        dob=date(1985, 6, 1),
+        gender=Gender.MALE,
+        status=PatientStatus.ACTIVE,
+    )
+    db_session.add(p)
+    await db_session.commit()
+    await db_session.refresh(p)
+    return p
 
 
 def _slot(offset_days: int = 1) -> datetime:
@@ -153,6 +168,27 @@ async def test_list_appointments_scoped_to_doctor(db_session: AsyncSession):
     # is a real COUNT() though (unlike items, which is limit=20-sliced), so
     # this still proves the two bookings above are included, not filtered out.
     assert total >= 2
+
+
+async def test_list_appointments_scoped_to_patient(db_session: AsyncSession):
+    admin = _user(UserRole.ADMIN)
+    doctor = _user(UserRole.DOCTOR)
+    db_session.add_all([admin, doctor])
+    await db_session.commit()
+    patient = await _patient(db_session)
+    case_a = await _case(db_session, patient_id=patient.id)
+    case_b = await _case(db_session)
+
+    await appointment_service.book_appointment(db_session, doctor.id, case_a.id, _slot(1), admin)
+    await appointment_service.book_appointment(db_session, doctor.id, case_b.id, _slot(2), admin)
+
+    items, total = await appointment_service.list_appointments(
+        db_session,
+        admin,
+        patient_id=patient.id,
+    )
+    assert total == 1
+    assert items[0].case_id == case_a.id
 
 
 async def test_reschedule_appointment_updates_time_slot(db_session: AsyncSession):

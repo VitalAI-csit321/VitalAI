@@ -59,7 +59,7 @@ function toDetail(r: RawDetail): AppointmentDetail {
 }
 
 export interface AppointmentListParams {
-  doctorId?: string; dateFrom?: string; dateTo?: string; appointmentType?: AppointmentType;
+  doctorId?: string; patientId?: string; dateFrom?: string; dateTo?: string; appointmentType?: AppointmentType;
   status?: AppointmentStatus; search?: string; limit?: number; offset?: number;
 }
 
@@ -80,7 +80,7 @@ export async function listAppointments(
     return { items: [...items].sort((a, b) => a.timeSlot.localeCompare(b.timeSlot)), total: items.length };
   }
   const page = await apiGet<{ items: RawAppointment[]; total: number }>("/api/v1/appointments", {
-    doctor_id: params.doctorId, date_from: params.dateFrom, date_to: params.dateTo,
+    doctor_id: params.doctorId, patient_id: params.patientId, date_from: params.dateFrom, date_to: params.dateTo,
     appointment_type: params.appointmentType, status: params.status, search: params.search,
     limit: params.limit, offset: params.offset,
   });

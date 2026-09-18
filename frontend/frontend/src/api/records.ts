@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPostForm } from "../lib/apiClient";
+import { apiGet, apiGetBlob, apiPost, apiPostForm } from "../lib/apiClient";
 import type { ClinicalDocType, ClinicalDocument, IngestResult, RagAnswer } from "./types";
 
 interface RawClinicalDocument {
@@ -31,6 +31,17 @@ export async function uploadClinicalDocument(input: {
   form.set("doc_type", input.docType);
   form.set("file", input.file);
   return toClinicalDocument(await apiPostForm<RawClinicalDocument>("/api/v1/clinical-documents", form));
+}
+
+// Opens the document's PDF in a new tab. Backend still enforces VIEW_CLINICAL
+// + per-patient scoping regardless of who calls this; the doctor-only gate on
+// showing this action at all is a frontend UX restriction, not the security
+// boundary.
+export async function openClinicalDocument(documentId: string): Promise<void> {
+  const blob = await apiGetBlob(`/api/v1/clinical-documents/${documentId}/file`);
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 interface RawIngestResult {

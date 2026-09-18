@@ -227,7 +227,9 @@ async def draft_reply(
         if reply_verdict.verdict == ReplyWorthiness.NOT_WORTHY:
             task.priority = TaskPriority.LOW
             task.handover_context = reply_verdict.reason
-            outcome = EmailDraftOutcome(draft_text=None, approval_id=None, sent=False, blocked=False)
+            outcome = EmailDraftOutcome(
+                draft_text=None, approval_id=None, sent=False, blocked=False
+            )
             await _persist_draft(db, task, outcome)
             return outcome
 

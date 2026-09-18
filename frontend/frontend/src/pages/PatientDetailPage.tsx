@@ -1,15 +1,31 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getPatient, listCasesForPatient } from "../api/cases";
-import type { Patient, Case } from "../api/types";
+import { listAppointments } from "../api/appointments";
+import { listClinicalDocuments, openClinicalDocument } from "../api/records";
+import type { Patient, Case, Appointment, ClinicalDocument } from "../api/types";
 import { StatusBadge, Spinner } from "../components/ui";
 import { PROFILE_FIELD_GROUPS, PROFILE_FIELD_LABELS_BY_API_KEY } from "../components/patientProfileFields";
+import { useAuth } from "../lib/auth";
 
 export function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  // Doctors get view_clinical as a role default; operators/admins only via an
+  // explicit grant (user.grantedPermissions is extras on top of the role, see
+  // CurrentUser) - either way is enough to open a document, matching the
+  // backend's can_read_clinical. Everyone who can see the list at all (also
+  // gated on the backend, separately, via can_list_clinical) sees the names.
+  const canOpenDocuments = user?.role === "doctor" || (user?.grantedPermissions.includes("view_clinical") ?? false);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [cases, setCases] = useState<Case[]>([]);
+  const [casesError, setCasesError] = useState<string | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
+  const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
+  const [documentsError, setDocumentsError] = useState<string | null>(null);
+  const [openingDocumentId, setOpeningDocumentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,11 +33,37 @@ export function PatientDetailPage() {
     if (!id) return;
     setLoading(true);
     setError(null);
-    Promise.all([getPatient(id), listCasesForPatient(id)])
-      .then(([p, c]) => { setPatient(p); setCases(c); })
+    getPatient(id)
+      .then(setPatient)
       .catch(() => setError("Could not load this patient."))
       .finally(() => setLoading(false));
+
+    setCasesError(null);
+    listCasesForPatient(id)
+      .then(setCases)
+      .catch(() => setCasesError("Could not load onboarding cases for this patient."));
+
+    setAppointmentsError(null);
+    listAppointments({ patientId: id, limit: 100 })
+      .then(r => setAppointments(r.items))
+      .catch(() => setAppointmentsError("Could not load appointments for this patient."));
+
+    setDocumentsError(null);
+    listClinicalDocuments(id)
+      .then(setDocuments)
+      .catch(() => setDocumentsError("Not permitted to view clinical documents for this patient."));
   }, [id]);
+
+  async function handleOpenDocument(documentId: string) {
+    setOpeningDocumentId(documentId);
+    try {
+      await openClinicalDocument(documentId);
+    } catch {
+      setDocumentsError("Could not open this document.");
+    } finally {
+      setOpeningDocumentId(null);
+    }
+  }
 
   if (loading) return <div className="p-6"><Spinner label="Loading patient..." /></div>;
   if (error || !patient) return (
@@ -76,8 +118,84 @@ export function PatientDetailPage() {
       </div>
 
       <div className="mt-6">
-        <h2 className="text-sm font-semibold text-slate-900 mb-3">Case history</h2>
-        {cases.length === 0 ? (
+        <h2 className="text-sm font-semibold text-slate-900 mb-3">Appointments</h2>
+        {appointmentsError ? (
+          <p className="text-sm text-red-600">{appointmentsError}</p>
+        ) : appointments.length === 0 ? (
+          <p className="text-sm text-slate-500">No appointments yet for this patient.</p>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {["Date", "Doctor", "Type", "Status", "Reason", ""].map(h => <th key={h} className="px-6 py-3">{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {appointments.map(a => (
+                  <tr key={a.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    <td className="px-6 py-4 text-slate-900">{new Date(a.timeSlot).toLocaleString("en-GB")}</td>
+                    <td className="px-6 py-4 text-slate-600">{a.doctorName ?? "—"}</td>
+                    <td className="px-6 py-4 text-slate-600 capitalize">{a.appointmentType.replace(/_/g, " ")}</td>
+                    <td className="px-6 py-4"><StatusBadge tone="gray">{a.status}</StatusBadge></td>
+                    <td className="px-6 py-4 text-slate-600">{a.reason ?? "—"}</td>
+                    <td className="px-6 py-4"><Link to={`/calendar/${a.id}`} className="text-brand font-medium hover:underline">Open</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6">
+        <h2 className="text-sm font-semibold text-slate-900 mb-3">Clinical documents</h2>
+        {documentsError ? (
+          <p className="text-sm text-red-600">{documentsError}</p>
+        ) : documents.length === 0 ? (
+          <p className="text-sm text-slate-500">No clinical documents on file for this patient.</p>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {["Type", "Filename", "Date", "Status"].map(h => <th key={h} className="px-6 py-3">{h}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {documents.map(d => (
+                  <tr key={d.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    <td className="px-6 py-4 text-slate-900 capitalize">{d.docType.replace(/_/g, " ")}</td>
+                    <td className="px-6 py-4">
+                      {canOpenDocuments ? (
+                        <button
+                          onClick={() => handleOpenDocument(d.id)}
+                          disabled={openingDocumentId === d.id}
+                          className="text-brand font-medium hover:underline disabled:opacity-50"
+                        >
+                          {openingDocumentId === d.id ? "Opening…" : d.filename}
+                        </button>
+                      ) : (
+                        <span className="text-slate-600" title="Only doctors can open clinical documents">{d.filename}</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">{new Date(d.createdAt).toLocaleDateString("en-GB")}</td>
+                    <td className="px-6 py-4">
+                      {d.ingestedAt ? <StatusBadge tone="green">Ingested</StatusBadge> : <StatusBadge tone="amber">Not ingested</StatusBadge>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6">
+        <h2 className="text-sm font-semibold text-slate-900 mb-3">Onboarding</h2>
+        {casesError ? (
+          <p className="text-sm text-red-600">{casesError}</p>
+        ) : cases.length === 0 ? (
           <p className="text-sm text-slate-500">No intake cases yet for this patient.</p>
         ) : (
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
