@@ -25,6 +25,7 @@ from __future__ import annotations
 import hashlib
 import warnings
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -77,6 +78,45 @@ class RetrievedChunk:
     content: str
     score: float
     distance: float
+
+
+@dataclass
+class IndexedDocument:
+    """One source document behind a patient's retrievable chunks."""
+
+    source_document_id: UUID
+    doc_type: str
+    chunk_count: int
+    indexed_at: datetime
+
+
+async def list_indexed_documents(
+    session: AsyncSession, ctx: RetrievalContext
+) -> list[IndexedDocument]:
+    """The documents this actor can actually get answers out of for this patient.
+
+    Not the same list as clinical_documents: that table only holds files
+    uploaded through the app, while the synthetic corpus writes chunks with no
+    row there at all (see app/models/clinical_document.py), so a patient can be
+    fully answerable with an empty uploads table. Org-wide chunks (NULL
+    patient_id) are excluded -- clinic policy is not this patient's document.
+    """
+    stmt = (
+        _security_filter(
+            select(
+                Chunk.source_document_id,
+                Chunk.doc_type,
+                func.count().label("chunk_count"),
+                func.min(Chunk.created_at).label("indexed_at"),
+            ),
+            ctx,
+        )
+        .where(Chunk.patient_id.is_not(None))
+        .group_by(Chunk.source_document_id, Chunk.doc_type)
+        .order_by(func.min(Chunk.created_at).desc())
+    )
+    rows = await session.execute(stmt)
+    return [IndexedDocument(*row) for row in rows.all()]
 
 
 def _security_filter(stmt: Select[Any], ctx: RetrievalContext) -> Select[Any]:

@@ -19,7 +19,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit import AuditEvent
 from app.models.chunk import Chunk
-from app.rag.retrieval import RetrievalContext, _reciprocal_rank_fusion, retrieve
+from app.rag.retrieval import (
+    RetrievalContext,
+    _reciprocal_rank_fusion,
+    list_indexed_documents,
+    retrieve,
+)
 from scripts.synthetic_corpus.manifest import (
     ALICE_BILLING_DOC,
     ALICE_LAB_PANEL_DOC,
@@ -308,3 +313,43 @@ async def test_hybrid_fulltext_path_matches_exact_term(seeded_chunks: AsyncSessi
     candidates = await _fulltext_candidates(seeded_chunks, "triglycerides", ctx, None, 10)
 
     assert target.id in {chunk.id for chunk in candidates}
+
+
+async def test_indexed_documents_lists_chunk_backed_docs_within_scope(
+    seeded_chunks: AsyncSession,
+) -> None:
+    """Alice's five corpus documents exist only as chunks (no clinical_documents
+    row), which is exactly the case the Records page's uploads list cannot see."""
+    ctx = RetrievalContext(
+        patient_id=PATIENT_ALICE, allowed_scopes=["general", "restricted"], role="nurse"
+    )
+    docs = await list_indexed_documents(seeded_chunks, ctx)
+
+    ids = {d.source_document_id for d in docs}
+    assert ALICE_LAB_PANEL_DOC in ids
+    assert ALICE_BILLING_DOC in ids
+    # sensitive scope withheld from this actor, and Bob is a different patient
+    assert ALICE_MENTAL_HEALTH_DOC not in ids
+    assert BOB_LAB_PANEL_DOC not in ids
+    # one row per document, chunk counts rolled up
+    assert len(ids) == len(docs)
+    assert all(d.chunk_count >= 1 for d in docs)
+
+
+async def test_indexed_documents_excludes_org_wide_chunks(pg_session: AsyncSession) -> None:
+    org_chunk = Chunk(
+        patient_id=None,
+        doc_type="policy_faq",
+        access_scope="general",
+        source_document_id=uuid4(),
+        chunk_index=0,
+        content="Clinic opening hours are 8:30-5:00.",
+        embedding=[0.0] * 512,
+    )
+    pg_session.add(org_chunk)
+    await pg_session.commit()
+
+    ctx = RetrievalContext(patient_id=PATIENT_ALICE, allowed_scopes=["general"], role="nurse")
+    docs = await list_indexed_documents(pg_session, ctx)
+
+    assert org_chunk.source_document_id not in {d.source_document_id for d in docs}

@@ -69,4 +69,7 @@ def test_total_route_count():
     # 84 as of the dashboard workflow-status fix: +1 for GET /human-review/stats/daily.
     # 89 as of the settings page work: +5 for GET /settings, PATCH /settings,
     # POST /auth/me/password, GET /health/detailed, and GET /audit/incidents.
-    assert len({(e.method, e.path) for e in registry}) == 89
+    # 91 as of the consent form snapshot work: +2 for
+    # POST /consent/{consent_id}/resolve-review and GET /audit/verify.
+    # 92 as of the corpus-as-documents work: +1 for GET /rag/documents.
+    assert len({(e.method, e.path) for e in registry}) == 92

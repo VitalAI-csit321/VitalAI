@@ -1,5 +1,5 @@
 import { apiGet, apiGetBlob, apiPost, apiPostForm } from "../lib/apiClient";
-import type { ClinicalDocType, ClinicalDocument, IngestResult, RagAnswer } from "./types";
+import type { ClinicalDocType, ClinicalDocument, IndexedDocument, IngestResult, RagAnswer } from "./types";
 
 interface RawClinicalDocument {
   id: string; patient_id: string; doc_type: string; filename: string;
@@ -17,6 +17,18 @@ function toClinicalDocument(r: RawClinicalDocument): ClinicalDocument {
 export async function listClinicalDocuments(patientId: string): Promise<ClinicalDocument[]> {
   const raw = await apiGet<RawClinicalDocument[]>("/api/v1/clinical-documents", { patient_id: patientId });
   return raw.map(toClinicalDocument);
+}
+
+interface RawIndexedDocument {
+  source_document_id: string; doc_type: string; chunk_count: number; indexed_at: string;
+}
+
+export async function listIndexedDocuments(patientId: string): Promise<IndexedDocument[]> {
+  const raw = await apiGet<RawIndexedDocument[]>("/api/v1/rag/documents", { patient_id: patientId });
+  return raw.map(r => ({
+    sourceDocumentId: r.source_document_id, docType: r.doc_type,
+    chunkCount: r.chunk_count, indexedAt: r.indexed_at,
+  }));
 }
 
 // The backend accepts PDF only, 20 MB max, and exactly three doc types.
@@ -61,6 +73,7 @@ interface RawAnswerResult {
   answer: string;
   refusal_source: "none" | "gate" | "llm";
   gate_outcome: { decision: string; chunks: RawChunk[] };
+  citations: RawChunk[];
 }
 
 export async function ragQuery(input: { patient_id: string; question: string }): Promise<RagAnswer> {
@@ -69,9 +82,16 @@ export async function ragQuery(input: { patient_id: string; question: string }):
     answer: res.answer,
     refusalSource: res.refusal_source,
     decision: res.gate_outcome.decision,
-    citations: res.gate_outcome.chunks.map(c => ({
-      chunkId: c.chunk_id, sourceDocumentId: c.source_document_id,
-      docType: c.doc_type, content: c.content, score: c.score,
-    })),
+    // One entry per source document, best-scoring chunk wins; gate_outcome.chunks
+    // is the wider retrieved set and is not what the answer was grounded in.
+    citations: [...new Map(
+      res.citations
+        .slice()
+        .sort((a, b) => b.score - a.score)
+        .map(c => [c.source_document_id, {
+          chunkId: c.chunk_id, sourceDocumentId: c.source_document_id,
+          docType: c.doc_type, content: c.content, score: c.score,
+        }] as const),
+    ).values()],
   };
 }
