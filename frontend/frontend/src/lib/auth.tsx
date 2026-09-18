@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { getToken } from "./apiClient";
+import { getToken, setUnauthorizedHandler } from "./apiClient";
 import { isDemoMode } from "./demoMode";
 import { demoUser } from "../data/demoData";
 import { getMe, login as apiLogin, logout as apiLogout } from "../api/auth";
@@ -17,6 +17,12 @@ const AuthContext = createContext<AuthState | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(isDemoMode() ? demoUser : null);
   const [loading, setLoading] = useState(!isDemoMode());
+
+  useEffect(() => {
+    if (isDemoMode()) return;
+    setUnauthorizedHandler(() => setUser(null));
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   useEffect(() => {
     if (isDemoMode()) return;

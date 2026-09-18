@@ -12,9 +12,12 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { PatientsPage } from "./pages/PatientsPage";
 import { PatientOnboardingPage } from "./pages/PatientOnboardingPage";
 import { PatientDetailPage } from "./pages/PatientDetailPage";
+import { PatientEditPage } from "./pages/PatientEditPage";
 import { CaseDetailPage } from "./pages/CaseDetailPage";
 import { ConsentQueuePage } from "./pages/ConsentQueuePage";
+import { ConsentNewPage } from "./pages/ConsentNewPage";
 import { ConsentCapturePage } from "./pages/ConsentCapturePage";
+import { ConsentViewPage } from "./pages/ConsentViewPage";
 import { ConsentSuccessPage } from "./pages/ConsentSuccessPage";
 import { RecordsPage } from "./pages/RecordsPage";
 import { InboxPage } from "./pages/InboxPage";
@@ -51,12 +54,13 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-          {/* Platform Operations — separate shell, own login */}
+          {/* Platform Operations — separate shell. Its endpoints require
+              READ_AUDIT (admin only), so the whole shell is admin-gated. */}
           <Route path="/platform-ops/login" element={<PlatformOpsLoginPage />} />
           <Route
             path="/platform-ops"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute roles={["admin"]}>
                 <PlatformOpsLayout />
               </ProtectedRoute>
             }
@@ -80,11 +84,14 @@ export default function App() {
             <Route path="/patients" element={<PatientsPage />} />
             <Route path="/patients/onboarding" element={<PatientOnboardingPage />} />
             <Route path="/patients/:id" element={<PatientDetailPage />} />
+            <Route path="/patients/:id/edit" element={<PatientEditPage />} />
             <Route path="/cases/:id" element={<CaseDetailPage />} />
 
             {/* Consent */}
             <Route path="/consent" element={<ConsentQueuePage />} />
+            <Route path="/consent/new" element={<ConsentNewPage />} />
             <Route path="/consent/capture" element={<ConsentCapturePage />} />
+            <Route path="/consent/:caseId/view" element={<ConsentViewPage />} />
             <Route path="/consent/success" element={<ConsentSuccessPage />} />
 
             {/* Records */}

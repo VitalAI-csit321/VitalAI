@@ -12,6 +12,20 @@ class ConsentCreate(BaseModel):
     notes: str | None = None
 
 
+class ConsentFormCheck(BaseModel):
+    label: str
+    checked: bool
+
+
+class ConsentFormSnapshot(BaseModel):
+    checks: list[ConsentFormCheck]
+    signature: str
+
+
+class ConsentCaptureIn(BaseModel):
+    form_snapshot: ConsentFormSnapshot | None = None
+
+
 class ConsentOut(BaseModel):
     id: UUID
     case_id: UUID
@@ -19,6 +33,7 @@ class ConsentOut(BaseModel):
     captured_at: datetime | None
     consent_type: str
     notes: str | None
+    form_snapshot: ConsentFormSnapshot | None
     created_at: datetime
     updated_at: datetime
 

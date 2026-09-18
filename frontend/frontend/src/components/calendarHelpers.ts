@@ -52,6 +52,27 @@ export function toDateInputValue(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// The three helpers below exist because clinic wall-clock hours are UTC on the
+// backend (settings.clinic_open_hour/close_hour, no per-timezone support) but
+// <input type="date">/<input type="time"> give plain strings with no timezone
+// of their own. Reading them with local Date getters, or building a Date from
+// them without forcing UTC, silently shifts every booked/displayed time by the
+// viewer's UTC offset -- the same class of bug already fixed for the calendar
+// week/day views (see CalendarPage.tsx's getUTCHours usage). These three make
+// the booking/edit forms follow the same convention.
+
+export function toDateInputValueUTC(d: Date): string {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+export function toTimeInputValueUTC(d: Date): string {
+  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+}
+
+export function parseClinicDateTime(date: string, time: string): Date {
+  return new Date(`${date}T${time}:00.000Z`);
+}
+
 export function patientDisplayName(a: { patientName: string | null }): string {
   return a.patientName ?? "Unknown patient";
 }

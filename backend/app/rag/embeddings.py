@@ -5,6 +5,7 @@ nomic-embed-text via sentence-transformers (local).
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
@@ -60,5 +61,14 @@ class NomicEmbedProvider:
         return result
 
 
+@lru_cache(maxsize=1)
 def get_embedding_provider() -> EmbeddingProvider:
+    """One provider per process, so its SentenceTransformer loads once.
+
+    Every prior call built a fresh NomicEmbedProvider(), so _get_model()'s
+    None check never hit its own cache -- each of the 1282 corpus documents
+    reloaded the model from scratch (~10s+ each), not just the embedding
+    call itself. lru_cache makes this call idempotent, which is safe here
+    only because NomicEmbedProvider is stateless past its lazily-loaded model.
+    """
     return NomicEmbedProvider()

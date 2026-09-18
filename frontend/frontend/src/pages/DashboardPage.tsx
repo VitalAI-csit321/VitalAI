@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getDashboard } from "../api/misc";
 import { useAuth } from "../lib/auth";
 import type { DashboardSummary } from "../api/types";
@@ -49,7 +49,15 @@ export function DashboardPage() {
                   <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />
                   <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 12 }} />
                   <YAxis tickLine={false} axisLine={false} tick={{ fill: "#64748b", fontSize: 12 }} />
-                  <Bar dataKey="value" fill="#0d9488" radius={[3,3,0,0]} barSize={40} />
+                  <Tooltip
+                    cursor={{ fill: "#f1f5f9" }}
+                    formatter={(value: number) => [`${value} appointment${value === 1 ? "" : "s"}`, "Scheduled"]}
+                  />
+                  <Bar
+                    dataKey="value" fill="#0d9488" radius={[3,3,0,0]} barSize={40} cursor="pointer"
+                    onClick={(entry: { payload?: { date: string } }) =>
+                      entry.payload && navigate("/calendar", { state: { date: entry.payload.date } })}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>

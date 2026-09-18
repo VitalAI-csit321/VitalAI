@@ -22,6 +22,9 @@ def get_llm() -> BaseLanguageModel:
             Ollama(
                 model=settings.llm_model,
                 base_url=settings.ollama_base_url,
+                temperature=settings.llm_temperature,
+                num_predict=settings.llm_max_tokens,
+                timeout=settings.llm_timeout_seconds,
             ),
         )
 

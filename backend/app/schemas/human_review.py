@@ -26,6 +26,11 @@ class HumanReviewTaskListResponse(BaseModel):
     total: int
 
 
+class WorkflowDailyCount(BaseModel):
+    day: str
+    value: int
+
+
 class HumanReviewCompleteBody(BaseModel):
     notes: str | None = None
 

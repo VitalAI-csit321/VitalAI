@@ -22,7 +22,7 @@ from app.llm import get_llm
 from app.llm.guardrail import guarded_invoke
 from app.models.user import User
 from app.rag.gating import RetrievalGateOutcome, evaluate_retrieval
-from app.rag.retrieval import RetrievalContext, retrieve
+from app.rag.retrieval import RetrievalContext, RetrievedChunk, retrieve
 
 NOT_ENOUGH_INFO_ANSWER = "I don't have enough information in this patient's records to answer that."
 
@@ -53,6 +53,11 @@ class AnswerResult(BaseModel):
     answer: str
     refusal_source: Literal["none", "gate", "llm"]
     gate_outcome: RetrievalGateOutcome
+    # The chunks the LLM actually read, i.e. what the answer is grounded in.
+    # gate_outcome.chunks is the full retrieved set (the audit record) and is
+    # wider than this; showing that as citations credits documents the answer
+    # never used. Empty on either refusal path -- nothing was grounded.
+    citations: list[RetrievedChunk] = []
 
 
 async def answer_question(
@@ -88,4 +93,9 @@ async def answer_question(
         return AnswerResult(
             answer=NOT_ENOUGH_INFO_ANSWER, refusal_source="llm", gate_outcome=gate_outcome
         )
-    return AnswerResult(answer=answer_text, refusal_source="none", gate_outcome=gate_outcome)
+    return AnswerResult(
+        answer=answer_text,
+        refusal_source="none",
+        gate_outcome=gate_outcome,
+        citations=context_chunks,
+    )

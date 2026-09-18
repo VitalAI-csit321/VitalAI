@@ -8,8 +8,9 @@ from app.auth.permissions import CAPTURE_CONSENT, VIEW_RECORDS_GENERAL
 from app.auth.scoping import is_assigned
 from app.database import get_db
 from app.models.case import IntakeCase
+from app.models.patient import Patient
 from app.models.user import User, UserRole
-from app.schemas.consent import ConsentCreate, ConsentOut
+from app.schemas.consent import ConsentCaptureIn, ConsentCreate, ConsentOut
 from app.services import consent_service
 from app.services.consent_service import ConsentStateError
 
@@ -25,6 +26,22 @@ async def create_consent_endpoint(
     return await consent_service.create_consent_record(
         db, payload.case_id, actor, payload.consent_type, payload.notes
     )
+
+
+@router.get("", response_model=list[ConsentOut])
+async def list_consents_for_patient_endpoint(
+    patient_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(VIEW_RECORDS_GENERAL)),
+):
+    patient = await db.get(Patient, patient_id)
+    if patient is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+
+    if actor.role == UserRole.DOCTOR and not await is_assigned(db, actor.id, patient_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+
+    return await consent_service.list_consents_for_patient(db, patient_id)
 
 
 @router.get("/by-case/{case_id}", response_model=ConsentOut)
@@ -59,11 +76,39 @@ async def get_consent_by_case_endpoint(
 @router.post("/{consent_id}/capture", response_model=ConsentOut)
 async def capture_consent_endpoint(
     consent_id: UUID,
+    payload: ConsentCaptureIn | None = None,
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_permission(CAPTURE_CONSENT)),
 ):
+    form_snapshot = (
+        payload.form_snapshot.model_dump() if payload and payload.form_snapshot else None
+    )
     try:
-        record = await consent_service.capture_consent(db, consent_id, actor)
+        record = await consent_service.capture_consent(db, consent_id, actor, form_snapshot)
+    except ConsentStateError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Consent record not found"
+        )
+    return record
+
+
+@router.post("/{consent_id}/resolve-review", response_model=ConsentOut)
+async def resolve_review_endpoint(
+    consent_id: UUID,
+    payload: ConsentCaptureIn,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(CAPTURE_CONSENT)),
+):
+    if payload.form_snapshot is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="form_snapshot is required"
+        )
+    try:
+        record = await consent_service.update_consent_checklist(
+            db, consent_id, actor, payload.form_snapshot.model_dump()
+        )
     except ConsentStateError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     if record is None:

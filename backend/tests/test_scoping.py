@@ -4,7 +4,7 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.permissions import VIEW_CLINICAL
-from app.auth.scoping import allowed_scopes, can_read_clinical, is_assigned
+from app.auth.scoping import allowed_scopes, can_list_clinical, can_read_clinical, is_assigned
 from app.models.assignment import DoctorPatientAssignment
 from app.models.patient import Gender, Patient, PatientStatus
 from app.models.permission_grant import UserPermissionGrant
@@ -107,6 +107,44 @@ async def test_can_read_clinical_granted_operator_is_unscoped(db_session: AsyncS
     patient = await _patient(db_session)
 
     assert await can_read_clinical(db_session, operator, patient.id) is True
+
+
+async def test_can_list_clinical_true_for_ungranted_operator(db_session: AsyncSession):
+    # The split this exists for: operator has UPLOAD_CLINICAL by default (no
+    # grant needed), which is enough to see document names, but not enough
+    # for can_read_clinical (content access) above.
+    operator = _user(UserRole.OPERATOR)
+    db_session.add(operator)
+    await db_session.commit()
+    patient = await _patient(db_session)
+
+    assert await can_read_clinical(db_session, operator, patient.id) is False
+    assert await can_list_clinical(db_session, operator, patient.id) is True
+
+
+async def test_can_list_clinical_false_for_front_desk(db_session: AsyncSession):
+    user = _user(UserRole.FRONT_DESK)
+    db_session.add(user)
+    await db_session.commit()
+    patient = await _patient(db_session)
+
+    assert await can_list_clinical(db_session, user, patient.id) is False
+
+
+async def test_can_list_clinical_doctor_requires_assignment(db_session: AsyncSession):
+    doctor = _user(UserRole.DOCTOR)
+    db_session.add(doctor)
+    await db_session.commit()
+    patient = await _patient(db_session)
+
+    assert await can_list_clinical(db_session, doctor, patient.id) is False
+
+    db_session.add(
+        DoctorPatientAssignment(doctor_id=doctor.id, patient_id=patient.id, assigned_by=doctor.id)
+    )
+    await db_session.commit()
+
+    assert await can_list_clinical(db_session, doctor, patient.id) is True
 
 
 def test_allowed_scopes_excludes_restricted_without_view_clinical():

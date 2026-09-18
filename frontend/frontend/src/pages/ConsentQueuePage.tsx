@@ -62,7 +62,7 @@ export function ConsentQueuePage() {
             Export
           </button>
           <button
-            onClick={() => navigate("/consent/capture")}
+            onClick={() => navigate("/consent/new")}
             className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover"
           >
             New consent
@@ -137,10 +137,16 @@ export function ConsentQueuePage() {
                   </td>
                   <td className="px-6 py-4">
                     <button
-                      onClick={() => navigate(`/cases/${r.caseId}`)}
+                      onClick={() =>
+                        navigate(
+                          r.status === "pending"
+                            ? `/consent/capture?case=${r.caseId}`
+                            : `/consent/${r.caseId}/view`,
+                        )
+                      }
                       className="font-medium text-brand hover:underline"
                     >
-                      View
+                      {r.status === "pending" ? "Capture" : "View"}
                     </button>
                   </td>
                 </tr>

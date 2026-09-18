@@ -200,6 +200,7 @@ async def list_appointments(
     db: AsyncSession,
     actor: User,
     doctor_id: UUID | None = None,
+    patient_id: UUID | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     appointment_type: AppointmentType | None = None,
@@ -222,8 +223,10 @@ async def list_appointments(
             q = q.where(Appointment.appointment_type == appointment_type)
         if status is not None:
             q = q.where(Appointment.status == status)
-        if search or actor.role == UserRole.DOCTOR:
+        if search or patient_id is not None or actor.role == UserRole.DOCTOR:
             q = q.join(IntakeCase, Appointment.case_id == IntakeCase.id)
+        if patient_id is not None:
+            q = q.where(IntakeCase.patient_id == patient_id)
         if search:
             q = q.outerjoin(Patient, IntakeCase.patient_id == Patient.id).where(
                 Patient.name.ilike(f"%{search}%")

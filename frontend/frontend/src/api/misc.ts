@@ -1,6 +1,8 @@
 import { apiDelete, apiGet, apiPost } from "../lib/apiClient";
+import { listAppointments } from "./appointments";
+import { getTaskBoard } from "./tasks";
 import type { DashboardSummary, Message } from "./types";
-import { placeholderWorkflowByDay } from "./_placeholder";
+import { toDateInputValue } from "../components/calendarHelpers";
 
 const TASK_TYPE_LABEL: Record<string, string> = {
   triage_review: "HITL Approval",
@@ -9,25 +11,60 @@ const TASK_TYPE_LABEL: Record<string, string> = {
   routing_review: "Routing Review",
 };
 
+// Appointment counts for the current Monday-based week, for the dashboard's
+// Workflow Status chart. Same week definition and list-and-bucket approach
+// CalendarPage's week view already uses (see its weekStart calc) instead of a
+// trailing-past window, which would miss this week's upcoming appointments.
+async function getWeeklyAppointmentCounts(): Promise<DashboardSummary["workflowByDay"]> {
+  const today = new Date();
+  const dow = (today.getDay() + 6) % 7; // Monday-based
+  const rangeStart = new Date(today); rangeStart.setDate(rangeStart.getDate() - dow); rangeStart.setHours(0, 0, 0, 0);
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(rangeStart);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+  const rangeEnd = new Date(rangeStart); rangeEnd.setDate(rangeEnd.getDate() + 7);
+
+  const { items } = await listAppointments({
+    dateFrom: rangeStart.toISOString(), dateTo: rangeEnd.toISOString(), limit: 200,
+  });
+  const countsByDate = new Map<string, number>();
+  for (const a of items) {
+    const key = toDateInputValue(new Date(a.timeSlot));
+    countsByDate.set(key, (countsByDate.get(key) ?? 0) + 1);
+  }
+  return days.map(d => {
+    const date = toDateInputValue(d);
+    return { day: d.toLocaleDateString("en-US", { weekday: "short" }), date, value: countsByDate.get(date) ?? 0 };
+  });
+}
+
 export async function getDashboard(): Promise<DashboardSummary> {
   // Fetch real data in parallel, fall back gracefully
-  const [intakeRes, auditRes, pendingRes, inProgressRes, escalatedRes, reviewListRes] =
+  const [intakeRes, auditRes, pendingRes, inProgressRes, escalatedRes, reviewListRes, weeklyRes] =
     await Promise.allSettled([
       apiGet<{items:unknown[];total:number}>("/api/v1/intake?limit=1"),
       apiGet<{total:number}>("/api/v1/audit?limit=1"),
       apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"pending"}),
       apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"in_progress"}),
-      apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"escalated"}),
+      // Same source as EscalationsPage's own count (getTaskBoard) -- the
+      // /escalations page is built on task routing (/api/v1/tasks), a
+      // different model from human-review approvals, which has its own
+      // unrelated "escalated" status.
+      getTaskBoard(),
       apiGet<{items:{id:string;case_id:string;task_type:string;status:string}[];total:number}>(
         "/api/v1/human-review", {limit:20}
       ),
+      getWeeklyAppointmentCounts(),
     ]);
 
   const openCases = intakeRes.status==="fulfilled" ? intakeRes.value.total : 0;
   const auditEvents = auditRes.status==="fulfilled" ? auditRes.value.total : 0;
   const pending = pendingRes.status==="fulfilled" ? pendingRes.value.total : 0;
   const inProgress = inProgressRes.status==="fulfilled" ? inProgressRes.value.total : 0;
-  const escalated = escalatedRes.status==="fulfilled" ? escalatedRes.value.total : 0;
+  const escalated = escalatedRes.status==="fulfilled" ? escalatedRes.value.counts.escalated : 0;
+  const workflowByDay = weeklyRes.status==="fulfilled" ? weeklyRes.value : [];
 
   // Pending Reviews list: real human-review tasks, enriched with the real
   // patient name from each task's linked case (the task itself only carries
@@ -62,7 +99,7 @@ export async function getDashboard(): Promise<DashboardSummary> {
     awaitingApproval: pending + inProgress,
     escalations: escalated,
     auditEvents,
-    workflowByDay: placeholderWorkflowByDay,
+    workflowByDay,
     pendingReviews,
   };
 }

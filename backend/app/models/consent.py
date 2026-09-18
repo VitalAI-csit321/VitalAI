@@ -2,10 +2,14 @@ import enum
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+
+# JSONB on Postgres, plain JSON on SQLite. Same pattern as app/models/audit.py.
+_jsonb = JSONB().with_variant(JSON(), "sqlite")
 
 
 class ConsentStatus(enum.StrEnum):
@@ -29,3 +33,4 @@ class ConsentRecord(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     captured_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     consent_type: Mapped[str] = mapped_column(String(50), nullable=False, default="administrative")
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    form_snapshot: Mapped[dict | None] = mapped_column(_jsonb, nullable=True)

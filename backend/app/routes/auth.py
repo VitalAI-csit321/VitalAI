@@ -17,6 +17,7 @@ from app.schemas.auth import (
     ActiveStatusUpdateRequest,
     DepartmentUpdateRequest,
     ElevateRoleRequest,
+    PasswordChange,
     Token,
     UserGrantsResponse,
     UserListItem,
@@ -212,3 +213,31 @@ async def login(
 @router.get("/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_own_password(
+    payload: PasswordChange,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Change the signed-in user's own password.
+
+    Deliberately not gated on MANAGE_USERS: this changes only the caller's own
+    credential. Requires the current password so a stolen session cannot lock
+    the real owner out.
+    """
+    if not verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect"
+        )
+    if verify_password(payload.new_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must differ from the current one",
+        )
+    current_user.hashed_password = hash_password(payload.new_password)
+    await audit_service.record_event(
+        db, action="auth.password_changed", actor=current_user, details={}
+    )
+    await db.commit()

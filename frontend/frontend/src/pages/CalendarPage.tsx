@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
 import { getCalendarMonth, getDayView, listAppointments } from "../api/appointments";
 import { listDoctors } from "../api/doctors";
@@ -409,10 +409,13 @@ function ListViewPanel({ month, onOpen, doctors }: { month: CalendarMonth | null
 
 export function CalendarPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Dashboard's Workflow Status chart links here with a specific day picked.
+  const jumpToDate = (location.state as { date?: string } | null)?.date;
   const { user } = useAuth();
   const isDoctor = user?.role === "doctor";
-  const [view, setView] = useState<ViewMode>("month");
-  const [anchorDate, setAnchorDate] = useState(new Date());
+  const [view, setView] = useState<ViewMode>(jumpToDate ? "day" : "month");
+  const [anchorDate, setAnchorDate] = useState(() => jumpToDate ? new Date(`${jumpToDate}T00:00:00`) : new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [monthData, setMonthData] = useState<CalendarMonth | null>(null);

@@ -8,7 +8,7 @@ from app.auth.security import hash_password
 from app.models.audit import AuditEvent
 from app.models.patient import Gender, PatientStatus
 from app.models.user import User, UserRole
-from app.schemas.patient import PatientCreate
+from app.schemas.patient import PatientCreate, PatientUpdate
 from app.services import patient_service
 
 
@@ -148,6 +148,155 @@ async def test_list_patients_counts_are_global_not_filtered(db_session: AsyncSes
     assert after["active"] == before["active"] + 1
     assert after["inactive"] == before["inactive"] + 1
     assert after["pending"] == before["pending"]
+
+
+def _complete_profile_kwargs() -> dict:
+    return dict(
+        address="1 Test St",
+        indigenous_status="Not stated",
+        preferred_language="English",
+        phone="0400000000",
+        email="test@example.com",
+        emergency_contact_name="Jo",
+        emergency_contact_phone="0400000001",
+        preferred_communication="Phone",
+        best_time_to_contact="Morning",
+        known_conditions="None",
+        current_medications="None",
+        allergies="None",
+        insurance_provider="BUPA",
+        policy_number="P1",
+        group_number="N/A",
+        insurance_expiry=date(2030, 1, 1),
+        medicare_number="123456789",
+        concession_card="None",
+    )
+
+
+async def test_create_patient_partial_payload_is_pending(db_session: AsyncSession):
+    actor = _actor()
+    db_session.add(actor)
+    await db_session.commit()
+
+    patient = await patient_service.create_patient(
+        db_session,
+        PatientCreate(name="Partial", dob=date(1990, 1, 1), gender=Gender.MALE, phone="0400000000"),
+        actor,
+    )
+    assert patient.status == PatientStatus.PENDING
+    assert "phone" not in patient_service.missing_profile_fields(patient)
+    assert "email" in patient_service.missing_profile_fields(patient)
+
+
+async def test_create_patient_full_payload_is_active(db_session: AsyncSession):
+    actor = _actor()
+    db_session.add(actor)
+    await db_session.commit()
+
+    patient = await patient_service.create_patient(
+        db_session,
+        PatientCreate(
+            name="Complete", dob=date(1990, 1, 1), gender=Gender.MALE, **_complete_profile_kwargs()
+        ),
+        actor,
+    )
+    assert patient.status == PatientStatus.ACTIVE
+    assert patient_service.missing_profile_fields(patient) == []
+
+
+async def test_update_patient_explicit_status_overrides_completeness(db_session: AsyncSession):
+    actor = _actor()
+    db_session.add(actor)
+    await db_session.commit()
+
+    patient = await patient_service.create_patient(
+        db_session,
+        PatientCreate(
+            name="Full", dob=date(1990, 1, 1), gender=Gender.MALE, **_complete_profile_kwargs()
+        ),
+        actor,
+    )
+    assert patient.status == PatientStatus.ACTIVE
+
+    updated = await patient_service.update_patient(
+        db_session, patient, PatientUpdate(status=PatientStatus.INACTIVE), actor
+    )
+    assert updated.status == PatientStatus.INACTIVE
+
+
+async def test_update_patient_field_edit_does_not_reactivate_inactive(db_session: AsyncSession):
+    actor = _actor()
+    db_session.add(actor)
+    await db_session.commit()
+
+    patient = await patient_service.create_patient(
+        db_session,
+        PatientCreate(
+            name="StaysInactive",
+            dob=date(1990, 1, 1),
+            gender=Gender.MALE,
+            **_complete_profile_kwargs(),
+        ),
+        actor,
+    )
+    await patient_service.update_patient(
+        db_session, patient, PatientUpdate(status=PatientStatus.INACTIVE), actor
+    )
+    assert patient.status == PatientStatus.INACTIVE
+
+    updated = await patient_service.update_patient(
+        db_session, patient, PatientUpdate(phone="0499999999"), actor
+    )
+    assert updated.status == PatientStatus.INACTIVE
+
+
+async def test_update_patient_completes_profile_and_activates(db_session: AsyncSession):
+    actor = _actor()
+    db_session.add(actor)
+    await db_session.commit()
+
+    patient = await patient_service.create_patient(
+        db_session,
+        PatientCreate(name="Filling In", dob=date(1990, 1, 1), gender=Gender.MALE),
+        actor,
+    )
+    assert patient.status == PatientStatus.PENDING
+
+    updated = await patient_service.update_patient(
+        db_session, patient, PatientUpdate(**_complete_profile_kwargs()), actor
+    )
+    assert updated.status == PatientStatus.ACTIVE
+
+
+async def test_list_patients_sort_by_missing_fields(db_session: AsyncSession):
+    actor = _actor()
+    db_session.add(actor)
+    await db_session.commit()
+
+    unique = uuid4().hex[:8]
+    most_missing = await patient_service.create_patient(
+        db_session,
+        PatientCreate(name=f"MostMissing{unique}", dob=date(1990, 1, 1), gender=Gender.MALE),
+        actor,
+    )
+    least_missing_kwargs = {
+        k: v for k, v in _complete_profile_kwargs().items() if k != "concession_card"
+    }
+    least_missing = await patient_service.create_patient(
+        db_session,
+        PatientCreate(
+            name=f"LeastMissing{unique}",
+            dob=date(1990, 1, 1),
+            gender=Gender.MALE,
+            **least_missing_kwargs,
+        ),
+        actor,
+    )
+
+    items, _, _ = await patient_service.list_patients(
+        db_session, search=unique, sort="missing_fields"
+    )
+    assert [p.id for p in items] == [least_missing.id, most_missing.id]
 
 
 async def test_list_patients_pagination(db_session: AsyncSession):

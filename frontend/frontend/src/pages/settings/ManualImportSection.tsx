@@ -1,0 +1,216 @@
+import { useEffect, useRef, useState } from "react";
+import { listPatients } from "../../api/cases";
+import { ingestClinicalDocument, listClinicalDocuments, uploadClinicalDocument } from "../../api/records";
+import type { ClinicalDocType, ClinicalDocument, Patient } from "../../api/types";
+import { ApiError, describeApiError } from "../../lib/apiClient";
+import { useAuth } from "../../lib/auth";
+import { Spinner } from "../../components/ui";
+
+const DOC_TYPES: { value: ClinicalDocType; label: string }[] = [
+  { value: "consultation", label: "Consultation note" },
+  { value: "pathology_report", label: "Pathology report" },
+  { value: "prescription", label: "Prescription" },
+  { value: "referral_letter", label: "Referral letter" },
+  { value: "specialist_letter", label: "Specialist letter" },
+  { value: "hospital_discharge_summary", label: "Hospital discharge summary" },
+  { value: "external_imaging_report", label: "External imaging report" },
+  { value: "care_plan", label: "Care plan" },
+  { value: "registration_form", label: "Registration form" },
+  { value: "appointment_history", label: "Appointment history" },
+  { value: "consent_record", label: "Consent record" },
+];
+
+// Mirrors MAX_UPLOAD_SIZE_BYTES in backend/app/services/clinical_document_service.py.
+// Checked client-side only to fail fast; the backend remains the real limit.
+const MAX_BYTES = 20 * 1024 * 1024;
+
+// Only the statuses where we can say something more useful than the backend
+// does. Everything else falls through to describeApiError, which surfaces the
+// backend's own detail rather than burying it under a canned string.
+function uploadErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 403) return "You do not have permission to upload clinical documents.";
+    if (err.status === 413) return "That file is larger than the 20 MB limit.";
+    if (err.status === 415) return "Only PDF files are accepted.";
+    if (err.status === 422) return "No text could be read from that PDF. Scanned images without a text layer cannot be ingested.";
+  }
+  return describeApiError(err, "Upload failed. Check that the backend is running and try again.");
+}
+
+export function ManualImportSection() {
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [patientsLoading, setPatientsLoading] = useState(true);
+  const [patientSearch, setPatientSearch] = useState("");
+  const [patientId, setPatientId] = useState("");
+  const [docType, setDocType] = useState<ClinicalDocType>("consultation");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [uploaded, setUploaded] = useState<ClinicalDocument[]>([]);
+  // Clearing just this input after a successful upload. form.reset() would also
+  // work but it fires a reset over every field, and on a file input that is
+  // enough to make the browser re-open a file chooser.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+  const [ingesting, setIngesting] = useState<string | null>(null);
+  const [ingestNote, setIngestNote] = useState<Record<string, string>>({});
+
+  // Upload needs UPLOAD_CLINICAL; listing needs VIEW_CLINICAL. Most uploaders
+  // (operator, admin) do not have VIEW_CLINICAL, so the server-side list is a
+  // bonus for those who do, never a dependency. Mirrors effective_permissions()
+  // in backend/app/auth/permissions.py: role base set plus explicit grants.
+  const canViewClinical =
+    user?.role === "doctor" || (user?.grantedPermissions ?? []).includes("view_clinical");
+
+  useEffect(() => {
+    if (!canViewClinical || !patientId) return;
+    let active = true;
+    listClinicalDocuments(patientId)
+      .then(docs => { if (active) setUploaded(docs); })
+      .catch(() => { /* a 403 here is expected and not worth surfacing */ });
+    return () => { active = false; };
+  }, [canViewClinical, patientId]);
+
+  async function onIngest(documentId: string) {
+    setIngesting(documentId);
+    setIngestNote(prev => ({ ...prev, [documentId]: "" }));
+    try {
+      const res = await ingestClinicalDocument(documentId);
+      // The Status cell already says "Ingested"; this note only adds the count.
+      const chunks = `${res.chunkCount} chunk${res.chunkCount === 1 ? "" : "s"}`;
+      setIngestNote(prev => ({ ...prev, [documentId]: chunks }));
+      setUploaded(prev => prev.map(d => d.id === documentId ? { ...d, ingestedAt: res.ingestedAt } : d));
+    } catch (err) {
+      const msg = err instanceof ApiError && err.status === 409
+        ? "Already ingested"
+        : describeApiError(err, "Ingest failed");
+      setIngestNote(prev => ({ ...prev, [documentId]: msg }));
+    } finally {
+      setIngesting(null);
+    }
+  }
+
+  // The patients endpoint caps limit at 100 (backend/app/routes/patients.py:36)
+  // and the demo database holds more patients than that, so the list is
+  // server-side searched rather than fetched whole.
+  useEffect(() => {
+    let active = true;
+    setPatientsLoading(true);
+    listPatients({ limit: 100, search: patientSearch || undefined })
+      .then(res => { if (active) setPatients(res.items); })
+      .catch(() => { if (active) setError("Could not load the patient list."); })
+      .finally(() => { if (active) setPatientsLoading(false); });
+    return () => { active = false; };
+  }, [patientSearch]);
+
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = e.target.files?.[0] ?? null;
+    setError(null);
+    if (picked && picked.size > MAX_BYTES) {
+      setError("That file is larger than the 20 MB limit.");
+      setFile(null);
+      return;
+    }
+    setFile(picked);
+  }
+
+  async function onUpload(e: React.FormEvent) {
+    e.preventDefault();
+    if (!patientId || !file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const doc = await uploadClinicalDocument({ patientId, docType, file });
+      setUploaded(prev => [doc, ...prev]);
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (err) {
+      setError(uploadErrorMessage(err));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div>
+      <h2 className="text-base font-semibold text-slate-900">Manual import</h2>
+
+      <form onSubmit={onUpload} className="mt-5 space-y-4 rounded-xl border border-slate-200 p-5">
+        <div>
+          <label className="block text-xs font-bold text-brand uppercase tracking-wide mb-1.5">Patient</label>
+          <input type="search" value={patientSearch} onChange={e => setPatientSearch(e.target.value)}
+            placeholder="Search by name to narrow the list"
+            className="mb-2 w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand" />
+          {patientsLoading ? <Spinner label="Loading patients" /> : (
+            <select value={patientId} onChange={e => setPatientId(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand">
+              <option value="">Select a patient</option>
+              {patients.map(p => <option key={p.id} value={p.id}>{p.name} ({p.mrn})</option>)}
+            </select>
+          )}
+          {patients.length === 100 && (
+            <p className="mt-1 text-xs text-slate-500">Showing the first 100 matches. Search to narrow.</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-brand uppercase tracking-wide mb-1.5">Document type</label>
+          <select value={docType} onChange={e => setDocType(e.target.value as ClinicalDocType)}
+            className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand">
+            {DOC_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-brand uppercase tracking-wide mb-1.5">File</label>
+          <input ref={fileInputRef} type="file" accept="application/pdf" onChange={onFileChange}
+            className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200" />
+          <p className="mt-1 text-xs text-slate-500">PDF only, up to 20 MB.</p>
+        </div>
+
+        {error && <p className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</p>}
+
+        <button type="submit" disabled={!patientId || !file || uploading}
+          className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-40 disabled:cursor-not-allowed">
+          {uploading ? "Uploading..." : "Upload document"}
+        </button>
+      </form>
+
+      {uploaded.length > 0 && (
+        <div className="mt-6 rounded-xl border border-slate-200 overflow-hidden">
+          <div className="flex items-baseline justify-between px-5 py-3 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900">Documents</h3>
+            {!canViewClinical && <span className="text-xs text-slate-400">Uploaded this session</span>}
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {["File", "Type", "Status", ""].map(h => <th key={h} className="px-5 py-2.5">{h}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {uploaded.map(d => (
+                <tr key={d.id} className="border-t border-slate-100">
+                  <td className="px-5 py-3 font-medium text-slate-900">{d.filename}</td>
+                  <td className="px-5 py-3 text-slate-600">{d.docType.replace(/_/g, " ")}</td>
+                  <td className="px-5 py-3 text-slate-600">
+                    {d.ingestedAt ? "Ingested" : "Not ingested"}
+                    {ingestNote[d.id] && <span className="ml-2 text-xs text-slate-400">{ingestNote[d.id]}</span>}
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    {!d.ingestedAt && (
+                      <button onClick={() => onIngest(d.id)} disabled={ingesting === d.id}
+                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40">
+                        {ingesting === d.id ? "Ingesting..." : "Ingest into assistant"}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

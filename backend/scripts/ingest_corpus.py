@@ -19,8 +19,9 @@ the original 5-doc-type generator's output still ingests unchanged. Neither is m
 onto the baseline synthetic corpus vocabulary (clinical_note, lab_result, ...); that
 reconciliation is separate, open work.
 
-access_scope comes from DOC_TYPE_TO_SCOPE below, the single source of truth for the
-ratified doc_type -> access_scope mapping. The demo query in
+access_scope comes from app.rag.doc_scopes.DOC_TYPE_TO_SCOPE, the single source of
+truth for the ratified doc_type -> access_scope mapping (shared with the HTTP upload
+path in app/services/clinical_document_service.py). The demo query in
 scripts/run_ingest_demo.py-equivalent (or any manual RetrievalContext) must read
 allowed_scopes from this same constant, so ingest and query cannot drift apart.
 
@@ -54,6 +55,7 @@ from ingestion.Cleaner import clean_text  # noqa: E402
 from ingestion.Loader import load_document  # noqa: E402
 
 from app.models.chunk import Chunk
+from app.rag.doc_scopes import access_scope_for_doc_type
 from app.rag.embeddings import EmbeddingProvider, get_embedding_provider
 
 EMBEDDING_DIM = 512
@@ -61,43 +63,6 @@ EMBEDDING_DIM = 512
 # unchanged, just a larger size argument so a short clinical fact (a label and
 # its value) lands in one chunk instead of splitting across two.
 CHUNK_SIZE = 500
-
-# Ratified access_scope vocabulary, keyed on doc_type (not folder label). Covers both
-# the original 5-doc-type generator (bare filename stems: consultation, ...) and the
-# longitudinal generator's manifest doc_types (consultation_note, ...), mirroring that
-# generator's own DOC_CLASSIFICATION tiers: Low/Medium -> general, High -> restricted,
-# Critical -> sensitive. An unknown or unmapped doc_type fails closed to restricted,
-# never general, so an unrecognised clinical document cannot leak to all staff.
-DOC_TYPE_TO_SCOPE = {
-    "consultation": "restricted",
-    "consultation_note": "restricted",
-    "pathology_report": "restricted",
-    "prescription": "restricted",
-    "registration_form": "general",
-    "appointment_history": "general",
-    "referral_letter": "general",
-    "care_plan": "restricted",
-    "specialist_letter": "restricted",
-    "hospital_discharge_summary": "restricted",
-    "external_imaging_report": "restricted",
-    "consent_record": "sensitive",
-    # Org-wide (patient_id=NULL) doc types, ingested by scripts/ingest_org_profile.py
-    # from "Organization Profile Review/". general = patient-facing, safe to quote
-    # (the only org scope email_service.draft_reply's allowed_scopes=["general",
-    # "restricted"] and /rag/query can both legitimately surface to a patient).
-    # routing_rules/staff_directory/data_classification/guardrails are internal-only
-    # (login usernames, routing internals) with no legitimate reason to reach a
-    # patient reply, so they're "sensitive" -- a separate tier from the "restricted"
-    # clinical-patient-data scope, unreachable by any current retrieval caller
-    # (app.auth.scoping.allowed_scopes() never grants "sensitive"). Deliberately
-    # inert until a future system-level caller opts into "sensitive" explicitly.
-    "clinic_identity": "general",
-    "policy_faq": "general",
-    "routing_rules": "sensitive",
-    "staff_directory": "sensitive",
-    "data_classification": "sensitive",
-    "guardrails": "sensitive",
-}
 
 _UUID_RE = re.compile(
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
@@ -110,10 +75,6 @@ def _extract_patient_uuid(folder_name: str) -> uuid.UUID:
     if match is None:
         raise ValueError(f"no UUID found in patient folder name: {folder_name!r}")
     return uuid.UUID(match.group(0))
-
-
-def _access_scope_for_doc_type(doc_type: str) -> str:
-    return DOC_TYPE_TO_SCOPE.get(doc_type, "restricted")
 
 
 def _list_patient_files(patient_dir: Path) -> list[Path]:
@@ -144,7 +105,7 @@ async def ingest_file(
     chunked = ray.get(chunked_ref)
 
     patient_id = _extract_patient_uuid(chunked["patient_id"])
-    access_scope = _access_scope_for_doc_type(doc_type)
+    access_scope = access_scope_for_doc_type(doc_type)
     source_document_id = uuid.uuid4()
     citation_tag = f"{str(patient_id)[:8]}_{doc_type}"
 

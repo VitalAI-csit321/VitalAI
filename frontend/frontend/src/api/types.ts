@@ -26,6 +26,25 @@ export interface Patient {
   gender: Gender;
   status: PatientStatus;
   createdAt: string;
+  address: string | null;
+  indigenousStatus: string | null;
+  preferredLanguage: string | null;
+  phone: string | null;
+  email: string | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  preferredCommunication: string | null;
+  bestTimeToContact: string | null;
+  knownConditions: string | null;
+  currentMedications: string | null;
+  allergies: string | null;
+  insuranceProvider: string | null;
+  policyNumber: string | null;
+  groupNumber: string | null;
+  expiryDate: string | null;
+  medicareNumber: string | null;
+  concessionCard: string | null;
+  missingFields: string[];
 }
 
 export interface PatientCounts { active: number; pending: number; inactive: number; }
@@ -39,9 +58,15 @@ export interface Case {
 export type ConsentStatus = "pending" | "captured" | "withdrawn" | "not_required";
 export type ConsentQueueStatus = "pending" | "review" | "complete";
 
+export interface ConsentFormSnapshot {
+  checks: { label: string; checked: boolean }[];
+  signature: string;
+}
+
 export interface Consent {
   id: string; caseId: string; status: ConsentStatus;
   capturedAt: string | null; consentType: string; notes: string | null;
+  formSnapshot: ConsentFormSnapshot | null;
   createdAt: string; updatedAt: string;
 }
 
@@ -105,7 +130,7 @@ export interface Message {
 
 export interface DashboardSummary {
   openCases: number; awaitingApproval: number; escalations: number; auditEvents: number;
-  workflowByDay: { day: string; value: number }[];
+  workflowByDay: { day: string; date: string; value: number }[];
   pendingReviews: { id: string; name: string; kind: string; isNew: boolean }[];
 }
 
@@ -167,7 +192,53 @@ export interface RagAnswer {
   citations: RagCitation[];
 }
 
+// A document that exists only as retrievable chunks. The synthetic corpus and
+// any offline ingest write these with no ClinicalDocument row behind them, so
+// they never appear in listClinicalDocuments().
+export interface IndexedDocument {
+  sourceDocumentId: string; docType: string; chunkCount: number; indexedAt: string;
+}
+
+// Mirrors ClinicalDocType in backend/app/models/clinical_document.py.
+export type ClinicalDocType =
+  | "consultation" | "consultation_note" | "pathology_report" | "prescription"
+  | "registration_form" | "appointment_history" | "referral_letter" | "care_plan"
+  | "specialist_letter" | "hospital_discharge_summary" | "external_imaging_report"
+  | "consent_record";
+
 export interface ClinicalDocument {
   id: string; patientId: string; docType: string; filename: string;
   createdAt: string; ingestedAt: string | null;
+}
+
+export interface IngestResult {
+  documentId: string; chunkCount: number; ingestedAt: string;
+}
+
+export interface ServiceStatus {
+  name: string; detail: string;
+  status: "operational" | "degraded" | "down" | "disabled";
+  latencyMs: number | null; note: string | null;
+}
+
+export interface DetailedHealth {
+  services: ServiceStatus[];
+  uptimeSeconds: number | null;
+  latency: { count: number; avgMs: number | null; p95Ms: number | null };
+  activeSessions: number;
+}
+
+export interface AppSettingItem {
+  key: string;
+  value: unknown;
+  default: unknown;
+  type: "bool" | "int" | "float" | "str" | "list" | "dict";
+  group: string;
+  label: string;
+  help: string;
+  minimum: number | null;
+  maximum: number | null;
+  editable: boolean;
+  updatedBy: string | null;
+  updatedAt: string | null;
 }

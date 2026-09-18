@@ -51,6 +51,14 @@ export async function getAuditForCase(caseId: string): Promise<AuditEvent[]> {
   return res.map(toAuditEvent);
 }
 
+export async function listIncidents(limit = 20): Promise<AuditEvent[]> {
+  const res = await apiGet<{ items: RawAuditEvent[]; total: number }>(
+    "/api/v1/audit/incidents",
+    { limit },
+  );
+  return res.items.map(toAuditEvent);
+}
+
 export async function verifyAuditChain(): Promise<{
   valid: boolean; checkedCount: number; firstBreakEventId: string | null;
 }> {

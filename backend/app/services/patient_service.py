@@ -1,11 +1,13 @@
+import operator
 import secrets
+from functools import reduce
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.scoping import assigned_patient_ids_subquery
-from app.models.patient import Patient, PatientStatus
+from app.models.patient import PROFILE_FIELDS, Patient, PatientStatus
 from app.models.user import User
 from app.schemas.patient import PatientCreate, PatientUpdate
 from app.services.audit_service import record_event
@@ -22,6 +24,16 @@ async def _generate_unique_mrn(db: AsyncSession) -> str:
     raise RuntimeError(f"Could not generate a unique MRN after {_MRN_GENERATION_ATTEMPTS} attempts")
 
 
+def missing_profile_fields(patient: Patient) -> list[str]:
+    return [f for f in PROFILE_FIELDS if not getattr(patient, f)]
+
+
+def is_profile_complete(patient: Patient) -> bool:
+    return not missing_profile_fields(patient) and bool(
+        patient.name and patient.dob and patient.gender
+    )
+
+
 async def create_patient(db: AsyncSession, payload: PatientCreate, actor: User) -> Patient:
     mrn = await _generate_unique_mrn(db)
     patient = Patient(
@@ -31,6 +43,11 @@ async def create_patient(db: AsyncSession, payload: PatientCreate, actor: User) 
         gender=payload.gender,
         status=PatientStatus.PENDING,
     )
+    for field in PROFILE_FIELDS:
+        value = getattr(payload, field, None)
+        if value is not None:
+            setattr(patient, field, value)
+    patient.status = PatientStatus.ACTIVE if is_profile_complete(patient) else PatientStatus.PENDING
     db.add(patient)
     await db.flush()
 
@@ -61,9 +78,21 @@ async def update_patient(
     if payload.gender is not None:
         patient.gender = payload.gender
         changes["gender"] = payload.gender.value
+
+    for field in PROFILE_FIELDS:
+        value = getattr(payload, field, None)
+        if value is not None:
+            setattr(patient, field, value)
+            changes[field] = str(value)
+
     if payload.status is not None:
         patient.status = payload.status
         changes["status"] = payload.status.value
+    elif patient.status != PatientStatus.INACTIVE:
+        patient.status = (
+            PatientStatus.ACTIVE if is_profile_complete(patient) else PatientStatus.PENDING
+        )
+
     await db.flush()
 
     await record_event(
@@ -90,6 +119,7 @@ async def list_patients(
     db: AsyncSession,
     search: str | None = None,
     status: PatientStatus | None = None,
+    sort: str | None = None,
     limit: int = 20,
     offset: int = 0,
     doctor_id: UUID | None = None,
@@ -119,9 +149,25 @@ async def list_patients(
         items_query = items_query.where(condition)
         count_query = count_query.where(condition)
 
-    items_result = await db.execute(
-        items_query.order_by(Patient.created_at.desc()).limit(limit).offset(offset)
-    )
+    if sort == "missing_fields":
+        # insurance_expiry is the one Date column in PROFILE_FIELDS (the rest are
+        # String/Text): comparing a date column to "" is valid under SQLite's
+        # dynamic typing but raises "operator does not exist: date = character
+        # varying" on Postgres, so it only checks IS NULL.
+        def _is_missing(field: str):
+            column = getattr(Patient, field)
+            if field == "insurance_expiry":
+                return column.is_(None)
+            return or_(column.is_(None), column == "")
+
+        missing_count = reduce(
+            operator.add, (case((_is_missing(f), 1), else_=0) for f in PROFILE_FIELDS)
+        )
+        items_query = items_query.order_by(missing_count.asc(), Patient.created_at.desc())
+    else:
+        items_query = items_query.order_by(Patient.created_at.desc())
+
+    items_result = await db.execute(items_query.limit(limit).offset(offset))
     items = list(items_result.scalars().all())
     total = (await db.execute(count_query)).scalar_one()
 

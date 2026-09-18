@@ -51,6 +51,7 @@ async def list_cases(
     search: str | None = None,
     status: list[IntakeStatus] | None = None,
     channel: str | None = None,
+    patient_id: UUID | None = None,
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list[IntakeCase], int]:
@@ -64,6 +65,8 @@ async def list_cases(
         filters.append(IntakeCase.status.in_(status))
     if channel:
         filters.append(IntakeCase.contact_channel == channel)
+    if patient_id is not None:
+        filters.append(IntakeCase.patient_id == patient_id)
 
     items_query = select(IntakeCase)
     count_query = select(func.count()).select_from(IntakeCase)

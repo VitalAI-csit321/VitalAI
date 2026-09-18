@@ -1,3 +1,4 @@
+from app.models.app_setting import AppSetting
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.approval import ApprovalRequest, ApprovalStatus
 from app.models.assignment import DoctorPatientAssignment
@@ -21,6 +22,7 @@ from app.models.user import User, UserRole
 
 __all__ = [
     "Base",
+    "AppSetting",
     "User",
     "UserRole",
     "IntakeCase",

@@ -13,6 +13,7 @@ from app.models.clinical_document import ClinicalDocType, ClinicalDocument
 from app.models.patient import Patient
 from app.models.user import User
 from app.rag.chunking import chunk_text
+from app.rag.doc_scopes import access_scope_for_doc_type
 from app.rag.embeddings import get_embedding_provider
 from app.rag.text_extraction import extract_pdf_text
 from app.services.audit_service import record_event
@@ -136,7 +137,7 @@ async def ingest_document(
             Chunk(
                 patient_id=document.patient_id,
                 doc_type=document.doc_type.value,
-                access_scope="restricted",
+                access_scope=access_scope_for_doc_type(document.doc_type.value),
                 source_document_id=document.id,
                 citation_tag=citation_tag,
                 chunk_index=index,

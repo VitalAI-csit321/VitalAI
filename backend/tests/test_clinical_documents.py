@@ -319,6 +319,42 @@ async def test_list_documents_denied_without_view_clinical_permission(
     assert response.status_code == 403
 
 
+async def test_list_documents_visible_to_ungranted_operator_but_not_downloadable(
+    client: AsyncClient,
+    operator_headers: dict,
+    admin_user: User,
+    patient,
+    db_session: AsyncSession,
+):
+    """Operators see document names via UPLOAD_CLINICAL alone (no VIEW_CLINICAL
+    grant needed), but still can't open the content - that's the split this
+    change introduces, see can_list_clinical vs can_read_clinical."""
+    doc = ClinicalDocument(
+        patient_id=patient.id,
+        doc_type=ClinicalDocType.CONSULTATION,
+        filename="note.pdf",
+        content_type="application/pdf",
+        size_bytes=1024,
+        storage_key=f"clinical-documents/{patient.id}/{uuid4()}.pdf",
+        extracted_text="Blood pressure 120/80.",
+        uploaded_by=admin_user.id,
+    )
+    db_session.add(doc)
+    await db_session.commit()
+    await db_session.refresh(doc)
+
+    list_response = await client.get(
+        f"/api/v1/clinical-documents?patient_id={patient.id}", headers=operator_headers
+    )
+    assert list_response.status_code == 200
+    assert list_response.json()[0]["filename"] == "note.pdf"
+
+    file_response = await client.get(
+        f"/api/v1/clinical-documents/{doc.id}/file", headers=operator_headers
+    )
+    assert file_response.status_code == 403
+
+
 async def test_list_documents_denied_for_unassigned_doctor(
     client: AsyncClient, doctor_headers: dict, patient
 ):

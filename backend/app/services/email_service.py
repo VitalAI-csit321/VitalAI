@@ -4,6 +4,7 @@ Draft-reply generation (FR-EMAIL-03) is a separate step (draft_reply()), kept
 out of this function so ingestion and drafting can be tested independently.
 """
 
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
@@ -29,9 +30,23 @@ from app.services.task_routing_gate import (
 )
 from app.services.task_routing_rules import resolve_target_role
 
-_CLINICAL_CATEGORIES = frozenset(
-    {TaskCategory.PRESCRIPTION_RENEWAL, TaskCategory.RESULTS_ENQUIRY, TaskCategory.REFERRAL_REQUEST}
-)
+logger = logging.getLogger(__name__)
+
+
+def _clinical_categories() -> frozenset[TaskCategory]:
+    """Categories whose replies must be grounded and never auto-send.
+
+    Configurable via settings.email_no_autosend_categories. Unknown values are
+    dropped rather than raising, so a bad row degrades to the built-in set.
+    """
+    values = settings.email_no_autosend_categories
+    out = set()
+    for v in values:
+        try:
+            out.add(TaskCategory(v))
+        except ValueError:
+            continue
+    return frozenset(out)
 
 
 class CaseNotFoundError(Exception):
@@ -205,35 +220,48 @@ async def draft_reply(
         await _persist_draft(db, task, outcome)
         return outcome
 
-    reply_verdict = await evaluate_reply_worthiness(
-        db, get_llm(), sender=email.sender, subject=email.subject, body=email.body, actor=actor
-    )
-    if reply_verdict.verdict == ReplyWorthiness.NOT_WORTHY:
-        task.priority = TaskPriority.LOW
-        task.handover_context = reply_verdict.reason
+    try:
+        reply_verdict = await evaluate_reply_worthiness(
+            db, get_llm(), sender=email.sender, subject=email.subject, body=email.body, actor=actor
+        )
+        if reply_verdict.verdict == ReplyWorthiness.NOT_WORTHY:
+            task.priority = TaskPriority.LOW
+            task.handover_context = reply_verdict.reason
+            outcome = EmailDraftOutcome(
+                draft_text=None, approval_id=None, sent=False, blocked=False
+            )
+            await _persist_draft(db, task, outcome)
+            return outcome
+
+        if task.category in _clinical_categories() and email.case_id is not None:
+            case = await db.get(IntakeCase, email.case_id)
+            if case is not None and case.patient_id is not None:
+                from app.rag.answer import answer_question
+                from app.rag.retrieval import RetrievalContext
+
+                ctx = RetrievalContext(
+                    patient_id=case.patient_id,
+                    allowed_scopes=["general", "restricted"],
+                    role=actor.role.value,
+                    actor=actor.email,
+                )
+                result = await answer_question(db, email.body, ctx, actor)
+                draft_text = result.answer
+                grounded = True
+            else:
+                draft_text, grounded = await _generate_org_grounded_reply(db, email, actor)
+        else:
+            draft_text, grounded = await _generate_org_grounded_reply(db, email, actor)
+    except Exception:
+        # A live LLM/retrieval outage (Ollama timeout, connection drop, etc.)
+        # must degrade to "needs a manual reply", not crash the ingest
+        # request after the task row is already committed -- an uncaught
+        # exception here previously orphaned the task with no draft, no
+        # approval, and no visible reason.
+        logger.exception("draft generation failed, falling back to manual reply")
         outcome = EmailDraftOutcome(draft_text=None, approval_id=None, sent=False, blocked=False)
         await _persist_draft(db, task, outcome)
         return outcome
-
-    if task.category in _CLINICAL_CATEGORIES and email.case_id is not None:
-        case = await db.get(IntakeCase, email.case_id)
-        if case is not None and case.patient_id is not None:
-            from app.rag.answer import answer_question
-            from app.rag.retrieval import RetrievalContext
-
-            ctx = RetrievalContext(
-                patient_id=case.patient_id,
-                allowed_scopes=["general", "restricted"],
-                role=actor.role.value,
-                actor=actor.email,
-            )
-            result = await answer_question(db, email.body, ctx, actor)
-            draft_text = result.answer
-            grounded = True
-        else:
-            draft_text, grounded = await _generate_org_grounded_reply(db, email, actor)
-    else:
-        draft_text, grounded = await _generate_org_grounded_reply(db, email, actor)
 
     try:
         await check_output(db, draft_text, actor=actor, case_id=email.case_id)
@@ -252,11 +280,12 @@ async def draft_reply(
     # isn't clinical -- prescription/results/referral replies never auto-send
     # regardless of confidence, per Amin's explicit call.
     safe_to_send_immediately = (
-        reply_verdict.verdict == ReplyWorthiness.WORTHY
+        settings.email_auto_send_enabled
+        and reply_verdict.verdict == ReplyWorthiness.WORTHY
         and gate.outcome == TaskRoutingOutcome.AUTO_ROUTED
         and confidence >= settings.task_routing_auto_threshold
         and grounded
-        and task.category not in _CLINICAL_CATEGORIES
+        and task.category not in _clinical_categories()
     )
     if safe_to_send_immediately:
         outcome = EmailDraftOutcome(

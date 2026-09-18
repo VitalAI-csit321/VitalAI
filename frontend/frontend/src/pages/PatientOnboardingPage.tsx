@@ -74,22 +74,37 @@ export function PatientOnboardingPage() {
     setForm(f => ({ ...f, [key]: value }));
   }
 
+  function buildPayload() {
+    return {
+      firstName: form.firstName, lastName: form.lastName,
+      dateOfBirth: form.dateOfBirth, gender: form.gender, address: form.address,
+      indigenousStatus: form.indigenousStatus, preferredLanguage: form.preferredLanguage,
+      contactReason: "Patient onboarding", contactChannel: form.preferredCommunication || "portal",
+      phone: form.phone, email: form.email,
+      emergencyContactName: form.emergencyContactName, emergencyContactPhone: form.emergencyContactPhone,
+      preferredCommunication: form.preferredCommunication, bestTimeToContact: form.bestTimeToContact,
+      knownConditions: form.knownConditions, currentMedications: form.currentMedications, allergies: form.allergies,
+      insuranceProvider: form.insuranceProvider, policyNumber: form.policyNumber, groupNumber: form.groupNumber,
+      expiryDate: form.expiryDate, medicareNumber: form.medicareNumber, concessionCard: form.concessionCard,
+    };
+  }
+
   async function submit() {
     setBusy(true); setError(null);
     try {
-      const patient = await createPatientFromOnboarding({
-        firstName: form.firstName, lastName: form.lastName,
-        dateOfBirth: form.dateOfBirth, gender: form.gender, address: form.address,
-        indigenousStatus: form.indigenousStatus, preferredLanguage: form.preferredLanguage,
-        contactReason: "Patient onboarding", contactChannel: form.preferredCommunication || "portal",
-        phone: form.phone, email: form.email,
-        emergencyContactName: form.emergencyContactName, emergencyContactPhone: form.emergencyContactPhone,
-        bestTimeToContact: form.bestTimeToContact,
-        knownConditions: form.knownConditions, currentMedications: form.currentMedications, allergies: form.allergies,
-        insuranceProvider: form.insuranceProvider, policyNumber: form.policyNumber, groupNumber: form.groupNumber,
-        expiryDate: form.expiryDate, medicareNumber: form.medicareNumber, concessionCard: form.concessionCard,
-      });
+      const patient = await createPatientFromOnboarding(buildPayload());
       setCreatedPatient({ mrn: patient.mrn });
+    } catch {
+      setError("Could not save the patient. Please try again.");
+      setBusy(false);
+    }
+  }
+
+  async function saveDraft() {
+    setBusy(true); setError(null);
+    try {
+      const patient = await createPatientFromOnboarding(buildPayload());
+      navigate(`/patients/${patient.id}`);
     } catch {
       setError("Could not save the patient. Please try again.");
       setBusy(false);
@@ -204,9 +219,19 @@ export function PatientOnboardingPage() {
             <div className="grid grid-cols-2 gap-5">
               <Field label="Insurance Provider"><input className={inputClass} value={form.insuranceProvider} onChange={e => update("insuranceProvider", e.target.value)} /></Field>
               <Field label="Policy Number"><input className={inputClass} value={form.policyNumber} onChange={e => update("policyNumber", e.target.value)} /></Field>
-              <Field label="Group Number"><input className={inputClass} value={form.groupNumber} onChange={e => update("groupNumber", e.target.value)} /></Field>
+              <Field label="Group Number">
+                <div className="flex gap-2">
+                  <input className={inputClass} value={form.groupNumber} onChange={e => update("groupNumber", e.target.value)} />
+                  <button type="button" onClick={() => update("groupNumber", "N/A")} className="shrink-0 rounded-lg border border-slate-300 px-3 text-xs font-medium text-slate-600 hover:bg-slate-50">N/A</button>
+                </div>
+              </Field>
               <Field label="Expiry Date"><input className={inputClass} placeholder="DD/MM/YYYY" value={form.expiryDate} onChange={e => update("expiryDate", e.target.value)} /></Field>
-              <Field label="Medicare Number"><input className={inputClass} value={form.medicareNumber} onChange={e => update("medicareNumber", e.target.value)} /></Field>
+              <Field label="Medicare Number">
+                <div className="flex gap-2">
+                  <input className={inputClass} value={form.medicareNumber} onChange={e => update("medicareNumber", e.target.value)} />
+                  <button type="button" onClick={() => update("medicareNumber", "N/A")} className="shrink-0 rounded-lg border border-slate-300 px-3 text-xs font-medium text-slate-600 hover:bg-slate-50">N/A</button>
+                </div>
+              </Field>
               <Field label="Concession Card">
                 <select className={inputClass} value={form.concessionCard} onChange={e => update("concessionCard", e.target.value)}>
                   <option>None</option><option>Health Care Card</option><option>Pensioner Concession</option><option>Commonwealth Seniors</option>
@@ -258,8 +283,9 @@ export function PatientOnboardingPage() {
             Back
           </button>
           <div className="flex gap-3">
-            <button className="rounded-lg border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
-              Save draft
+            <button onClick={saveDraft} disabled={busy || !form.firstName.trim() || !form.lastName.trim()}
+              className="rounded-lg border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40">
+              {busy ? "Saving…" : "Save & finish later"}
             </button>
             <button onClick={next} disabled={busy || (step === 4 && !form.confirmed)}
               className="rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-50">

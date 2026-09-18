@@ -73,6 +73,7 @@ async def book_appointment_endpoint(
 @router.get("", response_model=AppointmentListResponse)
 async def list_appointments_endpoint(
     doctor_id: UUID | None = None,
+    patient_id: UUID | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     appointment_type: AppointmentType | None = None,
@@ -92,6 +93,7 @@ async def list_appointments_endpoint(
         db,
         actor,
         doctor_id=effective_doctor_id,
+        patient_id=patient_id,
         date_from=date_from,
         date_to=date_to,
         appointment_type=appointment_type,

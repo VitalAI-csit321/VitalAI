@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { Search } from "lucide-react";
-import { listClinicalDocuments, ragQuery } from "../api/records";
+import { listClinicalDocuments, listIndexedDocuments, ragQuery } from "../api/records";
 import { listPatients } from "../api/cases";
-import type { ClinicalDocument, Patient, RagAnswer } from "../api/types";
+import type { ClinicalDocument, IndexedDocument, Patient, RagAnswer } from "../api/types";
 import { Spinner } from "../components/ui";
 
 interface ChatTurn { question: string; answer: RagAnswer | null; error: string | null; loading: boolean; }
 
 const SOURCE_OPTIONS = ["Emergency Dept", "Pathology", "Radiology", "Pharmacy", "Ward 3B"];
 const DATE_RANGE_OPTIONS = ["Last 7 days", "Last 30 days", "Last 90 days", "All time"];
-const TYPE_OPTIONS = ["consultation", "pathology_report", "prescription"];
+const TYPE_OPTIONS = [
+  "consultation_note", "pathology_report", "prescription", "referral_letter",
+  "specialist_letter", "hospital_discharge_summary", "external_imaging_report",
+  "care_plan", "registration_form", "appointment_history", "consent_record",
+];
 
 function buildFilteredQuestion(question: string, filters: { source: string; dateRange: string; type: string }): string {
   const constraints: string[] = [];
@@ -24,6 +28,7 @@ export function RecordsPage() {
   const [patientResults, setPatientResults] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
+  const [indexed, setIndexed] = useState<IndexedDocument[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
   const [docsError, setDocsError] = useState<string | null>(null);
 
@@ -44,11 +49,15 @@ export function RecordsPage() {
   }, [patientSearch]);
 
   useEffect(() => {
-    if (!selectedPatient) { setDocuments([]); return; }
+    if (!selectedPatient) { setDocuments([]); setIndexed([]); return; }
     setDocsLoading(true);
     setDocsError(null);
-    listClinicalDocuments(selectedPatient.id)
-      .then(setDocuments)
+    // Two stores, deliberately: clinical_documents holds files uploaded through
+    // the app, /rag/documents holds everything the retriever can actually cite
+    // (the offline-ingested corpus has no uploads row). Listing only the first
+    // showed "no documents" for patients the RAG answers about happily.
+    Promise.all([listClinicalDocuments(selectedPatient.id), listIndexedDocuments(selectedPatient.id)])
+      .then(([docs, idx]) => { setDocuments(docs); setIndexed(idx); })
       .catch(() => setDocsError("Could not load documents for this patient."))
       .finally(() => setDocsLoading(false));
   }, [selectedPatient]);
@@ -56,6 +65,26 @@ export function RecordsPage() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [turns]);
+
+  // Chunks carry only a source document id; corpus-ingested chunks have no
+  // ClinicalDocument row at all, so fall back to the doc type in the citation.
+  const documentNames = new Map(documents.map(d => [d.id, d.filename]));
+
+  const uploadedIds = new Set(documents.map(d => d.id));
+  const panelDocs = [
+    ...documents.map(d => ({
+      id: d.id,
+      title: d.filename,
+      subtitle: `${d.docType.replace(/_/g, " ")} • ${new Date(d.createdAt).toLocaleDateString("en-GB")}`,
+      warning: d.ingestedAt ? null : "Not yet ingested",
+    })),
+    ...indexed.filter(i => !uploadedIds.has(i.sourceDocumentId)).map(i => ({
+      id: i.sourceDocumentId,
+      title: i.docType.replace(/_/g, " "),
+      subtitle: `${i.chunkCount} indexed passage${i.chunkCount === 1 ? "" : "s"} • ${new Date(i.indexedAt).toLocaleDateString("en-GB")}`,
+      warning: null,
+    })),
+  ];
 
   async function handleSearch() {
     if (!selectedPatient || !question.trim()) return;
@@ -112,19 +141,17 @@ export function RecordsPage() {
           {/* Left: document list */}
           <div className="rounded-xl border border-slate-200 bg-white p-5">
             <h2 className="text-base font-semibold text-slate-900">Documents</h2>
-            <p className="mt-1 text-xs text-slate-500">{documents.length} for {selectedPatient.name}</p>
+            <p className="mt-1 text-xs text-slate-500">{panelDocs.length} for {selectedPatient.name}</p>
             <div className="mt-4 space-y-2">
               {docsLoading ? <Spinner /> : docsError ? (
                 <p className="text-sm text-red-600">{docsError}</p>
-              ) : documents.length === 0 ? (
+              ) : panelDocs.length === 0 ? (
                 <p className="text-sm text-slate-500">No documents on file for this patient.</p>
-              ) : documents.map(doc => (
+              ) : panelDocs.map(doc => (
                 <div key={doc.id} className="rounded-lg border border-transparent p-3 hover:bg-slate-50">
-                  <div className="text-sm font-semibold text-slate-900">{doc.filename}</div>
-                  <div className="mt-0.5 text-xs text-slate-500 capitalize">
-                    {doc.docType.replace(/_/g, " ")} • {new Date(doc.createdAt).toLocaleDateString("en-GB")}
-                  </div>
-                  {!doc.ingestedAt && <div className="mt-0.5 text-xs text-amber-600">Not yet ingested</div>}
+                  <div className="text-sm font-semibold text-slate-900 capitalize">{doc.title}</div>
+                  <div className="mt-0.5 text-xs text-slate-500 capitalize">{doc.subtitle}</div>
+                  {doc.warning && <div className="mt-0.5 text-xs text-amber-600">{doc.warning}</div>}
                 </div>
               ))}
             </div>
@@ -146,9 +173,15 @@ export function RecordsPage() {
                       <p>{turn.answer.answer}</p>
                       {turn.answer.citations.length > 0 && (
                         <div className="mt-2 space-y-1 border-t border-slate-200 pt-2">
+                          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Sources</p>
                           {turn.answer.citations.map(c => (
-                            <div key={c.chunkId} className="text-xs text-slate-500">
-                              <span className="font-medium capitalize">{c.docType.replace(/_/g, " ")}</span>: {c.content.slice(0, 120)}{c.content.length > 120 ? "…" : ""}
+                            <div key={c.chunkId} className="flex items-baseline justify-between gap-3 text-xs text-slate-500">
+                              <span className="truncate capitalize">
+                                {documentNames.get(c.sourceDocumentId) ?? c.docType.replace(/_/g, " ")}
+                              </span>
+                              <span className="shrink-0 tabular-nums" title="Retrieval confidence (cosine similarity)">
+                                {Math.round(c.score * 100)}%
+                              </span>
                             </div>
                           ))}
                         </div>

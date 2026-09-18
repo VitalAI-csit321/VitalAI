@@ -134,3 +134,36 @@ async def test_blocked_question_raises_input_blocked_and_never_calls_llm(
             )
 
     mock_llm.ainvoke.assert_not_called()
+
+
+async def test_citations_only_include_chunks_the_llm_actually_read() -> None:
+    top = _chunk(score=0.90, content="Patient's prescription is amoxicillin 500mg.")
+    near = _chunk(score=0.80, content="Follow-up review in 6 months.")
+    far = _chunk(score=0.60, content="Clinic opening hours are 8:30-5:00.")
+    mock_llm = MagicMock()
+    mock_llm.ainvoke = AsyncMock(return_value="Amoxicillin 500mg.")
+
+    with (
+        patch("app.rag.answer.retrieve", new=AsyncMock(return_value=[top, near, far])),
+        patch("app.rag.answer.get_llm", return_value=mock_llm),
+    ):
+        result = await answer_question(
+            session=MagicMock(), question="What is the prescription?", ctx=_ctx(), actor=_actor()
+        )
+
+    # far is outside CONTEXT_SCORE_MARGIN of the top score: never in the prompt,
+    # so never a citation, even though the gate outcome still records it.
+    assert [c.chunk_id for c in result.citations] == [top.chunk_id, near.chunk_id]
+    assert len(result.gate_outcome.chunks) == 3
+
+
+async def test_refusal_has_no_citations() -> None:
+    with (
+        patch("app.rag.answer.retrieve", new=AsyncMock(return_value=[])),
+        patch("app.rag.answer.get_llm", return_value=MagicMock()),
+    ):
+        result = await answer_question(
+            session=MagicMock(), question="any question", ctx=_ctx(), actor=_actor()
+        )
+
+    assert result.citations == []

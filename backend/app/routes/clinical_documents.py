@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import require_permission
+from app.auth.dependencies import require_any_permission, require_permission
 from app.auth.permissions import UPLOAD_CLINICAL, VIEW_CLINICAL
-from app.auth.scoping import can_read_clinical
+from app.auth.scoping import can_list_clinical, can_read_clinical
 from app.database import get_db
 from app.models.clinical_document import ClinicalDocType
 from app.models.user import User
@@ -28,9 +28,9 @@ router = APIRouter(prefix="/clinical-documents", tags=["clinical-documents"])
 async def list_clinical_documents_endpoint(
     patient_id: UUID,
     db: AsyncSession = Depends(get_db),
-    actor: User = Depends(require_permission(VIEW_CLINICAL)),
+    actor: User = Depends(require_any_permission(VIEW_CLINICAL, UPLOAD_CLINICAL)),
 ):
-    if not await can_read_clinical(db, actor, patient_id):
+    if not await can_list_clinical(db, actor, patient_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not permitted to read clinical records for this patient",

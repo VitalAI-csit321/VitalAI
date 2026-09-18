@@ -20,6 +20,15 @@ export function setToken(token: string | null): void {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
+// AuthProvider registers a listener here so a 401 from ANY authenticated call
+// (session expired, token invalidated) clears the logged-in state everywhere,
+// instead of each page's own catch block showing a confusing, unrelated error.
+let onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedHandler(fn: (() => void) | null): void {
+  onUnauthorized = fn;
+}
+
 export class ApiError extends Error {
   status: number;
   detail: unknown;
@@ -28,6 +37,23 @@ export class ApiError extends Error {
     this.status = status;
     this.detail = detail;
   }
+}
+
+// FastAPI's own 422s carry `detail` as a list of {loc, msg} pydantic errors,
+// not a string. Surfacing "Request failed (422)" (or worse, an unrelated
+// canned message a caller wrote for a different status) hides the actual
+// validation reason from the user. Use this in a catch block instead of
+// guessing a message from the HTTP status alone.
+export function describeApiError(err: unknown, fallback: string): string {
+  if (!(err instanceof ApiError)) return fallback;
+  if (typeof err.detail === "string") return err.detail;
+  if (Array.isArray(err.detail)) {
+    const messages = err.detail
+      .map((e) => (e && typeof e === "object" && "msg" in e ? String((e as { msg: unknown }).msg) : null))
+      .filter((m): m is string => m !== null);
+    if (messages.length) return messages.join("; ");
+  }
+  return fallback;
 }
 
 function authHeaders(): Record<string, string> {
@@ -48,6 +74,10 @@ async function parse(res: Response): Promise<unknown> {
 async function handle(res: Response): Promise<unknown> {
   const body = await parse(res);
   if (!res.ok) {
+    if (res.status === 401) {
+      setToken(null);
+      onUnauthorized?.();
+    }
     const detail =
       body && typeof body === "object" && "detail" in body
         ? (body as { detail: unknown }).detail
@@ -74,6 +104,19 @@ export async function apiGet<T>(
   }
   const res = await fetch(url.toString(), { headers: { ...authHeaders() } });
   return handle(res) as Promise<T>;
+}
+
+// For binary responses (file downloads) that don't fit the JSON handle() path.
+export async function apiGetBlob(path: string): Promise<Blob> {
+  const res = await fetch(BASE_URL + path, { headers: { ...authHeaders() } });
+  if (!res.ok) {
+    if (res.status === 401) {
+      setToken(null);
+      onUnauthorized?.();
+    }
+    throw new ApiError(res.status, await res.text().catch(() => null));
+  }
+  return res.blob();
 }
 
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
