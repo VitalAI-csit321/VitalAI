@@ -31,13 +31,15 @@ async def list_intake_endpoint(
     search: str | None = None,
     status: list[IntakeStatus] | None = Query(default=None),
     channel: str | None = None,
+    patient_id: UUID | None = None,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_permission(VIEW_QUEUE)),
 ):
     items, total = await intake_service.list_cases(
-        db, search=search, status=status, channel=channel, limit=limit, offset=offset
+        db, search=search, status=status, channel=channel, patient_id=patient_id,
+        limit=limit, offset=offset,
     )
     return IntakeCaseListResponse(
         items=[IntakeCaseOut.model_validate(c) for c in items],

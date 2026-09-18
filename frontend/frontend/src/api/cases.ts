@@ -41,11 +41,11 @@ export async function getCase(id: string): Promise<Case> {
 }
 
 export async function listCasesForPatient(patientId: string): Promise<Case[]> {
-  const page = await apiGet<{ items: RawCase[]; total: number }>("/api/v1/intake", { limit: 100 });
-  return page.items
-    .filter(c => c.patient_id === patientId)
-    .map(toCase)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const page = await apiGet<{ items: RawCase[]; total: number }>("/api/v1/intake", {
+    patient_id: patientId,
+    limit: 100,
+  });
+  return page.items.map(toCase);
 }
 
 export async function findLatestCaseForPatient(patientId: string): Promise<Case | null> {

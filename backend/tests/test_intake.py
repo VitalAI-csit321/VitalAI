@@ -1,10 +1,12 @@
 import uuid
+from datetime import date
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.security import create_access_token, hash_password
 from app.models import Patient, User, UserRole
+from app.models.patient import Gender, PatientStatus
 
 
 async def test_create_intake(client: AsyncClient, admin_headers: dict, patient: Patient):
@@ -341,6 +343,45 @@ async def test_list_intake_denied_without_view_queue(client: AsyncClient, doctor
     """DOCTOR lacks VIEW_QUEUE, must be denied listing intake cases."""
     response = await client.get("/api/v1/intake", headers=doctor_headers)
     assert response.status_code == 403
+
+
+async def test_list_intake_filters_by_patient_id(
+    client: AsyncClient, admin_headers: dict, patient: Patient, db_session: AsyncSession
+):
+    other_patient = Patient(
+        mrn="MRN-TESTFIX02",
+        name="Other Fixture Patient",
+        dob=date(1990, 1, 1),
+        gender=Gender.MALE,
+        status=PatientStatus.ACTIVE,
+    )
+    db_session.add(other_patient)
+    await db_session.commit()
+    await db_session.refresh(other_patient)
+
+    await client.post(
+        "/api/v1/intake",
+        json={"patient_id": str(patient.id), "contact_reason": "mine", "contact_channel": "phone"},
+        headers=admin_headers,
+    )
+    await client.post(
+        "/api/v1/intake",
+        json={
+            "patient_id": str(other_patient.id),
+            "contact_reason": "not-mine",
+            "contact_channel": "phone",
+        },
+        headers=admin_headers,
+    )
+
+    response = await client.get(
+        "/api/v1/intake", params={"patient_id": str(patient.id)}, headers=admin_headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["contact_reason"] == "mine"
+    assert all(item["patient_id"] == str(patient.id) for item in body["items"])
 
 
 async def test_list_intake_requires_auth(client: AsyncClient):
