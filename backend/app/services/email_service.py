@@ -12,6 +12,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.database import AsyncSessionLocal
 from app.llm import get_llm
 from app.llm.output_guardrail import OutputBlockedError, check_output
 from app.models.case import IntakeCase, IntakeStatus
@@ -306,3 +307,35 @@ async def draft_reply(
     )
     await _persist_draft(db, task, outcome)
     return outcome
+
+
+async def draft_reply_detached(
+    task_id: UUID,
+    email_id: UUID,
+    actor_id: UUID,
+    gate: TaskRoutingGateResult,
+    confidence: float,
+) -> None:
+    """Run draft_reply in a session of its own.
+
+    Shared by both schedulers -- the ingest route's BackgroundTasks and the
+    Outlook poller's detached task -- because both have already returned by
+    the time this runs, taking their session with them. Hence ids in, rows
+    re-fetched here. Safe because ingest_email() commits before returning.
+
+    Failures are logged and swallowed. There is nobody left to raise to: the
+    Email and Task rows are already durable, and an undrafted task simply
+    shows up in the inbox as one a human has to answer.
+    """
+    async with AsyncSessionLocal() as db:
+        try:
+            task = await db.get(Task, task_id)
+            email = await db.get(Email, email_id)
+            actor = await db.get(User, actor_id)
+            if task is None or email is None or actor is None:
+                logger.error("Detached draft for task %s found no task/email/actor row", task_id)
+                return
+            await draft_reply(db, task, email, actor, gate, confidence)
+        except Exception:
+            logger.exception("Detached draft reply failed for task %s", task_id)
+            await db.rollback()

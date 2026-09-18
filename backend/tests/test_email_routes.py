@@ -52,8 +52,9 @@ async def test_ingest_email_endpoint_creates_task(
     assert body["category"] == "appointment_request"
     assert body["outcome"] == "auto_routed"
     assert body["confidence"] == 0.95
-    assert body["sent"] is True
-    assert body["draft_text"] == "Thanks, we'll confirm your appointment shortly."
+    # The draft is no longer in the response: it is generated after it, and
+    # lands on the Task row. See tests/test_draft_reply_detached.py.
+    assert "draft_text" not in body
 
 
 async def test_ingest_email_requires_view_queue(

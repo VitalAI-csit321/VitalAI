@@ -113,6 +113,26 @@ async def db_session(test_engine):
 
 
 @pytest_asyncio.fixture
+def detached_sessionmaker(db_session):
+    """Stands in for app.database.AsyncSessionLocal in tests.
+
+    Work detached from a request (email_service.draft_reply_detached) opens
+    its own session, which in production means the app engine. In tests that
+    engine is a different in-memory database on SQLite, and on Postgres a
+    connection outside this test's transaction, so a detached session would
+    see none of the rows the test just wrote. Binding to db_session's own
+    bind keeps detached work inside the same transaction while still
+    exercising the real fresh-session code path.
+    """
+    return async_sessionmaker(
+        bind=db_session.bind,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        join_transaction_mode="create_savepoint",
+    )
+
+
+@pytest_asyncio.fixture
 async def patient(db_session: AsyncSession) -> Patient:
     p = Patient(
         mrn="MRN-TESTFIX01",
@@ -128,7 +148,7 @@ async def patient(db_session: AsyncSession) -> Patient:
 
 
 @pytest_asyncio.fixture
-async def client(db_session):
+async def client(db_session, detached_sessionmaker, monkeypatch):
     # Reuses db_session's own connection/transaction for every request
     # instead of opening a fresh session per call. Required so data written
     # via db_session (or an earlier request) is visible to routes that query
@@ -137,6 +157,13 @@ async def client(db_session):
     # and see none of it.
     async def override_get_db():
         yield db_session
+
+    # Same reason, for work a route hands to BackgroundTasks: POST
+    # /email/ingest schedules draft_reply_detached, which opens its own
+    # session off the app engine. Left alone that session is a different
+    # in-memory database on SQLite, and outside this test's transaction on
+    # Postgres, so the draft would silently find no rows.
+    monkeypatch.setattr("app.services.email_service.AsyncSessionLocal", detached_sessionmaker)
 
     app.dependency_overrides[get_db] = override_get_db
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:

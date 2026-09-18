@@ -8,9 +8,6 @@ interface IngestResult {
   target_role: string;
   outcome: "auto_routed" | "auto_routed_flagged" | "human_review";
   override_reason: string | null;
-  draft_text: string | null;
-  sent: boolean;
-  blocked: boolean;
 }
 
 function formatLabel(value: string): string {
@@ -73,22 +70,14 @@ export function ComposePage() {
               {formatLabel(result.outcome)}
               {result.override_reason && ` (${formatLabel(result.override_reason)})`}
             </div>
-            {result.blocked && (
-              <div className="font-medium text-red-600">
-                Draft reply blocked by the output guardrail, routed to a human instead.
-              </div>
-            )}
-            {result.draft_text && (
-              <div>
-                <span className="font-semibold text-slate-700">
-                  Draft reply {result.sent ? "(sent automatically)" : "(awaiting approval)"}:
-                </span>
-                <p className="mt-1 whitespace-pre-line text-slate-600">{result.draft_text}</p>
-              </div>
-            )}
-            {!result.draft_text && !result.blocked && (
+            {result.outcome === "human_review" ? (
               <div className="text-slate-500">
-                No draft generated. This went straight to human review.
+                No draft reply: this went straight to human review.
+              </div>
+            ) : (
+              <div className="text-slate-500">
+                A draft reply is generating in the background. It shows up in the inbox once
+                it's ready, along with whether it needs approval or was blocked.
               </div>
             )}
           </div>
@@ -116,9 +105,10 @@ export function ComposePage() {
     <div className="p-6">
       <h1 className="text-2xl font-bold text-slate-900 mb-1">Simulate incoming email</h1>
       <p className="text-sm text-slate-500 mb-6">
-        This runs the real pipeline end to end: classification, RBAC routing, draft generation,
-        and the output guardrail. There's no live email account behind this; it's how new patient
-        email gets into the system in this MVP.
+        This runs the real pipeline end to end: classification and RBAC routing happen while you
+        wait, then draft generation and the output guardrail run in the background. There's no
+        live email account behind this; it's how new patient email gets into the system in this
+        MVP.
       </p>
       <form onSubmit={onSubmit} className="max-w-xl rounded-xl border border-slate-200 bg-white p-5 space-y-4">
         <div>
