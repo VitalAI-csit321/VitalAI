@@ -1,3 +1,17 @@
+"""Calendar read endpoints.
+
+Every list/calendar/day/markers call here passes doctor_id, scoping the query
+to the appointment the fixture just booked. Without it these assert on global
+counts, and the shared dev database holds committed demo appointments in the
+same September and November windows -- an unscoped total==1 fails on any
+database that has seen prior use. The endpoints already take doctor_id
+(app/routes/appointments.py), and booked_appointment returns it, so the
+scoping costs one parameter and weakens nothing.
+
+test_repeat_creates_a_linked_series is the exception: it already narrows by
+series_id in Python, so it needs nothing.
+"""
+
 from uuid import uuid4
 
 import pytest
@@ -47,14 +61,22 @@ async def test_list_filters_by_date_range(client, admin_headers, booked_appointm
     inside = await client.get(
         "/api/v1/appointments",
         headers=admin_headers,
-        params={"date_from": "2026-09-01T00:00:00Z", "date_to": "2026-09-02T00:00:00Z"},
+        params={
+            "date_from": "2026-09-01T00:00:00Z",
+            "date_to": "2026-09-02T00:00:00Z",
+            "doctor_id": booked_appointment["doctor_id"],
+        },
     )
     assert inside.json()["total"] == 1
 
     outside = await client.get(
         "/api/v1/appointments",
         headers=admin_headers,
-        params={"date_from": "2026-10-01T00:00:00Z", "date_to": "2026-10-02T00:00:00Z"},
+        params={
+            "date_from": "2026-10-01T00:00:00Z",
+            "date_to": "2026-10-02T00:00:00Z",
+            "doctor_id": booked_appointment["doctor_id"],
+        },
     )
     assert outside.json()["total"] == 0
 
@@ -93,7 +115,9 @@ async def test_list_filters_by_appointment_type(
 
 async def test_calendar_month_groups_by_day_with_stats(client, admin_headers, booked_appointment):
     response = await client.get(
-        "/api/v1/appointments/calendar", headers=admin_headers, params={"year": 2026, "month": 9}
+        "/api/v1/appointments/calendar",
+        headers=admin_headers,
+        params={"year": 2026, "month": 9, "doctor_id": booked_appointment["doctor_id"]},
     )
     assert response.status_code == 200
     body = response.json()
@@ -111,7 +135,9 @@ async def test_calendar_month_groups_by_day_with_stats(client, admin_headers, bo
 
 async def test_calendar_month_excludes_other_months(client, admin_headers, booked_appointment):
     response = await client.get(
-        "/api/v1/appointments/calendar", headers=admin_headers, params={"year": 2026, "month": 10}
+        "/api/v1/appointments/calendar",
+        headers=admin_headers,
+        params={"year": 2026, "month": 10, "doctor_id": booked_appointment["doctor_id"]},
     )
     assert all(d["total"] == 0 for d in response.json()["days"])
 
@@ -122,7 +148,7 @@ async def test_calendar_markers_returns_only_days_with_appointments(
     response = await client.get(
         "/api/v1/appointments/calendar/markers",
         headers=admin_headers,
-        params={"year": 2026, "month": 9},
+        params={"year": 2026, "month": 9, "doctor_id": booked_appointment["doctor_id"]},
     )
     assert response.status_code == 200
     assert response.json() == [{"date": "2026-09-01", "count": 1}]
@@ -130,7 +156,9 @@ async def test_calendar_markers_returns_only_days_with_appointments(
 
 async def test_day_view_reports_totals_and_providers(client, admin_headers, booked_appointment):
     response = await client.get(
-        "/api/v1/appointments/day", headers=admin_headers, params={"date": "2026-09-01"}
+        "/api/v1/appointments/day",
+        headers=admin_headers,
+        params={"date": "2026-09-01", "doctor_id": booked_appointment["doctor_id"]},
     )
     assert response.status_code == 200
     body = response.json()
@@ -296,6 +324,10 @@ async def test_repeat_series_collision_leaves_no_partial_series(
     now only has one path to verify.
     """
     case_id = await _create_case(pg_client, pg_admin_headers, pg_patient)
+    # Read once, up front: the collision below rolls the session back, which
+    # expires pg_doctor_user's attributes, and touching .id afterwards would
+    # lazy-load in a sync context (MissingGreenlet).
+    doctor_id = str(pg_doctor_user.id)
 
     # Create a standalone appointment at a specific time slot.
     collision_slot = "2026-11-09T10:00:00Z"
@@ -303,7 +335,7 @@ async def test_repeat_series_collision_leaves_no_partial_series(
         "/api/v1/appointments",
         headers=pg_admin_headers,
         json={
-            "doctor_id": str(pg_doctor_user.id),
+            "doctor_id": doctor_id,
             "case_id": case_id,
             "time_slot": collision_slot,
             "duration_minutes": 30,
@@ -320,7 +352,7 @@ async def test_repeat_series_collision_leaves_no_partial_series(
         "/api/v1/appointments",
         headers=pg_admin_headers,
         json={
-            "doctor_id": str(pg_doctor_user.id),
+            "doctor_id": doctor_id,
             "case_id": case_id,
             "time_slot": "2026-11-02T10:00:00Z",
             "duration_minutes": 30,
@@ -332,7 +364,11 @@ async def test_repeat_series_collision_leaves_no_partial_series(
     listed = await pg_client.get(
         "/api/v1/appointments",
         headers=pg_admin_headers,
-        params={"date_from": "2026-11-01T00:00:00Z", "date_to": "2026-11-30T00:00:00Z"},
+        params={
+            "date_from": "2026-11-01T00:00:00Z",
+            "date_to": "2026-11-30T00:00:00Z",
+            "doctor_id": doctor_id,
+        },
     )
     items = listed.json()["items"]
     assert len(items) == 1

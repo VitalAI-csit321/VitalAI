@@ -15,7 +15,21 @@ async def test_app_setting_roundtrips_each_value_shape(db_session):
     db_session.add_all(rows)
     await db_session.commit()
 
-    found = (await db_session.execute(select(AppSetting).order_by(AppSetting.key))).scalars().all()
+    # Scoped to the keys this test wrote, not the whole table: the shared dev
+    # database already holds committed app_settings rows (the Outlook poll
+    # interval, for one) that db_session's rollback cannot remove, and an
+    # unscoped select makes the exact-equality assert below fail on them.
+    found = (
+        (
+            await db_session.execute(
+                select(AppSetting)
+                .where(AppSetting.key.in_([r.key for r in rows]))
+                .order_by(AppSetting.key)
+            )
+        )
+        .scalars()
+        .all()
+    )
     by_key = {r.key: r.value["v"] for r in found}
     assert by_key == {
         "a_bool": True,

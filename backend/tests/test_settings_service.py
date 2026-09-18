@@ -107,15 +107,24 @@ async def test_write_records_an_audit_event(db_session, admin_user):
     from app.models.audit import AuditEvent
 
     await settings_service.set_settings(db_session, {"clinic_open_hour": 7}, admin_user)
+    # Scoped to this actor, not counted globally: the shared dev database already
+    # holds settings.update events committed by earlier runs, which db_session's
+    # rollback cannot remove. Same fix as commit f78d7cc.
     events = (
-        (await db_session.execute(select(AuditEvent).where(AuditEvent.action == "settings.update")))
+        (
+            await db_session.execute(
+                select(AuditEvent).where(
+                    AuditEvent.action == "settings.update",
+                    AuditEvent.actor_id == admin_user.id,
+                )
+            )
+        )
         .scalars()
         .all()
     )
     assert len(events) == 1
     assert events[0].details["key"] == "clinic_open_hour"
     assert events[0].details["new"] == 7
-    assert events[0].actor_id == admin_user.id
 
 
 @pytest.mark.asyncio
