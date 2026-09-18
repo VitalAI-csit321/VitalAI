@@ -1,0 +1,70 @@
+"""Graph state and run context.
+
+CaseState is what LangGraph checkpoints: flat, JSON-friendly, and updated
+only by nodes returning partial dicts. IDs are strings so the checkpoint
+serialiser never has to know about UUIDs.
+
+Context is what the graph must NOT checkpoint. An AsyncSession is not
+serialisable, and holding one across an interrupt() that waits days for a
+human would pin a pooled connection the whole time. So the context carries
+a session factory, each node opens and commits its own session, and the
+context is supplied fresh on every invoke/resume.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TypedDict
+from uuid import UUID
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+
+class CaseState(TypedDict, total=False):
+    case_id: str | None
+    # Not in the spec's field list, but §3's approval payload needs it and
+    # the approved-reply executor reads draft_sent off this Task.
+    task_id: str | None
+    channel: str
+    source_id: str
+    sender_identifier: str | None
+    content: str | None
+
+    patient_id: str | None
+    patient_status: str | None
+    is_provisional: bool | None
+    identity_outcome: str | None
+
+    consent_status: str | None
+
+    intent: str | None
+    triage_category: str | None
+    triage_confidence: float | None
+
+    retrieval_results: list[dict]
+    retrieval_sufficient: bool | None
+    retrieval_attempts: int
+    reformulated_query: str | None
+
+    draft_text: str | None
+    critic_verdict: str | None
+    critic_reason: str | None
+    revision_count: int
+
+    risk_score: int | None
+    risk_tier: str | None
+
+    approval_request_id: str | None
+    approval_status: str | None
+
+    dispatch_result: str | None
+
+    audit_refs: list[str]
+
+
+@dataclass(frozen=True)
+class Context:
+    session_factory: async_sessionmaker[AsyncSession]
+    # The seeded agent User (app/services/system_actor.py). An ID, not the
+    # row: a User loaded in one node's session is detached in the next.
+    actor_id: UUID

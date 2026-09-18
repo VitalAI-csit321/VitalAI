@@ -96,6 +96,10 @@ class Settings(BaseSettings):
     # a shared mailbox.
     outlook_mailbox_address: str = ""
 
+    # LangGraph agent pipeline. Off: today's ingest/draft/approve path runs
+    # exactly as before and no checkpointer tables are created.
+    agentic_pipeline_enabled: bool = False
+
     # LLM generation params. Previously never passed to the provider at all;
     # get_llm() now forwards them, and settings_service clears its lru_cache
     # whenever one changes. Temperature is capped at 0.6 in SETTINGS_REGISTRY

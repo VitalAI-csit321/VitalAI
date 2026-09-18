@@ -74,6 +74,14 @@ async def lifespan(application: FastAPI):
     async with AsyncSessionLocal() as db:
         await settings_service.hydrate(db)
 
+    # The checkpointer owns its own tables (not Alembic's, see
+    # app/agents/checkpointer.py). setup() is idempotent.
+    if settings.agentic_pipeline_enabled:
+        from app.agents import checkpointer
+
+        async with checkpointer.open_checkpointer() as saver:
+            await saver.setup()
+
     # Inbound Outlook polling, off unless explicitly enabled for this
     # environment. Held as a task so shutdown can cancel it rather than
     # leaving the loop running against a closing event loop.
