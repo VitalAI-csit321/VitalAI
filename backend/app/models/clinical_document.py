@@ -9,15 +9,30 @@ from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class ClinicalDocType(enum.StrEnum):
-    """Clinical doc types only. registration_form and appointment_history are
-    general documents (scripts/ingest_corpus.py's DOC_TYPE_TO_SCOPE maps both
-    to "general" scope), not clinical, so they don't belong in this
-    UPLOAD_CLINICAL-gated upload's vocabulary. Confirmed with Amin 2026-07-24.
+    """Every document type a patient record can hold, clinical or not.
+
+    Was clinical-only (consultation/pathology_report/prescription) on the
+    reasoning that registration_form and appointment_history are general
+    documents and don't belong in an UPLOAD_CLINICAL-gated vocabulary
+    (Amin, 2026-07-24). Widened 2026-09-18 (Amin) so the whole synthetic
+    corpus can be stored as real PDF documents behind a patient's record
+    instead of as bare chunks -- see scripts/ingest_corpus_documents.py.
+    Sensitivity is not this enum's job: access_scope comes from
+    app.rag.doc_scopes, which still maps these to general/restricted/sensitive.
     """
 
     CONSULTATION = "consultation"
+    CONSULTATION_NOTE = "consultation_note"
     PATHOLOGY_REPORT = "pathology_report"
     PRESCRIPTION = "prescription"
+    REGISTRATION_FORM = "registration_form"
+    APPOINTMENT_HISTORY = "appointment_history"
+    REFERRAL_LETTER = "referral_letter"
+    CARE_PLAN = "care_plan"
+    SPECIALIST_LETTER = "specialist_letter"
+    HOSPITAL_DISCHARGE_SUMMARY = "hospital_discharge_summary"
+    EXTERNAL_IMAGING_REPORT = "external_imaging_report"
+    CONSENT_RECORD = "consent_record"
 
 
 class ClinicalDocument(Base, UUIDPrimaryKeyMixin, TimestampMixin):

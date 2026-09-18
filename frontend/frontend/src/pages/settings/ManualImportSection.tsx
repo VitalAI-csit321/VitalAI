@@ -10,6 +10,14 @@ const DOC_TYPES: { value: ClinicalDocType; label: string }[] = [
   { value: "consultation", label: "Consultation note" },
   { value: "pathology_report", label: "Pathology report" },
   { value: "prescription", label: "Prescription" },
+  { value: "referral_letter", label: "Referral letter" },
+  { value: "specialist_letter", label: "Specialist letter" },
+  { value: "hospital_discharge_summary", label: "Hospital discharge summary" },
+  { value: "external_imaging_report", label: "External imaging report" },
+  { value: "care_plan", label: "Care plan" },
+  { value: "registration_form", label: "Registration form" },
+  { value: "appointment_history", label: "Appointment history" },
+  { value: "consent_record", label: "Consent record" },
 ];
 
 // Mirrors MAX_UPLOAD_SIZE_BYTES in backend/app/services/clinical_document_service.py.

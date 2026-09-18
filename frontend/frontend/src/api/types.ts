@@ -199,7 +199,12 @@ export interface IndexedDocument {
   sourceDocumentId: string; docType: string; chunkCount: number; indexedAt: string;
 }
 
-export type ClinicalDocType = "consultation" | "pathology_report" | "prescription";
+// Mirrors ClinicalDocType in backend/app/models/clinical_document.py.
+export type ClinicalDocType =
+  | "consultation" | "consultation_note" | "pathology_report" | "prescription"
+  | "registration_form" | "appointment_history" | "referral_letter" | "care_plan"
+  | "specialist_letter" | "hospital_discharge_summary" | "external_imaging_report"
+  | "consent_record";
 
 export interface ClinicalDocument {
   id: string; patientId: string; docType: string; filename: string;
