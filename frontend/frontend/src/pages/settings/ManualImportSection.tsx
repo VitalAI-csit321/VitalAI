@@ -126,9 +126,6 @@ export function ManualImportSection() {
   return (
     <div>
       <h2 className="text-base font-semibold text-slate-900">Manual import</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        Upload a clinical PDF for a patient, then ingest it so the assistant can cite it when answering questions.
-      </p>
 
       <form onSubmit={onUpload} className="mt-5 space-y-4 rounded-xl border border-slate-200 p-5">
         <div>
@@ -160,7 +157,7 @@ export function ManualImportSection() {
           <label className="block text-xs font-bold text-brand uppercase tracking-wide mb-1.5">File</label>
           <input ref={fileInputRef} type="file" accept="application/pdf" onChange={onFileChange}
             className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200" />
-          <p className="mt-1 text-xs text-slate-500">PDF only, up to 20 MB. The PDF must contain selectable text, not just scanned images.</p>
+          <p className="mt-1 text-xs text-slate-500">PDF only, up to 20 MB.</p>
         </div>
 
         {error && <p className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</p>}

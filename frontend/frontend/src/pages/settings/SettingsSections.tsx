@@ -36,6 +36,7 @@ function sameValue(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+
 export function SettingsSection({ group }: { group: string }) {
   const [items, setItems] = useState<AppSettingItem[]>([]);
   const [loading, setLoading] = useState(true);

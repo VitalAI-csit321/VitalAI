@@ -3,9 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { ManualImportSection } from "./settings/ManualImportSection";
 import { SettingsSection as SettingsSectionPanel } from "./settings/SettingsSections";
 
-type SettingsSection = "General" | "Security" | "Manual import" | "Routing rules" | "Approval tiers" | "Integrations" | "Operational Settings";
+type SettingsSection = "General" | "Security" | "Manual import" | "Routing rules" | "Approval tiers" | "Integrations" | "Model" | "Operational Settings";
 
-const NAV_ITEMS: SettingsSection[] = ["General", "Security", "Manual import", "Routing rules", "Approval tiers", "Integrations", "Operational Settings"];
+const NAV_ITEMS: SettingsSection[] = ["General", "Security", "Manual import", "Routing rules", "Approval tiers", "Integrations", "Model", "Operational Settings"];
 
 // Nav label to backend `group` field. One-to-one except Manual import and
 // Operational Settings, which are not registry-backed.
@@ -15,6 +15,7 @@ const GROUP_BY_NAV: Partial<Record<SettingsSection, string>> = {
   "Routing rules": "Routing rules",
   "Approval tiers": "Approval tiers",
   Integrations: "Integrations",
+  Model: "Model",
 };
 
 function OperationalSettingsSection() {
@@ -25,7 +26,7 @@ function OperationalSettingsSection() {
       <div className="rounded-xl border border-slate-200 p-5 flex items-start justify-between">
         <div>
           <h3 className="text-sm font-semibold text-slate-900">Platform Operations Console</h3>
-          <p className="mt-1 text-sm text-slate-500">Access system health monitoring, model configuration, and platform-level operations. Requires operator credentials and MFA.</p>
+          <p className="mt-1 text-sm text-slate-500">Requires operator credentials and MFA.</p>
         </div>
         <button onClick={() => navigate('/platform-ops/login')} className="ml-6 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover whitespace-nowrap">Open Operations</button>
       </div>
@@ -38,7 +39,7 @@ export function SettingsPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold text-slate-900 mb-6">Settings and future integrations</h1>
+      <h1 className="text-2xl font-bold text-slate-900 mb-6">Settings</h1>
       <div className="flex gap-6">
         <nav className="w-52 shrink-0">
           <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
