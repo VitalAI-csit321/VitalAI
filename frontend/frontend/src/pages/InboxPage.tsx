@@ -174,9 +174,6 @@ export function InboxPage() {
           <button onClick={() => navigate("/inbox/log-call")} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
             Log call
           </button>
-          <button onClick={() => navigate("/inbox/compose")} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover">
-            Compose
-          </button>
         </div>
       </div>
 

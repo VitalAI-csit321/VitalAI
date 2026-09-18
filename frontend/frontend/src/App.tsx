@@ -21,7 +21,6 @@ import { ConsentViewPage } from "./pages/ConsentViewPage";
 import { ConsentSuccessPage } from "./pages/ConsentSuccessPage";
 import { RecordsPage } from "./pages/RecordsPage";
 import { InboxPage } from "./pages/InboxPage";
-import { ComposePage } from "./pages/ComposePage";
 import { LogCallPage } from "./pages/LogCallPage";
 
 // New pages (15 new designs)
@@ -97,9 +96,8 @@ export default function App() {
             {/* Records */}
             <Route path="/records" element={<RecordsPage />} />
 
-            {/* Inbox + Compose */}
+            {/* Inbox */}
             <Route path="/inbox" element={<InboxPage />} />
-            <Route path="/inbox/compose" element={<ComposePage />} />
             <Route path="/inbox/log-call" element={<LogCallPage />} />
 
             {/* Review Queue */}
