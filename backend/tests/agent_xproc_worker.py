@@ -51,12 +51,53 @@ async def _noop_run(tid: str, graph_input) -> None:
         )
 
 
+async def _approval_start(tid: str) -> None:
+    """Run the real graph until it pauses."""
+    from app.agents import graph
+    from app.agents.checkpointer import open_checkpointer
+
+    async with open_checkpointer() as saver:
+        await saver.setup()
+    channel, source_id = tid.split(":", 1)
+    result = await graph.run(
+        tid,
+        {"channel": channel, "source_id": source_id, "draft_text": "Cross-process draft."},
+    )
+    assert "__interrupt__" in result, result
+
+
+async def _approval_decide(tid: str, approval_id: str, decision: str) -> None:
+    """What a restarted server does: decide the row, then resume the thread
+    through the same function the approvals route schedules."""
+    from uuid import UUID
+
+    from app.agents import graph
+    from app.database import AsyncSessionLocal
+    from app.models.user import UserRole
+    from app.services import approval_service
+    from app.services.system_actor import get_or_create_system_actor
+
+    async with AsyncSessionLocal() as db:
+        human = await get_or_create_system_actor(
+            db, "xproc-approver@test.vitalai.internal", "XProc Approver", UserRole.ADMIN
+        )
+        if decision == "approve":
+            await approval_service.approve(db, UUID(approval_id), human)
+        else:
+            await approval_service.reject(db, UUID(approval_id), human)
+    await graph.resume(tid, {"approved": decision == "approve"})
+
+
 async def main(argv: list[str]) -> None:
     cmd, tid = argv[0], argv[1]
     if cmd == "noop-start":
         await _noop_run(tid, {"channel": "test", "source_id": tid})
     elif cmd == "noop-resume":
         await _noop_run(tid, None)
+    elif cmd == "approval-start":
+        await _approval_start(tid)
+    elif cmd == "approval-decide":
+        await _approval_decide(tid, argv[2], argv[3])
     else:
         raise SystemExit(f"unknown command {cmd}")
 

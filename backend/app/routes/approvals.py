@@ -1,7 +1,7 @@
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_permission
@@ -107,6 +107,22 @@ async def _execute_email_draft_reply(
     await db.commit()
 
 
+def _schedule_agent_resume(
+    background_tasks: BackgroundTasks, request: ApprovalRequest, decision: dict
+) -> None:
+    """Hand a decision back to the paused agent thread, if this row has one.
+
+    external_ref is the graph's thread_id and is written only by the agent's
+    create_approval node, so every pre-existing approval path skips this.
+    """
+    if not settings.agentic_pipeline_enabled or not request.external_ref:
+        return
+    # Imported here so the flag-off app never loads langgraph or psycopg.
+    from app.agents import graph as agent_graph
+
+    background_tasks.add_task(agent_graph.resume, request.external_ref, decision)
+
+
 _ACTION_EXECUTORS = {
     "patient.assignment.suggested": _execute_patient_assignment_suggested,
     "email.draft_reply": _execute_email_draft_reply,
@@ -140,6 +156,7 @@ async def list_approvals_endpoint(
 async def approve_endpoint(
     approval_id: UUID,
     payload: ApprovalApproveBody,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_permission(APPROVE_ACTION)),
 ):
@@ -182,6 +199,10 @@ async def approve_endpoint(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
             ) from exc
 
+    # Only reached when the executor succeeded: a failed send raises above
+    # and leaves the thread paused rather than resuming it as if delivered.
+    draft = (approved.resolved_payload or approved.payload).get("draft")
+    _schedule_agent_resume(background_tasks, approved, {"approved": True, "draft": draft})
     return approved
 
 
@@ -189,12 +210,16 @@ async def approve_endpoint(
 async def reject_endpoint(
     approval_id: UUID,
     payload: ApprovalRejectBody,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_permission(APPROVE_ACTION)),
 ):
     try:
-        return await approval_service.reject(db, approval_id, actor, notes=payload.notes)
+        rejected = await approval_service.reject(db, approval_id, actor, notes=payload.notes)
     except ApprovalNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ApprovalAlreadyDecidedError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    # A rejection must resume too, or the thread stays paused forever.
+    _schedule_agent_resume(background_tasks, rejected, {"approved": False})
+    return rejected

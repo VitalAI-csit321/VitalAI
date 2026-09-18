@@ -139,7 +139,10 @@ async def test_reject_transitions_status_and_audits(db_session: AsyncSession):
         .scalars()
         .all()
     )
-    assert len(events) == 1
+    # Filtered, not an unfiltered count -- see the matching comment above.
+    # The agent graph's cross-process test commits a real rejection.
+    matching = [e for e in events if e.details.get("approval_id") == str(request.id)]
+    assert len(matching) == 1
 
 
 async def test_approve_missing_request_raises(db_session: AsyncSession):
