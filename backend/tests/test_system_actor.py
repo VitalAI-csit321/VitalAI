@@ -49,12 +49,17 @@ async def test_agent_actor_satisfies_the_guardrail_choke_points(db_session):
             db_session, "the patient's diagnosis is confirmed", actor=actor, case_id=None
         )
 
+    # Scoped to this actor, not counted globally: the dev database these
+    # tests share already holds committed governance.output_blocked rows from
+    # earlier runs, and db_session's rollback cannot remove those.
     events = await db_session.execute(
-        select(AuditEvent).where(AuditEvent.action == "governance.output_blocked")
+        select(AuditEvent).where(
+            AuditEvent.action == "governance.output_blocked",
+            AuditEvent.actor_id == actor.id,
+        )
     )
     recorded = events.scalars().all()
     assert len(recorded) == 1
-    assert recorded[0].actor_id == actor.id
 
 
 async def test_connector_actor_is_a_separate_row(db_session):

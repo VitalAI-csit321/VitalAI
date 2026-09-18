@@ -68,15 +68,22 @@ async def test_detached_draft_opens_its_own_session_and_persists(
 
 
 @pytest.mark.asyncio
-async def test_detached_draft_swallows_and_logs_failure(
-    db_session, front_desk_user, detached_sessionmaker, monkeypatch, pipeline, caplog
+async def test_detached_draft_swallows_failure_instead_of_escaping(
+    db_session, front_desk_user, detached_sessionmaker, monkeypatch, pipeline
 ):
     """A detached task has nobody to raise to. The Email and Task rows are
     already committed, so a drafting failure must not escape and kill the
-    poll loop or the request's background runner."""
+    poll loop or the request's background runner.
+
+    Asserts the behaviour, not the log line: on the Postgres track conftest
+    runs Alembic, whose env.py calls fileConfig() and so disables every
+    logger created at import time, leaving caplog silently empty.
+    """
     monkeypatch.setattr(email_service, "AsyncSessionLocal", detached_sessionmaker)
+    called = []
 
     async def boom(*args, **kwargs):
+        called.append(True)
         raise RuntimeError("ollama is down")
 
     monkeypatch.setattr(email_service, "draft_reply", boom)
@@ -92,11 +99,14 @@ async def test_detached_draft_swallows_and_logs_failure(
         front_desk_user,
     )
 
+    # Must not raise.
     await email_service.draft_reply_detached(
         task.id, email.id, front_desk_user.id, gate, confidence
     )
 
-    assert "ollama is down" in caplog.text
+    assert called == [True]
+    await db_session.refresh(task)
+    assert task.draft_text is None
 
 
 @pytest.mark.asyncio
