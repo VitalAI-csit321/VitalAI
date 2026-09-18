@@ -3,7 +3,8 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { getPatient, listCasesForPatient } from "../api/cases";
 import { listAppointments } from "../api/appointments";
 import { listClinicalDocuments, openClinicalDocument } from "../api/records";
-import type { Patient, Case, Appointment, ClinicalDocument } from "../api/types";
+import { listConsentsForPatient, consentTypeLabel } from "../api/consent";
+import type { Patient, Case, Appointment, ClinicalDocument, Consent } from "../api/types";
 import { StatusBadge, Spinner } from "../components/ui";
 import { PROFILE_FIELD_GROUPS, PROFILE_FIELD_LABELS_BY_API_KEY } from "../components/patientProfileFields";
 import { useAuth } from "../lib/auth";
@@ -21,6 +22,7 @@ export function PatientDetailPage() {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [cases, setCases] = useState<Case[]>([]);
   const [casesError, setCasesError] = useState<string | null>(null);
+  const [consents, setConsents] = useState<Consent[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [appointmentsError, setAppointmentsError] = useState<string | null>(null);
   const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
@@ -42,6 +44,10 @@ export function PatientDetailPage() {
     listCasesForPatient(id)
       .then(setCases)
       .catch(() => setCasesError("Could not load onboarding cases for this patient."));
+
+    listConsentsForPatient(id)
+      .then(setConsents)
+      .catch(() => setConsents([]));
 
     setAppointmentsError(null);
     listAppointments({ patientId: id, limit: 100 })
@@ -74,6 +80,25 @@ export function PatientDetailPage() {
   );
 
   const values = patient as unknown as Record<string, string | null>;
+
+  const historyRows = [
+    ...cases.map(c => ({
+      key: `case-${c.id}`,
+      reason: c.contactReason,
+      channel: c.contactChannel,
+      status: c.status,
+      created: c.createdAt,
+      action: <Link to={`/cases/${c.id}`} className="text-brand font-medium hover:underline">Open case</Link>,
+    })),
+    ...consents.map(cons => ({
+      key: `consent-${cons.id}`,
+      reason: `Consent - ${consentTypeLabel(cons.consentType)}`,
+      channel: "—",
+      status: cons.status,
+      created: cons.createdAt,
+      action: <Link to={`/consent/${cons.caseId}/view`} className="text-brand font-medium hover:underline">View</Link>,
+    })),
+  ].sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
 
   return (
     <div className="p-6">
@@ -195,7 +220,7 @@ export function PatientDetailPage() {
         <h2 className="text-sm font-semibold text-slate-900 mb-3">Onboarding</h2>
         {casesError ? (
           <p className="text-sm text-red-600">{casesError}</p>
-        ) : cases.length === 0 ? (
+        ) : historyRows.length === 0 ? (
           <p className="text-sm text-slate-500">No intake cases yet for this patient.</p>
         ) : (
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -206,13 +231,13 @@ export function PatientDetailPage() {
                 </tr>
               </thead>
               <tbody>
-                {cases.map(c => (
-                  <tr key={c.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                    <td className="px-6 py-4 text-slate-900">{c.contactReason}</td>
-                    <td className="px-6 py-4 text-slate-600 capitalize">{c.contactChannel}</td>
-                    <td className="px-6 py-4"><StatusBadge tone="gray">{c.status}</StatusBadge></td>
-                    <td className="px-6 py-4 text-slate-600">{new Date(c.createdAt).toLocaleDateString("en-GB")}</td>
-                    <td className="px-6 py-4"><Link to={`/cases/${c.id}`} className="text-brand font-medium hover:underline">Open case</Link></td>
+                {historyRows.map(r => (
+                  <tr key={r.key} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    <td className="px-6 py-4 text-slate-900">{r.reason}</td>
+                    <td className="px-6 py-4 text-slate-600 capitalize">{r.channel}</td>
+                    <td className="px-6 py-4"><StatusBadge tone="gray">{r.status}</StatusBadge></td>
+                    <td className="px-6 py-4 text-slate-600">{new Date(r.created).toLocaleDateString("en-GB")}</td>
+                    <td className="px-6 py-4">{r.action}</td>
                   </tr>
                 ))}
               </tbody>

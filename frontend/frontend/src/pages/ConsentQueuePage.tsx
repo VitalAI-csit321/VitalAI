@@ -62,7 +62,7 @@ export function ConsentQueuePage() {
             Export
           </button>
           <button
-            onClick={() => navigate("/consent/capture")}
+            onClick={() => navigate("/consent/new")}
             className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover"
           >
             New consent

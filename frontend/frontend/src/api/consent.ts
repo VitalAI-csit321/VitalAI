@@ -66,6 +66,22 @@ export async function resolveConsentReview(
   );
 }
 
+export const CONSENT_TYPES: { value: string; label: string }[] = [
+  { value: "general_treatment", label: "General Treatment" },
+  { value: "surgical_procedure", label: "Surgical Procedure" },
+  { value: "data_sharing", label: "Data Sharing" },
+  { value: "research_study", label: "Research Study" },
+];
+
+export function consentTypeLabel(value: string): string {
+  return CONSENT_TYPES.find((t) => t.value === value)?.label ?? value;
+}
+
+export async function listConsentsForPatient(patientId: string): Promise<Consent[]> {
+  const raw = await apiGet<RawConsent[]>("/api/v1/consent", { patient_id: patientId });
+  return raw.map(toConsent);
+}
+
 export async function withdrawConsent(consentId: string): Promise<Consent> {
   return toConsent(await apiPost<RawConsent>(`/api/v1/consent/${consentId}/withdraw`));
 }

@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/auth";
-import { createConsent, captureConsent } from "../api/consent";
+import { createConsent, captureConsent, consentTypeLabel } from "../api/consent";
 import { apiGet } from "../lib/apiClient";
 
 function SignaturePad({onChange,canvasRef}:{onChange:(v:boolean)=>void;canvasRef:React.RefObject<HTMLCanvasElement>}) {
@@ -25,18 +25,19 @@ export function ConsentCapturePage() {
   const [error,setError]=useState<string|null>(null);
   const canvasRef=useRef<HTMLCanvasElement>(null);
   const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+  const consentType=params.get("type") ?? "general_treatment";
+  const typeLabel=consentTypeLabel(consentType);
 
   async function submit() {
+    const caseId=params.get("case");
+    if(!caseId){setError("No case found");return;}
     setBusy(true);setError(null);
     try {
-      let caseId=params.get("case");
-      if(!caseId){const r=await apiGet<{items:{id:string}[]}>("/api/v1/intake?limit=1");caseId=r.items[0]?.id;}
-      if(!caseId)throw new Error("No case found");
       const caseDetail = await apiGet<{patient_name:string|null}>(`/api/v1/intake/${caseId}`);
-      const c=await createConsent({case_id:caseId,consent_type:"general_treatment"});
+      const c=await createConsent({case_id:caseId,consent_type:consentType});
       const signature=canvasRef.current?.toDataURL("image/png") ?? "";
       await captureConsent(c.id, { checks: CHECKS.map((label,i)=>({label,checked:checked[i]})), signature });
-      navigate("/consent/success", { state: { patientName: caseDetail.patient_name ?? "Unknown patient", formType: "General treatment", timestamp: new Date().toISOString() } });
+      navigate("/consent/success", { state: { patientName: caseDetail.patient_name ?? "Unknown patient", formType: typeLabel, timestamp: new Date().toISOString() } });
     } catch{setError("Could not submit consent. Please try again.");setBusy(false);}
   }
 
@@ -48,7 +49,7 @@ export function ConsentCapturePage() {
       </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="rounded-xl border border-slate-200 bg-white p-6">
-          <h2 className="font-semibold text-slate-900">Patient consent — General treatment</h2>
+          <h2 className="font-semibold text-slate-900">Patient consent — {typeLabel}</h2>
           <div className="mt-4 space-y-4">{CLAUSES.map((c,i)=><p key={i} className="text-sm text-slate-700">{i+1}. {c}</p>)}</div>
           <div className="my-5 h-px bg-slate-100"/>
           <div className="space-y-3">{CHECKS.map((label,i)=>(

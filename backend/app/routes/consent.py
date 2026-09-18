@@ -8,6 +8,7 @@ from app.auth.permissions import CAPTURE_CONSENT, VIEW_RECORDS_GENERAL
 from app.auth.scoping import is_assigned
 from app.database import get_db
 from app.models.case import IntakeCase
+from app.models.patient import Patient
 from app.models.user import User, UserRole
 from app.schemas.consent import ConsentCaptureIn, ConsentCreate, ConsentOut
 from app.services import consent_service
@@ -25,6 +26,22 @@ async def create_consent_endpoint(
     return await consent_service.create_consent_record(
         db, payload.case_id, actor, payload.consent_type, payload.notes
     )
+
+
+@router.get("", response_model=list[ConsentOut])
+async def list_consents_for_patient_endpoint(
+    patient_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(VIEW_RECORDS_GENERAL)),
+):
+    patient = await db.get(Patient, patient_id)
+    if patient is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+
+    if actor.role == UserRole.DOCTOR and not await is_assigned(db, actor.id, patient_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+
+    return await consent_service.list_consents_for_patient(db, patient_id)
 
 
 @router.get("/by-case/{case_id}", response_model=ConsentOut)
@@ -86,7 +103,7 @@ async def resolve_review_endpoint(
 ):
     if payload.form_snapshot is None:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="form_snapshot is required"
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="form_snapshot is required"
         )
     try:
         record = await consent_service.update_consent_checklist(

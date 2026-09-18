@@ -252,6 +252,72 @@ async def test_consent_create_denied_for_doctor(
     assert response.status_code == 403
 
 
+async def test_list_consents_for_patient_returns_all_records_across_cases(
+    client: AsyncClient, admin_headers: dict, patient: Patient
+):
+    """A reused case can carry more than one consent record over time, so the
+    patient-level list must return every record, not just the latest per case."""
+    case_id = await _create_case(client, admin_headers, patient)
+    other_case_id = await _create_case(client, admin_headers, patient)
+
+    await client.post(
+        "/api/v1/consent",
+        json={"case_id": case_id, "consent_type": "general_treatment"},
+        headers=admin_headers,
+    )
+    await client.post(
+        "/api/v1/consent",
+        json={"case_id": case_id, "consent_type": "data_sharing"},
+        headers=admin_headers,
+    )
+    await client.post(
+        "/api/v1/consent",
+        json={"case_id": other_case_id, "consent_type": "research_study"},
+        headers=admin_headers,
+    )
+
+    response = await client.get(
+        "/api/v1/consent", params={"patient_id": str(patient.id)}, headers=admin_headers
+    )
+    assert response.status_code == 200
+    types = {c["consent_type"] for c in response.json()}
+    assert types == {"general_treatment", "data_sharing", "research_study"}
+
+
+async def test_list_consents_for_patient_denied_for_unassigned_doctor(
+    client: AsyncClient, admin_headers: dict, doctor_headers: dict, patient: Patient
+):
+    case_id = await _create_case(client, admin_headers, patient)
+    await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
+
+    response = await client.get(
+        "/api/v1/consent", params={"patient_id": str(patient.id)}, headers=doctor_headers
+    )
+    assert response.status_code == 404
+
+
+async def test_list_consents_for_patient_allowed_for_assigned_doctor(
+    client: AsyncClient,
+    admin_headers: dict,
+    doctor_headers: dict,
+    doctor_user: User,
+    patient: Patient,
+):
+    case_id = await _create_case(client, admin_headers, patient)
+    await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
+    await client.post(
+        "/api/v1/assignments",
+        json={"doctor_id": str(doctor_user.id), "patient_id": str(patient.id)},
+        headers=admin_headers,
+    )
+
+    response = await client.get(
+        "/api/v1/consent", params={"patient_id": str(patient.id)}, headers=doctor_headers
+    )
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
+
 async def test_consent_by_case_allowed_for_assigned_doctor(
     client: AsyncClient,
     admin_headers: dict,

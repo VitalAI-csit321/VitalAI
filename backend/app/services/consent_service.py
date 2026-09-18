@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.case import IntakeCase
 from app.models.consent import ConsentRecord, ConsentStatus
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.user import User
@@ -50,6 +51,19 @@ async def get_consent_for_case(db: AsyncSession, case_id: UUID) -> ConsentRecord
         .limit(1)
     )
     return result.scalars().first()
+
+
+async def list_consents_for_patient(db: AsyncSession, patient_id: UUID) -> list[ConsentRecord]:
+    """All consent records across every case for this patient - a reused case
+    can carry more than one consent record over time, unlike
+    get_consent_for_case() which only ever returns the latest per case."""
+    result = await db.execute(
+        select(ConsentRecord)
+        .join(IntakeCase, IntakeCase.id == ConsentRecord.case_id)
+        .where(IntakeCase.patient_id == patient_id)
+        .order_by(ConsentRecord.created_at.desc())
+    )
+    return list(result.scalars().all())
 
 
 async def capture_consent(
