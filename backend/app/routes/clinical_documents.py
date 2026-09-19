@@ -20,6 +20,7 @@ from app.services.clinical_document_service import (
     PatientNotFoundError,
     UnsupportedFileTypeError,
 )
+from app.services.patient_service import ProvisionalPatientError
 
 router = APIRouter(prefix="/clinical-documents", tags=["clinical-documents"])
 
@@ -35,7 +36,10 @@ async def list_clinical_documents_endpoint(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not permitted to read clinical records for this patient",
         )
-    return await clinical_document_service.list_documents_for_patient(db, patient_id)
+    try:
+        return await clinical_document_service.list_documents_for_patient(db, patient_id)
+    except ProvisionalPatientError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.post("", response_model=ClinicalDocumentOut, status_code=status.HTTP_201_CREATED)
@@ -98,7 +102,10 @@ async def download_clinical_document_endpoint(
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_permission(VIEW_CLINICAL)),
 ):
-    document = await clinical_document_service.get_document(db, document_id)
+    try:
+        document = await clinical_document_service.get_document(db, document_id)
+    except ProvisionalPatientError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     if document is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     if not await can_read_clinical(db, actor, document.patient_id):

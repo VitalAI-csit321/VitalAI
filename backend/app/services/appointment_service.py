@@ -32,6 +32,7 @@ from app.schemas.appointment import (
     DayViewOut,
     ProviderDayLoad,
 )
+from app.services import patient_service
 from app.services.audit_service import get_events_for_case, record_event
 from app.services.consent_service import get_consent_for_case
 
@@ -105,6 +106,7 @@ async def book_appointment(
     case = await db.get(IntakeCase, case_id)
     if case is None:
         raise CaseNotFoundError(f"No case with id {case_id}")
+    await patient_service.assert_not_provisional(db, case.patient_id)
 
     if actor.role == UserRole.DOCTOR:
         if case.patient_id is None or not await is_assigned(db, actor.id, case.patient_id):

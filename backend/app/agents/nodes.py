@@ -9,6 +9,7 @@ re-fetches its rows by id, because a row loaded in one node's session is
 detached in the next.
 """
 
+from datetime import date
 from uuid import UUID
 
 from langgraph.runtime import Runtime
@@ -21,7 +22,7 @@ from app.models.email import Email
 from app.models.patient import Patient
 from app.models.task import Task, TaskCategory
 from app.models.user import User
-from app.services import consent_service, email_service, identity_service
+from app.services import consent_service, email_service, identity_service, onboarding_service
 from app.services.draft_critic import critique
 from app.services.email_service import EmailSendError
 from app.services.outlook_auth import OutlookAuthRequiredError
@@ -113,6 +114,40 @@ async def identity(state: CaseState, runtime: Runtime[Context]) -> dict:
     return update
 
 
+async def onboarding(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """A stranger asking to join or to book (§9.0): create the provisional
+    patient and record their implied consent, once. The reply itself is
+    drafted by the draft node, so a critic redraft does not repeat this."""
+    fields = state.get("identity_fields") or {}
+    async with runtime.context.session_factory() as db:
+        _, email, actor = await _rows(db, state, runtime)
+        patient = await onboarding_service.start_onboarding(
+            db,
+            case_id=_case_id(state),
+            sender=email.sender,
+            fields=identity_service.IdentityFields(
+                name=fields.get("name"),
+                dob=date.fromisoformat(fields["dob"]) if fields.get("dob") else None,
+                phone=fields.get("phone"),
+            ),
+            actor=actor,
+        )
+        if patient is None:
+            # No name means no patient row (Patient.name is NOT NULL).
+            await identity_service.hold_for_staff(
+                db, state["task_id"], identity_service.IdentityOutcome.NO_MATCH
+            )
+            return {"dispatch_result": "identity_hold"}
+        requested = onboarding_service.fields_to_request(patient)
+    return {
+        "branch": onboarding_service.BRANCH,
+        "requested_fields": requested,
+        "patient_id": str(patient.id),
+        "patient_status": patient.status.value,
+        "is_provisional": True,
+    }
+
+
 async def identity_hold(state: CaseState, runtime: Runtime[Context]) -> dict:
     async with runtime.context.session_factory() as db:
         await identity_service.hold_for_staff(
@@ -126,6 +161,23 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
     A regeneration carries the critic's reason into the prompt and counts
     toward revision_count, which the edge after critic caps."""
     revising = state.get("critic_verdict") == "reject"
+    feedback = state.get("critic_reason") if revising else None
+    if state.get("branch") == onboarding_service.BRANCH:
+        async with runtime.context.session_factory() as db:
+            _, email, actor = await _rows(db, state, runtime)
+            text = await onboarding_service.draft_onboarding_reply(
+                db,
+                email_service.get_llm(),
+                email=email,
+                requested=state.get("requested_fields", []),
+                actor=actor,
+                feedback=feedback,
+            )
+        # Nothing is retrieved: the reply asks for details, it states none.
+        update = {"draft_text": text, "grounded": False}
+        return (
+            update | {"revision_count": state.get("revision_count", 0) + 1} if revising else update
+        )
     async with runtime.context.session_factory() as db:
         task, email, actor = await _rows(db, state, runtime)
         retry = email_service.reformulator(db, actor)
@@ -134,7 +186,7 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
             task,
             email,
             actor,
-            feedback=state.get("critic_reason") if revising else None,
+            feedback=feedback,
             reformulate=retry,
         )
     update: dict = {
@@ -150,7 +202,7 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
 
 
 async def critic(state: CaseState) -> dict:
-    reason = critique(state.get("draft_text"))
+    reason = critique(state.get("draft_text"), branch=state.get("branch"))
     return {"critic_verdict": "reject" if reason else "pass", "critic_reason": reason}
 
 
@@ -184,7 +236,9 @@ async def risk(state: CaseState) -> dict:
     grounded_on_retry = bool(state.get("reformulated_query") and state.get("retrieval_sufficient"))
     return {
         "risk_tier": email_service.reply_risk_tier(
-            revision_count=state.get("revision_count", 0), grounded_on_retry=grounded_on_retry
+            revision_count=state.get("revision_count", 0),
+            grounded_on_retry=grounded_on_retry,
+            is_provisional=bool(state.get("is_provisional")),
         )
     }
 

@@ -32,6 +32,7 @@ from app.services.appointment_service import (
     NotADoctorError,
     SlotTakenError,
 )
+from app.services.patient_service import ProvisionalPatientError
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
@@ -62,6 +63,8 @@ async def book_appointment_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
         ) from exc
     except SlotTakenError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except ProvisionalPatientError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except DoctorPatientAccessError as exc:
         raise HTTPException(

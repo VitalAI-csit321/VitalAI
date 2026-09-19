@@ -45,9 +45,12 @@ class PatientOut(PatientProfileFields):
     id: UUID
     mrn: str
     name: str
-    dob: date
-    gender: Gender
+    # Nullable since 0031: a provisional patient is known only from an inbound
+    # message, so they may have neither yet.
+    dob: date | None
+    gender: Gender | None
     status: PatientStatus
+    is_provisional: bool
     created_at: datetime
     updated_at: datetime
 

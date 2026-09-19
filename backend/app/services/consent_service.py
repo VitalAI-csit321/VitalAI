@@ -15,6 +15,12 @@ class ConsentStateError(Exception):
     """Raised when a consent state transition is illegal."""
 
 
+# Consent implied by someone emailing the clinic first (build spec §9.0). It is
+# recorded PENDING, never CAPTURED: CAPTURED is the only status the consent
+# gate accepts, so an implied record must never satisfy it.
+IMPLIED_INBOUND_CONTACT = "implied_inbound_contact"
+
+
 async def create_consent_record(
     db: AsyncSession,
     case_id: UUID,

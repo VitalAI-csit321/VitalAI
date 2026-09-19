@@ -53,6 +53,11 @@ class CaseState(TypedDict, total=False):
     retrieval_attempts: int
     reformulated_query: str | None
 
+    # Which agent is drafting: None for the ordinary reply path, "onboarding"
+    # for a provisional patient's first reply. The critic reads it too.
+    branch: str | None
+    requested_fields: list[str]
+
     draft_text: str | None
     grounded: bool | None
     critic_verdict: str | None

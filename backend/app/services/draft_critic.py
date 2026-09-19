@@ -34,14 +34,48 @@ SUITABILITY_REASON = (
     "clinician can decide that; say the request has been passed to the clinical "
     "team instead."
 )
+# Onboarding policy (spec §9.0): email is not a secure channel, so a reply to
+# someone we cannot yet identify must not invite health or financial details.
+# ponytail: a term list, like the one above. It is deliberately broad, since a
+# false reject only costs a redraft, while a false pass invites a patient to
+# email their Medicare number.
+_SENSITIVE_TERMS = (
+    "medicare",
+    "insurance",
+    "health fund",
+    "policy number",
+    "concession",
+    "credit card",
+    "bank",
+    "payment",
+    "medical history",
+    "medication",
+    "allerg",
+    "symptom",
+    "diagnos",
+)
+
+SENSITIVE_REQUEST_REASON = (
+    "The draft raises health or financial details with someone the clinic has not "
+    "identified yet. Ask only for the missing contact details, and say the rest of "
+    "registration is completed by phone or in the clinic."
+)
 EMPTY_REASON = "The draft is empty."
 
 
-def critique(draft: str | None) -> str | None:
-    """None if the draft passes, otherwise the reason it was rejected."""
+def critique(draft: str | None, branch: str | None = None) -> str | None:
+    """None if the draft passes, otherwise the reason it was rejected.
+
+    branch adds the rules that apply to one agent only. It defaults to None,
+    the shared rules, because critique() also runs on the live flag-off reply
+    path: a global onboarding rule would hold every billing reply that
+    mentions Medicare.
+    """
     if draft is None or not draft.strip():
         return EMPTY_REASON
     text = draft.lower()
     if any(phrase in text for phrase in _SUITABILITY_PHRASES):
         return SUITABILITY_REASON
+    if branch == "onboarding" and any(term in text for term in _SENSITIVE_TERMS):
+        return SENSITIVE_REQUEST_REASON
     return None

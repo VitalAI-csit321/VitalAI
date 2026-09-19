@@ -281,6 +281,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         ("consent", nodes.consent),
         ("reply_gate", nodes.reply_gate),
         ("identity", nodes.identity),
+        ("onboarding", nodes.onboarding),
         ("identity_hold", nodes.identity_hold),
         ("draft", nodes.draft),
         ("escalate", nodes.escalate),
@@ -322,10 +323,13 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         {
             "draft": "draft",
             "staff": "identity_hold",
-            # PLACEHOLDER until the onboarding node (§9) lands: today's draft path.
-            "onboarding": "draft",
+            "onboarding": "onboarding",
             END: END,
         },
+    )
+    builder.add_conditional_edges(
+        "onboarding",
+        _unless_failed(lambda s: END if s.get("dispatch_result") == "identity_hold" else "draft"),
     )
     builder.add_edge("identity_hold", END)
     # Critic first (policy), then the output guardrail (safety). Both run.

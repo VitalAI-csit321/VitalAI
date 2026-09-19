@@ -269,7 +269,9 @@ def auto_send_eligible(
     )
 
 
-def reply_risk_tier(*, revision_count: int, grounded_on_retry: bool = False) -> str:
+def reply_risk_tier(
+    *, revision_count: int, grounded_on_retry: bool = False, is_provisional: bool = False
+) -> str:
     """Whether a draft must reach a human whatever auto_send_eligible says.
 
     Not the audit log's severity scorer (audit_service._compute_risk_score):
@@ -287,6 +289,10 @@ def reply_risk_tier(*, revision_count: int, grounded_on_retry: bool = False) -> 
     # auto-sent (spec §7). Flag off the same email is ungrounded, so it goes
     # to approval there too.
     if grounded_on_retry:
+        return "high"
+    # A provisional patient is whoever the last email said they were. Their
+    # onboarding reply always reaches a human (spec §9.0).
+    if is_provisional:
         return "high"
     return "low"
 
