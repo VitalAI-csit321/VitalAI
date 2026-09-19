@@ -1,8 +1,9 @@
-"""Booking branch of the agent graph (build spec §10).
+"""Booking (build spec §10) and records (§11) branches of the agent graph.
 
-Reached only from route_identity, after the sender is known, and drafted from
-a template: no model decides what time a patient was told to come in. HIGH
-risk, so it cannot auto-send. The agent proposes and stops; nothing in the
+Both are reached only from route_identity, after the sender is known, and
+both draft from a template: no model decides what time a patient was told to
+come in, or what the clinic promised about their file. Both are HIGH risk, so
+neither can auto-send. The booking agent proposes and stops; nothing in the
 agent layer books an appointment.
 """
 
@@ -23,9 +24,10 @@ from app.models.approval import ApprovalRequest
 from app.models.assignment import DoctorPatientAssignment
 from app.models.audit import AuditEvent
 from app.models.case import IntakeCase
+from app.models.consent import ConsentStatus
 from app.models.patient import Patient, PatientStatus
 from app.models.task import Task, TaskCategory
-from app.services import appointment_service, booking_service
+from app.services import appointment_service, booking_service, consent_service, records_service
 from app.services.task_routing_gate import TaskRoutingGateResult, TaskRoutingOutcome
 from tests.agent_fakes import FakeLLM, seed_email
 
@@ -120,6 +122,12 @@ async def _run(db, agent_saver, category, *, case_id=None, sender="jane@example.
 async def _approvals(db, task: Task) -> list[ApprovalRequest]:
     rows = (await db.execute(select(ApprovalRequest))).scalars().all()
     return [r for r in rows if r.payload.get("task_id") == str(task.id)]
+
+
+def _assert_no_invention(text: str) -> None:
+    assert not _LINK.search(text), text
+    # No date or number the clinic did not decide: the records template names none.
+    assert not re.search(r"\d", text), text
 
 
 # --- booking ---------------------------------------------------------------------------
@@ -344,10 +352,126 @@ def test_nothing_in_the_agent_layer_books_an_appointment():
     assert agents == []
 
 
-def test_the_booking_branch_is_always_high_risk():
+# --- records ---------------------------------------------------------------------------
+
+
+async def _records(db_session, agent_saver, case) -> tuple[Task, object]:
+    email, task, snapshot = await _run(
+        db_session,
+        agent_saver,
+        TaskCategory.MEDICAL_RECORDS_REQUEST,
+        case_id=case.id,
+        body="Could you please send me a copy of my medical records?",
+    )
+    return task, snapshot
+
+
+async def _assert_one_approval_no_send(db_session, task, snapshot, sends, llm) -> str:
+    # The send first, so nothing earlier can mask an auto-send.
+    sends.assert_not_awaited()
+    assert task.draft_sent is False
+    assert snapshot.next == ("await_approval",)
+    (approval,) = await _approvals(db_session, task)
+    assert snapshot.values["branch"] == "records"
+    assert snapshot.values["risk_tier"] == "high"
+    assert llm.draft_prompts == []
+    draft = approval.payload["draft"]
+    _assert_no_invention(draft)
+    return draft
+
+
+async def test_records_request_without_consent_asks_for_it(db_session, agent_saver, guards):
+    """Gate (g). Email cases usually have no consent record at all; that is an
+    outcome here, not an error (Appendix F.2)."""
+    llm, sends = guards
+    patient = await _patient(db_session)
+    case = await _linked_case(db_session, patient)
+
+    task, snapshot = await _records(db_session, agent_saver, case)
+
+    assert snapshot.values["records_consent"] is False
+    draft = await _assert_one_approval_no_send(db_session, task, snapshot, sends, llm)
+    assert draft == records_service.draft_records_reply(name="Jane Smith", consent_on_file=False)
+    assert "written consent" in draft
+
+
+@pytest.mark.parametrize("captured", [False, True], ids=["pending", "captured_anyway"])
+async def test_an_implied_consent_record_is_not_consent(
+    db_session, agent_saver, guards, admin_user, captured
+):
+    """Gate (g). Implied consent is the clinic noting that someone emailed.
+    capture_consent accepts any PENDING record, including an implied one, so
+    the type is checked as well as the status."""
+    llm, sends = guards
+    patient = await _patient(db_session)
+    case = await _linked_case(db_session, patient)
+    record = await consent_service.create_consent_record(
+        db_session, case.id, admin_user, consent_type=consent_service.IMPLIED_INBOUND_CONTACT
+    )
+    if captured:
+        await consent_service.capture_consent(db_session, record.id, admin_user)
+        await db_session.commit()
+        await db_session.refresh(record)
+        assert record.status == ConsentStatus.CAPTURED
+
+    task, snapshot = await _records(db_session, agent_saver, case)
+
+    assert snapshot.values["records_consent"] is False
+    draft = await _assert_one_approval_no_send(db_session, task, snapshot, sends, llm)
+    assert "written consent" in draft
+
+
+async def test_records_request_with_explicit_consent_gets_the_release_acknowledgement(
+    db_session, agent_saver, guards, admin_user
+):
+    """Gate (h)."""
+    llm, sends = guards
+    patient = await _patient(db_session)
+    case = await _linked_case(db_session, patient)
+    record = await consent_service.create_consent_record(db_session, case.id, admin_user)
+    await consent_service.capture_consent(db_session, record.id, admin_user)
+    await db_session.commit()
+
+    task, snapshot = await _records(db_session, agent_saver, case)
+
+    assert snapshot.values["records_consent"] is True
+    draft = await _assert_one_approval_no_send(db_session, task, snapshot, sends, llm)
+    assert draft == records_service.draft_records_reply(name="Jane Smith", consent_on_file=True)
+    assert "verify your identity" in draft
+    assert "No records are attached" in draft
+
+
+async def test_a_failing_records_node_takes_the_failure_path(
+    db_session, agent_saver, guards, monkeypatch
+):
+    patient = await _patient(db_session)
+    case = await _linked_case(db_session, patient)
+    monkeypatch.setattr(
+        records_service, "has_explicit_consent", AsyncMock(side_effect=RuntimeError("db gone"))
+    )
+
+    task, snapshot = await _records(db_session, agent_saver, case)
+
+    assert snapshot.values["error"] == "records: RuntimeError"
+    events = (
+        (
+            await db_session.execute(
+                select(AuditEvent).where(
+                    AuditEvent.case_id == case.id, AuditEvent.action == "agent.node_failed"
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert [e.details["stage"] for e in events] == ["records"]
+
+
+def test_both_branches_are_always_high_risk_and_only_they_are():
     from app.services.email_service import reply_risk_tier
 
     assert reply_risk_tier(revision_count=0, branch="booking") == "high"
+    assert reply_risk_tier(revision_count=0, branch="records") == "high"
     # The live flag-off path never passes a branch; it must stay LOW there.
     assert reply_risk_tier(revision_count=0) == "low"
     assert reply_risk_tier(revision_count=0, branch="onboarding") == "low"
@@ -378,3 +502,11 @@ def test_the_booking_template_renders_clinic_local_time():
     assert "Hi there," in text
     assert "this time" in text
     assert not _LINK.search(text)
+
+
+def test_neither_template_mentions_a_url_or_reference():
+    for text in (
+        records_service.draft_records_reply(name="Sam Lee", consent_on_file=False),
+        records_service.draft_records_reply(name="Sam Lee", consent_on_file=True),
+    ):
+        _assert_no_invention(text)

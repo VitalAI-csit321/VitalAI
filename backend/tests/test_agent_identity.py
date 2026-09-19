@@ -211,7 +211,7 @@ async def test_a_blocked_prompt_is_no_fields(db_session, admin_user):
         ("appointment_request", "ambiguous", False, "staff"),
         ("appointment_request", "no_match", False, "onboarding"),
         ("new_patient_onboarding", "no_match", False, "onboarding"),
-        ("medical_records_request", "matched", False, "draft"),
+        ("medical_records_request", "matched", False, "records"),
         ("medical_records_request", "no_match", False, "staff"),
         ("prescription_renewal", "ambiguous", False, "staff"),
         ("results_enquiry", "no_match", False, "staff"),

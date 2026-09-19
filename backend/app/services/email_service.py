@@ -270,9 +270,9 @@ def auto_send_eligible(
 
 
 # Agent branches whose reply states something the clinic is committing to: a
-# time to attend (§10). Literal names rather than an import, so this module
-# does not import the branches.
-_ALWAYS_HUMAN_BRANCHES = frozenset({"booking"})
+# time to attend (§10), or what happens to a patient's records (§11). Literal
+# names rather than an import, so this module does not import the branches.
+_ALWAYS_HUMAN_BRANCHES = frozenset({"booking", "records"})
 
 
 def reply_risk_tier(

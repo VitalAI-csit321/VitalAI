@@ -28,6 +28,7 @@ from app.services import (
     email_service,
     identity_service,
     onboarding_service,
+    records_service,
     task_service,
 )
 from app.services.draft_critic import critique
@@ -184,6 +185,16 @@ async def booking(state: CaseState, runtime: Runtime[Context]) -> dict:
     }
 
 
+async def records(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """§11: consent decides which acknowledgement is drafted, and nothing else.
+
+    No retrieval: no clinical content of any kind reaches a generated email.
+    """
+    async with runtime.context.session_factory() as db:
+        on_file = await records_service.has_explicit_consent(db, _case_id(state))
+    return {"branch": records_service.BRANCH, "records_consent": on_file}
+
+
 async def identity_hold(state: CaseState, runtime: Runtime[Context]) -> dict:
     async with runtime.context.session_factory() as db:
         await identity_service.hold_for_staff(
@@ -220,6 +231,16 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
                 name=state.get("patient_name"),
                 doctor_name=state["booking_doctor_name"],
                 slots=state["proposed_slots"],
+            ),
+            "grounded": False,
+        }
+    elif branch == records_service.BRANCH:
+        # A template too (§11): there is nothing to generate, only an
+        # acknowledgement to state, and no record content to state it from.
+        update = {
+            "draft_text": records_service.draft_records_reply(
+                name=state.get("patient_name"),
+                consent_on_file=bool(state.get("records_consent")),
             ),
             "grounded": False,
         }

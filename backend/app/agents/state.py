@@ -62,6 +62,9 @@ class CaseState(TypedDict, total=False):
     # template. The doctor is the one the patient is actually assigned to.
     proposed_slots: list[str]
     booking_doctor_name: str | None
+    # §11: explicit captured consent, which an implied inbound-contact record
+    # is not.
+    records_consent: bool | None
 
     draft_text: str | None
     grounded: bool | None

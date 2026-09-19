@@ -154,11 +154,11 @@ _AGENT_FOR_INTENT = {
 # cannot diverge from the flag-off path yet.
 _NOT_FOR_PROVISIONAL = frozenset({"booking", "records"})
 
-# The agents that have a node of their own (§10). They are reached only
+# The agents that have a node of their own (§10, §11). They are reached only
 # from route_identity, after the sender is known: identity runs after the reply
 # gate, so route_intent's entries for them are still placeholders into it.
 # Every other name in _AGENT_FOR_INTENT keeps the ordinary draft path.
-_BRANCH_NODES = frozenset({"booking"})
+_BRANCH_NODES = frozenset({"booking", "records"})
 
 
 def route_intent(state: CaseState) -> str:
@@ -289,6 +289,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         ("identity", nodes.identity),
         ("onboarding", nodes.onboarding),
         ("booking", nodes.booking),
+        ("records", nodes.records),
         ("identity_hold", nodes.identity_hold),
         ("draft", nodes.draft),
         ("escalate", nodes.escalate),
@@ -332,6 +333,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
             "staff": "identity_hold",
             "onboarding": "onboarding",
             "booking": "booking",
+            "records": "records",
             END: END,
         },
     )
@@ -344,6 +346,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         "booking",
         _unless_failed(lambda s: END if s.get("dispatch_result") == "booking_hold" else "draft"),
     )
+    builder.add_conditional_edges("records", _to("draft"))
     builder.add_edge("identity_hold", END)
     # Critic first (policy), then the output guardrail (safety). Both run.
     builder.add_conditional_edges("draft", _to("critic"))
