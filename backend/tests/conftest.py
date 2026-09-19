@@ -15,6 +15,7 @@ from datetime import date
 from pathlib import Path
 from uuid import uuid4
 
+import pytest
 import pytest_asyncio
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
@@ -25,6 +26,16 @@ from alembic import command
 
 _DB_URL = os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key")
+
+# Pinned, not setdefault: a developer's .env (OUTLOOK_ENABLED=true) or an
+# exported shell variable must never change what the suite tests. Both are set
+# before app.config is imported below, which is the only moment that counts --
+# Settings() reads the environment once, at module import. These are the code
+# defaults, so this is exactly what CI sees, CI having no .env at all.
+# AGENTIC_PIPELINE_ENABLED is deliberately NOT pinned: the suite script sets it
+# on purpose to run the whole suite under both flags.
+os.environ["OUTLOOK_ENABLED"] = "false"
+os.environ["EMAIL_AUTO_SEND_ENABLED"] = "true"
 
 from app.auth.security import create_access_token, hash_password  # noqa: E402
 from app.database import get_db  # noqa: E402
@@ -518,3 +529,31 @@ def unassigned_doctor_headers(doctor_headers: dict[str, str]) -> dict[str, str]:
     gate rather than a vacuous pass.
     """
     return doctor_headers
+
+
+# --- no test may reach a real model (spec G.3) --------------------------------
+# Five modules import get_llm under their own name, so patching any one of them
+# leaves four doors open. Block the shared client's own network door instead.
+# Verified by introspecting the installed langchain-community 0.4.2: every route
+# into Ollama (_generate, _agenerate, _stream, _astream) funnels through
+# _OllamaCommon._create_stream (requests.post) or _acreate_stream (aiohttp).
+# Building a client stays legal -- test_llm.py builds one and never calls it,
+# and inbox_service evaluates get_llm() even when summarize_call is mocked.
+# ponytail: add the same two lines for ChatBedrock if tests ever run with
+# LLM_PROVIDER=bedrock; today every test path resolves to Ollama.
+_REAL_LLM_CALLED = (
+    "A test called the real LLM. Mock it instead: patch the get_llm that the "
+    "module under test imported (for example app.services.email_service.get_llm), "
+    "or pass a fake model in."
+)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_llm_calls(monkeypatch):
+    from langchain_community.llms.ollama import _OllamaCommon
+
+    def blocked(*_args, **_kwargs):
+        raise RuntimeError(_REAL_LLM_CALLED)
+
+    monkeypatch.setattr(_OllamaCommon, "_create_stream", blocked)
+    monkeypatch.setattr(_OllamaCommon, "_acreate_stream", blocked)
