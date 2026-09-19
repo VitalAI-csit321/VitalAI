@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import AsyncSessionLocal
 from app.llm import get_llm
+from app.llm.guardrail import InputBlockedError, guarded_invoke
 from app.llm.output_guardrail import OutputBlockedError, check_output
 from app.models.case import IntakeCase, IntakeStatus
 from app.models.email import Email
@@ -106,8 +107,12 @@ async def ingest_email(
     await db.flush()
 
     llm = get_llm()
+    # Subject and body (spec G.2). An injection in the subject used to be
+    # invisible here: the reply gate caught it but only set UNCERTAIN, and
+    # UNCERTAIN still drafts. classify_content itself is unchanged, because the
+    # call pipeline shares it and a call has no subject.
     category, confidence = await classify_content(
-        db, llm, payload.body, actor=actor, channel="email"
+        db, llm, f"Subject: {payload.subject}\n\n{payload.body}", actor=actor, channel="email"
     )
     target_role = resolve_target_role(category)
     gate = evaluate_task_routing_gate(category, confidence, payload.body)
@@ -154,7 +159,11 @@ class EmailDraftOutcome:
 
 
 async def _generate_plain_reply(
-    email: Email, actor: User, context_text: str = "", feedback: str | None = None
+    db: AsyncSession,
+    email: Email,
+    actor: User,
+    context_text: str = "",
+    feedback: str | None = None,
 ) -> str:
     from app.rag.answer import revision_block
 
@@ -174,7 +183,10 @@ async def _generate_plain_reply(
         f"{revision_block(feedback)}"
         "REPLY:"
     )
-    result = await llm.ainvoke(prompt)
+    # The choke point every live LLM call is supposed to use (spec G.2). The
+    # prompt embeds the patient's own subject and body, which is exactly the
+    # untrusted text the input guardrail exists to catch.
+    result = await guarded_invoke(db, llm, prompt, actor=actor, route="email.draft_reply")
     return result if isinstance(result, str) else getattr(result, "content", str(result))
 
 
@@ -203,14 +215,16 @@ async def _generate_org_grounded_reply(
     )
     gate_outcome = await retrieve_gated(db, email.body, ctx, reformulate=reformulate)
     if gate_outcome.decision == "manual_handling":
-        return await _generate_plain_reply(email, actor, feedback=feedback), False
+        return await _generate_plain_reply(db, email, actor, feedback=feedback), False
 
     assert gate_outcome.top_score is not None
     context_chunks = [
         c for c in gate_outcome.chunks if c.score >= gate_outcome.top_score - CONTEXT_SCORE_MARGIN
     ]
     context_text = "\n\n".join(c.content for c in context_chunks)
-    text = await _generate_plain_reply(email, actor, context_text=context_text, feedback=feedback)
+    text = await _generate_plain_reply(
+        db, email, actor, context_text=context_text, feedback=feedback
+    )
     return text, True
 
 
@@ -541,6 +555,17 @@ async def draft_reply(
             await mark_not_worthy(db, task, reply_verdict.reason)
             return EmailDraftOutcome(draft_text=None, approval_id=None, sent=False, blocked=False)
         draft_text, grounded = await generate_draft(db, task, email, actor)
+    except InputBlockedError:
+        # Held, not crashed: the Task ingest_email created is the human review
+        # item, and it says why. No draft, because the model was never called.
+        logger.warning("draft generation blocked by the input guardrail, holding for staff")
+        task.handover_context = (
+            "No reply drafted: the message was blocked by the prompt injection check. "
+            "Read it and reply by hand."
+        )
+        outcome = EmailDraftOutcome(draft_text=None, approval_id=None, sent=False, blocked=True)
+        await _persist_draft(db, task, outcome)
+        return outcome
     except Exception:
         # A live LLM/retrieval outage (Ollama timeout, connection drop, etc.)
         # must degrade to "needs a manual reply", not crash the ingest

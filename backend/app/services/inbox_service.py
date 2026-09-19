@@ -4,6 +4,7 @@ so one filter works for both -- the entire point of unifying both channels
 under one classifier and gate.
 """
 
+import logging
 from datetime import datetime
 
 from langchain_core.language_models import BaseLanguageModel
@@ -13,12 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.permissions import VIEW_ALL_QUEUES, effective_permissions
 from app.auth.scoping import assigned_patient_ids_subquery
 from app.llm import get_llm
+from app.llm.guardrail import InputBlockedError, guarded_invoke
 from app.models.call import Call
 from app.models.case import IntakeCase
 from app.models.email import Email
 from app.models.task import Task, TaskItemStatus, TaskPriority, TaskSource
 from app.models.user import User, UserRole
 from app.schemas.inbox import InboxMessageOut
+
+logger = logging.getLogger(__name__)
 
 _PRIORITY_MAP: dict[TaskPriority, str] = {
     TaskPriority.URGENT: "urgent",
@@ -41,13 +45,28 @@ def _received_label(dt: datetime) -> str:
     return dt.strftime("%d %b %Y, %H:%M")
 
 
-async def summarize_call(llm: BaseLanguageModel, transcript: str) -> str:
+BLOCKED_SUMMARY = "Summary unavailable. Open the call to read the transcript."
+
+
+async def summarize_call(
+    db: AsyncSession, llm: BaseLanguageModel, transcript: str, actor: User
+) -> str:
+    """One inbox preview line. Through the choke point (spec G.2): a call
+    transcript is untrusted external text, same as an email body.
+
+    A block shows a fixed placeholder rather than raising, so one hostile
+    transcript cannot take down the whole inbox listing.
+    """
     prompt = (
         "Summarize this phone call transcript in one short sentence, for a staff "
         "inbox preview. No preamble, just the sentence.\n\n"
         f"TRANSCRIPT:\n{transcript}\n\nSUMMARY:"
     )
-    result = await llm.ainvoke(prompt)
+    try:
+        result = await guarded_invoke(db, llm, prompt, actor=actor, route="call.summarize")
+    except InputBlockedError:
+        logger.warning("summarize_call: guardrail blocked a transcript, showing a placeholder")
+        return BLOCKED_SUMMARY
     return result if isinstance(result, str) else getattr(result, "content", str(result))
 
 
@@ -69,7 +88,7 @@ async def _visible_tasks(db: AsyncSession, actor: User, archived: bool = False) 
     return list(result.scalars().all())
 
 
-async def _to_message(db: AsyncSession, task: Task) -> InboxMessageOut | None:
+async def _to_message(db: AsyncSession, task: Task, actor: User) -> InboxMessageOut | None:
     priority = _PRIORITY_MAP[task.priority]
     unread = task.read_at is None
     category = task.category.value if task.category else "uncategorized"
@@ -112,7 +131,9 @@ async def _to_message(db: AsyncSession, task: Task) -> InboxMessageOut | None:
         fromInitials="CL",
         toName="Clinic",
         subject=f"Call from {call.phone_number}",
-        body=await summarize_call(get_llm(), call.transcript) if call.transcript else "",
+        body=(
+            await summarize_call(db, get_llm(), call.transcript, actor) if call.transcript else ""
+        ),
         priority=priority,
         category=category,
         unread=unread,
@@ -132,7 +153,7 @@ async def list_inbox(
 
     items: list[InboxMessageOut] = []
     for task in page:
-        message = await _to_message(db, task)
+        message = await _to_message(db, task, actor)
         if message is not None:
             items.append(message)
     return items, total
