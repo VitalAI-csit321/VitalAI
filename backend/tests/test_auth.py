@@ -402,3 +402,38 @@ async def test_front_desk_cannot_get_user_grants(client: AsyncClient, front_desk
 
     response = await client.get(f"/api/v1/auth/users/{user_id}/grants", headers=front_desk_headers)
     assert response.status_code == 403
+
+
+async def test_a_service_account_on_a_reserved_domain_does_not_500(
+    client: AsyncClient, db_session, admin_headers: dict
+):
+    """A script-created service account can hold an address that email-validator
+    refuses as undeliverable (.local is reserved, RFC 6762). User.email is an
+    unvalidated String(255), so the row exists; validating it again on the way
+    OUT turned it into a 500 on /auth/me and on any /auth/users page containing
+    it. Registration still validates, which is where the check belongs.
+    """
+    from app.auth.security import create_access_token, hash_password
+    from app.models import User, UserRole
+
+    bot = User(
+        email="outlook-connector@vitalai.local",
+        hashed_password=hash_password("pass1234"),
+        full_name="Outlook Connector",
+        role=UserRole.ADMIN,
+    )
+    db_session.add(bot)
+    await db_session.commit()
+    await db_session.refresh(bot)
+
+    me = await client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {create_access_token(bot.id, bot.role)}"},
+    )
+    assert me.status_code == 200, me.text
+    assert me.json()["email"] == "outlook-connector@vitalai.local"
+
+    # routes/auth.py validates every row, so one bad row used to break the page.
+    listing = await client.get("/api/v1/auth/users", headers=admin_headers)
+    assert listing.status_code == 200, listing.text
+    assert any(u["email"] == "outlook-connector@vitalai.local" for u in listing.json()["items"])

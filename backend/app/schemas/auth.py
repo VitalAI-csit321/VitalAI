@@ -44,7 +44,14 @@ class TokenPayload(BaseModel):
 
 class UserOut(BaseModel):
     id: UUID
-    email: EmailStr
+    # str, not EmailStr: this validates a row that is already in the database,
+    # and User.email is an unvalidated String(255). A script-created service
+    # account on a reserved domain (outlook-connector@vitalai.local; .local is
+    # RFC 6762, which email-validator refuses as undeliverable) turned into a
+    # 500 on /auth/me and on any /auth/users page containing it, because
+    # routes/auth.py validates every row in the listing. UserRegister still
+    # uses EmailStr, which is where an address is actually worth checking.
+    email: str
     full_name: str
     department: str | None
     role: UserRole
