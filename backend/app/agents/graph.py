@@ -20,7 +20,7 @@ from app.database import AsyncSessionLocal
 from app.models.approval import ApprovalRequest
 from app.models.task import TaskCategory
 from app.models.user import User
-from app.services import approval_service, email_service, task_service
+from app.services import approval_service, email_service, identity_service, task_service
 from app.services.reply_gate import ReplyWorthiness
 from app.services.system_actor import get_or_create_agent_actor
 from app.services.task_routing_gate import TaskRoutingGateResult, TaskRoutingOutcome
@@ -166,6 +166,30 @@ def route_intent(state: CaseState) -> str:
     return agent
 
 
+def route_identity(state: CaseState) -> str:
+    """§8.2, after the reply gate: intent x identity outcome x provisional.
+
+    Only patient-specific intents are blocked; a general question drafts
+    whatever the outcome. The provisional check is re-applied because
+    identity can link a provisional patient that load did not know about.
+    """
+    intent = TaskCategory(state["intent"]) if state.get("intent") else None
+    if intent not in identity_service.PATIENT_SPECIFIC:
+        return "draft"
+    outcome = identity_service.IdentityOutcome(state["identity_outcome"])
+    if outcome == identity_service.IdentityOutcome.MATCHED:
+        agent = _AGENT_FOR_INTENT.get(intent, "retrieval")
+        if state.get("is_provisional") and agent in _NOT_FOR_PROVISIONAL:
+            return "staff"
+        return "draft"
+    if (
+        outcome == identity_service.IdentityOutcome.NO_MATCH
+        and intent in identity_service.ONBOARDING_INTENTS
+    ):
+        return "onboarding"
+    return "staff"
+
+
 def auto_send_or_approve(state: CaseState) -> str:
     """The same predicate draft_reply uses, plus the rule that a HIGH risk
     tier (email_service.reply_risk_tier) always reaches a human.
@@ -256,6 +280,8 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         ("load", nodes.load),
         ("consent", nodes.consent),
         ("reply_gate", nodes.reply_gate),
+        ("identity", nodes.identity),
+        ("identity_hold", nodes.identity_hold),
         ("draft", nodes.draft),
         ("escalate", nodes.escalate),
         ("guardrail", nodes.guardrail),
@@ -288,8 +314,20 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
     )
     builder.add_conditional_edges(
         "reply_gate",
-        _unless_failed(lambda s: END if s.get("dispatch_result") == "not_worthy" else "draft"),
+        _unless_failed(lambda s: END if s.get("dispatch_result") == "not_worthy" else "identity"),
     )
+    builder.add_conditional_edges(
+        "identity",
+        _unless_failed(route_identity),
+        {
+            "draft": "draft",
+            "staff": "identity_hold",
+            # PLACEHOLDER until the onboarding node (§9) lands: today's draft path.
+            "onboarding": "draft",
+            END: END,
+        },
+    )
+    builder.add_edge("identity_hold", END)
     # Critic first (policy), then the output guardrail (safety). Both run.
     builder.add_conditional_edges("draft", _to("critic"))
     builder.add_conditional_edges("critic", after_critic)

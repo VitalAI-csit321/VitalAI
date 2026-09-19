@@ -34,6 +34,9 @@ class CaseState(TypedDict, total=False):
     patient_status: str | None
     is_provisional: bool | None
     identity_outcome: str | None
+    # What the sender said about themselves (§8.3), for onboarding. JSON-safe:
+    # dob as an ISO string.
+    identity_fields: dict | None
 
     consent_status: str | None
 

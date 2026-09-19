@@ -30,6 +30,7 @@ class FakeLLM:
         replies: list[str] | None = None,
         worthy: bool = True,
         reformulation: str = "",
+        identity: dict | str | None = None,
     ):
         self.category = category
         self.confidence = confidence
@@ -39,7 +40,15 @@ class FakeLLM:
         # retry treats as "no rewrite", so a test that is not about the retry
         # sees exactly the retrieval calls it saw before the retry existed.
         self.reformulation = reformulation
+        # Identity extraction's answer (spec §8.3): a dict is sent as JSON, a
+        # str as-is. None falls through to the classifier JSON, which is
+        # exactly the "unparseable, no fields" case.
+        self.identity = identity
         self.prompts: list[str] = []
+
+    @property
+    def identity_prompts(self) -> list[str]:
+        return [p for p in self.prompts if _is_identity(p)]
 
     @property
     def draft_prompts(self) -> list[str]:
@@ -49,12 +58,18 @@ class FakeLLM:
         self.prompts.append(prompt)
         if prompt.rstrip().endswith("QUERY:"):
             return self.reformulation
+        if _is_identity(prompt) and self.identity is not None:
+            return self.identity if isinstance(self.identity, str) else json.dumps(self.identity)
         if "worthy" in prompt.lower():
             return json.dumps({"worthy": self.worthy, "reason": "test verdict"})
         if _is_draft(prompt):
             # One reply per draft, the last one repeating.
             return self.replies.pop(0) if len(self.replies) > 1 else self.replies[0]
         return json.dumps({"category": self.category, "confidence": self.confidence})
+
+
+def _is_identity(prompt: str) -> bool:
+    return "IDENTITY DETAILS" in prompt
 
 
 def _is_draft(prompt: str) -> bool:
@@ -69,6 +84,7 @@ async def seed_email(
     body: str = "What time do you open on Saturdays?",
     external_id: str | None = None,
     case_id: UUID | None = None,
+    sender: str = "patient@example.com",
 ) -> tuple[Email, Task]:
     """The rows ingest_email commits, without its classifier call."""
     if case_id is None:
@@ -81,7 +97,7 @@ async def seed_email(
     email = Email(
         id=email_id or uuid4(),
         case_id=case_id,
-        sender="patient@example.com",
+        sender=sender,
         recipient="clinic@example.com",
         subject="Question",
         body=body,

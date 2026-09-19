@@ -19,9 +19,9 @@ from app.llm.output_guardrail import OutputBlockedError, check_output
 from app.models.case import IntakeCase
 from app.models.email import Email
 from app.models.patient import Patient
-from app.models.task import Task
+from app.models.task import Task, TaskCategory
 from app.models.user import User
-from app.services import consent_service, email_service
+from app.services import consent_service, email_service, identity_service
 from app.services.draft_critic import critique
 from app.services.email_service import EmailSendError
 from app.services.outlook_auth import OutlookAuthRequiredError
@@ -79,6 +79,46 @@ async def reply_gate(state: CaseState, runtime: Runtime[Context]) -> dict:
             await email_service.mark_not_worthy(db, task, verdict.reason)
             return {"reply_verdict": verdict.verdict.value, "dispatch_result": "not_worthy"}
     return {"reply_verdict": verdict.verdict.value}
+
+
+async def identity(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """Who sent this (§8). Recorded for every case; route_identity decides
+    whether the outcome blocks. A general intent makes no LLM call."""
+    async with runtime.context.session_factory() as db:
+        _, email, actor = await _rows(db, state, runtime)
+        result, fields = await identity_service.identify_sender(
+            db,
+            # The model every email step uses, so one fake covers them all.
+            llm=email_service.get_llm(),
+            intent=TaskCategory(state["intent"]) if state.get("intent") else None,
+            case_id=_case_id(state),
+            sender=email.sender,
+            content=email.body,
+            actor=actor,
+        )
+    update: dict = {
+        "identity_outcome": result.outcome.value,
+        "identity_fields": {
+            "name": fields.name,
+            "dob": fields.dob.isoformat() if fields.dob else None,
+            "phone": fields.phone,
+        },
+    }
+    if result.patient is not None:
+        update |= {
+            "patient_id": str(result.patient.id),
+            "patient_status": result.patient.status.value,
+            "is_provisional": result.patient.is_provisional,
+        }
+    return update
+
+
+async def identity_hold(state: CaseState, runtime: Runtime[Context]) -> dict:
+    async with runtime.context.session_factory() as db:
+        await identity_service.hold_for_staff(
+            db, state["task_id"], identity_service.IdentityOutcome(state["identity_outcome"])
+        )
+    return {"dispatch_result": "identity_hold"}
 
 
 async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
