@@ -24,23 +24,30 @@ _NOT_ATTACHED = "No records are attached to this email."
 _SIGN_OFF = "Kind regards,\nThe clinic team"
 
 
-async def has_explicit_consent(db: AsyncSession, case_id: UUID | None) -> bool:
-    """Whether this case carries consent a person actually gave.
+async def has_explicit_consent(db: AsyncSession, patient_id: UUID | None) -> bool:
+    """Whether this PATIENT has given consent a person actually signed.
 
-    Deliberately not triage_service._assert_consent, which raises when a case
-    has no consent record at all: email cases usually have none, and that is
-    an outcome here, not an error (Appendix F.2).
+    Asked about the patient, not the case (spec G.11). ingest_email opens a new
+    case for every message and the Outlook connector passes no case_id, so a
+    real records email always lands on a case with no consent record: the
+    case-level question could never be answered yes in production, and patients
+    who had already consented were told they still had to.
+
+    The same rule patient_service.promote_patient applies: any CAPTURED record
+    whose type is not the implied one. Deliberately not
+    triage_service._assert_consent, which raises when there is no record at
+    all: that is an outcome here, not an error (Appendix F.2).
 
     An implied record is the clinic noting that someone emailed in. It is
-    always PENDING and it is nobody's authority to release their file.
+    nobody's authority to release their file, whichever case it sits on.
     """
-    if case_id is None:
+    if patient_id is None:
         return False
-    record = await consent_service.get_consent_for_case(db, case_id)
-    return (
-        record is not None
-        and record.status == ConsentStatus.CAPTURED
-        and record.consent_type != consent_service.IMPLIED_INBOUND_CONTACT
+    records = await consent_service.list_consents_for_patient(db, patient_id)
+    return any(
+        r.status == ConsentStatus.CAPTURED
+        and r.consent_type != consent_service.IMPLIED_INBOUND_CONTACT
+        for r in records
     )
 
 

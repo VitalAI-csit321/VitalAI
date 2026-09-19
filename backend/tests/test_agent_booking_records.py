@@ -441,6 +441,51 @@ async def test_records_request_with_explicit_consent_gets_the_release_acknowledg
     assert "No records are attached" in draft
 
 
+async def test_consent_captured_on_another_case_of_the_same_patient_counts(
+    db_session, agent_saver, guards, admin_user
+):
+    """Gate (d), spec G.11. Real mail can never put the consent on the email's
+    own case: ingest_email opens a new case per message and the Outlook
+    connector passes no case_id. The question is about the patient."""
+    llm, sends = guards
+    patient = await _patient(db_session)
+    earlier_case = await _linked_case(db_session, patient)
+    record = await consent_service.create_consent_record(db_session, earlier_case.id, admin_user)
+    await consent_service.capture_consent(db_session, record.id, admin_user)
+    await db_session.commit()
+    # The records email arrives on its own, brand new case, carrying no consent.
+    case = await _linked_case(db_session, patient)
+
+    task, snapshot = await _records(db_session, agent_saver, case)
+
+    assert snapshot.values["records_consent"] is True
+    draft = await _assert_one_approval_no_send(db_session, task, snapshot, sends, llm)
+    assert draft == records_service.draft_records_reply(name="Jane Smith", consent_on_file=True)
+    assert "verify your identity" in draft
+
+
+async def test_an_implied_record_on_another_case_is_still_not_consent(
+    db_session, agent_saver, guards, admin_user
+):
+    """Gate (d), the other half: asking the patient-level question must not
+    turn the clinic noting an inbound email into authority to release a file."""
+    llm, sends = guards
+    patient = await _patient(db_session)
+    earlier_case = await _linked_case(db_session, patient)
+    record = await consent_service.create_consent_record(
+        db_session, earlier_case.id, admin_user, consent_type=consent_service.IMPLIED_INBOUND_CONTACT
+    )
+    await consent_service.capture_consent(db_session, record.id, admin_user)
+    await db_session.commit()
+    case = await _linked_case(db_session, patient)
+
+    task, snapshot = await _records(db_session, agent_saver, case)
+
+    assert snapshot.values["records_consent"] is False
+    draft = await _assert_one_approval_no_send(db_session, task, snapshot, sends, llm)
+    assert "written consent" in draft
+
+
 async def test_a_failing_records_node_takes_the_failure_path(
     db_session, agent_saver, guards, monkeypatch
 ):

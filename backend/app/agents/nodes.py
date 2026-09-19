@@ -52,6 +52,10 @@ def _case_id(state: CaseState) -> UUID | None:
     return UUID(state["case_id"]) if state.get("case_id") else None
 
 
+def _patient_id(state: CaseState) -> UUID | None:
+    return UUID(state["patient_id"]) if state.get("patient_id") else None
+
+
 async def load(state: CaseState, runtime: Runtime[Context]) -> dict:
     """Populate state from the rows ingest_email already committed."""
     async with runtime.context.session_factory() as db:
@@ -191,7 +195,7 @@ async def records(state: CaseState, runtime: Runtime[Context]) -> dict:
     No retrieval: no clinical content of any kind reaches a generated email.
     """
     async with runtime.context.session_factory() as db:
-        on_file = await records_service.has_explicit_consent(db, _case_id(state))
+        on_file = await records_service.has_explicit_consent(db, _patient_id(state))
     return {"branch": records_service.BRANCH, "records_consent": on_file}
 
 
