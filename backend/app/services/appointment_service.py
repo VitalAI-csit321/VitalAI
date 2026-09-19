@@ -501,6 +501,18 @@ async def serialize_many(db: AsyncSession, appointments: list[Appointment]) -> l
     return out
 
 
+def clinic_date(instant: datetime) -> date:
+    """The clinic-local calendar day an instant falls on.
+
+    Bucketing by the UTC date files an early-morning appointment on the day
+    before. Naive values out of the SQLite test backend are UTC, the same
+    guard get_availability applies.
+    """
+    if instant.tzinfo is None:
+        instant = instant.replace(tzinfo=UTC)
+    return instant.astimezone(ZoneInfo(settings.clinic_timezone)).date()
+
+
 def clinic_day_window(day: date, days: int = 1) -> tuple[datetime, datetime]:
     """The [start, end) instants covering `days` clinic-local days from `day`.
 
@@ -515,14 +527,13 @@ def clinic_day_window(day: date, days: int = 1) -> tuple[datetime, datetime]:
 
 
 def _month_bounds(year: int, month: int) -> tuple[datetime, datetime]:
-    first = datetime(year, month, 1, tzinfo=UTC)
-    last_day = _calendar.monthrange(year, month)[1]
-    end = datetime(year, month, last_day, tzinfo=UTC) + timedelta(days=1)
-    return first, end
+    # Must agree with clinic_date's bucketing, or an appointment on the 1st
+    # before 10am Sydney is fetched by the wrong month and filed in none.
+    return clinic_day_window(date(year, month, 1), days=_calendar.monthrange(year, month)[1])
 
 
 def _stats(appointments: list[Appointment]) -> CalendarStats:
-    today = datetime.now(UTC).date()
+    today = clinic_date(datetime.now(UTC))
     return CalendarStats(
         scheduled=sum(
             1
@@ -533,7 +544,7 @@ def _stats(appointments: list[Appointment]) -> CalendarStats:
         confirmed_today=sum(
             1
             for a in appointments
-            if a.status == AppointmentStatus.CONFIRMED and a.time_slot.date() == today
+            if a.status == AppointmentStatus.CONFIRMED and clinic_date(a.time_slot) == today
         ),
         cancellations=sum(1 for a in appointments if a.status == AppointmentStatus.CANCELLED),
     )
@@ -570,10 +581,7 @@ async def get_calendar_month(
     serialized = await serialize_many(db, appointments)
     by_day: dict[date, list] = defaultdict(list)
     for item in serialized:
-        ts = item.time_slot
-        if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=UTC)
-        by_day[ts.astimezone(UTC).date()].append(item)
+        by_day[clinic_date(item.time_slot)].append(item)
 
     days: list[CalendarDayCell] = []
     for day_number in range(1, _calendar.monthrange(year, month)[1] + 1):
@@ -598,10 +606,7 @@ async def get_calendar_markers(
 
     counts: dict[date, int] = defaultdict(int)
     for a in appointments:
-        ts = a.time_slot
-        if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=UTC)
-        counts[ts.astimezone(UTC).date()] += 1
+        counts[clinic_date(a.time_slot)] += 1
     return [
         CalendarMarkerOut(date=day.isoformat(), count=count)
         for day, count in sorted(counts.items())
@@ -611,8 +616,7 @@ async def get_calendar_markers(
 async def get_day_view(
     db: AsyncSession, actor: User, day: date, doctor_id: UUID | None = None
 ) -> DayViewOut:
-    start = datetime.combine(day, time.min, tzinfo=UTC)
-    end = start + timedelta(days=1)
+    start, end = clinic_day_window(day)
     appointments = await _appointments_in_range(db, actor, start, end, doctor_id)
 
     counted = [a for a in appointments if a.status != AppointmentStatus.CANCELLED]
