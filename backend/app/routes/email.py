@@ -27,9 +27,10 @@ async def ingest_email_endpoint(
     assert task.target_role is not None
     # Drafting is a 90s-timeout model call, so it runs after the response
     # rather than holding it open. It gets ids, not rows: get_db's session is
-    # closed by the time a background task runs.
+    # closed by the time a background task runs. With the agentic pipeline on
+    # this is the agent graph instead (email_service.draft_runner).
     background_tasks.add_task(
-        email_service.draft_reply_detached, task.id, email.id, actor.id, gate, confidence
+        email_service.draft_runner(), task.id, email.id, actor.id, gate, confidence
     )
     return EmailIngestResult(
         email=EmailOut.model_validate(email),

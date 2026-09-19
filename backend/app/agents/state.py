@@ -40,6 +40,10 @@ class CaseState(TypedDict, total=False):
     intent: str | None
     triage_category: str | None
     triage_confidence: float | None
+    # The task routing gate's outcome, computed once by ingest_email. Carried
+    # in, not recomputed, the same way draft_reply_detached receives it.
+    routing_outcome: str | None
+    reply_verdict: str | None
 
     retrieval_results: list[dict]
     retrieval_sufficient: bool | None
@@ -47,6 +51,7 @@ class CaseState(TypedDict, total=False):
     reformulated_query: str | None
 
     draft_text: str | None
+    grounded: bool | None
     critic_verdict: str | None
     critic_reason: str | None
     revision_count: int
@@ -57,7 +62,12 @@ class CaseState(TypedDict, total=False):
     approval_request_id: str | None
     approval_status: str | None
 
+    # How the thread ended: sent, send_failed, blocked, not_worthy, escalated.
     dispatch_result: str | None
+    # Why the last delivery attempt failed, auto-send or approved send.
+    delivery_error: str | None
+    # Set by the failure path when a node raised; every edge then goes to END.
+    error: str | None
 
     audit_refs: list[str]
 

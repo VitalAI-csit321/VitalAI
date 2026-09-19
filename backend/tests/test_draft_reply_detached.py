@@ -15,6 +15,7 @@ from uuid import UUID
 
 import pytest
 
+from app.config import settings
 from app.models.task import Task
 from app.schemas.email import EmailIngestRequest
 from app.services import email_service, outlook_sync_service
@@ -29,6 +30,14 @@ class _FakeLLM:
         if "worthy" in prompt.lower():
             return json.dumps({"worthy": True, "reason": "test default"})
         return self.response
+
+
+@pytest.fixture
+def flag_off(monkeypatch):
+    """These tests pin the flag-off scheduling of draft_reply_detached. With
+    AGENTIC_PIPELINE_ENABLED the same schedulers run the agent graph instead,
+    covered in test_agent_email_graph.py."""
+    monkeypatch.setattr(settings, "agentic_pipeline_enabled", False)
 
 
 @pytest.fixture
@@ -111,7 +120,7 @@ async def test_detached_draft_swallows_failure_instead_of_escaping(
 
 @pytest.mark.asyncio
 async def test_ingest_route_returns_without_waiting_for_the_draft(
-    client, front_desk_headers, db_session, detached_sessionmaker, monkeypatch, pipeline
+    client, front_desk_headers, db_session, detached_sessionmaker, monkeypatch, pipeline, flag_off
 ):
     """draft_reply must not be awaited during the request. The draft still
     lands on the Task row, just after the response."""
@@ -187,7 +196,7 @@ async def test_poller_does_not_await_the_draft(db_session, front_desk_user, monk
 
 
 @pytest.mark.asyncio
-async def test_scheduled_drafts_are_bounded_to_one_at_a_time(monkeypatch):
+async def test_scheduled_drafts_are_bounded_to_one_at_a_time(monkeypatch, flag_off):
     """25 messages per poll on one CPU-bound Ollama would launch 25
     concurrent gemma2:9b runs and take the box down."""
     live = 0
@@ -214,7 +223,7 @@ async def test_scheduled_drafts_are_bounded_to_one_at_a_time(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_scheduled_draft_keeps_a_strong_reference_until_it_finishes(monkeypatch):
+async def test_scheduled_draft_keeps_a_strong_reference_until_it_finishes(monkeypatch, flag_off):
     """Without the module-level set the event loop is the only owner of a
     bare create_task and can collect it mid-flight."""
     started = asyncio.Event()

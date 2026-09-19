@@ -490,6 +490,20 @@ async def draft_reply(
     return outcome
 
 
+def draft_runner():
+    """What the ingest paths schedule once ingest_email has committed.
+
+    draft_reply_detached, or with agentic_pipeline_enabled the agent graph,
+    which takes the same arguments. Resolved at call time so the flag is
+    read per message, and so the flag-off app never imports langgraph.
+    """
+    if settings.agentic_pipeline_enabled:
+        from app.agents import graph
+
+        return graph.start
+    return draft_reply_detached
+
+
 async def draft_reply_detached(
     task_id: UUID,
     email_id: UUID,

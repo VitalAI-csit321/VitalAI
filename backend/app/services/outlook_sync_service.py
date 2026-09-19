@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -57,18 +58,33 @@ _drafting: set[asyncio.Task] = set()
 _draft_slots = asyncio.Semaphore(1)
 
 
-async def _draft_when_free(*args: Any) -> None:
+async def _when_free(fn: Callable[..., Awaitable[None]], *args: Any) -> None:
     async with _draft_slots:
-        await email_service.draft_reply_detached(*args)
+        await fn(*args)
+
+
+def schedule(fn: Callable[..., Awaitable[None]], *args: Any) -> None:
+    """Run fn(*args) behind the semaphore, holding a strong reference to it,
+    and return immediately.
+
+    Also the scheduler for work that must outlive a request whose handler
+    raises: FastAPI BackgroundTasks never run when an HTTPException replaces
+    the response (the approvals route's failed-send resume).
+    """
+    task = asyncio.create_task(_when_free(fn, *args))
+    _drafting.add(task)
+    task.add_done_callback(_drafting.discard)
+
+
+async def _draft(*args: Any) -> None:
+    await email_service.draft_runner()(*args)
 
 
 def schedule_draft(
     task_id: Any, email_id: Any, actor_id: Any, gate: Any, confidence: float
 ) -> None:
     """Queue a draft to run behind the semaphore and return immediately."""
-    task = asyncio.create_task(_draft_when_free(task_id, email_id, actor_id, gate, confidence))
-    _drafting.add(task)
-    task.add_done_callback(_drafting.discard)
+    schedule(_draft, task_id, email_id, actor_id, gate, confidence)
 
 
 @dataclass

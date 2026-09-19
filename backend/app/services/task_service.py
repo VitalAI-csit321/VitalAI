@@ -319,3 +319,43 @@ async def override_task(
     await db.commit()
     await db.refresh(task)
     return task
+
+
+async def record_agent_failure(
+    db: AsyncSession,
+    *,
+    task_id: str | UUID | None,
+    case_id: str | UUID | None,
+    actor: User,
+    stage: str,
+    error: str,
+) -> None:
+    """An agent graph node raised: make sure a human sees the case.
+
+    Notes the failure on the message's existing Task, or creates one when
+    there is none, and audits it. The graph then ends; nothing retries.
+    """
+    reason = f"Automated handling stopped at {stage} ({error}). Needs a manual reply."
+    task = await db.get(Task, UUID(str(task_id))) if task_id else None
+    if task is None and case_id:
+        task = await create_task(
+            db,
+            TaskCreate(
+                case_id=UUID(str(case_id)), source=TaskSource.EMAIL, priority=TaskPriority.HIGH
+            ),
+            actor,
+        )
+    if task is not None:
+        task.handover_context = reason
+    await record_event(
+        db,
+        actor=actor,
+        case_id=UUID(str(case_id)) if case_id else None,
+        action="agent.node_failed",
+        details={
+            "stage": stage,
+            "error": error,
+            "task_id": str(task.id) if task is not None else None,
+        },
+    )
+    await db.commit()

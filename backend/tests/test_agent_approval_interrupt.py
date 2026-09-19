@@ -6,6 +6,7 @@ ApprovalRequest. These tests pin that down.
 """
 
 import os
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -18,18 +19,8 @@ from app.agents.graph import build_graph, make_context, run_config, thread_id
 from app.config import settings
 from app.models.approval import ApprovalRequest, ApprovalStatus
 from app.services import approval_service
+from tests.agent_fakes import FakeLLM, graph_input, seed_email
 from tests.test_agent_graph_core import _worker
-
-
-def _email(source_id: str, case_id: str | None = None) -> dict:
-    return {
-        "channel": "email",
-        "source_id": source_id,
-        "case_id": case_id,
-        "task_id": None,
-        "draft_text": "Thanks, we have your request.",
-        "risk_tier": "high",
-    }
 
 
 async def _rows(db, tid: str) -> list[ApprovalRequest]:
@@ -37,19 +28,29 @@ async def _rows(db, tid: str) -> list[ApprovalRequest]:
     return list(result.scalars().all())
 
 
-async def _paused(detached_sessionmaker, source_id: str | None = None, case_id: str | None = None):
+@pytest.fixture
+def fake_llm(monkeypatch):
+    llm = FakeLLM()
+    monkeypatch.setattr("app.services.email_service.get_llm", lambda: llm)
+    # Nothing relevant in the org corpus: the draft is ungrounded.
+    monkeypatch.setattr("app.rag.retrieval.retrieve", AsyncMock(return_value=[]))
+    return llm
+
+
+async def _paused(detached_sessionmaker, db_session, case_id=None):
+    """Run the real graph from an ingested email until it pauses."""
+    email, task = await seed_email(db_session, case_id=case_id)
     graph = build_graph().compile(checkpointer=InMemorySaver())
     ctx = await make_context(detached_sessionmaker)
-    source_id = source_id or str(uuid4())
-    tid = thread_id("email", source_id)
-    result = await graph.ainvoke(_email(source_id, case_id), run_config(tid), context=ctx)
+    tid = thread_id("email", str(email.id))
+    result = await graph.ainvoke(graph_input(email, task), run_config(tid), context=ctx)
     return graph, ctx, tid, result
 
 
 async def test_interrupt_returns_and_leaves_one_pending_row_keyed_by_thread(
-    detached_sessionmaker, db_session
+    detached_sessionmaker, db_session, fake_llm
 ):
-    _, _, tid, result = await _paused(detached_sessionmaker)
+    _, _, tid, result = await _paused(detached_sessionmaker, db_session)
 
     # An interrupted ainvoke returns, it does not raise.
     assert "__interrupt__" in result
@@ -61,8 +62,10 @@ async def test_interrupt_returns_and_leaves_one_pending_row_keyed_by_thread(
     assert result["approval_request_id"] == str(rows[0].id)
 
 
-async def test_exactly_one_approval_row_after_resume(detached_sessionmaker, db_session, admin_user):
-    graph, ctx, tid, _ = await _paused(detached_sessionmaker)
+async def test_exactly_one_approval_row_after_resume(
+    detached_sessionmaker, db_session, admin_user, fake_llm
+):
+    graph, ctx, tid, _ = await _paused(detached_sessionmaker, db_session)
     # Decided off the queue row, as a human would, not off graph state.
     (row,) = await _rows(db_session, tid)
     await approval_service.approve(db_session, row.id, admin_user)
@@ -76,8 +79,10 @@ async def test_exactly_one_approval_row_after_resume(detached_sessionmaker, db_s
     assert not snapshot.interrupts
 
 
-async def test_reject_resumes_and_reaches_end(detached_sessionmaker, db_session, admin_user):
-    graph, ctx, tid, _ = await _paused(detached_sessionmaker)
+async def test_reject_resumes_and_reaches_end(
+    detached_sessionmaker, db_session, admin_user, fake_llm
+):
+    graph, ctx, tid, _ = await _paused(detached_sessionmaker, db_session)
     # Decided off the queue row, as a human would, not off graph state.
     (row,) = await _rows(db_session, tid)
     await approval_service.reject(db_session, row.id, admin_user)
@@ -92,8 +97,10 @@ async def test_reject_resumes_and_reaches_end(detached_sessionmaker, db_session,
     assert [r.status for r in rows] == [ApprovalStatus.REJECTED]
 
 
-async def test_edited_draft_from_the_human_lands_in_state(detached_sessionmaker):
-    graph, ctx, tid, _ = await _paused(detached_sessionmaker)
+async def test_edited_draft_from_the_human_lands_in_state(
+    detached_sessionmaker, db_session, fake_llm
+):
+    graph, ctx, tid, _ = await _paused(detached_sessionmaker, db_session)
 
     final = await graph.ainvoke(
         Command(resume={"approved": True, "draft": "Edited by staff."}),
@@ -105,11 +112,10 @@ async def test_edited_draft_from_the_human_lands_in_state(detached_sessionmaker)
 
 
 async def test_two_emails_on_one_case_get_separate_threads_and_rows(
-    detached_sessionmaker, db_session, seeded_case
+    detached_sessionmaker, db_session, seeded_case, fake_llm
 ):
-    case_id = str(seeded_case.id)
-    _, _, first, _ = await _paused(detached_sessionmaker, case_id=case_id)
-    _, _, second, _ = await _paused(detached_sessionmaker, case_id=case_id)
+    _, _, first, _ = await _paused(detached_sessionmaker, db_session, case_id=seeded_case.id)
+    _, _, second, _ = await _paused(detached_sessionmaker, db_session, case_id=seeded_case.id)
 
     assert first != second
     assert len(await _rows(db_session, first)) == 1

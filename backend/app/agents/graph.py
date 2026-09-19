@@ -1,20 +1,27 @@
 """The agent graph: thread identity, run context, nodes, and how a run is invoked."""
 
 import logging
+from collections.abc import Awaitable, Callable
 from typing import Any
 from uuid import UUID
 
 from langchain_core.runnables import RunnableConfig
+from langgraph.errors import GraphBubbleUp
 from langgraph.graph import END, START, StateGraph
 from langgraph.runtime import Runtime
 from langgraph.types import Command, interrupt
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.agents import nodes
 from app.agents.checkpointer import open_checkpointer
 from app.agents.state import CaseState, Context
+from app.database import AsyncSessionLocal
+from app.models.task import TaskCategory
 from app.models.user import User
-from app.services import approval_service
+from app.services import approval_service, email_service, task_service
+from app.services.reply_gate import ReplyWorthiness
 from app.services.system_actor import get_or_create_agent_actor
+from app.services.task_routing_gate import TaskRoutingGateResult, TaskRoutingOutcome
 
 logger = logging.getLogger(__name__)
 
@@ -77,11 +84,24 @@ async def create_approval(state: CaseState, runtime: Runtime[Context]) -> dict:
                 "reasoning": {
                     k: v for k, v in state.items() if k in _REASONING_FIELDS and v is not None
                 },
+                # An auto-send that failed to deliver lands here; the reviewer
+                # needs to know why it did not simply go out.
+                **(
+                    {"delivery_error": state["delivery_error"]}
+                    if state.get("delivery_error")
+                    else {}
+                ),
             },
             case_id=UUID(state["case_id"]) if state.get("case_id") else None,
             requested_by=actor,
             external_ref=tid,
         )
+        # Same Task columns draft_reply sets, so the inbox shows the draft and
+        # its pending approval whichever path produced them.
+        if state.get("task_id"):
+            await email_service.persist_draft(
+                db, state["task_id"], state.get("draft_text"), approval_id=str(request.id)
+            )
     return {"approval_request_id": str(request.id), "approval_status": request.status.value}
 
 
@@ -96,23 +116,163 @@ async def await_approval(state: CaseState) -> dict:
     switching every resume to interrupt-id-keyed resume values.
     """
     decision = interrupt({"approval_request_id": state["approval_request_id"]})
-    update: dict = {"approval_status": "approved" if decision.get("approved") else "rejected"}
+    update: dict = {
+        "approval_status": "approved" if decision.get("approved") else "rejected",
+        # The executor's own outcome, not an earlier auto-send failure's.
+        "delivery_error": decision.get("error") if decision.get("delivered") is False else None,
+    }
     if decision.get("draft") is not None:
         update["draft_text"] = decision["draft"]
     return update
 
 
+# --- routing (§4.3) -----------------------------------------------------------
+
+# No agent, ever: an emergency or a complaint must never receive a generated
+# draft. "Human review" is the Task ingest_email already created, so the graph
+# just ends. The routing gate forces HUMAN_REVIEW for both categories too
+# (task_routing_gate.py); this is the second, independent check.
+_HUMAN_ONLY = frozenset({TaskCategory.URGENT_EMERGENCY, TaskCategory.COMPLAINT_ESCALATION})
+
+# PLACEHOLDER EDGES. These agents arrive in §9-§12. Until each one lands its
+# intent takes the existing draft path, exactly as the flag-off pipeline does,
+# so the two stay in parity. Replace the entry in _PATHS when its agent exists.
+# The provisional-patient refusal for booking/records (§9) belongs here too,
+# once those agents exist; today both paths draft the same reply for them.
+_AGENT_FOR_INTENT = {
+    TaskCategory.APPOINTMENT_REQUEST: "booking",
+    TaskCategory.MEDICAL_RECORDS_REQUEST: "records",
+    TaskCategory.PRESCRIPTION_RENEWAL: "prescription",
+    TaskCategory.NEW_PATIENT_ONBOARDING: "onboarding",
+}
+
+
+def route_intent(state: CaseState) -> str:
+    """Which agent handles this message. Pure function of state."""
+    intent = TaskCategory(state["intent"]) if state.get("intent") else None
+    if state.get("routing_outcome") == TaskRoutingOutcome.HUMAN_REVIEW or intent in _HUMAN_ONLY:
+        return "human_review"
+    return _AGENT_FOR_INTENT.get(intent, "retrieval") if intent else "retrieval"
+
+
+def auto_send_or_approve(state: CaseState) -> str:
+    """The same predicate draft_reply uses, so both paths auto-send the same
+    emails and nothing else."""
+    eligible = email_service.auto_send_eligible(
+        verdict=ReplyWorthiness(state["reply_verdict"]),
+        gate_outcome=TaskRoutingOutcome(state["routing_outcome"]),
+        confidence=state["triage_confidence"],
+        grounded=bool(state.get("grounded")),
+        category=TaskCategory(state["intent"]) if state.get("intent") else None,
+    )
+    return "auto_send" if eligible else "create_approval"
+
+
+# --- failure path (§4.1) ------------------------------------------------------
+
+Node = Callable[..., Awaitable[dict]]
+
+
+def _guarded(stage: str, fn: Node) -> Node:
+    """A node that raises must not make the case vanish.
+
+    A graph run launched in the background swallows exceptions, so without
+    this an LLM outage mid-graph would leave nothing but a log line. Instead:
+    audit event plus a visible Task (task_service.record_agent_failure), then
+    the error field sends every edge to END.
+    """
+
+    async def node(state: CaseState, runtime: Runtime[Context]) -> dict:
+        try:
+            return await fn(state, runtime)
+        except GraphBubbleUp:
+            raise  # interrupt() and friends are control flow, not failures
+        except Exception as exc:
+            logger.exception("Agent node %s failed for %s", stage, state.get("source_id"))
+            try:
+                async with runtime.context.session_factory() as db:
+                    actor = await db.get(User, runtime.context.actor_id)
+                    await task_service.record_agent_failure(
+                        db,
+                        task_id=state.get("task_id"),
+                        case_id=state.get("case_id"),
+                        actor=actor,
+                        stage=stage,
+                        error=f"{type(exc).__name__}: {exc}",
+                    )
+            except Exception:
+                logger.exception("Could not record the %s failure", stage)
+            return {"error": f"{stage}: {type(exc).__name__}"}
+
+    node.__name__ = stage
+    return node
+
+
+def _unless_failed(route: Callable[[CaseState], str]) -> Callable[[CaseState], str]:
+    def edge(state: CaseState) -> str:
+        return END if state.get("error") else route(state)
+
+    return edge
+
+
+def _to(target: str) -> Callable[[CaseState], str]:
+    return _unless_failed(lambda _: target)
+
+
 def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
     builder = StateGraph(CaseState, context_schema=Context)
-    builder.add_node("create_approval", create_approval)
+    for name, fn in (
+        ("load", nodes.load),
+        ("consent", nodes.consent),
+        ("reply_gate", nodes.reply_gate),
+        ("draft", nodes.draft),
+        ("guardrail", nodes.guardrail),
+        ("auto_send", nodes.auto_send),
+        ("create_approval", create_approval),
+        ("dispatch", nodes.dispatch),
+    ):
+        builder.add_node(name, _guarded(name, fn))
+    builder.add_node("risk", nodes.risk)
+    # Not guarded: interrupt() raises to pause, and this node has no side
+    # effects to fail.
     builder.add_node("await_approval", await_approval)
-    builder.add_edge(START, "create_approval")
-    builder.add_edge("create_approval", "await_approval")
-    # Approve and reject both end here for now: the send itself still runs
-    # in the approvals route's executor. §4's dispatch node hangs off the
-    # approved branch; a rejection must keep reaching END so no thread is
-    # left paused forever.
-    builder.add_edge("await_approval", END)
+
+    builder.add_edge(START, "load")
+    builder.add_conditional_edges("load", _to("consent"))
+    builder.add_conditional_edges(
+        "consent",
+        _unless_failed(route_intent),
+        {
+            "human_review": END,
+            "retrieval": "reply_gate",
+            # Placeholder edges, see _AGENT_FOR_INTENT.
+            "booking": "reply_gate",
+            "records": "reply_gate",
+            "prescription": "reply_gate",
+            "onboarding": "reply_gate",
+            END: END,
+        },
+    )
+    builder.add_conditional_edges(
+        "reply_gate",
+        _unless_failed(lambda s: END if s.get("dispatch_result") == "not_worthy" else "draft"),
+    )
+    builder.add_conditional_edges("draft", _to("guardrail"))
+    builder.add_conditional_edges(
+        "guardrail",
+        _unless_failed(lambda s: END if s.get("dispatch_result") == "blocked" else "risk"),
+    )
+    builder.add_conditional_edges("risk", auto_send_or_approve)
+    builder.add_conditional_edges(
+        "auto_send",
+        _unless_failed(lambda s: "create_approval" if s.get("delivery_error") else END),
+    )
+    builder.add_conditional_edges("create_approval", _to("await_approval"))
+    # A rejection must reach END too, or the thread stays paused forever.
+    builder.add_conditional_edges(
+        "await_approval", lambda s: "dispatch" if s["approval_status"] == "approved" else END
+    )
+    builder.add_edge("dispatch", END)
     return builder
 
 
@@ -123,8 +283,6 @@ async def run(tid: str, graph_input: CaseState | Command) -> dict[str, Any]:
     next one starts, so create_approval is recorded as done before
     await_approval runs.
     """
-    from app.database import AsyncSessionLocal
-
     async with open_checkpointer() as saver:
         graph = build_graph().compile(checkpointer=saver)
         return await graph.ainvoke(
@@ -135,13 +293,46 @@ async def run(tid: str, graph_input: CaseState | Command) -> dict[str, Any]:
         )
 
 
+async def start(
+    task_id: UUID,
+    email_id: UUID,
+    actor_id: UUID,
+    gate: TaskRoutingGateResult,
+    confidence: float,
+) -> None:
+    """Run the reply graph for one ingested email.
+
+    Same signature as email_service.draft_reply_detached, which it replaces
+    when agentic_pipeline_enabled is on, so both schedulers swap one callable
+    for the other. actor_id is the ingesting user; the graph acts as the
+    agent actor instead (Context), so it is unused here.
+    """
+    tid = thread_id("email", str(email_id))
+    try:
+        await run(
+            tid,
+            {
+                "channel": "email",
+                # Email.id, never external_id: that is null for direct ingest.
+                "source_id": str(email_id),
+                "task_id": str(task_id),
+                "routing_outcome": gate.outcome.value,
+                "triage_confidence": confidence,
+                "revision_count": 0,
+            },
+        )
+    except Exception:
+        # Node failures are handled inside the graph (_guarded). This catches
+        # what is left, the checkpointer or the run itself failing, which has
+        # nobody to raise to from a background task.
+        logger.exception("Agent graph run failed for thread %s", tid)
+
+
 async def resume(tid: str, decision: dict) -> None:
-    """BackgroundTasks entry point for an approve/reject decision."""
+    """Scheduled entry point for an approve/reject decision."""
     try:
         await run(tid, Command(resume=decision))
     except Exception:
         # A background task's exception goes nowhere. The approval row is
-        # already decided and is what the queue shows; the thread stays
-        # paused and this log line is the only trace until §4.1's failure
-        # path (audit event + Task) lands.
+        # already decided and is what the queue shows.
         logger.exception("Agent graph resume failed for thread %s", tid)

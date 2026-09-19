@@ -133,6 +133,33 @@ def detached_sessionmaker(db_session):
 
 
 @pytest_asyncio.fixture
+def agent_saver(detached_sessionmaker, monkeypatch):
+    """Keeps real agent graph runs (graph.start / graph.resume) inside the test.
+
+    graph.run opens the Postgres checkpointer and the app engine. In tests the
+    checkpoint goes to an InMemorySaver shared by every run in the test, so a
+    resume finds its paused thread, and node sessions come from
+    detached_sessionmaker, so they see this test's rows. Returns the saver so
+    a test can read a thread's final state.
+    """
+    from contextlib import asynccontextmanager
+
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    from app.agents import graph as agent_graph
+
+    saver = InMemorySaver()
+
+    @asynccontextmanager
+    async def in_memory():
+        yield saver
+
+    monkeypatch.setattr(agent_graph, "open_checkpointer", in_memory)
+    monkeypatch.setattr(agent_graph, "AsyncSessionLocal", detached_sessionmaker)
+    return saver
+
+
+@pytest_asyncio.fixture
 async def patient(db_session: AsyncSession) -> Patient:
     p = Patient(
         mrn="MRN-TESTFIX01",
@@ -148,7 +175,7 @@ async def patient(db_session: AsyncSession) -> Patient:
 
 
 @pytest_asyncio.fixture
-async def client(db_session, detached_sessionmaker, monkeypatch):
+async def client(db_session, detached_sessionmaker, agent_saver, monkeypatch):
     # Reuses db_session's own connection/transaction for every request
     # instead of opening a fresh session per call. Required so data written
     # via db_session (or an earlier request) is visible to routes that query
@@ -164,6 +191,8 @@ async def client(db_session, detached_sessionmaker, monkeypatch):
     # in-memory database on SQLite, and outside this test's transaction on
     # Postgres, so the draft would silently find no rows.
     monkeypatch.setattr("app.services.email_service.AsyncSessionLocal", detached_sessionmaker)
+    # With AGENTIC_PIPELINE_ENABLED the same ingest schedules the agent graph
+    # instead, which agent_saver keeps in this test's transaction too.
 
     app.dependency_overrides[get_db] = override_get_db
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:

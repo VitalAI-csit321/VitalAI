@@ -52,17 +52,27 @@ async def _noop_run(tid: str, graph_input) -> None:
 
 
 async def _approval_start(tid: str) -> None:
-    """Run the real graph until it pauses."""
+    """Seed an ingested email, then run the real graph until it pauses."""
+    from unittest.mock import AsyncMock
+    from uuid import UUID
+
+    import app.rag.retrieval
     from app.agents import graph
     from app.agents.checkpointer import open_checkpointer
+    from app.database import AsyncSessionLocal
+    from app.services import email_service
+    from tests.agent_fakes import FakeLLM, graph_input, seed_email
+
+    # This interpreter has no pytest monkeypatch; nothing here must reach a model.
+    email_service.get_llm = lambda: FakeLLM()
+    app.rag.retrieval.retrieve = AsyncMock(return_value=[])
 
     async with open_checkpointer() as saver:
         await saver.setup()
-    channel, source_id = tid.split(":", 1)
-    result = await graph.run(
-        tid,
-        {"channel": channel, "source_id": source_id, "draft_text": "Cross-process draft."},
-    )
+    _, source_id = tid.split(":", 1)
+    async with AsyncSessionLocal() as db:
+        email, task = await seed_email(db, email_id=UUID(source_id))
+    result = await graph.run(tid, graph_input(email, task))
     assert "__interrupt__" in result, result
 
 
