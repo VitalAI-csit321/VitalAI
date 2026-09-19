@@ -1,6 +1,5 @@
 from uuid import UUID
 
-import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,8 +8,6 @@ from app.auth.permissions import APPROVE_ACTION
 from app.config import settings
 from app.database import get_db
 from app.models.approval import ApprovalRequest, ApprovalStatus
-from app.models.email import Email
-from app.models.task import Task
 from app.models.user import User
 from app.schemas.approval import (
     ApprovalApproveBody,
@@ -18,7 +15,7 @@ from app.schemas.approval import (
     ApprovalRejectBody,
     ApprovalRequestOut,
 )
-from app.services import approval_service, assignment_service, outlook_auth, outlook_client
+from app.services import approval_service, assignment_service, email_service
 from app.services.approval_service import ApprovalAlreadyDecidedError, ApprovalNotFoundError
 from app.services.assignment_service import (
     AssignmentExistsError,
@@ -26,16 +23,10 @@ from app.services.assignment_service import (
     NotADoctorError,
     PatientNotFoundError,
 )
-from app.services.audit_service import record_event
+from app.services.email_service import EmailSendError
 from app.services.outlook_auth import OutlookAuthRequiredError
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
-
-
-class EmailSendError(Exception):
-    """Outlook refused an approved reply. The approval stays decided, but the
-    task is deliberately left draft_sent=False so the failure is visible rather
-    than recorded as a delivered message."""
 
 
 async def _execute_patient_assignment_suggested(
@@ -53,58 +44,17 @@ async def _execute_patient_assignment_suggested(
 async def _execute_email_draft_reply(
     db: AsyncSession, request: ApprovalRequest, actor: User
 ) -> None:
-    """Send an approved draft reply.
-
-    With the Outlook connector disabled this stays what it always was: "sent"
-    is DB-level state, no message leaves the system. With it enabled the draft
-    is delivered through Graph first, and only a successful send sets
-    draft_sent, so a delivery failure can never be recorded as a sent reply.
-    """
+    """Send an approved draft reply, exactly what the human approved."""
     payload = request.resolved_payload or request.payload
-    draft = payload.get("draft")
-    email_id = payload.get("email_id")
-    task_id = payload.get("task_id")
-    delivered = False
-
-    # Read the delivery record before acting. A retried executor or a resumed
-    # graph can land here twice on one approval, and draft_sent is the only
-    # thing that knows the patient already got this reply.
-    task = await db.get(Task, UUID(task_id)) if task_id is not None else None
-    if task is not None and task.draft_sent:
-        return
-
-    if settings.outlook_enabled and email_id is not None and draft:
-        email = await db.get(Email, UUID(email_id))
-        if email is not None and email.external_id:
-            token = await outlook_auth.get_access_token()
-            try:
-                await outlook_client.send_reply(token, email.external_id, draft)
-            except httpx.HTTPError as exc:
-                raise EmailSendError(
-                    f"Outlook rejected the reply to message {email.external_id}: {exc}"
-                ) from exc
-            delivered = True
-
-    # Only reached on a successful send: EmailSendError propagates above, so a
-    # failed delivery never records draft_sent.
-    if task is not None:
-        task.draft_sent = True
-        if draft is not None:
-            task.draft_text = draft
-    await record_event(
+    await email_service.deliver_reply(
         db,
+        email_id=payload.get("email_id"),
+        task_id=payload.get("task_id"),
+        draft=payload.get("draft"),
         actor=actor,
         case_id=request.case_id,
-        action="email.sent",
-        details={
-            "email_id": email_id,
-            "approval_id": str(request.id),
-            # Distinguishes a real Graph delivery from the simulated path, so
-            # the audit log does not claim more than actually happened.
-            "delivered": delivered,
-        },
+        approval_id=request.id,
     )
-    await db.commit()
 
 
 def _schedule_agent_resume(

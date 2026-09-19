@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
+import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -20,10 +21,11 @@ from app.models.email import Email
 from app.models.task import Task, TaskCategory, TaskItemStatus, TaskPriority, TaskSource
 from app.models.user import User
 from app.schemas.email import EmailIngestRequest
-from app.services import approval_service
+from app.services import approval_service, outlook_auth, outlook_client
 from app.services.audit_service import record_event
 from app.services.content_classifier import classify_content
-from app.services.reply_gate import ReplyWorthiness, evaluate_reply_worthiness
+from app.services.outlook_auth import OutlookAuthRequiredError
+from app.services.reply_gate import ReplyGateResult, ReplyWorthiness, evaluate_reply_worthiness
 from app.services.task_routing_gate import (
     TaskRoutingGateResult,
     TaskRoutingOutcome,
@@ -52,6 +54,11 @@ def _clinical_categories() -> frozenset[TaskCategory]:
 
 class CaseNotFoundError(Exception):
     """Raised when EmailIngestRequest.case_id is given but doesn't exist."""
+
+
+class EmailSendError(Exception):
+    """Outlook refused a reply. The task is deliberately left draft_sent=False
+    so the failure is visible rather than recorded as a delivered message."""
 
 
 def _priority_for_gate(gate: TaskRoutingGateResult) -> TaskPriority:
@@ -194,12 +201,205 @@ async def _generate_org_grounded_reply(
     return text, True
 
 
+def approval_payload(
+    email_id: str | UUID, task_id: str | UUID, draft: str | None, delivery_error: str | None
+) -> dict:
+    payload = {"email_id": str(email_id), "task_id": str(task_id), "draft": draft}
+    if delivery_error is not None:
+        payload["delivery_error"] = delivery_error
+    return payload
+
+
 async def _persist_draft(db: AsyncSession, task: Task, outcome: EmailDraftOutcome) -> None:
     task.draft_text = outcome.draft_text
     task.draft_approval_id = UUID(outcome.approval_id) if outcome.approval_id else None
     task.draft_sent = outcome.sent
     await db.commit()
     await db.refresh(task)
+
+
+def auto_send_eligible(
+    *,
+    verdict: ReplyWorthiness,
+    gate_outcome: TaskRoutingOutcome,
+    confidence: float,
+    grounded: bool,
+    category: TaskCategory | None,
+) -> bool:
+    """Whether a draft may go out with no human in the loop.
+
+    The one definition both the flag-off draft_reply and the agent graph call,
+    so the two paths can never disagree about what auto-sends.
+
+    With the Outlook connector live, "sent" stops being a DB-level simulation
+    and becomes a real message leaving for a real patient inbox, so confidence
+    alone is not enough. Every one of these must hold: the LLM judged the email
+    worth replying to (not merely UNCERTAIN), the routing gate is fully
+    confident (not just flagged), the draft is grounded in retrieved org
+    content rather than a generic guess, and the category isn't clinical --
+    prescription/results/referral replies never auto-send regardless of
+    confidence, per Amin's explicit call.
+    """
+    return (
+        settings.email_auto_send_enabled
+        and verdict == ReplyWorthiness.WORTHY
+        and gate_outcome == TaskRoutingOutcome.AUTO_ROUTED
+        and confidence >= settings.task_routing_auto_threshold
+        and grounded
+        and category not in _clinical_categories()
+    )
+
+
+async def deliver_reply(
+    db: AsyncSession,
+    *,
+    email_id: str | UUID | None,
+    task_id: str | UUID | None,
+    draft: str | None,
+    actor: User,
+    case_id: UUID | None,
+    approval_id: str | UUID | None = None,
+) -> None:
+    """Send a reply. The only caller of outlook_client.send_reply in the app.
+
+    With the Outlook connector disabled "sent" is DB-level state and no message
+    leaves the system. With it enabled the draft is delivered through Graph
+    first, and only a successful send sets draft_sent, so a delivery failure
+    can never be recorded as a sent reply.
+
+    Raises EmailSendError or OutlookAuthRequiredError, both before anything is
+    written, leaving draft_sent False.
+    """
+    delivered = False
+
+    # Read the delivery record before acting. A retried executor or a resumed
+    # graph can land here twice on one approval, and draft_sent is the only
+    # thing that knows the patient already got this reply.
+    task = await db.get(Task, UUID(str(task_id))) if task_id is not None else None
+    if task is not None and task.draft_sent:
+        return
+
+    if settings.outlook_enabled and email_id is not None and draft:
+        email = await db.get(Email, UUID(str(email_id)))
+        if email is not None and email.external_id:
+            token = await outlook_auth.get_access_token()
+            try:
+                await outlook_client.send_reply(token, email.external_id, draft)
+            except httpx.HTTPError as exc:
+                raise EmailSendError(
+                    f"Outlook rejected the reply to message {email.external_id}: {exc}"
+                ) from exc
+            delivered = True
+
+    # Only reached on a successful send: EmailSendError propagates above, so a
+    # failed delivery never records draft_sent.
+    if task is not None:
+        task.draft_sent = True
+        if draft is not None:
+            task.draft_text = draft
+    await record_event(
+        db,
+        actor=actor,
+        case_id=case_id,
+        action="email.sent",
+        details={
+            "email_id": str(email_id) if email_id is not None else None,
+            "approval_id": str(approval_id) if approval_id is not None else None,
+            # Distinguishes a real Graph delivery from the simulated path, so
+            # the audit log does not claim more than actually happened.
+            "delivered": delivered,
+        },
+    )
+    await db.commit()
+
+
+async def check_reply_worthiness(db: AsyncSession, email: Email, actor: User) -> ReplyGateResult:
+    return await evaluate_reply_worthiness(
+        db, get_llm(), sender=email.sender, subject=email.subject, body=email.body, actor=actor
+    )
+
+
+async def mark_not_worthy(db: AsyncSession, task: Task, reason: str) -> None:
+    """Nothing to reply to: park the task at low priority, saying why."""
+    task.priority = TaskPriority.LOW
+    task.handover_context = reason
+    await _persist_draft(db, task, EmailDraftOutcome(None, None, False, False))
+
+
+async def generate_draft(
+    db: AsyncSession, task: Task, email: Email, actor: User
+) -> tuple[str, bool]:
+    """Draft a reply. Returns (text, grounded).
+
+    Clinical categories on a case with a known patient answer from that
+    patient's records; everything else is grounded in the org profile corpus.
+    """
+    if task.category in _clinical_categories() and email.case_id is not None:
+        case = await db.get(IntakeCase, email.case_id)
+        if case is not None and case.patient_id is not None:
+            from app.rag.answer import answer_question
+            from app.rag.retrieval import RetrievalContext
+
+            ctx = RetrievalContext(
+                patient_id=case.patient_id,
+                allowed_scopes=["general", "restricted"],
+                role=actor.role.value,
+                actor=actor.email,
+            )
+            result = await answer_question(db, email.body, ctx, actor)
+            return result.answer, True
+    return await _generate_org_grounded_reply(db, email, actor)
+
+
+async def persist_draft(
+    db: AsyncSession,
+    task_id: str | UUID,
+    draft_text: str | None,
+    approval_id: str | None = None,
+    sent: bool = False,
+) -> None:
+    task = await db.get(Task, UUID(str(task_id)))
+    if task is not None:
+        await _persist_draft(db, task, EmailDraftOutcome(draft_text, approval_id, sent, False))
+
+
+async def record_reply_dispatch(
+    db: AsyncSession,
+    *,
+    task_id: str | UUID | None,
+    case_id: str | UUID | None,
+    actor: User,
+    approval_id: str | None,
+    delivery_error: str | None,
+) -> bool:
+    """After an approved reply's executor ran: record what actually happened.
+
+    Reads draft_sent, never sends -- deliver_reply already ran (or failed) in
+    the approvals route before this. A failed delivery leaves the task pending
+    with the reason in handover_context, since the only recovery is a human
+    sending it by hand. Returns whether the reply was sent.
+    """
+    task = await db.get(Task, UUID(str(task_id))) if task_id is not None else None
+    sent = bool(task is not None and task.draft_sent)
+    if task is not None and not sent:
+        task.handover_context = (
+            f"Approved reply was not delivered: {delivery_error or 'unknown error'}. "
+            "Send it by hand; re-approving is not possible."
+        )
+    await record_event(
+        db,
+        actor=actor,
+        case_id=UUID(str(case_id)) if case_id is not None else None,
+        action="email.dispatch_recorded",
+        details={
+            "task_id": str(task_id) if task_id is not None else None,
+            "approval_id": approval_id,
+            "sent": sent,
+            "delivery_error": delivery_error,
+        },
+    )
+    await db.commit()
+    return sent
 
 
 async def draft_reply(
@@ -215,6 +415,9 @@ async def draft_reply(
     queue as-is, per the spec. Whatever outcome results is persisted onto
     the task row (draft_text/draft_approval_id/draft_sent) so it survives
     past this one request and can be surfaced later by the inbox.
+
+    The agent graph (app/agents) runs the same steps as nodes, calling the
+    same functions; keep the two in step.
     """
     if gate.outcome == TaskRoutingOutcome.HUMAN_REVIEW:
         outcome = EmailDraftOutcome(draft_text=None, approval_id=None, sent=False, blocked=False)
@@ -222,37 +425,11 @@ async def draft_reply(
         return outcome
 
     try:
-        reply_verdict = await evaluate_reply_worthiness(
-            db, get_llm(), sender=email.sender, subject=email.subject, body=email.body, actor=actor
-        )
+        reply_verdict = await check_reply_worthiness(db, email, actor)
         if reply_verdict.verdict == ReplyWorthiness.NOT_WORTHY:
-            task.priority = TaskPriority.LOW
-            task.handover_context = reply_verdict.reason
-            outcome = EmailDraftOutcome(
-                draft_text=None, approval_id=None, sent=False, blocked=False
-            )
-            await _persist_draft(db, task, outcome)
-            return outcome
-
-        if task.category in _clinical_categories() and email.case_id is not None:
-            case = await db.get(IntakeCase, email.case_id)
-            if case is not None and case.patient_id is not None:
-                from app.rag.answer import answer_question
-                from app.rag.retrieval import RetrievalContext
-
-                ctx = RetrievalContext(
-                    patient_id=case.patient_id,
-                    allowed_scopes=["general", "restricted"],
-                    role=actor.role.value,
-                    actor=actor.email,
-                )
-                result = await answer_question(db, email.body, ctx, actor)
-                draft_text = result.answer
-                grounded = True
-            else:
-                draft_text, grounded = await _generate_org_grounded_reply(db, email, actor)
-        else:
-            draft_text, grounded = await _generate_org_grounded_reply(db, email, actor)
+            await mark_not_worthy(db, task, reply_verdict.reason)
+            return EmailDraftOutcome(draft_text=None, approval_id=None, sent=False, blocked=False)
+        draft_text, grounded = await generate_draft(db, task, email, actor)
     except Exception:
         # A live LLM/retrieval outage (Ollama timeout, connection drop, etc.)
         # must degrade to "needs a manual reply", not crash the ingest
@@ -271,34 +448,38 @@ async def draft_reply(
         await _persist_draft(db, task, outcome)
         return outcome
 
-    # With the Outlook connector live, "sent" stops being a DB-level simulation
-    # and becomes a real message leaving for a real patient inbox, so the old
-    # confidence-only shortcut isn't enough on its own. The reply-worthiness
-    # gate lets it come back, gated on every one of: the LLM judged the email
-    # worth replying to (not merely UNCERTAIN), the routing gate is fully
-    # confident (not just flagged), the draft is actually grounded in
-    # retrieved org content rather than a generic guess, and the category
-    # isn't clinical -- prescription/results/referral replies never auto-send
-    # regardless of confidence, per Amin's explicit call.
-    safe_to_send_immediately = (
-        settings.email_auto_send_enabled
-        and reply_verdict.verdict == ReplyWorthiness.WORTHY
-        and gate.outcome == TaskRoutingOutcome.AUTO_ROUTED
-        and confidence >= settings.task_routing_auto_threshold
-        and grounded
-        and task.category not in _clinical_categories()
-    )
-    if safe_to_send_immediately:
-        outcome = EmailDraftOutcome(
-            draft_text=draft_text, approval_id=None, sent=True, blocked=False
-        )
-        await _persist_draft(db, task, outcome)
-        return outcome
+    delivery_error = None
+    if auto_send_eligible(
+        verdict=reply_verdict.verdict,
+        gate_outcome=gate.outcome,
+        confidence=confidence,
+        grounded=grounded,
+        category=task.category,
+    ):
+        try:
+            await deliver_reply(
+                db,
+                email_id=email.id,
+                task_id=task.id,
+                draft=draft_text,
+                actor=actor,
+                case_id=email.case_id,
+            )
+        except (EmailSendError, OutlookAuthRequiredError) as exc:
+            # A failed auto-send must not vanish: the draft goes to the human
+            # queue with the reason, and draft_sent stays False.
+            delivery_error = str(exc)
+        else:
+            outcome = EmailDraftOutcome(
+                draft_text=draft_text, approval_id=None, sent=True, blocked=False
+            )
+            await _persist_draft(db, task, outcome)
+            return outcome
 
     approval = await approval_service.create_approval_request(
         db,
         action_type="email.draft_reply",
-        payload={"email_id": str(email.id), "task_id": str(task.id), "draft": draft_text},
+        payload=approval_payload(email.id, task.id, draft_text, delivery_error),
         case_id=email.case_id,
         requested_by=actor,
     )
