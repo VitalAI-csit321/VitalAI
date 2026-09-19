@@ -366,10 +366,16 @@ async def test_flag_off_never_resolves_identity_even_for_a_records_request(
 
     assert response.status_code == 201, response.text
     assert llm.identity_prompts == []
-    events = (await db_session.execute(select(AuditEvent))).scalars().all()
-    assert [e for e in events if e.action == "agent.identity_resolved"] == []
     task = await db_session.get(Task, UUID(response.json()["task_id"]))
     await db_session.refresh(task)
+    # Scoped to this case: the cross-process worker commits agent audit rows
+    # of its own that db_session's rollback cannot remove.
+    events = (
+        (await db_session.execute(select(AuditEvent).where(AuditEvent.case_id == task.case_id)))
+        .scalars()
+        .all()
+    )
+    assert [e for e in events if e.action == "agent.identity_resolved"] == []
     assert task.draft_text == DRAFT
 
 

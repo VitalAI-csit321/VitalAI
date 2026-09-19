@@ -224,7 +224,7 @@ async def test_promotion_with_explicit_consent_is_audited(
     assert response.json()["is_provisional"] is False
     from app.models.audit import AuditEvent
 
-    (event,) = (
+    rows = (
         (
             await db_session.execute(
                 select(AuditEvent).where(AuditEvent.action == "patient.promoted")
@@ -233,7 +233,8 @@ async def test_promotion_with_explicit_consent_is_audited(
         .scalars()
         .all()
     )
-    assert event.details["patient_id"] == str(patient.id)
+    # Scoped to this patient: audit rows committed by another process stay.
+    (event,) = [e for e in rows if e.details.get("patient_id") == str(patient.id)]
     assert event.details["before"]["is_provisional"] is True
     assert event.details["after"]["is_provisional"] is False
 
