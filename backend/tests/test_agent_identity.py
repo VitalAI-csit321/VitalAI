@@ -340,6 +340,39 @@ async def test_ambiguous_family_request_goes_to_staff_unlinked(
     assert case.patient_id is None
 
 
+async def test_flag_off_never_resolves_identity_even_for_a_records_request(
+    client, front_desk_headers, db_session, monkeypatch
+):
+    """Gate (a): identity is graph-only. Flag off, a records request from an
+    unknown sender is drafted and queued exactly as it was before."""
+    monkeypatch.setattr(settings, "agentic_pipeline_enabled", False)
+    monkeypatch.setattr("app.rag.retrieval.retrieve", AsyncMock(return_value=[]))
+    llm = FakeLLM(
+        category="medical_records_request",
+        identity={"name": "Alex Stranger", "dob": "1990-01-01"},
+    )
+    monkeypatch.setattr("app.services.email_service.get_llm", lambda: llm)
+
+    response = await client.post(
+        "/api/v1/email/ingest",
+        json={
+            "sender": "alex@example.com",
+            "recipient": "clinic@example.com",
+            "subject": "Records",
+            "body": "Please send me my records. Alex Stranger, born 1990-01-01.",
+        },
+        headers=front_desk_headers,
+    )
+
+    assert response.status_code == 201, response.text
+    assert llm.identity_prompts == []
+    events = (await db_session.execute(select(AuditEvent))).scalars().all()
+    assert [e for e in events if e.action == "agent.identity_resolved"] == []
+    task = await db_session.get(Task, UUID(response.json()["task_id"]))
+    await db_session.refresh(task)
+    assert task.draft_text == DRAFT
+
+
 @pytest.mark.parametrize("flag", [False, True], ids=["flag_off", "flag_on"])
 async def test_general_question_from_unknown_sender_no_patient_no_extraction(
     client, front_desk_headers, db_session, agent_saver, monkeypatch, flag

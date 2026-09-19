@@ -72,4 +72,6 @@ def test_total_route_count():
     # 91 as of the consent form snapshot work: +2 for
     # POST /consent/{consent_id}/resolve-review and GET /audit/verify.
     # 92 as of the corpus-as-documents work: +1 for GET /rag/documents.
-    assert len({(e.method, e.path) for e in registry}) == 92
+    # 93 as of the provisional-patient work (build spec 9.0b): +1 for
+    # POST /patients/{patient_id}/promote, which requires REGISTER_PATIENT.
+    assert len({(e.method, e.path) for e in registry}) == 93

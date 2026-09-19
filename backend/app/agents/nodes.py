@@ -174,28 +174,21 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
                 feedback=feedback,
             )
         # Nothing is retrieved: the reply asks for details, it states none.
-        update = {"draft_text": text, "grounded": False}
-        return (
-            update | {"revision_count": state.get("revision_count", 0) + 1} if revising else update
-        )
-    async with runtime.context.session_factory() as db:
-        task, email, actor = await _rows(db, state, runtime)
-        retry = email_service.reformulator(db, actor)
-        text, grounded = await email_service.generate_draft(
-            db,
-            task,
-            email,
-            actor,
-            feedback=feedback,
-            reformulate=retry,
-        )
-    update: dict = {
-        "draft_text": text,
-        "grounded": grounded,
-        "retrieval_attempts": retry.attempts,
-        "reformulated_query": retry.query,
-        "retrieval_sufficient": retry.sufficient,
-    }
+        update: dict = {"draft_text": text, "grounded": False}
+    else:
+        async with runtime.context.session_factory() as db:
+            task, email, actor = await _rows(db, state, runtime)
+            retry = email_service.reformulator(db, actor)
+            text, grounded = await email_service.generate_draft(
+                db, task, email, actor, feedback=feedback, reformulate=retry
+            )
+        update = {
+            "draft_text": text,
+            "grounded": grounded,
+            "retrieval_attempts": retry.attempts,
+            "reformulated_query": retry.query,
+            "retrieval_sufficient": retry.sufficient,
+        }
     if revising:
         update["revision_count"] = state.get("revision_count", 0) + 1
     return update
