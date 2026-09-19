@@ -10,12 +10,14 @@ from langgraph.errors import GraphBubbleUp
 from langgraph.graph import END, START, StateGraph
 from langgraph.runtime import Runtime
 from langgraph.types import Command, interrupt
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents import nodes
 from app.agents.checkpointer import open_checkpointer
 from app.agents.state import CaseState, Context
 from app.database import AsyncSessionLocal
+from app.models.approval import ApprovalRequest
 from app.models.task import TaskCategory
 from app.models.user import User
 from app.services import approval_service, email_service, task_service
@@ -137,8 +139,6 @@ _HUMAN_ONLY = frozenset({TaskCategory.URGENT_EMERGENCY, TaskCategory.COMPLAINT_E
 # PLACEHOLDER EDGES. These agents arrive in §9-§12. Until each one lands its
 # intent takes the existing draft path, exactly as the flag-off pipeline does,
 # so the two stay in parity. Replace the entry in _PATHS when its agent exists.
-# The provisional-patient refusal for booking/records (§9) belongs here too,
-# once those agents exist; today both paths draft the same reply for them.
 _AGENT_FOR_INTENT = {
     TaskCategory.APPOINTMENT_REQUEST: "booking",
     TaskCategory.MEDICAL_RECORDS_REQUEST: "records",
@@ -146,18 +146,34 @@ _AGENT_FOR_INTENT = {
     TaskCategory.NEW_PATIENT_ONBOARDING: "onboarding",
 }
 
+# §9: a provisional (not yet verified) patient must not reach these at all.
+# Checked here, before any agent runs, not left to each agent to remember.
+# Nothing creates provisional patients until onboarding (§9) lands, so this
+# cannot diverge from the flag-off path yet.
+_NOT_FOR_PROVISIONAL = frozenset({"booking", "records"})
+
 
 def route_intent(state: CaseState) -> str:
     """Which agent handles this message. Pure function of state."""
     intent = TaskCategory(state["intent"]) if state.get("intent") else None
     if state.get("routing_outcome") == TaskRoutingOutcome.HUMAN_REVIEW or intent in _HUMAN_ONLY:
         return "human_review"
-    return _AGENT_FOR_INTENT.get(intent, "retrieval") if intent else "retrieval"
+    agent = _AGENT_FOR_INTENT.get(intent, "retrieval") if intent else "retrieval"
+    if state.get("is_provisional") and agent in _NOT_FOR_PROVISIONAL:
+        return "human_review"
+    return agent
 
 
 def auto_send_or_approve(state: CaseState) -> str:
     """The same predicate draft_reply uses, so both paths auto-send the same
-    emails and nothing else."""
+    emails and nothing else.
+
+    Plus §2's rule that a HIGH risk tier always reaches a human. Every email
+    reply is LOW today (the score keys on the action string), so this cannot
+    make the two paths disagree yet; it is here for branches that are HIGH by
+    rule, such as Prescription (§5)."""
+    if state.get("risk_tier") == "high":
+        return "create_approval"
     eligible = email_service.auto_send_eligible(
         verdict=ReplyWorthiness(state["reply_verdict"]),
         gate_outcome=TaskRoutingOutcome(state["routing_outcome"]),
@@ -339,18 +355,54 @@ async def start(
                 "revision_count": 0,
             },
         )
-    except Exception:
+    except Exception as exc:
         # Node failures are handled inside the graph (_guarded). This catches
         # what is left, the checkpointer or the run itself failing, which has
         # nobody to raise to from a background task.
         logger.exception("Agent graph run failed for thread %s", tid)
+        await _record_run_failure("run", exc, task_id=task_id)
 
 
 async def resume(tid: str, decision: dict) -> None:
     """Scheduled entry point for an approve/reject decision."""
     try:
         await run(tid, Command(resume=decision))
-    except Exception:
+    except Exception as exc:
         # A background task's exception goes nowhere. The approval row is
-        # already decided and is what the queue shows.
+        # already decided and is what the queue shows; the Task says the
+        # thread did not finish.
         logger.exception("Agent graph resume failed for thread %s", tid)
+        await _record_run_failure("resume", exc, tid=tid)
+
+
+async def _record_run_failure(
+    stage: str, exc: Exception, *, task_id: UUID | None = None, tid: str | None = None
+) -> None:
+    """The failure path for what _guarded cannot see: the checkpointer or the
+    run failing outside any node. Same outcome, audit event plus a visible
+    Task. A resume knows only its thread, so its Task comes off the approval
+    row that thread created."""
+    try:
+        async with AsyncSessionLocal() as db:
+            if task_id is None and tid is not None:
+                row = (
+                    await db.execute(
+                        select(ApprovalRequest)
+                        .where(ApprovalRequest.external_ref == tid)
+                        .order_by(ApprovalRequest.created_at.desc())
+                        .limit(1)
+                    )
+                ).scalar_one_or_none()
+                if row is not None and row.payload.get("task_id"):
+                    task_id = UUID(row.payload["task_id"])
+            actor = await get_or_create_agent_actor(db)
+            await task_service.record_agent_failure(
+                db,
+                task_id=task_id,
+                case_id=None,
+                actor=actor,
+                stage=stage,
+                error=f"{type(exc).__name__}: {exc}",
+            )
+    except Exception:
+        logger.exception("Could not record the %s failure for %s", stage, tid or task_id)

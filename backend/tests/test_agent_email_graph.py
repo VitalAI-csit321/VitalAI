@@ -21,6 +21,7 @@ from app.agents.graph import build_graph, make_context, route_intent, run_config
 from app.config import settings
 from app.models.approval import ApprovalRequest, ApprovalStatus
 from app.models.audit import AuditEvent
+from app.models.email import Email
 from app.models.task import Task, TaskCategory, TaskItemStatus, TaskPriority
 from app.services import outlook_sync_service
 from app.services.outlook_auth import OutlookAuthRequiredError
@@ -436,3 +437,164 @@ async def test_failed_approved_send_still_resumes_the_thread_to_end(
         f"/api/v1/approvals/{approval.id}/approve", json={}, headers=admin_headers
     )
     assert again.status_code == 409
+
+
+# --- gaps closed after the first review ------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("intent", "expected"),
+    [
+        # §9: a provisional patient cannot reach Booking or Records at all.
+        ("appointment_request", "human_review"),
+        ("medical_records_request", "human_review"),
+        # Everything else is unaffected by provisional status.
+        ("general_administrative", "retrieval"),
+        ("prescription_renewal", "prescription"),
+    ],
+)
+def test_route_intent_keeps_provisional_patients_out_of_booking_and_records(intent, expected):
+    state = {"intent": intent, "routing_outcome": "auto_routed", "is_provisional": True}
+    assert route_intent(state) == expected
+
+
+def test_high_risk_tier_forces_approval_even_when_auto_send_eligible():
+    from app.agents.graph import auto_send_or_approve
+
+    eligible = {
+        "reply_verdict": "worthy",
+        "routing_outcome": "auto_routed",
+        "triage_confidence": 0.95,
+        "grounded": True,
+        "intent": "general_administrative",
+    }
+    assert auto_send_or_approve({**eligible, "risk_tier": "low"}) == "auto_send"
+    assert auto_send_or_approve({**eligible, "risk_tier": "high"}) == "create_approval"
+
+
+async def test_create_approval_node_writes_one_row_and_persists_it_on_the_task(
+    detached_sessionmaker, db_session
+):
+    email, task = await seed_email(db_session)
+    state = {
+        **graph_input(email, task),
+        "case_id": str(email.case_id),
+        "draft_text": DRAFT,
+        "risk_tier": "low",
+        "delivery_error": "graph down",
+    }
+
+    update = await agent_graph.create_approval(state, await _runtime(detached_sessionmaker))
+
+    (approval,) = await _approvals(db_session, task)
+    assert update == {"approval_request_id": str(approval.id), "approval_status": "pending"}
+    assert approval.external_ref == thread_id("email", str(email.id))
+    assert approval.payload["draft"] == DRAFT
+    assert approval.payload["delivery_error"] == "graph down"
+    await db_session.refresh(task)
+    assert task.draft_approval_id == approval.id
+    assert task.draft_text == DRAFT
+
+
+@pytest.mark.parametrize(
+    ("decision", "expected"),
+    [
+        ({"approved": True}, {"approval_status": "approved", "delivery_error": None}),
+        (
+            {"approved": True, "draft": "Edited."},
+            {"approval_status": "approved", "delivery_error": None, "draft_text": "Edited."},
+        ),
+        (
+            {"approved": True, "delivered": False, "error": "502"},
+            {"approval_status": "approved", "delivery_error": "502"},
+        ),
+        ({"approved": False}, {"approval_status": "rejected", "delivery_error": None}),
+    ],
+)
+async def test_await_approval_node_maps_the_decision_to_state(monkeypatch, decision, expected):
+    # interrupt() needs a running graph; the node's own logic is the mapping.
+    monkeypatch.setattr(agent_graph, "interrupt", lambda payload: decision)
+
+    assert await agent_graph.await_approval({"approval_request_id": "x"}) == expected
+
+
+async def test_a_run_that_fails_outside_any_node_still_leaves_a_visible_task(
+    db_session, agent_saver, llm, monkeypatch
+):
+    """The checkpointer or the run itself failing is not a node failure, so
+    _guarded never sees it. It must not reduce to a log line either."""
+    email, task = await seed_email(db_session)
+
+    def broken():
+        raise ConnectionError("checkpointer unreachable")
+
+    monkeypatch.setattr(agent_graph, "open_checkpointer", broken)
+
+    await agent_graph.start(task.id, email.id, None, _gate("auto_routed"), 0.95)
+
+    await db_session.refresh(task)
+    assert "run" in task.handover_context
+    assert "ConnectionError" in task.handover_context
+    events = (
+        (await db_session.execute(select(AuditEvent).where(AuditEvent.case_id == email.case_id)))
+        .scalars()
+        .all()
+    )
+    assert "agent.node_failed" in [e.action for e in events]
+
+
+async def test_a_resume_that_fails_outside_any_node_still_leaves_a_visible_task(
+    detached_sessionmaker, db_session, agent_saver, llm, monkeypatch
+):
+    email, task = await seed_email(db_session)
+    state = {**graph_input(email, task), "case_id": str(email.case_id), "draft_text": DRAFT}
+    await agent_graph.create_approval(state, await _runtime(detached_sessionmaker))
+
+    def broken():
+        raise ConnectionError("checkpointer unreachable")
+
+    monkeypatch.setattr(agent_graph, "open_checkpointer", broken)
+
+    await agent_graph.resume(thread_id("email", str(email.id)), {"approved": True})
+
+    await db_session.refresh(task)
+    assert "resume" in task.handover_context
+
+
+async def test_flag_on_poller_runs_the_graph_through_its_own_scheduler(
+    db_session, front_desk_user, agent_saver, llm, monkeypatch
+):
+    """The Outlook poller, not only the ingest route, starts a graph run when
+    the flag is on, through the same strong-ref semaphore scheduler."""
+    from app.schemas.email import EmailIngestRequest
+
+    monkeypatch.setattr(settings, "agentic_pipeline_enabled", True)
+    monkeypatch.setattr(
+        outlook_sync_service.outlook_client, "mark_as_read", AsyncMock(return_value=None)
+    )
+    drafted_flag_off = AsyncMock()
+    monkeypatch.setattr("app.services.email_service.draft_reply_detached", drafted_flag_off)
+
+    await outlook_sync_service._process_one(
+        db_session,
+        EmailIngestRequest(
+            sender="patient@example.com",
+            recipient="clinic@example.com",
+            subject="Question",
+            body=BODY,
+            external_id="AAMk-poll",
+            external_source="outlook",
+        ),
+        front_desk_user,
+        "tok",
+    )
+    while outlook_sync_service._drafting:
+        await asyncio.gather(*outlook_sync_service._drafting)
+
+    drafted_flag_off.assert_not_awaited()
+    email = (
+        await db_session.execute(select(Email).where(Email.external_id == "AAMk-poll"))
+    ).scalar_one()
+    paused = await _thread(agent_saver, email.id)
+    assert paused["next"] == ("await_approval",)
+    assert paused["values"]["draft_text"] == DRAFT

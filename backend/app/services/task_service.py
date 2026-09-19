@@ -347,6 +347,7 @@ async def record_agent_failure(
         )
     if task is not None:
         task.handover_context = reason
+        case_id = case_id or task.case_id
     await record_event(
         db,
         actor=actor,
