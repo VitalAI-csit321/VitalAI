@@ -46,3 +46,14 @@ def test_complaint_category_forces_human_review_even_at_high_confidence():
     )
     assert result.outcome == TaskRoutingOutcome.HUMAN_REVIEW
     assert result.override_reason == "complaint_category"
+
+
+def test_urgent_category_forces_human_review_without_a_keyword():
+    """The classifier's own emergency label must be enough. With only the
+    keyword check, an URGENT_EMERGENCY email at 0.95 with no keyword hit was
+    AUTO_ROUTED and so eligible for auto-send."""
+    result = evaluate_task_routing_gate(
+        TaskCategory.URGENT_EMERGENCY, confidence=0.95, text="Please call me back today."
+    )
+    assert result.outcome == TaskRoutingOutcome.HUMAN_REVIEW
+    assert result.override_reason == "urgent_category"
