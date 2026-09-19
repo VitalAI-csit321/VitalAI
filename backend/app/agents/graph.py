@@ -154,6 +154,12 @@ _AGENT_FOR_INTENT = {
 # cannot diverge from the flag-off path yet.
 _NOT_FOR_PROVISIONAL = frozenset({"booking", "records"})
 
+# The agents that have a node of their own (§10). They are reached only
+# from route_identity, after the sender is known: identity runs after the reply
+# gate, so route_intent's entries for them are still placeholders into it.
+# Every other name in _AGENT_FOR_INTENT keeps the ordinary draft path.
+_BRANCH_NODES = frozenset({"booking"})
+
 
 def route_intent(state: CaseState) -> str:
     """Which agent handles this message. Pure function of state."""
@@ -181,7 +187,7 @@ def route_identity(state: CaseState) -> str:
         agent = _AGENT_FOR_INTENT.get(intent, "retrieval")
         if state.get("is_provisional") and agent in _NOT_FOR_PROVISIONAL:
             return "staff"
-        return "draft"
+        return agent if agent in _BRANCH_NODES else "draft"
     if (
         outcome == identity_service.IdentityOutcome.NO_MATCH
         and intent in identity_service.ONBOARDING_INTENTS
@@ -282,6 +288,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         ("reply_gate", nodes.reply_gate),
         ("identity", nodes.identity),
         ("onboarding", nodes.onboarding),
+        ("booking", nodes.booking),
         ("identity_hold", nodes.identity_hold),
         ("draft", nodes.draft),
         ("escalate", nodes.escalate),
@@ -324,12 +331,18 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
             "draft": "draft",
             "staff": "identity_hold",
             "onboarding": "onboarding",
+            "booking": "booking",
             END: END,
         },
     )
     builder.add_conditional_edges(
         "onboarding",
         _unless_failed(lambda s: END if s.get("dispatch_result") == "identity_hold" else "draft"),
+    )
+    # No doctor or no free time: the reason is on the Task and nothing is drafted.
+    builder.add_conditional_edges(
+        "booking",
+        _unless_failed(lambda s: END if s.get("dispatch_result") == "booking_hold" else "draft"),
     )
     builder.add_edge("identity_hold", END)
     # Critic first (policy), then the output guardrail (safety). Both run.

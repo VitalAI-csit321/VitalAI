@@ -22,7 +22,14 @@ from app.models.email import Email
 from app.models.patient import Patient
 from app.models.task import Task, TaskCategory
 from app.models.user import User
-from app.services import consent_service, email_service, identity_service, onboarding_service
+from app.services import (
+    booking_service,
+    consent_service,
+    email_service,
+    identity_service,
+    onboarding_service,
+    task_service,
+)
 from app.services.draft_critic import critique
 from app.services.email_service import EmailSendError
 from app.services.outlook_auth import OutlookAuthRequiredError
@@ -56,6 +63,7 @@ async def load(state: CaseState, runtime: Runtime[Context]) -> dict:
         "content": email.body,
         "sender_identifier": email.sender,
         "patient_id": str(patient.id) if patient else None,
+        "patient_name": patient.name if patient else None,
         "patient_status": patient.status.value if patient else None,
         "is_provisional": patient.is_provisional if patient else None,
     }
@@ -108,6 +116,7 @@ async def identity(state: CaseState, runtime: Runtime[Context]) -> dict:
     if result.patient is not None:
         update |= {
             "patient_id": str(result.patient.id),
+            "patient_name": result.patient.name,
             "patient_status": result.patient.status.value,
             "is_provisional": result.patient.is_provisional,
         }
@@ -148,6 +157,33 @@ async def onboarding(state: CaseState, runtime: Runtime[Context]) -> dict:
     }
 
 
+async def booking(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """§10: the patient's own doctor, and the next free times in their diary.
+
+    Proposes and stops. Nothing here books: book_appointment keeps exactly one
+    caller in the app and it is not this one. Either half missing is a hold for
+    a human with the reason on the Task, not an email that proposes nothing.
+    """
+    async with runtime.context.session_factory() as db:
+        _, _, actor = await _rows(db, state, runtime)
+        assigned = await booking_service.doctor_for_patient(db, UUID(state["patient_id"]))
+        if assigned is None:
+            await task_service.hold_for_staff(
+                db, state["task_id"], booking_service.NO_DOCTOR_REASON
+            )
+            return {"dispatch_result": "booking_hold"}
+        doctor_id, doctor_name = assigned
+        slots = await booking_service.find_slots(db, actor, doctor_id)
+        if not slots:
+            await task_service.hold_for_staff(db, state["task_id"], booking_service.NO_SLOTS_REASON)
+            return {"dispatch_result": "booking_hold"}
+    return {
+        "branch": booking_service.BRANCH,
+        "proposed_slots": [slot.isoformat() for slot in slots],
+        "booking_doctor_name": doctor_name,
+    }
+
+
 async def identity_hold(state: CaseState, runtime: Runtime[Context]) -> dict:
     async with runtime.context.session_factory() as db:
         await identity_service.hold_for_staff(
@@ -162,7 +198,8 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
     toward revision_count, which the edge after critic caps."""
     revising = state.get("critic_verdict") == "reject"
     feedback = state.get("critic_reason") if revising else None
-    if state.get("branch") == onboarding_service.BRANCH:
+    branch = state.get("branch")
+    if branch == onboarding_service.BRANCH:
         async with runtime.context.session_factory() as db:
             _, email, actor = await _rows(db, state, runtime)
             text = await onboarding_service.draft_onboarding_reply(
@@ -175,6 +212,17 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
             )
         # Nothing is retrieved: the reply asks for details, it states none.
         update: dict = {"draft_text": text, "grounded": False}
+    elif branch == booking_service.BRANCH:
+        # A template, no model call. What time the clinic told a patient to
+        # turn up is not something a model gets to decide (§10.3).
+        update = {
+            "draft_text": booking_service.draft_booking_reply(
+                name=state.get("patient_name"),
+                doctor_name=state["booking_doctor_name"],
+                slots=state["proposed_slots"],
+            ),
+            "grounded": False,
+        }
     else:
         async with runtime.context.session_factory() as db:
             task, email, actor = await _rows(db, state, runtime)
@@ -232,6 +280,7 @@ async def risk(state: CaseState) -> dict:
             revision_count=state.get("revision_count", 0),
             grounded_on_retry=grounded_on_retry,
             is_provisional=bool(state.get("is_provisional")),
+            branch=state.get("branch"),
         )
     }
 

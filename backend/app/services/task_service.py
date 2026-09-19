@@ -321,6 +321,14 @@ async def override_task(
     return task
 
 
+async def hold_for_staff(db: AsyncSession, task_id: str | UUID, reason: str) -> None:
+    """No draft: the Task ingest_email created is the human-review item. Say why."""
+    task = await db.get(Task, UUID(str(task_id)))
+    if task is not None:
+        task.handover_context = reason
+        await db.commit()
+
+
 async def record_agent_failure(
     db: AsyncSession,
     *,

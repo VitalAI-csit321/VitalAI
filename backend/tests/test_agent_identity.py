@@ -207,7 +207,7 @@ async def test_a_blocked_prompt_is_no_fields(db_session, admin_user):
 @pytest.mark.parametrize(
     ("intent", "outcome", "provisional", "expected"),
     [
-        ("appointment_request", "matched", False, "draft"),
+        ("appointment_request", "matched", False, "booking"),
         ("appointment_request", "ambiguous", False, "staff"),
         ("appointment_request", "no_match", False, "onboarding"),
         ("new_patient_onboarding", "no_match", False, "onboarding"),

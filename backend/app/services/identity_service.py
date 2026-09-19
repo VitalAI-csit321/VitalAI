@@ -24,8 +24,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.llm.guardrail import InputBlockedError, guarded_invoke
 from app.models.case import IntakeCase
 from app.models.patient import Patient
-from app.models.task import Task, TaskCategory
+from app.models.task import TaskCategory
 from app.models.user import User
+from app.services import task_service
 from app.services.audit_service import record_event
 
 logger = logging.getLogger(__name__)
@@ -232,8 +233,4 @@ _HOLD_REASONS = {
 
 
 async def hold_for_staff(db: AsyncSession, task_id: str | UUID, outcome: IdentityOutcome) -> None:
-    """No draft: the Task ingest_email created is the human-review item. Say why."""
-    task = await db.get(Task, UUID(str(task_id)))
-    if task is not None:
-        task.handover_context = _HOLD_REASONS[outcome]
-        await db.commit()
+    await task_service.hold_for_staff(db, task_id, _HOLD_REASONS[outcome])

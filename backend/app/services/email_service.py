@@ -269,8 +269,18 @@ def auto_send_eligible(
     )
 
 
+# Agent branches whose reply states something the clinic is committing to: a
+# time to attend (§10). Literal names rather than an import, so this module
+# does not import the branches.
+_ALWAYS_HUMAN_BRANCHES = frozenset({"booking"})
+
+
 def reply_risk_tier(
-    *, revision_count: int, grounded_on_retry: bool = False, is_provisional: bool = False
+    *,
+    revision_count: int,
+    grounded_on_retry: bool = False,
+    is_provisional: bool = False,
+    branch: str | None = None,
 ) -> str:
     """Whether a draft must reach a human whatever auto_send_eligible says.
 
@@ -293,6 +303,8 @@ def reply_risk_tier(
     # A provisional patient is whoever the last email said they were. Their
     # onboarding reply always reaches a human (spec §9.0).
     if is_provisional:
+        return "high"
+    if branch in _ALWAYS_HUMAN_BRANCHES:
         return "high"
     return "low"
 

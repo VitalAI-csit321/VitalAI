@@ -31,6 +31,7 @@ class CaseState(TypedDict, total=False):
     content: str | None
 
     patient_id: str | None
+    patient_name: str | None
     patient_status: str | None
     is_provisional: bool | None
     identity_outcome: str | None
@@ -57,6 +58,10 @@ class CaseState(TypedDict, total=False):
     # for a provisional patient's first reply. The critic reads it too.
     branch: str | None
     requested_fields: list[str]
+    # §10: ISO instants, UTC-aware, rendered in clinic local time by the
+    # template. The doctor is the one the patient is actually assigned to.
+    proposed_slots: list[str]
+    booking_doctor_name: str | None
 
     draft_text: str | None
     grounded: bool | None
