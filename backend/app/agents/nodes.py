@@ -14,6 +14,7 @@ from uuid import UUID
 from langgraph.runtime import Runtime
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.critic import critique
 from app.agents.state import CaseState, Context
 from app.llm.output_guardrail import OutputBlockedError, check_output
 from app.models.case import IntakeCase
@@ -82,10 +83,38 @@ async def reply_gate(state: CaseState, runtime: Runtime[Context]) -> dict:
 
 
 async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """First draft, or a regeneration after the critic rejected the last one.
+    A regeneration carries the critic's reason into the prompt and counts
+    toward revision_count, which the edge after critic caps."""
+    revising = state.get("critic_verdict") == "reject"
     async with runtime.context.session_factory() as db:
         task, email, actor = await _rows(db, state, runtime)
-        text, grounded = await email_service.generate_draft(db, task, email, actor)
-    return {"draft_text": text, "grounded": grounded}
+        text, grounded = await email_service.generate_draft(
+            db, task, email, actor, feedback=state.get("critic_reason") if revising else None
+        )
+    update: dict = {"draft_text": text, "grounded": grounded}
+    if revising:
+        update["revision_count"] = state.get("revision_count", 0) + 1
+    return update
+
+
+async def critic(state: CaseState) -> dict:
+    reason = critique(state.get("draft_text"))
+    return {"critic_verdict": "reject" if reason else "pass", "critic_reason": reason}
+
+
+async def escalate(state: CaseState, runtime: Runtime[Context]) -> dict:
+    async with runtime.context.session_factory() as db:
+        actor = await db.get(User, runtime.context.actor_id)
+        await email_service.record_critic_escalation(
+            db,
+            task_id=state["task_id"],
+            case_id=state.get("case_id"),
+            actor=actor,
+            reason=state["critic_reason"],
+            drafts=state.get("revision_count", 0) + 1,
+        )
+    return {"dispatch_result": "escalated"}
 
 
 async def guardrail(state: CaseState, runtime: Runtime[Context]) -> dict:

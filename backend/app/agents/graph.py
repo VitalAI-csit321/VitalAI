@@ -168,6 +168,19 @@ def auto_send_or_approve(state: CaseState) -> str:
     return "auto_send" if eligible else "create_approval"
 
 
+# At most two regenerations, so three drafts in all (Appendix F.5). Enforced
+# here, by the edge, not by the model deciding it has done enough.
+MAX_REGENERATIONS = 2
+
+
+def after_critic(state: CaseState) -> str:
+    if state["critic_verdict"] == "pass":
+        return "guardrail"
+    if state.get("revision_count", 0) < MAX_REGENERATIONS:
+        return "draft"
+    return "escalate"
+
+
 # --- failure path (§4.1) ------------------------------------------------------
 
 Node = Callable[..., Awaitable[dict]]
@@ -226,6 +239,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         ("consent", nodes.consent),
         ("reply_gate", nodes.reply_gate),
         ("draft", nodes.draft),
+        ("escalate", nodes.escalate),
         ("guardrail", nodes.guardrail),
         ("auto_send", nodes.auto_send),
         ("create_approval", create_approval),
@@ -233,6 +247,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
     ):
         builder.add_node(name, _guarded(name, fn))
     builder.add_node("risk", nodes.risk)
+    builder.add_node("critic", nodes.critic)
     # Not guarded: interrupt() raises to pause, and this node has no side
     # effects to fail.
     builder.add_node("await_approval", await_approval)
@@ -257,7 +272,10 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         "reply_gate",
         _unless_failed(lambda s: END if s.get("dispatch_result") == "not_worthy" else "draft"),
     )
-    builder.add_conditional_edges("draft", _to("guardrail"))
+    # Critic first (policy), then the output guardrail (safety). Both run.
+    builder.add_conditional_edges("draft", _to("critic"))
+    builder.add_conditional_edges("critic", after_critic)
+    builder.add_edge("escalate", END)
     builder.add_conditional_edges(
         "guardrail",
         _unless_failed(lambda s: END if s.get("dispatch_result") == "blocked" else "risk"),

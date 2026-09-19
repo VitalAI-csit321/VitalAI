@@ -44,7 +44,19 @@ CONTEXT:
 
 QUESTION: {question}
 
-ANSWER:"""
+{revision}ANSWER:"""
+
+
+def revision_block(feedback: str | None) -> str:
+    """Prompt text asking the model to fix a rejected draft; empty when there
+    is none. Shared with email_service's reply generator. Goes into prompts
+    only, never into a retrieval query."""
+    if not feedback:
+        return ""
+    return (
+        f"A REVIEWER REJECTED THE PREVIOUS DRAFT FOR THIS REASON: {feedback}\n"
+        "Write a new reply that does not repeat that problem.\n\n"
+    )
 
 
 class AnswerResult(BaseModel):
@@ -61,8 +73,14 @@ class AnswerResult(BaseModel):
 
 
 async def answer_question(
-    session: AsyncSession, question: str, ctx: RetrievalContext, actor: User
+    session: AsyncSession,
+    question: str,
+    ctx: RetrievalContext,
+    actor: User,
+    feedback: str | None = None,
 ) -> AnswerResult:
+    """feedback: a reviewer's reason for rejecting a previous answer. It is
+    added to the prompt only; retrieval always uses the question as given."""
     chunks = await retrieve(session, question, ctx)
     gate_outcome = evaluate_retrieval(chunks)
 
@@ -81,7 +99,10 @@ async def answer_question(
     ]
     context_text = "\n\n".join(chunk.content for chunk in context_chunks)
     prompt = _PROMPT_TEMPLATE.format(
-        refusal_sentinel=NOT_ENOUGH_INFO_ANSWER, context=context_text, question=question
+        refusal_sentinel=NOT_ENOUGH_INFO_ANSWER,
+        context=context_text,
+        question=question,
+        revision=revision_block(feedback),
     )
 
     llm = get_llm()

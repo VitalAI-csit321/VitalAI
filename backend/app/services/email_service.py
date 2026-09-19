@@ -148,7 +148,11 @@ class EmailDraftOutcome:
     blocked: bool
 
 
-async def _generate_plain_reply(email: Email, actor: User, context_text: str = "") -> str:
+async def _generate_plain_reply(
+    email: Email, actor: User, context_text: str = "", feedback: str | None = None
+) -> str:
+    from app.rag.answer import revision_block
+
     llm = get_llm()
     context_block = (
         f"CLINIC INFO (use this for hours/policies/contact details, don't invent any):\n"
@@ -162,6 +166,7 @@ async def _generate_plain_reply(email: Email, actor: User, context_text: str = "
         f"{context_block}"
         f"ORIGINAL EMAIL SUBJECT: {email.subject}\n"
         f"ORIGINAL EMAIL BODY: {email.body}\n\n"
+        f"{revision_block(feedback)}"
         "REPLY:"
     )
     result = await llm.ainvoke(prompt)
@@ -169,7 +174,7 @@ async def _generate_plain_reply(email: Email, actor: User, context_text: str = "
 
 
 async def _generate_org_grounded_reply(
-    db: AsyncSession, email: Email, actor: User
+    db: AsyncSession, email: Email, actor: User, feedback: str | None = None
 ) -> tuple[str, bool]:
     """Non-clinical reply, grounded in the org-wide profile corpus (clinic
     hours, policies) when retrieval clears the same sufficiency_floor gate
@@ -190,14 +195,14 @@ async def _generate_org_grounded_reply(
     chunks = await retrieve(db, email.body, ctx)
     gate_outcome = evaluate_retrieval(chunks)
     if gate_outcome.decision == "manual_handling":
-        return await _generate_plain_reply(email, actor), False
+        return await _generate_plain_reply(email, actor, feedback=feedback), False
 
     assert gate_outcome.top_score is not None
     context_chunks = [
         c for c in gate_outcome.chunks if c.score >= gate_outcome.top_score - CONTEXT_SCORE_MARGIN
     ]
     context_text = "\n\n".join(c.content for c in context_chunks)
-    text = await _generate_plain_reply(email, actor, context_text=context_text)
+    text = await _generate_plain_reply(email, actor, context_text=context_text, feedback=feedback)
     return text, True
 
 
@@ -327,12 +332,15 @@ async def mark_not_worthy(db: AsyncSession, task: Task, reason: str) -> None:
 
 
 async def generate_draft(
-    db: AsyncSession, task: Task, email: Email, actor: User
+    db: AsyncSession, task: Task, email: Email, actor: User, feedback: str | None = None
 ) -> tuple[str, bool]:
     """Draft a reply. Returns (text, grounded).
 
     Clinical categories on a case with a known patient answer from that
     patient's records; everything else is grounded in the org profile corpus.
+    feedback is a reviewer's reason for rejecting a previous draft. It goes
+    into the generation prompt only, never the retrieval query, so a revision
+    is grounded in exactly what the first draft was.
     """
     if task.category in _clinical_categories() and email.case_id is not None:
         case = await db.get(IntakeCase, email.case_id)
@@ -346,9 +354,9 @@ async def generate_draft(
                 role=actor.role.value,
                 actor=actor.email,
             )
-            result = await answer_question(db, email.body, ctx, actor)
+            result = await answer_question(db, email.body, ctx, actor, feedback=feedback)
             return result.answer, True
-    return await _generate_org_grounded_reply(db, email, actor)
+    return await _generate_org_grounded_reply(db, email, actor, feedback=feedback)
 
 
 async def persist_draft(
@@ -400,6 +408,32 @@ async def record_reply_dispatch(
     )
     await db.commit()
     return sent
+
+
+async def record_critic_escalation(
+    db: AsyncSession,
+    *,
+    task_id: str | UUID,
+    case_id: str | UUID | None,
+    actor: User,
+    reason: str,
+    drafts: int,
+) -> None:
+    """Every draft failed the critic: no approval, no send. The Task stays
+    pending for a human to answer, with the critic's reason on it."""
+    task = await db.get(Task, UUID(str(task_id)))
+    if task is not None:
+        task.handover_context = (
+            f"No reply drafted: {drafts} drafts were rejected by the policy check. {reason}"
+        )
+    await record_event(
+        db,
+        actor=actor,
+        case_id=UUID(str(case_id)) if case_id is not None else None,
+        action="agent.critic_escalated",
+        details={"task_id": str(task_id), "reason": reason, "drafts": drafts},
+    )
+    await db.commit()
 
 
 async def draft_reply(

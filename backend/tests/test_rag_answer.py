@@ -167,3 +167,30 @@ async def test_refusal_has_no_citations() -> None:
         )
 
     assert result.citations == []
+
+
+async def test_feedback_reaches_the_prompt_but_never_the_retrieval_query() -> None:
+    """A critic's reason for rejecting a draft changes what the model is asked,
+    not what is retrieved: appending it to the query would silently change the
+    grounding of the revision."""
+    chunk = _chunk(score=0.90, content="Clinic notes.")
+    mock_llm = MagicMock()
+    mock_llm.ainvoke = AsyncMock(return_value="Revised answer.")
+    retrieve = AsyncMock(return_value=[chunk])
+
+    with (
+        patch("app.rag.answer.retrieve", new=retrieve),
+        patch("app.rag.answer.get_llm", return_value=mock_llm),
+    ):
+        await answer_question(
+            session=MagicMock(),
+            question="Can I keep taking it?",
+            ctx=_ctx(),
+            actor=_actor(),
+            feedback="Do not judge whether a medication is suitable.",
+        )
+
+    assert retrieve.call_args.args[1] == "Can I keep taking it?"
+    prompt = mock_llm.ainvoke.call_args.args[0]
+    assert "Do not judge whether a medication is suitable." in prompt
+    assert prompt.rstrip().endswith("ANSWER:")
