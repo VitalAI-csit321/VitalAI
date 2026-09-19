@@ -49,7 +49,7 @@ async def test_manual_handling_short_circuits_without_calling_llm() -> None:
     mock_llm.ainvoke = AsyncMock()
 
     with (
-        patch("app.rag.answer.retrieve", new=AsyncMock(return_value=[])),
+        patch("app.rag.retrieval.retrieve", new=AsyncMock(return_value=[])),
         patch("app.rag.answer.get_llm", return_value=mock_llm),
     ):
         result = await answer_question(
@@ -68,7 +68,7 @@ async def test_sufficient_result_grounds_answer_in_retrieved_content() -> None:
     mock_llm.ainvoke = AsyncMock(return_value="Amoxicillin 500mg.")
 
     with (
-        patch("app.rag.answer.retrieve", new=AsyncMock(return_value=[chunk])),
+        patch("app.rag.retrieval.retrieve", new=AsyncMock(return_value=[chunk])),
         patch("app.rag.answer.get_llm", return_value=mock_llm),
     ):
         result = await answer_question(
@@ -92,7 +92,7 @@ async def test_llm_refusal_sentinel_is_distinguished_from_gate_refusal() -> None
     mock_llm.ainvoke = AsyncMock(return_value=f"{NOT_ENOUGH_INFO_ANSWER}\n ")
 
     with (
-        patch("app.rag.answer.retrieve", new=AsyncMock(return_value=[chunk])),
+        patch("app.rag.retrieval.retrieve", new=AsyncMock(return_value=[chunk])),
         patch("app.rag.answer.get_llm", return_value=mock_llm),
     ):
         result = await answer_question(
@@ -122,7 +122,7 @@ async def test_blocked_question_raises_input_blocked_and_never_calls_llm(
     await db_session.refresh(actor)
 
     with (
-        patch("app.rag.answer.retrieve", new=AsyncMock(return_value=[chunk])),
+        patch("app.rag.retrieval.retrieve", new=AsyncMock(return_value=[chunk])),
         patch("app.rag.answer.get_llm", return_value=mock_llm),
     ):
         with pytest.raises(InputBlockedError):
@@ -144,7 +144,7 @@ async def test_citations_only_include_chunks_the_llm_actually_read() -> None:
     mock_llm.ainvoke = AsyncMock(return_value="Amoxicillin 500mg.")
 
     with (
-        patch("app.rag.answer.retrieve", new=AsyncMock(return_value=[top, near, far])),
+        patch("app.rag.retrieval.retrieve", new=AsyncMock(return_value=[top, near, far])),
         patch("app.rag.answer.get_llm", return_value=mock_llm),
     ):
         result = await answer_question(
@@ -159,7 +159,7 @@ async def test_citations_only_include_chunks_the_llm_actually_read() -> None:
 
 async def test_refusal_has_no_citations() -> None:
     with (
-        patch("app.rag.answer.retrieve", new=AsyncMock(return_value=[])),
+        patch("app.rag.retrieval.retrieve", new=AsyncMock(return_value=[])),
         patch("app.rag.answer.get_llm", return_value=MagicMock()),
     ):
         result = await answer_question(
@@ -179,7 +179,7 @@ async def test_feedback_reaches_the_prompt_but_never_the_retrieval_query() -> No
     retrieve = AsyncMock(return_value=[chunk])
 
     with (
-        patch("app.rag.answer.retrieve", new=retrieve),
+        patch("app.rag.retrieval.retrieve", new=retrieve),
         patch("app.rag.answer.get_llm", return_value=mock_llm),
     ):
         await answer_question(

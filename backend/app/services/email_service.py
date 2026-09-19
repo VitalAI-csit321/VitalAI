@@ -7,6 +7,7 @@ out of this function so ingestion and drafting can be tested independently.
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 import httpx
@@ -33,6 +34,9 @@ from app.services.task_routing_gate import (
     evaluate_task_routing_gate,
 )
 from app.services.task_routing_rules import resolve_target_role
+
+if TYPE_CHECKING:
+    from app.rag.retry import Reformulator
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +179,11 @@ async def _generate_plain_reply(
 
 
 async def _generate_org_grounded_reply(
-    db: AsyncSession, email: Email, actor: User, feedback: str | None = None
+    db: AsyncSession,
+    email: Email,
+    actor: User,
+    feedback: str | None = None,
+    reformulate: "Reformulator | None" = None,
 ) -> tuple[str, bool]:
     """Non-clinical reply, grounded in the org-wide profile corpus (clinic
     hours, policies) when retrieval clears the same sufficiency_floor gate
@@ -187,14 +195,13 @@ async def _generate_org_grounded_reply(
     generic guess.
     """
     from app.rag.answer import CONTEXT_SCORE_MARGIN
-    from app.rag.gating import evaluate_retrieval
-    from app.rag.retrieval import RetrievalContext, retrieve
+    from app.rag.retrieval import RetrievalContext
+    from app.rag.retry import retrieve_gated
 
     ctx = RetrievalContext(
         patient_id=None, allowed_scopes=["general"], role=actor.role.value, actor=actor.email
     )
-    chunks = await retrieve(db, email.body, ctx)
-    gate_outcome = evaluate_retrieval(chunks)
+    gate_outcome = await retrieve_gated(db, email.body, ctx, reformulate=reformulate)
     if gate_outcome.decision == "manual_handling":
         return await _generate_plain_reply(email, actor, feedback=feedback), False
 
@@ -262,7 +269,7 @@ def auto_send_eligible(
     )
 
 
-def reply_risk_tier(*, revision_count: int) -> str:
+def reply_risk_tier(*, revision_count: int, grounded_on_retry: bool = False) -> str:
     """Whether a draft must reach a human whatever auto_send_eligible says.
 
     Not the audit log's severity scorer (audit_service._compute_risk_score):
@@ -273,7 +280,15 @@ def reply_risk_tier(*, revision_count: int) -> str:
     # A draft the critic had to correct never goes out without a human. The
     # flag-off path already holds a rejected draft for staff; without this the
     # graph's corrected rewrite could auto-send.
-    return "high" if revision_count > 0 else "low"
+    if revision_count > 0:
+        return "high"
+    # Chunks found by an LLM's rewrite cleared the floor against the rewrite,
+    # not against what the patient wrote: weaker evidence. Drafted, never
+    # auto-sent (spec §7). Flag off the same email is ungrounded, so it goes
+    # to approval there too.
+    if grounded_on_retry:
+        return "high"
+    return "low"
 
 
 async def deliver_reply(
@@ -352,8 +367,20 @@ async def mark_not_worthy(db: AsyncSession, task: Task, reason: str) -> None:
     await _persist_draft(db, task, EmailDraftOutcome(None, None, False, False))
 
 
+def reformulator(db: AsyncSession, actor: User) -> "Reformulator":
+    """The agent graph's retrieval retry, on the same model the draft uses."""
+    from app.rag.retry import Reformulator
+
+    return Reformulator(db, actor, get_llm())
+
+
 async def generate_draft(
-    db: AsyncSession, task: Task, email: Email, actor: User, feedback: str | None = None
+    db: AsyncSession,
+    task: Task,
+    email: Email,
+    actor: User,
+    feedback: str | None = None,
+    reformulate: "Reformulator | None" = None,
 ) -> tuple[str, bool]:
     """Draft a reply. Returns (text, grounded).
 
@@ -362,6 +389,8 @@ async def generate_draft(
     feedback is a reviewer's reason for rejecting a previous draft. It goes
     into the generation prompt only, never the retrieval query, so a revision
     is grounded in exactly what the first draft was.
+    reformulate is the agent graph's retrieval retry; the flag-off path never
+    passes it, so it makes no extra LLM call.
     """
     if task.category in _clinical_categories() and email.case_id is not None:
         case = await db.get(IntakeCase, email.case_id)
@@ -375,9 +404,13 @@ async def generate_draft(
                 role=actor.role.value,
                 actor=actor.email,
             )
-            result = await answer_question(db, email.body, ctx, actor, feedback=feedback)
+            result = await answer_question(
+                db, email.body, ctx, actor, feedback=feedback, reformulate=reformulate
+            )
             return result.answer, True
-    return await _generate_org_grounded_reply(db, email, actor, feedback=feedback)
+    return await _generate_org_grounded_reply(
+        db, email, actor, feedback=feedback, reformulate=reformulate
+    )
 
 
 async def persist_draft(

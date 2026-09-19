@@ -34,7 +34,7 @@ def _mock_rag():
     mock_llm = MagicMock()
     mock_llm.ainvoke = AsyncMock(return_value="500mg amoxicillin.")
     return (
-        patch("app.rag.answer.retrieve", new=AsyncMock(return_value=[_chunk()])),
+        patch("app.rag.retrieval.retrieve", new=AsyncMock(return_value=[_chunk()])),
         patch("app.rag.answer.get_llm", return_value=mock_llm),
     )
 
@@ -183,7 +183,7 @@ async def test_rag_query_blocked_input_returns_422(
     mock_llm.ainvoke = AsyncMock()
 
     with (
-        patch("app.rag.answer.retrieve", new=AsyncMock(return_value=[_chunk()])),
+        patch("app.rag.retrieval.retrieve", new=AsyncMock(return_value=[_chunk()])),
         patch("app.rag.answer.get_llm", return_value=mock_llm),
     ):
         response = await client.post(

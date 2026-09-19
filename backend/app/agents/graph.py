@@ -34,6 +34,8 @@ _REASONING_FIELDS = (
     "triage_category",
     "triage_confidence",
     "retrieval_sufficient",
+    "retrieval_attempts",
+    "reformulated_query",
     "critic_verdict",
     "critic_reason",
 )

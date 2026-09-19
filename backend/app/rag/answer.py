@@ -21,8 +21,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.llm import get_llm
 from app.llm.guardrail import guarded_invoke
 from app.models.user import User
-from app.rag.gating import RetrievalGateOutcome, evaluate_retrieval
-from app.rag.retrieval import RetrievalContext, RetrievedChunk, retrieve
+from app.rag.gating import RetrievalGateOutcome
+from app.rag.retrieval import RetrievalContext, RetrievedChunk
+from app.rag.retry import Reformulator, retrieve_gated
 
 NOT_ENOUGH_INFO_ANSWER = "I don't have enough information in this patient's records to answer that."
 
@@ -78,11 +79,13 @@ async def answer_question(
     ctx: RetrievalContext,
     actor: User,
     feedback: str | None = None,
+    reformulate: Reformulator | None = None,
 ) -> AnswerResult:
     """feedback: a reviewer's reason for rejecting a previous answer. It is
-    added to the prompt only; retrieval always uses the question as given."""
-    chunks = await retrieve(session, question, ctx)
-    gate_outcome = evaluate_retrieval(chunks)
+    added to the prompt only; retrieval always uses the question as given.
+    reformulate: the agent graph's retrieval retry (app/rag/retry.py). The
+    prompt still carries the original question either way."""
+    gate_outcome = await retrieve_gated(session, question, ctx, reformulate=reformulate)
 
     if gate_outcome.decision == "manual_handling":
         return AnswerResult(

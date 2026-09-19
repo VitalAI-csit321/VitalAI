@@ -145,7 +145,15 @@ async def test_draft_returns_text_and_grounding(detached_sessionmaker, db_sessio
 
     update = await nodes.draft(graph_input(email, task), await _runtime(detached_sessionmaker))
 
-    assert update == {"draft_text": DRAFT, "grounded": False}
+    # No org chunks and an empty rewrite (FakeLLM's default): both attempts
+    # spent, nothing retrieved with a rewrite, the ungrounded fallback.
+    assert update == {
+        "draft_text": DRAFT,
+        "grounded": False,
+        "retrieval_attempts": 2,
+        "reformulated_query": None,
+        "retrieval_sufficient": False,
+    }
 
 
 async def test_guardrail_blocks_a_restricted_draft(detached_sessionmaker, db_session):

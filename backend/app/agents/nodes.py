@@ -88,10 +88,22 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
     revising = state.get("critic_verdict") == "reject"
     async with runtime.context.session_factory() as db:
         task, email, actor = await _rows(db, state, runtime)
+        retry = email_service.reformulator(db, actor)
         text, grounded = await email_service.generate_draft(
-            db, task, email, actor, feedback=state.get("critic_reason") if revising else None
+            db,
+            task,
+            email,
+            actor,
+            feedback=state.get("critic_reason") if revising else None,
+            reformulate=retry,
         )
-    update: dict = {"draft_text": text, "grounded": grounded}
+    update: dict = {
+        "draft_text": text,
+        "grounded": grounded,
+        "retrieval_attempts": retry.attempts,
+        "reformulated_query": retry.query,
+        "retrieval_sufficient": retry.sufficient,
+    }
     if revising:
         update["revision_count"] = state.get("revision_count", 0) + 1
     return update
@@ -129,8 +141,11 @@ async def guardrail(state: CaseState, runtime: Runtime[Context]) -> dict:
 
 async def risk(state: CaseState) -> dict:
     """§5.1: HIGH sends the draft to approval whatever the auto-send predicate says."""
+    grounded_on_retry = bool(state.get("reformulated_query") and state.get("retrieval_sufficient"))
     return {
-        "risk_tier": email_service.reply_risk_tier(revision_count=state.get("revision_count", 0))
+        "risk_tier": email_service.reply_risk_tier(
+            revision_count=state.get("revision_count", 0), grounded_on_retry=grounded_on_retry
+        )
     }
 
 

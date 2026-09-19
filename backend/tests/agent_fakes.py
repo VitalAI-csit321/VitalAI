@@ -29,11 +29,16 @@ class FakeLLM:
         confidence: float = 0.95,
         replies: list[str] | None = None,
         worthy: bool = True,
+        reformulation: str = "",
     ):
         self.category = category
         self.confidence = confidence
         self.replies = list(replies or [DRAFT])
         self.worthy = worthy
+        # The retrieval retry's rewrite (spec §7). Empty by default, which the
+        # retry treats as "no rewrite", so a test that is not about the retry
+        # sees exactly the retrieval calls it saw before the retry existed.
+        self.reformulation = reformulation
         self.prompts: list[str] = []
 
     @property
@@ -42,6 +47,8 @@ class FakeLLM:
 
     async def ainvoke(self, prompt: str) -> str:
         self.prompts.append(prompt)
+        if prompt.rstrip().endswith("QUERY:"):
+            return self.reformulation
         if "worthy" in prompt.lower():
             return json.dumps({"worthy": self.worthy, "reason": "test verdict"})
         if _is_draft(prompt):
