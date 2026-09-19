@@ -6,6 +6,7 @@ real ingest route with the flag on, and compare against the flag-off path on
 the same input.
 """
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import UUID
@@ -18,9 +19,11 @@ from app.agents import graph as agent_graph
 from app.agents import nodes
 from app.agents.graph import build_graph, make_context, route_intent, run_config, thread_id
 from app.config import settings
-from app.models.approval import ApprovalRequest
+from app.models.approval import ApprovalRequest, ApprovalStatus
 from app.models.audit import AuditEvent
-from app.models.task import Task, TaskCategory, TaskPriority
+from app.models.task import Task, TaskCategory, TaskItemStatus, TaskPriority
+from app.services import outlook_sync_service
+from app.services.outlook_auth import OutlookAuthRequiredError
 from tests.agent_fakes import DRAFT, FakeLLM, graph_input, seed_email
 
 BODY = "What time do you open on Saturdays?"
@@ -32,15 +35,6 @@ def llm(monkeypatch):
     monkeypatch.setattr("app.services.email_service.get_llm", lambda: fake)
     monkeypatch.setattr("app.rag.retrieval.retrieve", AsyncMock(return_value=[]))
     return fake
-
-
-@pytest.fixture
-def grounded(monkeypatch):
-    """Org retrieval finds a relevant chunk, so the draft is grounded."""
-    monkeypatch.setattr(
-        "app.services.email_service._generate_org_grounded_reply",
-        AsyncMock(return_value=(DRAFT, True)),
-    )
 
 
 @pytest.fixture
@@ -358,3 +352,87 @@ async def test_urgent_category_without_keyword_is_never_drafted(
         done = await _thread(agent_saver, response.json()["email"]["id"])
         assert done["next"] == ()
         assert "draft_text" not in done["values"]
+
+
+async def test_failed_auto_send_on_the_graph_falls_back_to_a_paused_approval(
+    client, front_desk_headers, db_session, agent_saver, llm, outlook, monkeypatch
+):
+    """Gate (d), graph side: the draft reaches the human queue with the reason."""
+    monkeypatch.setattr(settings, "agentic_pipeline_enabled", True)
+    monkeypatch.setattr(
+        "app.services.email_service._generate_org_grounded_reply",
+        AsyncMock(return_value=(DRAFT, True)),
+    )
+    outlook.side_effect = httpx.ConnectError("graph down")
+
+    task_id, email_id = await _ingest(
+        client, front_desk_headers, external_id="AAMk-fail", external_source="outlook"
+    )
+
+    outlook.assert_awaited_once()
+    paused = await _thread(agent_saver, email_id)
+    assert paused["next"] == ("await_approval",)
+    task = await db_session.get(Task, task_id)
+    await db_session.refresh(task)
+    assert task.draft_sent is False
+    (approval,) = await _approvals(db_session, task)
+    assert "graph down" in approval.payload["delivery_error"]
+    assert task.draft_approval_id == approval.id
+
+
+@pytest.mark.parametrize(
+    ("failure", "status"),
+    [(httpx.ConnectError("graph down"), 502), (OutlookAuthRequiredError("signed out"), 503)],
+    ids=["send_error", "auth_required"],
+)
+async def test_failed_approved_send_still_resumes_the_thread_to_end(
+    client,
+    front_desk_headers,
+    admin_headers,
+    db_session,
+    agent_saver,
+    llm,
+    outlook,
+    monkeypatch,
+    failure,
+    status,
+):
+    """Gate (g), spec §4.1a. The route raises, so BackgroundTasks never run;
+    the resume has to be scheduled some other way or the thread sits paused
+    behind an APPROVED row that cannot be re-approved."""
+    monkeypatch.setattr(settings, "agentic_pipeline_enabled", True)
+    task_id, email_id = await _ingest(
+        client, front_desk_headers, external_id="AAMk-502", external_source="outlook"
+    )
+    task = await db_session.get(Task, task_id)
+    (approval,) = await _approvals(db_session, task)
+    if isinstance(failure, OutlookAuthRequiredError):
+        monkeypatch.setattr(
+            "app.services.outlook_auth.get_access_token", AsyncMock(side_effect=failure)
+        )
+    else:
+        outlook.side_effect = failure
+
+    response = await client.post(
+        f"/api/v1/approvals/{approval.id}/approve", json={}, headers=admin_headers
+    )
+    # The caller's response is unchanged.
+    assert response.status_code == status
+    while outlook_sync_service._drafting:
+        await asyncio.gather(*outlook_sync_service._drafting)
+
+    done = await _thread(agent_saver, email_id)
+    assert done["next"] == ()
+    assert not done["interrupts"]
+    assert done["values"]["dispatch_result"] == "send_failed"
+    await db_session.refresh(task)
+    assert task.draft_sent is False
+    assert task.status == TaskItemStatus.PENDING
+    assert "not delivered" in task.handover_context
+    await db_session.refresh(approval)
+    assert approval.status == ApprovalStatus.APPROVED
+    # A second approve is refused, which is why the resume cannot wait for one.
+    again = await client.post(
+        f"/api/v1/approvals/{approval.id}/approve", json={}, headers=admin_headers
+    )
+    assert again.status_code == 409

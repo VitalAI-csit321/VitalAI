@@ -15,7 +15,7 @@ from app.schemas.approval import (
     ApprovalRejectBody,
     ApprovalRequestOut,
 )
-from app.services import approval_service, assignment_service, email_service
+from app.services import approval_service, assignment_service, email_service, outlook_sync_service
 from app.services.approval_service import ApprovalAlreadyDecidedError, ApprovalNotFoundError
 from app.services.assignment_service import (
     AssignmentExistsError,
@@ -58,19 +58,27 @@ async def _execute_email_draft_reply(
 
 
 def _schedule_agent_resume(
-    background_tasks: BackgroundTasks, request: ApprovalRequest, decision: dict
+    background_tasks: BackgroundTasks | None, request: ApprovalRequest, decision: dict
 ) -> None:
     """Hand a decision back to the paused agent thread, if this row has one.
 
     external_ref is the graph's thread_id and is written only by the agent's
     create_approval node, so every pre-existing approval path skips this.
+
+    Pass background_tasks=None when the handler is about to raise: FastAPI
+    never runs a response's BackgroundTasks once an HTTPException replaces
+    that response, so the resume goes through the poller's strong-ref
+    scheduler instead.
     """
     if not settings.agentic_pipeline_enabled or not request.external_ref:
         return
     # Imported here so the flag-off app never loads langgraph or psycopg.
     from app.agents import graph as agent_graph
 
-    background_tasks.add_task(agent_graph.resume, request.external_ref, decision)
+    if background_tasks is None:
+        outlook_sync_service.schedule(agent_graph.resume, request.external_ref, decision)
+    else:
+        background_tasks.add_task(agent_graph.resume, request.external_ref, decision)
 
 
 _ACTION_EXECUTORS = {
@@ -135,22 +143,36 @@ async def approve_endpoint(
             ) from exc
         except AssignmentExistsError as exc:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-        except EmailSendError as exc:
-            # 502: the approval decision itself succeeded and is recorded; what
-            # failed is the upstream mail provider. draft_sent stays False.
-            # ponytail: no retry endpoint for this. The operator re-approves or
-            # the reply is sent by hand. Add a retry path only if this turns out
-            # to be a recurring failure in practice, not preemptively.
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
-        except OutlookAuthRequiredError as exc:
-            # Distinct from a send failure: nobody is signed in, which needs a
-            # human to re-run scripts/outlook_login.py, not a retry.
+        except (EmailSendError, OutlookAuthRequiredError) as exc:
+            # The approval decision itself succeeded and is recorded; what
+            # failed is delivery. draft_sent stays False. An agent thread still
+            # has to be resumed, as undelivered, or it sits paused forever:
+            # the row is APPROVED now, so approving again returns 409.
+            _schedule_agent_resume(
+                None,
+                approved,
+                {
+                    "approved": True,
+                    "delivered": False,
+                    "error": str(exc),
+                    "draft": (approved.resolved_payload or approved.payload).get("draft"),
+                },
+            )
+            # ponytail: no retry endpoint for this. Re-approving is refused
+            # (409), so the reply is sent by hand; the task's handover_context
+            # says so on the agent path. Add a retry path only if this turns
+            # out to be a recurring failure in practice, not preemptively.
+            if isinstance(exc, EmailSendError):
+                # 502: the upstream mail provider refused it.
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
+                ) from exc
+            # 503, distinct from a send failure: nobody is signed in, which
+            # needs a human to re-run scripts/outlook_login.py, not a retry.
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
             ) from exc
 
-    # Only reached when the executor succeeded: a failed send raises above
-    # and leaves the thread paused rather than resuming it as if delivered.
     draft = (approved.resolved_payload or approved.payload).get("draft")
     _schedule_agent_resume(background_tasks, approved, {"approved": True, "draft": draft})
     return approved
