@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { getPatient, listCasesForPatient } from "../api/cases";
+import { getPatient, listCasesForPatient, promotePatient } from "../api/cases";
 import { listAppointments } from "../api/appointments";
 import { listClinicalDocuments, openClinicalDocument } from "../api/records";
 import { listConsentsForPatient, consentTypeLabel } from "../api/consent";
 import type { Patient, Case, Appointment, ClinicalDocument, Consent } from "../api/types";
 import { StatusBadge, Spinner } from "../components/ui";
+import { describeApiError } from "../lib/apiClient";
 import { PROFILE_FIELD_GROUPS, PROFILE_FIELD_LABELS_BY_API_KEY } from "../components/patientProfileFields";
 import { useAuth } from "../lib/auth";
 
 export function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [promoting, setPromoting] = useState(false);
+  const [promoteError, setPromoteError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   // Doctors get view_clinical as a role default; operators/admins only via an
@@ -71,6 +74,21 @@ export function PatientDetailPage() {
     }
   }
 
+  async function promote() {
+    if (!id) return;
+    setPromoting(true); setPromoteError(null);
+    try {
+      setPatient(await promotePatient(id));
+    } catch (err) {
+      // The backend's own 409 reason, for example "has no explicit captured
+      // consent; capture it first". A generic message would leave staff with
+      // no idea what to do next.
+      setPromoteError(describeApiError(err, "Could not promote this patient."));
+    } finally {
+      setPromoting(false);
+    }
+  }
+
   if (loading) return <div className="p-6"><Spinner label="Loading patient..." /></div>;
   if (error || !patient) return (
     <div className="p-6">
@@ -110,10 +128,26 @@ export function PatientDetailPage() {
           <p className="mt-1 text-sm text-slate-500 font-mono">{patient.mrn}</p>
         </div>
         <div className="flex items-center gap-3">
+          {patient.isProvisional && <StatusBadge tone="amber">Provisional</StatusBadge>}
           <StatusBadge tone={patient.status === "active" ? "green" : patient.status === "pending" ? "amber" : "gray"}>{patient.status}</StatusBadge>
+          {patient.isProvisional && (
+            <button
+              onClick={promote}
+              disabled={promoting}
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            >
+              {promoting ? "Promoting..." : "Promote"}
+            </button>
+          )}
           <button onClick={() => navigate(`/patients/${patient.id}/edit`)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Edit</button>
         </div>
       </div>
+
+      {promoteError && (
+        <div className="mt-4 max-w-lg rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {promoteError}
+        </div>
+      )}
 
       {patient.missingFields.length > 0 && (
         <div className="mt-4 max-w-lg rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

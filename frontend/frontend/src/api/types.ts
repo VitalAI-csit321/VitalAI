@@ -22,9 +22,12 @@ export interface Patient {
   id: string;
   mrn: string;
   name: string;
-  dob: string;
-  gender: Gender;
+  // Nullable since backend migration 0031: a provisional patient is known only
+  // from an inbound message, so they may have neither yet.
+  dob: string | null;
+  gender: Gender | null;
   status: PatientStatus;
+  isProvisional: boolean;
   createdAt: string;
   address: string | null;
   indigenousStatus: string | null;

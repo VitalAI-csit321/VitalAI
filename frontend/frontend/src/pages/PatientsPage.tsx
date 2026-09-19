@@ -67,7 +67,10 @@ export function PatientsPage() {
             : patients.map(p => (
               <tr key={p.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                 <td className="px-6 py-4 font-mono text-sm text-slate-700">{p.mrn}</td>
-                <td className="px-6 py-4 font-medium text-slate-900">{p.name}</td>
+                <td className="px-6 py-4 font-medium text-slate-900">
+                  {p.name}
+                  {p.isProvisional && <span className="ml-2"><StatusBadge tone="amber">Provisional</StatusBadge></span>}
+                </td>
                 <td className="px-6 py-4 text-slate-600">{p.dob ? new Date(p.dob).toLocaleDateString("en-GB") : "—"}</td>
                 <td className="px-6 py-4 text-slate-600 capitalize">{p.gender?.replace("_"," ") ?? "—"}</td>
                 <td className="px-6 py-4">

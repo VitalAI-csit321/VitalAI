@@ -27,10 +27,10 @@ const demoProfileFieldDefaults = {
 };
 
 export const demoPatients: Patient[] = [
-  { id: "patient-1", mrn: "MRN-8842301", name: "Williams Jamie", dob: "1979-03-04", gender: "female", status: "active", createdAt: new Date().toISOString(), ...demoProfileFieldDefaults },
-  { id: "patient-2", mrn: "MRN-1120044", name: "Morrison James", dob: "1985-11-20", gender: "male", status: "active", createdAt: new Date().toISOString(), ...demoProfileFieldDefaults },
-  { id: "patient-3", mrn: "MRN-7734211", name: "Nguyen Benjamin", dob: "1990-06-15", gender: "male", status: "active", createdAt: new Date().toISOString(), ...demoProfileFieldDefaults },
-  { id: "patient-4", mrn: "MRN-2210987", name: "Chen Sarah", dob: "1978-02-02", gender: "female", status: "active", createdAt: new Date().toISOString(), ...demoProfileFieldDefaults },
+  { id: "patient-1", mrn: "MRN-8842301", name: "Williams Jamie", dob: "1979-03-04", gender: "female", status: "active", isProvisional: false, createdAt: new Date().toISOString(), ...demoProfileFieldDefaults },
+  { id: "patient-2", mrn: "MRN-1120044", name: "Morrison James", dob: "1985-11-20", gender: "male", status: "active", isProvisional: false, createdAt: new Date().toISOString(), ...demoProfileFieldDefaults },
+  { id: "patient-3", mrn: "MRN-7734211", name: "Nguyen Benjamin", dob: "1990-06-15", gender: "male", status: "active", isProvisional: false, createdAt: new Date().toISOString(), ...demoProfileFieldDefaults },
+  { id: "patient-4", mrn: "MRN-2210987", name: "Chen Sarah", dob: "1978-02-02", gender: "female", status: "active", isProvisional: false, createdAt: new Date().toISOString(), ...demoProfileFieldDefaults },
 ];
 
 function iso(daysFromNow: number, hour: number, minute = 0): string {
