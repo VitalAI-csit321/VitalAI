@@ -89,12 +89,21 @@ async def lifespan(application: FastAPI):
     if settings.outlook_enabled:
         poller_task = asyncio.create_task(run_poller())
 
+    # Daily anonymisation of unclaimed provisional patients. Only the agent
+    # creates those, so it runs behind the same flag.
+    purge_task: asyncio.Task | None = None
+    if settings.agentic_pipeline_enabled:
+        from app.services.provisional_purge import run_purge
+
+        purge_task = asyncio.create_task(run_purge())
+
     yield
 
-    if poller_task is not None:
-        poller_task.cancel()
-        with suppress(asyncio.CancelledError):
-            await poller_task
+    for task in (poller_task, purge_task):
+        if task is not None:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
 
 
 async def _rate_limit_handler(request: Request, exc: Exception) -> Response:

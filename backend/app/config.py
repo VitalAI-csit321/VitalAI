@@ -90,6 +90,10 @@ class Settings(BaseSettings):
     # Holds a live refresh token: gitignored, never commit it.
     outlook_token_cache_path: str = ".outlook_token_cache.json"
     outlook_poll_interval_seconds: int = 60
+    # How long an unclaimed provisional patient record is kept before it is
+    # anonymised in place (build spec 9.1), and how often the sweep runs.
+    provisional_patient_ttl_days: int = 90
+    provisional_purge_interval_seconds: int = 86400
     outlook_max_messages_per_poll: int = 25
     # The mailbox this connector reads. Used as the fallback recipient when a
     # message arrives with toRecipients absent, which happens for mail sent to
