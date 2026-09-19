@@ -157,8 +157,9 @@ async def test_guardrail_blocks_a_restricted_draft(detached_sessionmaker, db_ses
     assert update == {"dispatch_result": "blocked"}
 
 
-async def test_risk_is_the_existing_three_bucket_step_function():
-    assert await nodes.risk({}) == {"risk_score": 10, "risk_tier": "low"}
+async def test_risk_tier_is_high_once_the_critic_corrected_the_draft():
+    assert await nodes.risk({"revision_count": 0}) == {"risk_tier": "low"}
+    assert await nodes.risk({"revision_count": 1}) == {"risk_tier": "high"}
 
 
 async def test_auto_send_delivers_through_the_shared_function(

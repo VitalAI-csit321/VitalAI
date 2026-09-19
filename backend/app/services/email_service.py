@@ -262,6 +262,20 @@ def auto_send_eligible(
     )
 
 
+def reply_risk_tier(*, revision_count: int) -> str:
+    """Whether a draft must reach a human whatever auto_send_eligible says.
+
+    Not the audit log's severity scorer (audit_service._compute_risk_score):
+    "how alarming is this log entry" and "must a human approve this reply" are
+    different questions. Tiers, not a score (build spec §5 option (a)); later
+    branches add rules here rather than new thresholds.
+    """
+    # A draft the critic had to correct never goes out without a human. The
+    # flag-off path already holds a rejected draft for staff; without this the
+    # graph's corrected rewrite could auto-send.
+    return "high" if revision_count > 0 else "low"
+
+
 async def deliver_reply(
     db: AsyncSession,
     *,

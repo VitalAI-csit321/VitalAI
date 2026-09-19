@@ -22,7 +22,6 @@ from app.models.patient import Patient
 from app.models.task import Task
 from app.models.user import User
 from app.services import consent_service, email_service
-from app.services.audit_service import _compute_risk_score, risk_level_from_score
 from app.services.draft_critic import critique
 from app.services.email_service import EmailSendError
 from app.services.outlook_auth import OutlookAuthRequiredError
@@ -129,11 +128,10 @@ async def guardrail(state: CaseState, runtime: Runtime[Context]) -> dict:
 
 
 async def risk(state: CaseState) -> dict:
-    """§5 option (a): the existing three-bucket step function, not a score.
-    It keys on the action string, so every email reply lands in one bucket;
-    recorded for the reviewer, not a routing input."""
-    score = _compute_risk_score("email.draft_reply")
-    return {"risk_score": score, "risk_tier": risk_level_from_score(score).lower()}
+    """§5.1: HIGH sends the draft to approval whatever the auto-send predicate says."""
+    return {
+        "risk_tier": email_service.reply_risk_tier(revision_count=state.get("revision_count", 0))
+    }
 
 
 async def auto_send(state: CaseState, runtime: Runtime[Context]) -> dict:

@@ -56,7 +56,6 @@ class CaseState(TypedDict, total=False):
     critic_reason: str | None
     revision_count: int
 
-    risk_score: int | None
     risk_tier: str | None
 
     approval_request_id: str | None

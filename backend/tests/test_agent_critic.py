@@ -178,3 +178,40 @@ async def test_flag_off_staff_edit_and_approve_sends_their_text(
     await db_session.refresh(task)
     assert task.draft_sent is True
     assert task.draft_text == edited
+
+
+# --- §5.1: a critic-corrected draft always reaches a human ------------------------
+
+AUTO = TaskRoutingGateResult(outcome=TaskRoutingOutcome.AUTO_ROUTED, override_reason=None)
+
+
+async def test_a_draft_the_critic_corrected_goes_to_approval_not_auto_send(
+    db_session, agent_saver, monkeypatch, outlook
+):
+    """Rejected once, then passes the critic and meets every auto-send condition
+    (fully confident, grounded, worthy, non-clinical). Before reply_risk_tier the
+    rewrite went straight to the patient."""
+    llm = FakeLLM()
+    monkeypatch.setattr("app.services.email_service.get_llm", lambda: llm)
+    monkeypatch.setattr(
+        "app.services.email_service._generate_org_grounded_reply",
+        AsyncMock(side_effect=[(BAD, True), (DRAFT, True)]),
+    )
+    email, task = await seed_email(db_session, external_id="AAMk-corrected")
+
+    await agent_graph.start(task.id, email.id, None, AUTO, 0.95)
+
+    snapshot = (
+        await build_graph()
+        .compile(checkpointer=agent_saver)
+        .aget_state(run_config(thread_id("email", str(email.id))))
+    )
+    assert snapshot.values["revision_count"] == 1
+    assert snapshot.values["critic_verdict"] == "pass"
+    assert snapshot.values["risk_tier"] == "high"
+    assert snapshot.next == ("await_approval",)
+    outlook.assert_not_awaited()
+    (approval,) = await _approvals(db_session, task)
+    assert approval.payload["draft"] == DRAFT
+    await db_session.refresh(task)
+    assert task.draft_sent is False

@@ -165,13 +165,13 @@ def route_intent(state: CaseState) -> str:
 
 
 def auto_send_or_approve(state: CaseState) -> str:
-    """The same predicate draft_reply uses, so both paths auto-send the same
-    emails and nothing else.
+    """The same predicate draft_reply uses, plus the rule that a HIGH risk
+    tier (email_service.reply_risk_tier) always reaches a human.
 
-    Plus §2's rule that a HIGH risk tier always reaches a human. Every email
-    reply is LOW today (the score keys on the action string), so this cannot
-    make the two paths disagree yet; it is here for branches that are HIGH by
-    rule, such as Prescription (§5)."""
+    For a draft the critic passed first time the two paths make the same
+    decision. They are not the same for every email: a draft the critic
+    rejected is held for staff on the flag-off path, and redrafted here; the
+    redraft is HIGH, so it reaches a human too and neither path auto-sends it."""
     if state.get("risk_tier") == "high":
         return "create_approval"
     eligible = email_service.auto_send_eligible(
