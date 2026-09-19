@@ -495,3 +495,53 @@ async def test_clinical_category_never_auto_sends_even_when_worthy_and_grounded(
     assert outcome.draft_text == "Your results are normal."
     assert outcome.sent is False
     assert outcome.approval_id is not None
+
+
+async def test_a_clinical_draft_never_retrieves_a_restricted_chunk(
+    db_session, front_desk_user, patient, monkeypatch
+):
+    """Gate (e), spec G.1. referral_request and medical_records_request route to
+    OPERATOR, and admins see every queue; neither role holds VIEW_CLINICAL by
+    default. Restricted consultation notes, pathology, prescriptions, care plans
+    and discharge summaries must therefore not reach an email draft, and through
+    it a patient's mailbox."""
+    from types import SimpleNamespace
+
+    from app.models.case import IntakeCase, IntakeStatus
+
+    case = IntakeCase(
+        contact_reason="Results",
+        contact_channel="email",
+        status=IntakeStatus.RECEIVED,
+        patient_id=patient.id,
+    )
+    db_session.add(case)
+    await db_session.commit()
+
+    monkeypatch.setattr(
+        "app.services.email_service.get_llm",
+        lambda: _FakeLLM(json.dumps({"category": "results_enquiry", "confidence": 0.99})),
+    )
+    payload = EmailIngestRequest(
+        sender="patient@example.com",
+        recipient="clinic@example.com",
+        subject="My results",
+        body="Can you tell me my blood test results?",
+        case_id=case.id,
+    )
+    email, task, gate, confidence = await email_service.ingest_email(
+        db_session, payload, front_desk_user
+    )
+
+    seen: dict[str, list[str]] = {}
+
+    async def _capture(db, question, ctx, actor, **kwargs):
+        seen["scopes"] = list(ctx.allowed_scopes)
+        return SimpleNamespace(answer="Your results are normal.")
+
+    monkeypatch.setattr("app.rag.answer.answer_question", _capture)
+
+    await email_service.generate_draft(db_session, task, email, front_desk_user)
+
+    assert seen["scopes"] == ["general"]
+    assert "restricted" not in seen["scopes"]

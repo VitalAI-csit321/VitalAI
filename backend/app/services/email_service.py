@@ -416,9 +416,14 @@ async def generate_draft(
             from app.rag.answer import answer_question
             from app.rag.retrieval import RetrievalContext
 
+            # general only (spec G.1). referral_request and medical_records_request
+            # route to OPERATOR and admins see every queue, and neither role holds
+            # VIEW_CLINICAL by default, so restricted clinical documents must not
+            # reach a draft. A draft with nothing general to ground on becomes
+            # "not enough information" and staff write it themselves.
             ctx = RetrievalContext(
                 patient_id=case.patient_id,
-                allowed_scopes=["general", "restricted"],
+                allowed_scopes=["general"],
                 role=actor.role.value,
                 actor=actor.email,
             )
