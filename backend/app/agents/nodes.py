@@ -14,7 +14,6 @@ from uuid import UUID
 from langgraph.runtime import Runtime
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.critic import critique
 from app.agents.state import CaseState, Context
 from app.llm.output_guardrail import OutputBlockedError, check_output
 from app.models.case import IntakeCase
@@ -24,6 +23,7 @@ from app.models.task import Task
 from app.models.user import User
 from app.services import consent_service, email_service
 from app.services.audit_service import _compute_risk_score, risk_level_from_score
+from app.services.draft_critic import critique
 from app.services.email_service import EmailSendError
 from app.services.outlook_auth import OutlookAuthRequiredError
 from app.services.reply_gate import ReplyWorthiness

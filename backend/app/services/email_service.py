@@ -24,6 +24,7 @@ from app.schemas.email import EmailIngestRequest
 from app.services import approval_service, outlook_auth, outlook_client
 from app.services.audit_service import record_event
 from app.services.content_classifier import classify_content
+from app.services.draft_critic import critique
 from app.services.outlook_auth import OutlookAuthRequiredError
 from app.services.reply_gate import ReplyGateResult, ReplyWorthiness, evaluate_reply_worthiness
 from app.services.task_routing_gate import (
@@ -207,11 +208,17 @@ async def _generate_org_grounded_reply(
 
 
 def approval_payload(
-    email_id: str | UUID, task_id: str | UUID, draft: str | None, delivery_error: str | None
+    email_id: str | UUID,
+    task_id: str | UUID,
+    draft: str | None,
+    delivery_error: str | None,
+    critic_reason: str | None = None,
 ) -> dict:
     payload = {"email_id": str(email_id), "task_id": str(task_id), "draft": draft}
     if delivery_error is not None:
         payload["delivery_error"] = delivery_error
+    if critic_reason is not None:
+        payload["critic_reason"] = critic_reason
     return payload
 
 
@@ -482,8 +489,12 @@ async def draft_reply(
         await _persist_draft(db, task, outcome)
         return outcome
 
+    # The same policy check the agent graph runs, without its regeneration
+    # loop: a rejected draft never auto-sends, it goes to staff with the reason
+    # and stays editable. The graph instead redrafts up to twice (graph.after_critic).
+    critic_reason = critique(draft_text)
     delivery_error = None
-    if auto_send_eligible(
+    if critic_reason is None and auto_send_eligible(
         verdict=reply_verdict.verdict,
         gate_outcome=gate.outcome,
         confidence=confidence,
@@ -513,10 +524,12 @@ async def draft_reply(
     approval = await approval_service.create_approval_request(
         db,
         action_type="email.draft_reply",
-        payload=approval_payload(email.id, task.id, draft_text, delivery_error),
+        payload=approval_payload(email.id, task.id, draft_text, delivery_error, critic_reason),
         case_id=email.case_id,
         requested_by=actor,
     )
+    if critic_reason is not None:
+        task.handover_context = f"Held for review by the policy check: {critic_reason}"
     outcome = EmailDraftOutcome(
         draft_text=draft_text, approval_id=str(approval.id), sent=False, blocked=False
     )

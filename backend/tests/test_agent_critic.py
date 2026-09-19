@@ -1,16 +1,18 @@
 """Critic loop (build spec §6): deterministic rules, at most two regenerations."""
 
 from unittest.mock import AsyncMock
+from uuid import UUID
 
 import pytest
 from sqlalchemy import select
 
 from app.agents import graph as agent_graph
-from app.agents.critic import critique
 from app.agents.graph import build_graph, run_config, thread_id
 from app.config import settings
 from app.models.approval import ApprovalRequest
 from app.models.audit import AuditEvent
+from app.models.task import Task
+from app.services.draft_critic import critique
 from app.services.task_routing_gate import TaskRoutingGateResult, TaskRoutingOutcome
 from tests.agent_fakes import DRAFT, FakeLLM, seed_email
 
@@ -109,3 +111,70 @@ async def test_three_failing_drafts_escalate_with_no_approval_and_no_send(
         .all()
     )
     assert "agent.critic_escalated" in [e.action for e in events]
+
+
+# --- flag-off path: critic only, no regeneration ---------------------------------
+
+
+async def _flag_off_bad_draft(client, headers, monkeypatch, outlook):
+    """An email that passes every auto-send condition, except its draft judges
+    medication suitability."""
+    monkeypatch.setattr(settings, "agentic_pipeline_enabled", False)
+    llm = FakeLLM()
+    monkeypatch.setattr("app.services.email_service.get_llm", lambda: llm)
+    monkeypatch.setattr(
+        "app.services.email_service._generate_org_grounded_reply",
+        AsyncMock(return_value=(BAD, True)),
+    )
+    response = await client.post(
+        "/api/v1/email/ingest",
+        json={
+            "sender": "patient@example.com",
+            "recipient": "clinic@example.com",
+            "subject": "Question",
+            "body": "Can I keep taking my tablets?",
+            "external_id": "AAMk-flagoff",
+            "external_source": "outlook",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 201, response.text
+    return response.json()["task_id"]
+
+
+async def test_flag_off_rejected_draft_is_held_for_staff_with_the_reason(
+    client, front_desk_headers, db_session, monkeypatch, outlook
+):
+    task_id = await _flag_off_bad_draft(client, front_desk_headers, monkeypatch, outlook)
+
+    outlook.assert_not_awaited()
+    task = await db_session.get(Task, UUID(task_id))
+    await db_session.refresh(task)
+    assert task.draft_sent is False
+    # Kept, so staff can edit it rather than start from nothing.
+    assert task.draft_text == BAD
+    assert critique(BAD) in task.handover_context
+    (approval,) = await _approvals(db_session, task)
+    assert approval.payload["critic_reason"] == critique(BAD)
+    assert task.draft_approval_id == approval.id
+
+
+async def test_flag_off_staff_edit_and_approve_sends_their_text(
+    client, front_desk_headers, admin_headers, db_session, monkeypatch, outlook
+):
+    task_id = await _flag_off_bad_draft(client, front_desk_headers, monkeypatch, outlook)
+    task = await db_session.get(Task, UUID(task_id))
+    (approval,) = await _approvals(db_session, task)
+    edited = "Thanks for asking. I have passed your question to the clinical team."
+
+    response = await client.post(
+        f"/api/v1/approvals/{approval.id}/approve",
+        json={"resolved_payload": {**approval.payload, "draft": edited}},
+        headers=admin_headers,
+    )
+
+    assert response.status_code == 200, response.text
+    outlook.assert_awaited_once_with("t", "AAMk-flagoff", edited)
+    await db_session.refresh(task)
+    assert task.draft_sent is True
+    assert task.draft_text == edited

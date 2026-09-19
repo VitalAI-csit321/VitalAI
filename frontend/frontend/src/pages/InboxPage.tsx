@@ -274,6 +274,13 @@ export function InboxPage() {
                   {selected.body}
                 </div>
 
+                {selected.handoverContext && !selected.draftSent && (
+                  <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    <span className="font-semibold">Note for staff: </span>
+                    {selected.handoverContext}
+                  </div>
+                )}
+
                 {showReply && (
                   <div className="mt-5 rounded-lg border border-brand/30 bg-emerald-50/40 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
