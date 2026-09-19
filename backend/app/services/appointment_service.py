@@ -4,6 +4,7 @@ import uuid
 from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -500,6 +501,19 @@ async def serialize_many(db: AsyncSession, appointments: list[Appointment]) -> l
     return out
 
 
+def clinic_day_window(day: date, days: int = 1) -> tuple[datetime, datetime]:
+    """The [start, end) instants covering `days` clinic-local days from `day`.
+
+    Built from both local midnights rather than start + 24h, so a window
+    spanning a DST change is the 23 or 25 hours that day actually has.
+    """
+    tz = ZoneInfo(settings.clinic_timezone)
+    return (
+        datetime.combine(day, time.min, tzinfo=tz),
+        datetime.combine(day + timedelta(days=days), time.min, tzinfo=tz),
+    )
+
+
 def _month_bounds(year: int, month: int) -> tuple[datetime, datetime]:
     first = datetime(year, month, 1, tzinfo=UTC)
     last_day = _calendar.monthrange(year, month)[1]
@@ -668,8 +682,7 @@ async def get_availability(
     day: date,
     slot_minutes: int = 30,
 ) -> AvailabilityOut:
-    start = datetime.combine(day, time.min, tzinfo=UTC)
-    end = start + timedelta(days=1)
+    start, end = clinic_day_window(day)
     blocking = await _doctor_busy_slots(db, doctor_id, start, end)
 
     # Guard against SQLite's naive datetime round-trip (known issue in test
@@ -685,8 +698,12 @@ async def get_availability(
         busy_ranges.append((slot_start, slot_end))
 
     slots: list[AvailabilitySlotOut] = []
-    cursor = datetime.combine(day, time(hour=settings.clinic_open_hour), tzinfo=UTC)
-    closing = datetime.combine(day, time(hour=settings.clinic_close_hour), tzinfo=UTC)
+    # Clinic local, not UTC: these hours are what the Settings page calls
+    # "Clinic opens"/"Clinic closes", and the frontend renders each slot with
+    # toLocaleTimeString, so a UTC reading showed the clinic open overnight.
+    tz = ZoneInfo(settings.clinic_timezone)
+    cursor = datetime.combine(day, time(hour=settings.clinic_open_hour), tzinfo=tz)
+    closing = datetime.combine(day, time(hour=settings.clinic_close_hour), tzinfo=tz)
     step = timedelta(minutes=slot_minutes)
 
     while cursor + step <= closing:

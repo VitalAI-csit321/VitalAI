@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     # single source of truth so a clinic that opens at 7 needs no code change.
     clinic_open_hour: int = 8
     clinic_close_hour: int = 18
+    # The zone those hours are in. Stored timestamps stay UTC-aware; this is
+    # only how an instant becomes a clinic day and a clinic day becomes a
+    # window. Read-only in settings_service.SETTINGS_REGISTRY: a name that is
+    # not a real zone would raise inside zoneinfo on every calendar call.
+    clinic_timezone: str = "Australia/Sydney"
     # Used when a booking does not specify a duration explicitly.
     default_appointment_duration_minutes: int = 30
 

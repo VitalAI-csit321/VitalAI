@@ -141,9 +141,28 @@ async def test_day_view_reports_totals_and_providers(client, admin_headers, book
     assert body["providers"][0]["doctor_name"]
 
 
+async def _book_clinic_morning(client, admin_headers, doctor, case) -> dict:
+    """09:00 Sydney on 2026-09-01, inside clinic hours. booked_appointment's
+    09:00Z is 19:00 Sydney, which only looked like a 9am slot while clinic
+    hours were read as UTC hours (build spec 10.0)."""
+    response = await client.post(
+        "/api/v1/appointments",
+        headers=admin_headers,
+        json={
+            "doctor_id": str(doctor.id),
+            "case_id": str(case.id),
+            "time_slot": "2026-08-31T23:00:00Z",
+            "duration_minutes": 30,
+        },
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
 async def test_availability_marks_booked_slots_unavailable(
-    client, admin_headers, seeded_doctor, booked_appointment
+    client, admin_headers, seeded_doctor, seeded_case
 ):
+    await _book_clinic_morning(client, admin_headers, seeded_doctor, seeded_case)
     response = await client.get(
         "/api/v1/appointments/availability",
         headers=admin_headers,
@@ -161,10 +180,11 @@ async def test_availability_marks_booked_slots_unavailable(
 
 
 async def test_availability_ignores_cancelled_appointments(
-    client, admin_headers, seeded_doctor, booked_appointment
+    client, admin_headers, seeded_doctor, seeded_case
 ):
+    booked = await _book_clinic_morning(client, admin_headers, seeded_doctor, seeded_case)
     await client.post(
-        f"/api/v1/appointments/{booked_appointment['id']}/cancel",
+        f"/api/v1/appointments/{booked['id']}/cancel",
         headers=admin_headers,
         json={"cancel_reason": "patient rescheduled"},
     )

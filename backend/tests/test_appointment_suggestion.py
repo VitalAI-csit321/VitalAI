@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import pytest
 
 pytestmark = pytest.mark.asyncio
@@ -49,7 +51,8 @@ async def test_suggestions_avoid_slots_already_confirmed(
         json={
             "doctor_id": str(seeded_doctor.id),
             "case_id": str(seeded_case.id),
-            "time_slot": "2026-09-07T08:00:00Z",
+            # 08:00 Sydney on 7 September, the first slot of that clinic day.
+            "time_slot": "2026-09-06T22:00:00Z",
             "duration_minutes": 30,
         },
     )
@@ -65,7 +68,9 @@ async def test_suggestions_avoid_slots_already_confirmed(
             "count": 1,
         },
     )
-    assert response.json()[0]["time_slot"] != "2026-09-07T08:00:00Z"
+    first = datetime.fromisoformat(response.json()[0]["time_slot"])
+    assert first != datetime(2026, 9, 6, 22, 0, tzinfo=UTC)
+    assert first == datetime(2026, 9, 6, 22, 30, tzinfo=UTC)
 
 
 async def test_confirming_a_suggestion_uses_the_normal_patch_path(
