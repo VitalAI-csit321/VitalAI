@@ -3,8 +3,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.config import settings
+from app.models.task import TaskCategory
 from app.schemas.email import EmailIngestRequest
 from app.services import email_service
+from app.services.reply_gate import ReplyWorthiness
+from app.services.task_routing_gate import TaskRoutingOutcome
 
 
 class _FakeLLM:
@@ -642,3 +646,54 @@ async def test_an_urgent_word_in_the_subject_alone_forces_human_review(
 
     assert gate.outcome == TaskRoutingOutcome.HUMAN_REVIEW
     assert gate.override_reason == "urgent_keyword"
+
+
+# The control: every one of the six conditions satisfied. Flipping exactly one
+# of them must turn auto-send off, which is what pins each condition alone.
+_AUTO_SEND_CONTROL = {
+    "verdict": ReplyWorthiness.WORTHY,
+    "gate_outcome": TaskRoutingOutcome.AUTO_ROUTED,
+    "confidence": 0.99,
+    "grounded": True,
+    "category": TaskCategory.GENERAL_ADMINISTRATIVE,
+}
+
+
+@pytest.mark.parametrize(
+    ("enabled", "override", "expected"),
+    [
+        (True, {}, True),
+        (False, {}, False),
+        (True, {"verdict": ReplyWorthiness.UNCERTAIN}, False),
+        (True, {"gate_outcome": TaskRoutingOutcome.HUMAN_REVIEW}, False),
+        # settings.task_routing_auto_threshold is 0.90.
+        (True, {"confidence": 0.5}, False),
+        (True, {"grounded": False}, False),
+        (True, {"category": TaskCategory.PRESCRIPTION_RENEWAL}, False),
+    ],
+    ids=[
+        "control",
+        "flag-off",
+        "verdict-uncertain",
+        "gate-human-review",
+        "confidence-below-threshold",
+        "not-grounded",
+        "clinical-category",
+    ],
+)
+def test_auto_send_eligible_needs_every_one_of_its_six_conditions(
+    monkeypatch, enabled, override, expected
+):
+    """The one definition both the flag-off draft_reply and the agent graph
+    call, so the two paths can never disagree about what auto-sends. It had no
+    unit test of any kind; all six conditions were unpinned individually.
+
+    email_auto_send_enabled is monkeypatched explicitly, control included:
+    conftest pins it "true" for the whole suite, so a control that merely
+    inherited that pin would pass today and go vacuous the day that line
+    changes. A control returning False would make the other six rows prove
+    nothing.
+    """
+    monkeypatch.setattr(settings, "email_auto_send_enabled", enabled)
+
+    assert email_service.auto_send_eligible(**{**_AUTO_SEND_CONTROL, **override}) is expected
