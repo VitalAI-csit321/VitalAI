@@ -259,7 +259,8 @@ def _guarded(stage: str, fn: Node) -> Node:
                         case_id=state.get("case_id"),
                         actor=actor,
                         stage=stage,
-                        error=f"{type(exc).__name__}: {exc}",
+                        error_type=type(exc).__name__,
+                        error_detail=str(exc),
                     )
             except Exception:
                 logger.exception("Could not record the %s failure", stage)
@@ -462,7 +463,8 @@ async def _record_run_failure(
                 case_id=None,
                 actor=actor,
                 stage=stage,
-                error=f"{type(exc).__name__}: {exc}",
+                error_type=type(exc).__name__,
+                error_detail=str(exc),
             )
     except Exception:
         logger.exception("Could not record the %s failure for %s", stage, tid or task_id)
