@@ -389,6 +389,56 @@ async def deliver_reply(
     await db.commit()
 
 
+async def deliver_new_message(
+    db: AsyncSession,
+    *,
+    to_address: str,
+    subject: str,
+    body: str,
+    actor: User,
+    case_id: UUID | None,
+    action: str,
+    details: dict,
+) -> None:
+    """Send a message that is not a reply. The only caller of
+    outlook_client.send_mail in the app.
+
+    Same division of labour as deliver_reply, which is the house rule for
+    outbound mail: Graph is called only when the connector is enabled and the
+    send is otherwise simulated, and the audit event is written here rather
+    than by the caller, so every message that reaches a patient is audited in
+    one place. A delivery failure raises and writes no "sent" event.
+
+    The action and details are the caller's because this function is not told
+    what the message is about; it is told who to send it to. What it will not
+    do is decide whether the caller may send again: that guard belongs to
+    whatever owns the thing being announced.
+
+    Raises EmailSendError or OutlookAuthRequiredError, both before anything is
+    written.
+    """
+    delivered = False
+    if settings.outlook_enabled:
+        token = await outlook_auth.get_access_token()
+        try:
+            await outlook_client.send_mail(token, to_address, subject, body)
+        except httpx.HTTPError as exc:
+            raise EmailSendError(f"Outlook rejected the message to {to_address}: {exc}") from exc
+        delivered = True
+
+    await record_event(
+        db,
+        actor=actor,
+        case_id=case_id,
+        action=action,
+        # Same distinction deliver_reply draws: a real Graph delivery is not
+        # the same event as the simulated one, and the log should not claim
+        # more than happened.
+        details={**details, "delivered": delivered},
+    )
+    await db.commit()
+
+
 async def check_reply_worthiness(db: AsyncSession, email: Email, actor: User) -> ReplyGateResult:
     return await evaluate_reply_worthiness(
         db, get_llm(), sender=email.sender, subject=email.subject, body=email.body, actor=actor

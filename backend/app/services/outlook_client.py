@@ -170,3 +170,30 @@ async def send_reply(access_token: str, message_id: str, reply_body: str) -> Non
             json={"comment": _plain_text_to_html(reply_body)},
         )
         response.raise_for_status()
+
+
+async def send_mail(access_token: str, to_address: str, subject: str, body: str) -> None:
+    """Send a new message, for outbound mail with nothing to reply to.
+
+    A reminder has no inbound message to thread under, so /reply cannot carry
+    it. The payload is a different shape from send_reply's {"comment": ...}:
+    sendMail takes the whole message, and Graph fills in nothing, so the
+    recipient and subject have to be stated here.
+
+    Graph answers 202 Accepted (the request is accepted, not yet delivered),
+    which raise_for_status treats as success.
+    """
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        response = await client.post(
+            f"{GRAPH_URL}/me/sendMail",
+            headers={**_auth_headers(access_token), "Content-Type": "application/json"},
+            json={
+                "message": {
+                    "subject": subject,
+                    "body": {"contentType": "HTML", "content": _plain_text_to_html(body)},
+                    "toRecipients": [{"emailAddress": {"address": to_address}}],
+                },
+                "saveToSentItems": True,
+            },
+        )
+        response.raise_for_status()
