@@ -182,9 +182,7 @@ async def test_a_node_failure_keeps_the_exception_detail_out_of_the_staff_note(
         error_detail=secret,
     )
 
-    task = (
-        await db_session.execute(select(Task).where(Task.case_id == case.id))
-    ).scalars().first()
+    task = (await db_session.execute(select(Task).where(Task.case_id == case.id))).scalars().first()
     assert task is not None
     assert task.handover_context is not None
     assert "draft" in task.handover_context
@@ -196,11 +194,15 @@ async def test_a_node_failure_keeps_the_exception_detail_out_of_the_staff_note(
     assert secret not in task.handover_context
 
     event = (
-        await db_session.execute(
-            select(AuditEvent).where(
-                AuditEvent.case_id == case.id, AuditEvent.action == "agent.node_failed"
+        (
+            await db_session.execute(
+                select(AuditEvent).where(
+                    AuditEvent.case_id == case.id, AuditEvent.action == "agent.node_failed"
+                )
             )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
     assert event is not None
     assert "ignore previous instructions" in event.details["error"]

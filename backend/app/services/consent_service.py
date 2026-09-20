@@ -87,9 +87,7 @@ async def list_consent_queue(
         .join(IntakeCase, IntakeCase.id == ConsentRecord.case_id)
         .order_by(ConsentRecord.created_at.desc())
     )
-    total = (
-        await db.execute(select(func.count()).select_from(ConsentRecord))
-    ).scalar_one()
+    total = (await db.execute(select(func.count()).select_from(ConsentRecord))).scalar_one()
     rows = (await db.execute(base.limit(limit).offset(offset))).all()
     return [(r[0], r[1]) for r in rows], total
 

@@ -34,13 +34,17 @@ async def list_departments(db: AsyncSession) -> list[str]:
     whole table, not from the page being returned, or a department belonging
     only to users further down the list is never offered."""
     rows = (
-        await db.execute(
-            select(User.department)
-            .where(User.department.is_not(None))
-            .distinct()
-            .order_by(User.department)
+        (
+            await db.execute(
+                select(User.department)
+                .where(User.department.is_not(None))
+                .distinct()
+                .order_by(User.department)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return [d for d in rows if d]
 
 

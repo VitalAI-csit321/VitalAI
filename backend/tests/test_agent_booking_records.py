@@ -473,7 +473,10 @@ async def test_an_implied_record_on_another_case_is_still_not_consent(
     patient = await _patient(db_session)
     earlier_case = await _linked_case(db_session, patient)
     record = await consent_service.create_consent_record(
-        db_session, earlier_case.id, admin_user, consent_type=consent_service.IMPLIED_INBOUND_CONTACT
+        db_session,
+        earlier_case.id,
+        admin_user,
+        consent_type=consent_service.IMPLIED_INBOUND_CONTACT,
     )
     await consent_service.capture_consent(db_session, record.id, admin_user)
     await db_session.commit()

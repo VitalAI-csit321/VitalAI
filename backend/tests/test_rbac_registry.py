@@ -74,4 +74,8 @@ def test_total_route_count():
     # 92 as of the corpus-as-documents work: +1 for GET /rag/documents.
     # 93 as of the provisional-patient work (build spec 9.0b): +1 for
     # POST /patients/{patient_id}/promote, which requires REGISTER_PATIENT.
-    assert len({(e.method, e.path) for e in registry}) == 93
+    # 94 as of the consent queue fix: +1 for GET /consent/queue, which requires
+    # CAPTURE_CONSENT (front desk, operators and admins, not clinicians) and
+    # replaces a frontend page that listed intake cases and labelled them from
+    # a hardcoded array of form names.
+    assert len({(e.method, e.path) for e in registry}) == 94

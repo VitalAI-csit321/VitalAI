@@ -55,18 +55,17 @@ async def consent_queue_endpoint(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
-    actor: User = Depends(require_permission(VIEW_RECORDS_GENERAL)),
+    _: User = Depends(require_permission(CAPTURE_CONSENT)),
 ):
     """The staff consent queue: real records, not the recent cases.
 
-    Doctors are deliberately excluded rather than filtered: the queue is a
-    whole-clinic administrative view, and scoping it per assignment would give
-    a doctor a partial list that looks complete.
+    Gated on CAPTURE_CONSENT, which front desk, operators and admins hold and
+    clinicians do not, because this is the whole-clinic administrative view of
+    who has been asked for consent. Scoping it per assignment instead would
+    hand a clinician a partial list that reads as complete. Declared through
+    the permission rather than a role check in the body, so the RBAC registry
+    stays the single description of who may call this.
     """
-    if actor.role == UserRole.DOCTOR:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not available to clinicians"
-        )
     rows, total = await consent_service.list_consent_queue(db, limit=limit, offset=offset)
     return ConsentQueueResponse(
         items=[
