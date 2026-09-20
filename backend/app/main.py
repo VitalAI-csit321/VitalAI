@@ -97,9 +97,18 @@ async def lifespan(application: FastAPI):
 
         purge_task = asyncio.create_task(run_purge())
 
+    # Appointment reminders (spec §16). Its own flag, not the agent one: this
+    # is the one background job that emails patients with nobody approving
+    # it, so pulling the branch must not be enough to start it.
+    reminder_task: asyncio.Task | None = None
+    if settings.appointment_reminders_enabled:
+        from app.services.appointment_reminders import run_reminders
+
+        reminder_task = asyncio.create_task(run_reminders())
+
     yield
 
-    for task in (poller_task, purge_task):
+    for task in (poller_task, purge_task, reminder_task):
         if task is not None:
             task.cancel()
             with suppress(asyncio.CancelledError):

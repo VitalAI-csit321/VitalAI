@@ -99,6 +99,18 @@ class Settings(BaseSettings):
     # anonymised in place (build spec 9.1), and how often the sweep runs.
     provisional_patient_ttl_days: int = 90
     provisional_purge_interval_seconds: int = 86400
+    # Appointment reminders (build spec §16). Its own flag, deliberately not
+    # agentic_pipeline_enabled: reminders are not part of the agent graph, and
+    # a job that emails real patients must not start because someone pulled
+    # the branch. Every 15 minutes rather than daily, because "24 hours
+    # before" needs finer resolution than a daily job; reminder_sent_at makes
+    # the interval affect only how late a reminder can be, never whether it
+    # duplicates. Neither is in settings_service.SETTINGS_REGISTRY, for the
+    # same reason agentic_pipeline_enabled is not: the sweep only starts in
+    # lifespan, so a registered switch would look like it works while doing
+    # nothing.
+    appointment_reminders_enabled: bool = False
+    appointment_reminder_interval_seconds: int = 900
     outlook_max_messages_per_poll: int = 25
     # The mailbox this connector reads. Used as the fallback recipient when a
     # message arrives with toRecipients absent, which happens for mail sent to
