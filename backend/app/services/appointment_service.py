@@ -290,6 +290,8 @@ async def reschedule_appointment(
 
     doctor_id = appointment.doctor_id
     appointment.time_slot = new_time_slot
+    # The reminder that went out described the old time (spec §16.2).
+    appointment.reminder_sent_at = None
     try:
         await db.flush()
     except IntegrityError as exc:
@@ -360,6 +362,16 @@ async def update_appointment(
     doctor_id = new_doctor_id if new_doctor_id is not None else appointment.doctor_id
     for field, value in changes.items():
         setattr(appointment, field, value)
+    # A PATCH moves the appointment just as much as /reschedule does, and the
+    # reminder already sent named the old time (spec §16.2).
+    #
+    # Placed after the setattr loop defensively, not because it has to be:
+    # AppointmentUpdate has no reminder_sent_at field, so `changes` cannot
+    # carry one and the loop cannot overwrite what is set here. Putting it
+    # after keeps that true if the field is ever added to the schema. Verified
+    # by mutation: moving this above the loop does not fail any test today.
+    if "time_slot" in changes:
+        appointment.reminder_sent_at = None
 
     try:
         await db.flush()

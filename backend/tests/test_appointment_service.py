@@ -10,6 +10,7 @@ from app.models.audit import AuditEvent
 from app.models.case import IntakeCase
 from app.models.patient import Gender, Patient, PatientStatus
 from app.models.user import User, UserRole
+from app.schemas.appointment import AppointmentUpdate
 from app.services import appointment_service
 from app.services.appointment_service import (
     AppointmentStateError,
@@ -351,3 +352,72 @@ async def test_cancel_appointment_twice_raises(db_session: AsyncSession):
         await appointment_service.cancel_appointment(
             db_session, appointment.id, admin, scoped_doctor_id=None
         )
+
+
+async def _remindable(db_session: AsyncSession):
+    """A booked appointment whose reminder has already gone out."""
+    admin = _user(UserRole.ADMIN)
+    doctor = _user(UserRole.DOCTOR)
+    db_session.add_all([admin, doctor])
+    await db_session.commit()
+    case = await _case(db_session)
+    appointment = await appointment_service.book_appointment(
+        db_session, doctor.id, case.id, _slot(1), admin
+    )
+    appointment.reminder_sent_at = datetime.now(UTC)
+    await db_session.commit()
+    return admin, appointment
+
+
+async def test_rescheduling_clears_the_reminder_guard(db_session: AsyncSession):
+    """Spec §16.2. The reminder that went out named the old time, so the new
+    one has to be reminded again: a patient moved from Tuesday to Friday
+    after Tuesday's reminder would otherwise never hear about Friday."""
+    admin, appointment = await _remindable(db_session)
+    assert appointment.reminder_sent_at is not None
+
+    updated = await appointment_service.reschedule_appointment(
+        db_session, appointment.id, _slot(2), admin, scoped_doctor_id=None
+    )
+
+    assert updated is not None
+    assert updated.reminder_sent_at is None
+
+
+async def test_a_patch_that_moves_the_time_clears_the_reminder_guard(db_session: AsyncSession):
+    """The other path that writes time_slot: PATCH applies it through a
+    blanket setattr loop rather than an explicit assignment."""
+    admin, appointment = await _remindable(db_session)
+
+    updated = await appointment_service.update_appointment(
+        db_session,
+        appointment.id,
+        AppointmentUpdate(time_slot=_slot(3)),
+        admin,
+        scoped_doctor_id=None,
+    )
+
+    assert updated is not None
+    assert updated.reminder_sent_at is None
+
+
+async def test_a_patch_that_leaves_the_time_alone_keeps_the_reminder_guard(
+    db_session: AsyncSession,
+):
+    """Editing the location must not make the clinic send a second reminder
+    for an appointment that has not moved."""
+    admin, appointment = await _remindable(db_session)
+    sent_at = appointment.reminder_sent_at
+
+    updated = await appointment_service.update_appointment(
+        db_session,
+        appointment.id,
+        AppointmentUpdate(location="Room 4"),
+        admin,
+        scoped_doctor_id=None,
+    )
+
+    assert updated is not None
+    assert updated.location == "Room 4"
+    assert updated.reminder_sent_at is not None
+    assert updated.reminder_sent_at.replace(tzinfo=None) == sent_at.replace(tzinfo=None)
