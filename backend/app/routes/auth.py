@@ -129,18 +129,23 @@ async def get_user_grants_endpoint(
 @router.get("/users", response_model=UserListResponse)
 async def list_users_endpoint(
     search: str | None = None,
+    role: UserRole | None = None,
+    department: str | None = None,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_permission(MANAGE_USERS)),
 ) -> UserListResponse:
-    rows, total = await user_service.list_users(db, search=search, limit=limit, offset=offset)
+    rows, total = await user_service.list_users(
+        db, search=search, limit=limit, offset=offset, role=role, department=department
+    )
     return UserListResponse(
         items=[
             UserListItem(**UserOut.model_validate(user).model_dump(), last_active=last_active)
             for user, last_active in rows
         ],
         total=total,
+        departments=await user_service.list_departments(db),
     )
 
 

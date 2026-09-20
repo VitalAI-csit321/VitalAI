@@ -33,11 +33,11 @@ export async function getMe(): Promise<CurrentUser> {
   return toCurrentUser(await apiGet<RawUser>("/api/v1/auth/me"));
 }
 
-export interface UserListParams { limit?: number; offset?: number; search?: string; [key: string]: unknown; }
+export interface UserListParams { limit?: number; offset?: number; search?: string; role?: Role; department?: string; [key: string]: unknown; }
 
-export async function listUsers(params: UserListParams = {}): Promise<{ items: ManagedUser[]; total: number }> {
-  const page = await apiGet<{ items: RawUser[]; total: number }>("/api/v1/auth/users", params);
-  return { items: page.items.map(toManagedUser), total: page.total };
+export async function listUsers(params: UserListParams = {}): Promise<{ items: ManagedUser[]; total: number; departments: string[] }> {
+  const page = await apiGet<{ items: RawUser[]; total: number; departments?: string[] }>("/api/v1/auth/users", params);
+  return { items: page.items.map(toManagedUser), total: page.total, departments: page.departments ?? [] };
 }
 
 export async function registerUser(input: { email: string; password: string; full_name: string }): Promise<ManagedUser> {

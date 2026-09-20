@@ -74,6 +74,9 @@ class UserListItem(UserOut):
 class UserListResponse(BaseModel):
     items: list[UserListItem]
     total: int
+    # Every department in use, so the directory's filter can offer them all
+    # rather than only those on the page being returned.
+    departments: list[str] = Field(default_factory=list)
 
 
 class ActiveStatusUpdateRequest(BaseModel):
