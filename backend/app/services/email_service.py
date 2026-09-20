@@ -107,15 +107,18 @@ async def ingest_email(
     await db.flush()
 
     llm = get_llm()
-    # Subject and body (spec G.2). An injection in the subject used to be
-    # invisible here: the reply gate caught it but only set UNCERTAIN, and
-    # UNCERTAIN still drafts. classify_content itself is unchanged, because the
-    # call pipeline shares it and a call has no subject.
+    # One text for both readers (spec G.2). The classifier missed an injection
+    # in the subject, and the routing gate's URGENT_KEYWORDS scan missed a
+    # sender who put "urgent" in the subject line, which is where people put
+    # it. Building it once is what stops the two drifting apart again.
+    # classify_content itself is unchanged, because the call pipeline shares it
+    # and a call has no subject.
+    message_text = f"Subject: {payload.subject}\n\n{payload.body}"
     category, confidence = await classify_content(
-        db, llm, f"Subject: {payload.subject}\n\n{payload.body}", actor=actor, channel="email"
+        db, llm, message_text, actor=actor, channel="email"
     )
     target_role = resolve_target_role(category)
-    gate = evaluate_task_routing_gate(category, confidence, payload.body)
+    gate = evaluate_task_routing_gate(category, confidence, message_text)
     priority = _priority_for_gate(gate)
 
     task = Task(

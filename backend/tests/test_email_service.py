@@ -611,3 +611,34 @@ def _auto_gate():
     from app.services.task_routing_gate import TaskRoutingGateResult, TaskRoutingOutcome
 
     return TaskRoutingGateResult(outcome=TaskRoutingOutcome.AUTO_ROUTED, override_reason=None)
+
+
+async def test_an_urgent_word_in_the_subject_alone_forces_human_review(
+    db_session, front_desk_user, monkeypatch
+):
+    """The routing gate's first branch is the URGENT_KEYWORDS scan, and it was
+    handed payload.body while the classifier was handed subject and body. A
+    sender who puts the urgency in the subject line, which is where people
+    naturally put it, did not trip the keyword override.
+
+    Both now read the same text, so the two cannot drift apart again.
+    """
+    from app.services.task_routing_gate import TaskRoutingOutcome
+
+    monkeypatch.setattr(
+        "app.services.email_service.get_llm",
+        lambda: _FakeLLM(json.dumps({"category": "referral_request", "confidence": 0.99})),
+    )
+    payload = EmailIngestRequest(
+        sender="patient@example.com",
+        recipient="clinic@example.com",
+        subject="URGENT: I need my referral today",
+        body="Please could you send the referral when you get a chance.",
+    )
+
+    _email, _task, gate, _confidence = await email_service.ingest_email(
+        db_session, payload, front_desk_user
+    )
+
+    assert gate.outcome == TaskRoutingOutcome.HUMAN_REVIEW
+    assert gate.override_reason == "urgent_keyword"
