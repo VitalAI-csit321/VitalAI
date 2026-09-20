@@ -95,7 +95,7 @@ export function PatientEditPage() {
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Gender</label>
               <select className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={gender} onChange={e => setGender(e.target.value as NonNullable<Patient["gender"]> | "")}>
-                <option value="">Not recorded</option>
+                <option value="" disabled>Not recorded</option>
                 <option value="male">Male</option><option value="female">Female</option><option value="non_binary">Non-binary</option>
               </select>
             </div>

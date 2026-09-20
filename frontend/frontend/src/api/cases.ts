@@ -132,6 +132,11 @@ export async function updatePatient(
   // through into toLowerCase(), so every Save on the edit page threw and the
   // page showed "Could not save changes" forever. An empty value means "not
   // chosen" and is simply not sent.
+  //
+  // Empty means "leave it alone", not "clear it". Clearing has never been
+  // possible: patient_service.update_patient only assigns when the field is
+  // not None, so a null dob or gender is ignored server side. Before this,
+  // an emptied date of birth became ddmmyyyyToIso("") == "" and 422'd.
   if (input.gender) {
     const genderMap:Record<string,string> = { male:"male", female:"female", "non binary":"non_binary", nonbinary:"non_binary" };
     payload.gender = genderMap[input.gender.toLowerCase()] ?? input.gender;
