@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import AsyncSessionLocal
+from app.llm.output_guardrail import RESTRICTED_TERMS
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.case import IntakeCase
 from app.models.patient import Patient
@@ -33,6 +34,7 @@ from app.services.audit_service import record_event
 from app.services.booking_service import format_slot
 from app.services.outlook_auth import OutlookAuthRequiredError
 from app.services.system_actor import get_or_create_agent_actor
+from app.services.triage_service import matches_any
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +46,11 @@ SENT_ACTION = "appointment.reminder_sent"
 # interval a single permanently bad row would otherwise write 96 audit rows a
 # day, for as long as the appointment is in the window.
 SKIPPED_ACTION = "appointment.reminders_skipped"
+
+# Named, never quoted: the reason must not carry the term that matched. A
+# restricted clinical word beside an appointment id in the log is the same
+# leak the recipient address was taken out of these logs for (F.81).
+RESTRICTED_REASON = "body contains a restricted term"
 
 
 def render_reminder(appointment: Appointment, *, name: str | None) -> str:
@@ -126,12 +133,23 @@ async def send_due_reminders(db: AsyncSession, actor: User) -> list[UUID]:
             logger.info("No reminder for appointment %s: %s", appointment.id, reason)
             skipped.append(str(appointment.id))
             continue
+        # location is staff-writable free text (§16.5 keeps reason and
+        # internal_notes out for that reason; location is interpolated), so
+        # the body that goes out is the body that was screened. Not
+        # check_output: that is async, raises instead of skipping, and audits
+        # once per call, which at a 15 minute interval is 96 rows a day for
+        # one permanently bad row (§16.6).
+        body = render_reminder(appointment, name=patient.name)
+        if matches_any(body.lower(), RESTRICTED_TERMS):
+            logger.info("No reminder for appointment %s: %s", appointment.id, RESTRICTED_REASON)
+            skipped.append(str(appointment.id))
+            continue
         try:
             await email_service.deliver_new_message(
                 db,
                 to_address=patient.email,
                 subject=SUBJECT,
-                body=render_reminder(appointment, name=patient.name),
+                body=body,
                 actor=actor,
                 case_id=appointment.case_id,
                 action=SENT_ACTION,

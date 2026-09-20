@@ -121,6 +121,17 @@ async def _sent_events(db, appointment_id) -> list[AuditEvent]:
     ]
 
 
+async def _skipped_events(db, appointment_id) -> list[AuditEvent]:
+    """The aggregate skip events that name this appointment."""
+    rows = (await db.execute(select(AuditEvent))).scalars().all()
+    return [
+        e
+        for e in rows
+        if e.action == appointment_reminders.SKIPPED_ACTION
+        and str(appointment_id) in e.details["appointment_ids"]
+    ]
+
+
 async def test_a_confirmed_appointment_is_reminded_exactly_once(db_session, setup, sends):
     """Two consecutive cycles, one email. reminder_sent_at is the guard."""
     admin, doctor, patient = setup
@@ -419,3 +430,89 @@ async def test_a_failed_send_keeps_the_patient_address_out_of_the_logs(
     ]
     assert len(skipped) == 1
     assert patient.email not in str(skipped[0].details)
+
+
+async def test_a_restricted_term_in_the_location_sends_nothing(db_session, setup, sends):
+    """location is staff-writable free text and is interpolated into the body.
+
+    "emergency" is in RESTRICTED_TERMS, so an appointment at the Emergency
+    Department now gets no reminder at all. That is the fail-safe direction
+    and it is the intended trade, stated here rather than discovered in
+    production. reminder_sent_at stays NULL, so the next cycle screens it
+    again and skips again until the start time passes.
+    """
+    admin, doctor, patient = setup
+    appointment = await _appointment(
+        db_session, admin, doctor, patient, location="Emergency Department"
+    )
+
+    assert await appointment_reminders.send_due_reminders(db_session, admin) == []
+
+    sends.assert_not_awaited()
+    await db_session.refresh(appointment)
+    assert appointment.reminder_sent_at is None
+    skipped = await _skipped_events(db_session, appointment.id)
+    assert len(skipped) == 1
+    assert skipped[0].details["count"] == 1
+
+
+async def test_a_screened_out_body_writes_no_per_appointment_event(db_session, setup, sends):
+    """Only the one aggregate event for the cycle, the same as every other
+    permanent skip: one bad row must not write 96 audit rows a day (§16.6)."""
+    admin, doctor, patient = setup
+    # "cancer" is in RESTRICTED_TERMS; "oncology", the word G.20 uses as its
+    # example, is not (F.89): the screen catches the list, not the concept.
+    appointment = await _appointment(
+        db_session, admin, doctor, patient, location="Cancer Care Centre"
+    )
+
+    assert await appointment_reminders.send_due_reminders(db_session, admin) == []
+
+    sends.assert_not_awaited()
+    assert await _sent_events(db_session, appointment.id) == []
+    rows = (await db_session.execute(select(AuditEvent))).scalars().all()
+    # appointment.booked is written by the booking itself, so only the
+    # reminder actions are in scope here.
+    reminder_events = [
+        e
+        for e in rows
+        if e.action.startswith("appointment.remind") and str(appointment.id) in str(e.details)
+    ]
+    assert [e.action for e in reminder_events] == [appointment_reminders.SKIPPED_ACTION]
+
+
+async def test_a_screened_out_body_names_neither_the_term_nor_the_patient(
+    db_session, setup, sends, caplog
+):
+    """The appointment id is enough for anyone entitled to look the record up
+    (F.81). The matched clinical word never reaches the log or the audit row,
+    and neither does the recipient."""
+    import logging
+
+    admin, doctor, patient = setup
+    appointment = await _appointment(
+        db_session, admin, doctor, patient, location="Oncology prescription desk"
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        assert await appointment_reminders.send_due_reminders(db_session, admin) == []
+
+    sends.assert_not_awaited()
+    assert str(appointment.id) in caplog.text
+    assert "prescription" not in caplog.text.lower()
+    assert patient.email not in caplog.text
+    skipped = await _skipped_events(db_session, appointment.id)
+    assert "prescription" not in str(skipped[0].details).lower()
+    assert patient.email not in str(skipped[0].details)
+
+
+async def test_an_ordinary_location_still_sends(db_session, setup, sends):
+    """The screen must not swallow the normal case."""
+    admin, doctor, patient = setup
+    appointment = await _appointment(db_session, admin, doctor, patient)
+
+    assert await appointment_reminders.send_due_reminders(db_session, admin) == [appointment.id]
+
+    sends.assert_awaited_once()
+    (_, _, _, body) = sends.await_args.args
+    assert "Main Clinic" in body
