@@ -423,7 +423,13 @@ async def deliver_new_message(
         try:
             await outlook_client.send_mail(token, to_address, subject, body)
         except httpx.HTTPError as exc:
-            raise EmailSendError(f"Outlook rejected the message to {to_address}: {exc}") from exc
+            # The address is deliberately not in this message. It is a
+            # patient contact detail, and an exception travels into logs and
+            # staff-visible failure notes, which are a lower trust surface
+            # than the row it came from. deliver_reply names an opaque
+            # external_id for the same reason; the caller knows which record
+            # it was sending for and can say so itself.
+            raise EmailSendError(f"Outlook rejected an outbound message: {exc}") from exc
         delivered = True
 
     await record_event(

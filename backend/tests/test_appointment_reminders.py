@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
+import httpx
 import pytest
 from sqlalchemy import select
 
@@ -386,3 +387,35 @@ async def test_one_bad_cycle_does_not_kill_the_loop(monkeypatch):
     with pytest.raises(asyncio.CancelledError):
         await appointment_reminders.run_reminders()
     assert len(calls) == 2
+
+
+async def test_a_failed_send_keeps_the_patient_address_out_of_the_logs(
+    db_session, setup, monkeypatch, caplog
+):
+    """A patient's address is a contact detail, and logs are a lower trust
+    surface than the row it came from. The failure is logged by appointment
+    id and error type, never by recipient, and the audit event names no
+    address either."""
+    import logging
+
+    admin, doctor, patient = setup
+    appointment = await _appointment(db_session, admin, doctor, patient)
+    monkeypatch.setattr(
+        "app.services.outlook_client.send_mail",
+        AsyncMock(side_effect=httpx.HTTPError("graph is down")),
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        assert await appointment_reminders.send_due_reminders(db_session, admin) == []
+
+    assert patient.email not in caplog.text
+    assert str(appointment.id) in caplog.text
+    rows = (await db_session.execute(select(AuditEvent))).scalars().all()
+    skipped = [
+        e
+        for e in rows
+        if e.action == appointment_reminders.SKIPPED_ACTION
+        and str(appointment.id) in e.details["appointment_ids"]
+    ]
+    assert len(skipped) == 1
+    assert patient.email not in str(skipped[0].details)

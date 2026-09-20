@@ -144,13 +144,21 @@ async def send_due_reminders(db: AsyncSession, actor: User) -> list[UUID]:
             # Nobody is signed in to the mailbox. That is one problem for the
             # whole cycle, not one per appointment, so stop rather than fail
             # once per row. The next cycle retries.
-            logger.warning(
-                "Appointment reminders stopped for this cycle: no signed-in mailbox", exc_info=True
-            )
+            logger.warning("Appointment reminders stopped for this cycle: no signed-in mailbox")
             break
-        except Exception:
+        except Exception as exc:
             # reminder_sent_at stays NULL, so the next cycle retries.
-            logger.exception("Reminder for appointment %s could not be sent", appointment.id)
+            #
+            # The type, not the traceback: a failure here is raised while
+            # sending to a patient's address, and logs are a lower trust
+            # surface than the patient row. The appointment id is enough to
+            # find the recipient for anyone entitled to look it up. Same
+            # split task_service.record_agent_failure already makes.
+            logger.error(
+                "Reminder for appointment %s could not be sent (%s)",
+                appointment.id,
+                type(exc).__name__,
+            )
             skipped.append(str(appointment.id))
             continue
         appointment.reminder_sent_at = datetime.now(UTC)
