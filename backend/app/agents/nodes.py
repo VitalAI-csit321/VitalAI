@@ -28,6 +28,7 @@ from app.services import (
     email_service,
     identity_service,
     onboarding_service,
+    prescription_service,
     records_service,
     task_service,
 )
@@ -199,6 +200,29 @@ async def records(state: CaseState, runtime: Runtime[Context]) -> dict:
     return {"branch": records_service.BRANCH, "records_consent": on_file}
 
 
+async def prescription(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """§12: read the history, raise an internal request, acknowledge.
+
+    Returns `branch`, which is what makes reply_risk_tier see this as an
+    always-human branch. A node that forgot it would let a prescription reply
+    take the ordinary low risk path.
+
+    The history is read through medication_service, which enforces
+    VIEW_CLINICAL itself; the agent actor holds it only by an explicit grant.
+    No clinical detail reaches the draft: the branch chooses between two
+    fixed acknowledgements and nothing else.
+    """
+    async with runtime.context.session_factory() as db:
+        _, _, actor = await _rows(db, state, runtime)
+        review_due = await prescription_service.handle_renewal(
+            db,
+            case_id=UUID(state["case_id"]),
+            patient_id=_patient_id(state),
+            actor=actor,
+        )
+    return {"branch": prescription_service.BRANCH, "prescription_review_due": review_due}
+
+
 async def identity_hold(state: CaseState, runtime: Runtime[Context]) -> dict:
     async with runtime.context.session_factory() as db:
         await identity_service.hold_for_staff(
@@ -235,6 +259,16 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
                 name=state.get("patient_name"),
                 doctor_name=state["booking_doctor_name"],
                 slots=state["proposed_slots"],
+            ),
+            "grounded": False,
+        }
+    elif branch == prescription_service.BRANCH:
+        # A template too (§12.3/G.16): the draft names no medicine, because
+        # RESTRICTED_TERMS would block one and the patient would get nothing.
+        update = {
+            "draft_text": prescription_service.draft_prescription_reply(
+                name=state.get("patient_name"),
+                review_due=bool(state.get("prescription_review_due")),
             ),
             "grounded": False,
         }

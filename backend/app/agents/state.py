@@ -65,6 +65,9 @@ class CaseState(TypedDict, total=False):
     # §11: explicit captured consent, which an implied inbound-contact record
     # is not.
     records_consent: bool | None
+    # §12: which of the two prescription acknowledgements applies. Decided by
+    # the medication history, which the draft itself never sees.
+    prescription_review_due: bool | None
 
     draft_text: str | None
     grounded: bool | None

@@ -11,6 +11,7 @@ from app.models.clinical_document import ClinicalDocType, ClinicalDocument
 from app.models.consent import ConsentRecord, ConsentStatus
 from app.models.email import Email
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
+from app.models.medication import Medication, MedicationStatus
 from app.models.patient import Gender, Patient, PatientStatus
 from app.models.permission_grant import UserPermissionGrant
 from app.models.routing import RoutingAction, RoutingDecision
@@ -58,4 +59,6 @@ __all__ = [
     "TaskComment",
     "TaskCategory",
     "Email",
+    "Medication",
+    "MedicationStatus",
 ]

@@ -457,9 +457,13 @@ async def test_failed_approved_send_still_resumes_the_thread_to_end(
         # §9: a provisional patient cannot reach Booking or Records at all.
         ("appointment_request", "human_review"),
         ("medical_records_request", "human_review"),
+        # §12.3 refuses provisional patients outright too, so prescription
+        # joined _NOT_FOR_PROVISIONAL when its branch landed. This case
+        # expected "prescription" while the intent was still a placeholder
+        # edge into reply_gate and no prescription node existed.
+        ("prescription_renewal", "human_review"),
         # Everything else is unaffected by provisional status.
         ("general_administrative", "retrieval"),
-        ("prescription_renewal", "prescription"),
     ],
 )
 def test_route_intent_keeps_provisional_patients_out_of_booking_and_records(intent, expected):

@@ -111,6 +111,10 @@ class Settings(BaseSettings):
     # nothing.
     appointment_reminders_enabled: bool = False
     appointment_reminder_interval_seconds: int = 900
+    # How long a medication can go unreviewed before a repeat request needs a
+    # review first (spec §12.3). Not in SETTINGS_REGISTRY: it is a clinical
+    # policy value, not a runtime switch for an admin to nudge.
+    medication_review_interval_days: int = 180
     outlook_max_messages_per_poll: int = 25
     # The mailbox this connector reads. Used as the fallback recipient when a
     # message arrives with toRecipients absent, which happens for mail sent to
