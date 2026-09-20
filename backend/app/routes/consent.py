@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_permission
@@ -10,7 +10,13 @@ from app.database import get_db
 from app.models.case import IntakeCase
 from app.models.patient import Patient
 from app.models.user import User, UserRole
-from app.schemas.consent import ConsentCaptureIn, ConsentCreate, ConsentOut
+from app.schemas.consent import (
+    ConsentCaptureIn,
+    ConsentCreate,
+    ConsentOut,
+    ConsentQueueResponse,
+    ConsentQueueRow,
+)
 from app.services import consent_service
 from app.services.consent_service import ConsentStateError
 
@@ -42,6 +48,41 @@ async def list_consents_for_patient_endpoint(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
 
     return await consent_service.list_consents_for_patient(db, patient_id)
+
+
+@router.get("/queue", response_model=ConsentQueueResponse)
+async def consent_queue_endpoint(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(VIEW_RECORDS_GENERAL)),
+):
+    """The staff consent queue: real records, not the recent cases.
+
+    Doctors are deliberately excluded rather than filtered: the queue is a
+    whole-clinic administrative view, and scoping it per assignment would give
+    a doctor a partial list that looks complete.
+    """
+    if actor.role == UserRole.DOCTOR:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not available to clinicians"
+        )
+    rows, total = await consent_service.list_consent_queue(db, limit=limit, offset=offset)
+    return ConsentQueueResponse(
+        items=[
+            ConsentQueueRow(
+                id=record.id,
+                case_id=record.case_id,
+                patient_name=patient_name,
+                consent_type=record.consent_type,
+                status=record.status,
+                created_at=record.created_at,
+                captured_at=record.captured_at,
+            )
+            for record, patient_name in rows
+        ],
+        total=total,
+    )
 
 
 @router.get("/by-case/{case_id}", response_model=ConsentOut)

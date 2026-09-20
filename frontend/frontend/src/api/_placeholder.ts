@@ -170,9 +170,3 @@ export const placeholderMessages: Message[] = [
 
 // Consent queue form labels + records browser (designs 6 & 9) also have no
 // dedicated backend; kept here so the adapters stay declarative.
-export const placeholderConsentForms = [
-  "General Treatment",
-  "Surgical Procedure",
-  "Data Sharing",
-  "Research Study",
-];

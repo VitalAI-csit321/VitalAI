@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.case import IntakeCase
@@ -70,6 +70,28 @@ async def list_consents_for_patient(db: AsyncSession, patient_id: UUID) -> list[
         .order_by(ConsentRecord.created_at.desc())
     )
     return list(result.scalars().all())
+
+
+async def list_consent_queue(
+    db: AsyncSession, limit: int = 50, offset: int = 0
+) -> tuple[list[tuple[ConsentRecord, str | None]], int]:
+    """Every consent record, newest first, with the name of the patient on its
+    case. One query rather than a lookup per row.
+
+    The staff queue is built from this. It used to be built from the most
+    recent intake cases instead, which meant a case with no consent record was
+    shown as awaiting consent and the form name was a placeholder.
+    """
+    base = (
+        select(ConsentRecord, IntakeCase.patient_name)
+        .join(IntakeCase, IntakeCase.id == ConsentRecord.case_id)
+        .order_by(ConsentRecord.created_at.desc())
+    )
+    total = (
+        await db.execute(select(func.count()).select_from(ConsentRecord))
+    ).scalar_one()
+    rows = (await db.execute(base.limit(limit).offset(offset))).all()
+    return [(r[0], r[1]) for r in rows], total
 
 
 async def capture_consent(

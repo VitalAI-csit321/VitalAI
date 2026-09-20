@@ -376,3 +376,58 @@ async def test_consent_by_case_denied_for_doctor_on_unlinked_legacy_case(
 
     response = await client.get(f"/api/v1/consent/by-case/{case.id}", headers=doctor_headers)
     assert response.status_code == 404
+
+
+async def test_the_consent_queue_lists_real_records_with_their_patient_and_type(
+    client: AsyncClient, operator_headers: dict, db_session
+):
+    """The queue must be built from consent records.
+
+    It was built from the 12 most recent intake cases instead: the form column
+    came from a hardcoded placeholder list cycled by row index, and a case with
+    no consent record was displayed as "pending", which told staff consent was
+    awaited from people who had never been asked. Every row also fired a
+    by-case lookup that 404'd.
+    """
+    from datetime import date
+
+    from app.models.case import IntakeCase, IntakeStatus
+    from app.models.patient import Gender, Patient, PatientStatus
+    from app.services import consent_service
+
+    patient = Patient(
+        mrn="MRN-QUEUE01",
+        name="Queue Patient",
+        dob=date(1990, 1, 1),
+        gender=Gender.FEMALE,
+        status=PatientStatus.ACTIVE,
+    )
+    db_session.add(patient)
+    await db_session.flush()
+    case = IntakeCase(
+        patient_id=patient.id,
+        patient_name=patient.name,
+        contact_reason="Records",
+        contact_channel="email",
+        status=IntakeStatus.RECEIVED,
+    )
+    db_session.add(case)
+    await db_session.flush()
+    record = await consent_service.create_consent_record(
+        db_session, case.id, None, consent_type="data_sharing"
+    )
+    await db_session.commit()
+
+    response = await client.get("/api/v1/consent/queue", headers=operator_headers)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    row = next(r for r in body["items"] if r["id"] == str(record.id))
+    assert row["patient_name"] == "Queue Patient"
+    assert row["consent_type"] == "data_sharing"
+    assert row["status"] == "pending"
+    assert row["case_id"] == str(case.id)
+    # Only real records, so the count matches what the queue actually holds.
+    assert body["total"] == len(
+        await consent_service.list_consents_for_patient(db_session, patient.id)
+    )

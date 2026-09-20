@@ -38,3 +38,20 @@ class ConsentOut(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ConsentQueueRow(BaseModel):
+    """One row of the staff consent queue: the record, plus who it is for."""
+
+    id: UUID
+    case_id: UUID
+    patient_name: str | None
+    consent_type: str
+    status: ConsentStatus
+    created_at: datetime
+    captured_at: datetime | None
+
+
+class ConsentQueueResponse(BaseModel):
+    items: list[ConsentQueueRow]
+    total: int
