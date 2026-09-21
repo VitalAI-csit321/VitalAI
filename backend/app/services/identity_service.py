@@ -96,7 +96,20 @@ def _past_date(value: object) -> date | None:
     try:
         parsed = date.fromisoformat(text)
     except ValueError:
-        return None
+        # The prompt asks for YYYY-MM-DD, but the model echoes the format the
+        # sender wrote, and a patient here writes 15/10/1989. Dropping that
+        # silently cost the DOB on otherwise perfect emails, and without a DOB
+        # there is no full match, so every one of them held for staff.
+        # ponytail: day-first, the same assumption the frontend's date fields
+        # make; 05/10/1989 reads as 5 October, not 10 May.
+        match = re.fullmatch(r"(\d{1,2})[/-](\d{1,2})[/-](\d{4})", text)
+        if match is None:
+            return None
+        day, month, year = (int(part) for part in match.groups())
+        try:
+            parsed = date(year, month, day)
+        except ValueError:
+            return None
     return parsed if parsed < date.today() else None
 
 

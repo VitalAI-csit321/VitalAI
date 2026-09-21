@@ -184,6 +184,29 @@ async def test_a_dob_that_is_not_a_real_past_date_is_absent(db_session, admin_us
     assert fields.name == "Jane Smith"
 
 
+@pytest.mark.parametrize(
+    ("written", "expected"),
+    [
+        ("1985-03-14", JANE_DOB),
+        # The prompt asks for YYYY-MM-DD, but the model echoes the format the
+        # sender wrote, and a patient here writes it day first. Dropping that
+        # silently left every such email without a DOB, and without a DOB there
+        # is no full match, so a correctly identified sender held for staff.
+        ("14/03/1985", JANE_DOB),
+        ("14-03-1985", JANE_DOB),
+        ("4/3/1985", date(1985, 3, 4)),
+    ],
+)
+async def test_a_day_first_date_of_birth_is_read_as_written(
+    db_session, admin_user, written, expected
+):
+    llm = FakeLLM(identity={"name": "Jane Smith", "dob": written})
+
+    fields = await identity_service.extract_identity_fields(db_session, llm, "x", actor=admin_user)
+
+    assert fields.dob == expected
+
+
 @pytest.mark.parametrize("raw", ["not json at all", '["a list"]', '{"name": 5}', ""])
 async def test_unparseable_extraction_is_no_fields_never_an_error(db_session, admin_user, raw):
     fields = await identity_service.extract_identity_fields(
