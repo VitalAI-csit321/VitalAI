@@ -357,6 +357,7 @@ async def auto_send(state: CaseState, runtime: Runtime[Context]) -> dict:
                 draft=state["draft_text"],
                 actor=actor,
                 case_id=_case_id(state),
+                automated=True,
             )
         except (EmailSendError, OutlookAuthRequiredError) as exc:
             return {"delivery_error": str(exc)}

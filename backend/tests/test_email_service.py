@@ -697,3 +697,23 @@ def test_auto_send_eligible_needs_every_one_of_its_six_conditions(
     monkeypatch.setattr(settings, "email_auto_send_enabled", enabled)
 
     assert email_service.auto_send_eligible(**{**_AUTO_SEND_CONTROL, **override}) is expected
+
+
+@pytest.mark.parametrize(
+    ("draft", "expected"),
+    [
+        (
+            "Hi,\n\nWe open at nine.\n\nSincerely,\n[Your Name]\nGreenCare",
+            "Hi,\n\nWe open at nine.\n\nSincerely,\nGreenCare",
+        ),
+        # Only whole lines. An inline placeholder would leave a hole in the
+        # sentence, and that draft belongs in front of a human.
+        ("Your appointment is on [date].", "Your appointment is on [date]."),
+        ("Nothing to strip here.", "Nothing to strip here."),
+    ],
+)
+def test_an_unfilled_placeholder_line_is_dropped(draft, expected):
+    """Automatic sends pass automated=True to deliver_reply, which runs this;
+    the approval path does not, so a human still sees the placeholder they are
+    the one to fill in."""
+    assert email_service._drop_placeholder_lines(draft) == expected

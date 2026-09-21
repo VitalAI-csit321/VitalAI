@@ -5,6 +5,7 @@ out of this function so ingestion and drafting can be tested independently.
 """
 
 import logging
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -326,6 +327,19 @@ def reply_risk_tier(
     return "low"
 
 
+# "Sincerely,\n[Your Name]\nClinic Administrator" is what the model writes when
+# it has no name to sign with. A human editing the draft replaces it; an
+# automatic send has nobody to, so the line goes rather than ship a template
+# artefact to a patient. Whole lines only: an inline "[date]" mid-sentence
+# would leave a hole, and that draft is better off in front of a human.
+_PLACEHOLDER_LINE = re.compile(r"^\s*\[[^\]]{0,60}\]\s*$")
+
+
+def _drop_placeholder_lines(draft: str) -> str:
+    kept = [ln for ln in draft.splitlines() if not _PLACEHOLDER_LINE.match(ln)]
+    return "\n".join(kept)
+
+
 async def deliver_reply(
     db: AsyncSession,
     *,
@@ -335,8 +349,13 @@ async def deliver_reply(
     actor: User,
     case_id: UUID | None,
     approval_id: str | UUID | None = None,
+    automated: bool = False,
 ) -> None:
     """Send a reply. The only caller of outlook_client.send_reply in the app.
+
+    `automated` means nobody read this before it left: the model's sign-off
+    placeholder is dropped (see _drop_placeholder_lines). On the approval path
+    it stays in, because the human editing the draft is the one who fills it.
 
     With the Outlook connector disabled "sent" is DB-level state and no message
     leaves the system. With it enabled the draft is delivered through Graph
@@ -354,6 +373,9 @@ async def deliver_reply(
     task = await db.get(Task, UUID(str(task_id))) if task_id is not None else None
     if task is not None and task.draft_sent:
         return
+
+    if automated and draft:
+        draft = _drop_placeholder_lines(draft)
 
     if settings.outlook_enabled and email_id is not None and draft:
         email = await db.get(Email, UUID(str(email_id)))
@@ -663,6 +685,7 @@ async def draft_reply(
                 draft=draft_text,
                 actor=actor,
                 case_id=email.case_id,
+                automated=True,
             )
         except (EmailSendError, OutlookAuthRequiredError) as exc:
             # A failed auto-send must not vanish: the draft goes to the human
