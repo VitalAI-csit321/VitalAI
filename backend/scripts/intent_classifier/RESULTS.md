@@ -1,6 +1,16 @@
 # Intent classifier: embeddings + logistic regression vs the LLM classifier
 
-Offline measurement, 2026-09-23. Nothing here is wired into the application.
+Offline measurement, 2026-09-23, with a real-email follow-up on 2026-09-24. Nothing here is
+wired into the application.
+
+> **Read this first: the real emails reverse the accuracy result.** On 450 synthetic emails
+> the regression beat the LLM (89.6% vs 78.5%). On the 53 in-scope real emails in
+> `vitalai_qa`, the **LLM wins clearly: 96.2% vs 75.5%.** The regression failed on phrasings
+> its synthetic training data never contained. The confidence finding **does** hold on real
+> mail, and more strongly. The LLM said 0.90 or 0.95 on every email, including gibberish and a
+> Microsoft newsletter. The regression's margin separated its right answers from its wrong
+> ones (AUROC 0.96; all 13 errors had margins of 0.036 or less). See [Real emails](#real-emails-2026-09-24). The synthetic sections below are kept
+> as they were written.
 
 ## Why this exists
 
@@ -185,7 +195,154 @@ unchanged, no database):
   urgent-keyword net caught none of the three. Only one of the regression's 135 test emails
   was a missed emergency (the same overdose email, sent to prescription_renewal).
 
-## Honest read
+## Real emails (2026-09-24)
+
+### What was done, in order
+
+1. Read all 58 emails in `vitalai_qa` (14 from the Outlook mailbox, 44 from the API) in a
+   read-only session, and labelled each one with no model output in view.
+2. **Committed the labels on their own (`7a8c740`) before either classifier ran**, together
+   with the analysis plan, including the threshold rule. The git history shows the order.
+3. Ran `evaluate_real.py` once. It uses the saved `model.joblib` with no retraining, and the
+   production LLM prompt and parser. Both classifiers get the text production builds:
+   `Subject: ...` followed by the body (`email_service.py`).
+
+`real_labels.jsonl` stores email ids, labels, a certainty flag and a short note, **but not the
+email text**, because the text contains a real personal address. The script reads the text
+from `vitalai_qa` at run time. Anyone re-running it needs that database.
+
+**Who labelled:** Claude, the AI assistant running this session, not a person. The brief asked
+for a human. These labels need a human check, and one specific risk goes with that: an AI
+labeller may share the LLM classifier's instincts, which would favour the LLM in this
+comparison.
+
+### The set
+
+| | Count |
+|---|---|
+| All emails | 58 |
+| Out of scope (2 UI delete tests, a Microsoft terms-of-use notice, gibberish, "I have a question" with nothing else) | 5 |
+| In scope | 53 |
+| In scope, duplicate bodies removed | 37 |
+| In scope and labelled "clear" rather than "borderline" | 36 |
+
+In-scope labels: appointment_request 19, general_administrative 17, prescription_renewal 11,
+urgent_emergency 2, and 1 each of complaint, onboarding, records and billing.
+**results_enquiry and referral_request do not appear at all.** Most of these emails are
+developer test messages, many repeated with small edits. This is a small, lopsided set, not a
+benchmark.
+
+### Accuracy
+
+| Subset | n | Regression | LLM |
+|---|---|---|---|
+| All in-scope | 53 | **75.5%** | **96.2%** |
+| Deduplicated | 37 | 78.4% | 97.3% |
+| Clear labels only | 36 | 94.4% | 100% |
+| (diagnostic) regression on body only, no subject line, all in-scope | 53 | 73.6% | n/a |
+
+Per-category recall on all in-scope emails:
+
+| Category (n) | Regression | LLM |
+|---|---|---|
+| appointment_request (19) | **0.53** | 1.00 |
+| general_administrative (17) | 0.76 | 0.88 |
+| prescription_renewal (11) | 1.00 | 1.00 |
+| urgent_emergency (2) | 1.00 | 1.00 |
+| complaint, onboarding, records, billing (1 each) | 1.00 each | 1.00 each |
+
+Confusion matrices, all 53 in-scope (rows = true label, columns = predicted; order appt,
+onboard, rx, results, referral, records, billing, complaint, general, urgent). Rows for
+results and referral are all zeros and are omitted.
+
+```
+Regression                      LLM
+appt      10 1 0 4 3 0 0 0 0 1    19 0 0 0 0 0 0 0 0 0
+onboard    0 1 0 0 0 0 0 0 0 0     0 1 0 0 0 0 0 0 0 0
+rx         0 0 11 0 0 0 0 0 0 0    0 0 11 0 0 0 0 0 0 0
+records    0 0 0 0 0 1 0 0 0 0     0 0 0 0 0 1 0 0 0 0
+billing    0 0 0 0 0 0 1 0 0 0     0 0 0 0 0 0 1 0 0 0
+complaint  0 0 0 0 0 0 0 1 0 0     0 0 0 0 0 0 0 1 0 0
+general    0 0 0 0 4 0 0 0 13 0    2 0 0 0 0 0 0 0 15 0
+urgent     0 0 0 0 0 0 0 0 0 2     0 0 0 0 0 0 0 0 0 2
+```
+
+**Why the regression failed:** 11 of its 13 errors are one kind of email: "Is there any GP I
+can consult with?" and "Is there any GP I can see this week?", sent many times as tests. It
+called these referral_request or results_enquiry. Nothing like that phrasing was in the
+synthetic scenarios. The other two errors: "I wanna see a GP, can I get an appointment?"
+became referral_request, and the Dutch email about an appointment became urgent_emergency.
+A classifier trained on 315 synthetic emails knows only the phrasings in those emails. That
+is the "synthetic data reads optimistically" caveat below, now measured: an 11-point lead on
+synthetic data became a 21-point deficit on real mail.
+
+**The LLM's two errors** were both "Is there any GP I can consult with? can I get the list of
+GPs" emails, which I labelled general_administrative *and* marked borderline. The LLM called
+them appointment_request. Reasonable people would disagree on those two.
+
+### Confidence on real mail
+
+| | Regression margin | LLM self-reported |
+|---|---|---|
+| Values seen, all 53 in-scope | 42 distinct | **2 (0.90 on 48, 0.95 on 5)** |
+| Mean when right / wrong | top-1 0.222 / 0.142 | 0.905 / 0.900 |
+| AUROC, right vs wrong (0.5 = coin toss) | **0.96** (top-1: 0.975) | **0.55** |
+| Largest margin on any of its own errors | 0.036 | n/a |
+
+**Out-of-scope emails** are the plainest test of whether a confidence number means anything:
+
+| Email | Regression prediction, margin | LLM prediction, confidence, gate |
+|---|---|---|
+| "Live delete test" | results_enquiry, 0.034 | general_administrative, 0.90, auto-routed |
+| "BROWSER DELETE TEST" | results_enquiry, 0.009 | general_administrative, 0.90, auto-routed |
+| Microsoft terms-of-use notice | billing_insurance_enquiry, 0.024 | general_administrative, 0.90, auto-routed |
+| "Hello ... I have a question" | urgent_emergency, 0.005 | general_administrative, 0.90, auto-routed |
+| "xkcd qqq" gibberish | urgent_emergency, 0.007 | general_administrative, 0.90, auto-routed |
+
+The LLM's *category* for these is the harmless fallback, which is good. But it was 0.90 sure
+of gibberish, and all five auto-routed. The regression's categories for these are nonsense,
+but every margin is tiny, which is exactly the "I don't know" signal the gate needs.
+
+### The threshold, fixed in advance
+
+Rule from `7a8c740`: split the 37 deduplicated emails with seed 0 into 18 calibration and 19
+held-out. Pick the smallest regression margin whose auto-routed accuracy on the calibration
+half is at least 95%. Apply it unchanged to the held-out half.
+
+- Threshold chosen: **margin ≥ 0.0335**
+- Held-out: **12 of 19 auto-routed, all 12 correct. 7 sent to a human.**
+- Out-of-scope emails under the same threshold: 4 of 5 go to a human. "Live delete test"
+  (margin 0.0337) clears it by 0.0002.
+
+That is 19 emails, so read it as "the mechanism works as designed", not as an error rate. A
+100% on 12 emails fits a real error rate anywhere up to about 25%.
+
+### The urgent keyword net, measured on the synthetic set
+
+`URGENT_KEYWORDS` (7 phrases) matched **16 of the 45** synthetic emergency emails, and **28**
+emails in *other* categories: anxious or angry non-emergencies that say "urgent" or
+"immediately". Those false alarms go to a human, which is the safe direction and only costs
+staff time. Missing 29 of 45 emergencies is the real problem (spec F.97).
+
+### What the real emails change
+
+- **Do not replace the LLM's category with the regression's.** On real mail the LLM is
+  clearly more accurate. The synthetic result that suggested otherwise came from a training
+  set that missed whole kinds of real phrasing.
+- **The case for a computed confidence is stronger than before.** The LLM's number was 0.90
+  or 0.95 on everything, gibberish included. The regression's margin separated right from
+  wrong well on real mail (AUROC 0.96) and gave all five out-of-scope emails margins of 0.034
+  or less. It is not perfect: across all 53 in-scope emails, one regression error (margin
+  0.0363) would still clear the 0.0335 threshold.
+- **The open question** is whether a *regression* margin says anything about when the *LLM* is
+  wrong, since you would keep the LLM's category. The LLM made only 2 errors here, so this
+  set cannot answer it. Its two errors had regression margins of 0.0308 and 0.0363. Against
+  the 0.0335 threshold, one would go to a human and one would still auto-route. Two data
+  points are an anecdote, not evidence.
+- **Retraining the regression with real phrasings would help, but not on these 58 emails.**
+  They are the only real test set there is. Train on them and nothing is left to measure with.
+
+## Honest read (written 2026-09-23, before the real-email run)
 
 - **These are synthetic emails, and synthetic emails are easier than real ones.** Read the
   accuracies as optimistic, especially the regression's. Four reasons:
@@ -208,18 +365,18 @@ unchanged, no database):
   category or use the regression's, but choose on real data. Keep the complaint and urgent
   keyword rules, since both classifiers miss some of both.
 
-## Recommended next step (not in scope, not done)
+## Next steps
 
-Hand-label a real test set. There are 58 emails in the `vitalai_qa` database. The task brief
-says 13 of them came from the real mailbox; this session did not verify that count. Label
-them **by hand, by a person, without looking at any model's prediction**. Do **not** reuse the
-65 existing task labels, because they came from the classifier being evaluated. Then:
+Done on 2026-09-24: the real-email measurement above. Still open:
 
-1. Run both classifiers on them, with no retraining.
-2. Choose a margin threshold on part of the labelled data and report on the rest.
-3. Pay particular attention to complaint and urgent recall.
-
-58 emails is small. Treat the result as a sanity check, not a benchmark.
+1. **A person checks `real_labels.jsonl`**, especially the 17 marked borderline. If labels
+   change, re-run `evaluate_real.py` and report both versions.
+2. **Collect more real mail**, especially the categories with zero or one example (results,
+   referral, complaint, billing, records, onboarding). Until then, per-category claims on real
+   mail are not possible.
+3. **Test the hybrid**: keep the LLM's category and route on the regression margin. This needs
+   enough real LLM errors to measure whether a low margin predicts them.
+4. **Widen `URGENT_KEYWORDS`** (F.97). That is an `app/` change and was not made here.
 
 ## Files
 
@@ -231,6 +388,10 @@ them **by hand, by a person, without looking at any model's prediction**. Do **n
 | `model.joblib` | The fitted regression plus metadata. It expects nomic `search_document:`-prefixed 512-dim vectors, which is what `embed_documents` produces |
 | `results.json` | Every number above, including the full classification reports |
 | `test_predictions.jsonl` | Per test email: label, both predictions, top-1, margin, LLM confidence, LLM raw reply |
+| `real_labels.jsonl` | Labels for the 58 `vitalai_qa` emails, by id, committed before any prediction |
+| `evaluate_real.py` | Real-email measurement (reads `vitalai_qa` read-only, no retraining) |
+| `real_results.json` | Every real-email number above |
+| `real_predictions.jsonl` | Per real email, by id: label, both predictions, margin, LLM confidence, gate outcome, keyword hit (no email text) |
 
 The AUROC, McNemar and gate-replay figures were computed afterwards from
 `test_predictions.jsonl`, with no refit. Recompute them with `sklearn.metrics.roc_auc_score`
