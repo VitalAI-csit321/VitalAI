@@ -95,6 +95,7 @@ async def book_appointment(
     notify_provider: bool = True,
     series_id: UUID | None = None,
     commit: bool = True,
+    allow_provisional: bool = False,
 ) -> Appointment:
     # Validated up front so a bogus doctor_id/case_id can't slip through as a
     # "successful" booking, and so the later IntegrityError catch can only
@@ -107,7 +108,11 @@ async def book_appointment(
     case = await db.get(IntakeCase, case_id)
     if case is None:
         raise CaseNotFoundError(f"No case with id {case_id}")
-    await patient_service.assert_not_provisional(db, case.patient_id)
+    # allow_provisional is passed only by the email booking flow, and only
+    # after patient_service.assert_bookable passed. Every other caller keeps
+    # the refusal.
+    if not allow_provisional:
+        await patient_service.assert_not_provisional(db, case.patient_id)
 
     if actor.role == UserRole.DOCTOR:
         if case.patient_id is None or not await is_assigned(db, actor.id, case.patient_id):

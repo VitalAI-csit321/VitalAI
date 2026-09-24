@@ -32,6 +32,15 @@ from app.services.patient_service import PromotionRefusedError, ProvisionalPatie
 from app.services.triage_service import ConsentGatingError, _assert_consent
 from tests.agent_fakes import FakeLLM
 
+
+@pytest.fixture(autouse=True)
+def _conversation_flow_off(monkeypatch):
+    """These tests pin the routing that email_booking_conversation_enabled
+    replaces (onboarding, the §10 proposal, a silent staff hold). The flag-on
+    versions are in tests/test_email_conversation.py."""
+    monkeypatch.setattr(settings, "email_booking_conversation_enabled", False)
+
+
 IMPLIED = "implied_inbound_contact"
 NAME, DOB = "Riley Newcomer", date(1992, 5, 17)
 PHONE_REQUEST = (

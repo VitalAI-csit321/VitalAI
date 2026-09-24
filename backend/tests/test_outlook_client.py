@@ -224,3 +224,72 @@ def _patch_transport(monkeypatch, handler) -> None:
         return real_client(*args, **kwargs)
 
     monkeypatch.setattr(outlook_client.httpx, "AsyncClient", factory)
+
+
+class TestConversationFields:
+    """What the email conversation flow needs off a Graph message."""
+
+    def test_threading_headers_display_name_and_unique_body_are_parsed(self):
+        request = to_ingest_request(
+            _message(
+                **{
+                    "from": {
+                        "emailAddress": {"address": "jane@example.com", "name": "Jane Citizen"}
+                    },
+                    "internetMessageId": "<t2@example.com>",
+                    "internetMessageHeaders": [
+                        {"name": "In-Reply-To", "value": "<reply1@clinic>"},
+                        {"name": "References", "value": "<t1@example.com> <reply1@clinic>"},
+                    ],
+                    "uniqueBody": {"content": "<p>Tuesday works.</p>"},
+                    "body": {"content": "<p>Tuesday works.</p><p>On Mon, clinic wrote: 9am</p>"},
+                }
+            )
+        )
+
+        assert request.sender_name == "Jane Citizen"
+        assert request.internet_message_id == "<t2@example.com>"
+        assert request.in_reply_to == "<reply1@clinic>"
+        assert request.references == "<t1@example.com> <reply1@clinic>"
+        assert request.new_text == "Tuesday works."
+        assert request.auto_submitted is False
+
+    @pytest.mark.parametrize(
+        "header",
+        [
+            {"name": "Auto-Submitted", "value": "auto-replied"},
+            {"name": "X-Autoreply", "value": "yes"},
+            {"name": "Precedence", "value": "auto_reply"},
+        ],
+    )
+    def test_automatic_replies_are_flagged(self, header):
+        request = to_ingest_request(_message(internetMessageHeaders=[header]))
+        assert request.auto_submitted is True
+
+    def test_a_message_without_the_new_fields_parses_as_before(self):
+        request = to_ingest_request(_message())
+        assert (request.internet_message_id, request.new_text, request.auto_submitted) == (
+            None,
+            None,
+            False,
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("enabled", [False, True])
+    async def test_the_extra_select_fields_are_requested_only_with_the_flag(
+        self, monkeypatch, enabled
+    ):
+        from app.config import settings
+
+        monkeypatch.setattr(settings, "email_booking_conversation_enabled", enabled)
+        captured: dict = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            captured["url"] = str(request.url)
+            return httpx.Response(200, json={"value": []})
+
+        _patch_transport(monkeypatch, handler)
+        await outlook_client.get_unread_emails("tok", top=5)
+
+        assert ("uniqueBody" in captured["url"]) is enabled
+        assert ("internetMessageHeaders" in captured["url"]) is enabled

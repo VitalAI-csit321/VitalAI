@@ -124,6 +124,14 @@ class Settings(BaseSettings):
     # LangGraph agent pipeline. Off: today's ingest/draft/approve path runs
     # exactly as before and no checkpointer tables are created.
     agentic_pipeline_enabled: bool = False
+    # Multi-turn email conversations on one case: replies linked by their
+    # headers, verification requests and the booking flow (appointment request
+    # -> details + preferred day -> offered times -> booked). The email half
+    # lives in the graph, so it also needs agentic_pipeline_enabled; the call
+    # half (a provisional profile from phone + name) needs only this. Its
+    # templated emails and the booking itself go out with no human approving
+    # them, which is why it is off by default.
+    email_booking_conversation_enabled: bool = False
 
     # LLM generation params. Previously never passed to the provider at all;
     # get_llm() now forwards them, and settings_service clears its lru_cache

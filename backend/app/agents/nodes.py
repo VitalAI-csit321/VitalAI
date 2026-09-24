@@ -19,12 +19,14 @@ from app.agents.state import CaseState, Context
 from app.llm.output_guardrail import OutputBlockedError, check_output
 from app.models.case import IntakeCase
 from app.models.email import Email
+from app.models.email_conversation import ConversationStage
 from app.models.patient import Patient
 from app.models.task import Task, TaskCategory
 from app.models.user import User
 from app.services import (
     booking_service,
     consent_service,
+    email_conversation_service,
     email_service,
     identity_service,
     onboarding_service,
@@ -32,6 +34,7 @@ from app.services import (
     records_service,
     task_service,
 )
+from app.services.audit_service import record_event
 from app.services.draft_critic import critique
 from app.services.email_service import EmailSendError
 from app.services.outlook_auth import OutlookAuthRequiredError
@@ -63,7 +66,14 @@ async def load(state: CaseState, runtime: Runtime[Context]) -> dict:
         task, email, _ = await _rows(db, state, runtime)
         case = await db.get(IntakeCase, email.case_id) if email.case_id else None
         patient = await db.get(Patient, case.patient_id) if case and case.patient_id else None
-    return {
+        conversation = (
+            await email_conversation_service.open_for_case(db, email.case_id)
+            if email_conversation_service.enabled()
+            else None
+        )
+    # Only present when there is one, so a flag-off run's state is unchanged.
+    linked = {"conversation_id": str(conversation.id)} if conversation else {}
+    return linked | {
         "case_id": str(email.case_id) if email.case_id else None,
         "intent": task.category.value if task.category else None,
         "content": email.body,
@@ -110,6 +120,16 @@ async def identity(state: CaseState, runtime: Runtime[Context]) -> dict:
             sender=email.sender,
             content=email.body,
             actor=actor,
+            # The conversation flow also reads a name from the From header and
+            # accepts an MRN from the patient's own address.
+            **(
+                {
+                    "sender_name": email.sender_name,
+                    "mrn": email_conversation_service.find_mrn(email.body),
+                }
+                if email_conversation_service.enabled()
+                else {}
+            ),
         )
     update: dict = {
         "identity_outcome": result.outcome.value,
@@ -223,6 +243,187 @@ async def prescription(state: CaseState, runtime: Runtime[Context]) -> dict:
     return {"branch": prescription_service.BRANCH, "prescription_review_due": review_due}
 
 
+def _patient_state(patient: Patient | None) -> dict:
+    if patient is None:
+        return {}
+    return {
+        "patient_id": str(patient.id),
+        "patient_name": patient.name,
+        "patient_status": patient.status.value,
+        "is_provisional": patient.is_provisional,
+    }
+
+
+_AUTOMATIC_REASON = (
+    "This is an automatic message (an out-of-office or a no-reply address), so it was "
+    "not answered automatically."
+)
+
+
+async def conversation(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """One turn of an email conversation (email_conversation_service): the
+    first appointment request, or any reply linked to an open conversation.
+
+    Returns the fixed text to send and what to record once it is sent, or the
+    offered time the patient picked (for book), or, after a verification
+    reply identified the sender, the original inquiry to carry on with, or a
+    hold for staff.
+    """
+    known = state.get("identity_fields") or {}
+    async with runtime.context.session_factory() as db:
+        _, email, actor = await _rows(db, state, runtime)
+        # Before anything is created: an out-of-office must not open a
+        # conversation that a later real email could be linked into.
+        if not email_conversation_service.can_auto_reply(email):
+            await record_event(
+                db,
+                actor=actor,
+                case_id=_case_id(state),
+                action="agent.booking_decision",
+                details={"decision": "staff", "reason": "automatic_message"},
+            )
+            await task_service.hold_for_staff(db, state["task_id"], _AUTOMATIC_REASON)
+            return {"dispatch_result": "conversation_hold"}
+        row, created = await email_conversation_service.get_or_create(
+            db,
+            case_id=_case_id(state),
+            intent=state["intent"],
+            origin_email_id=email.id,
+            patient_id=_patient_id(state),
+            stage=ConversationStage.AWAITING_DETAILS,
+        )
+        conversation_id = str(row.id)
+        turn = await email_conversation_service.handle_turn(
+            db,
+            email_service.get_llm(),
+            conversation=row,
+            email=email,
+            actor=actor,
+            first_turn=created,
+            known=identity_service.IdentityFields(
+                name=known.get("name"),
+                dob=date.fromisoformat(known["dob"]) if known.get("dob") else None,
+                phone=known.get("phone"),
+            ),
+        )
+        if turn.decision == "staff":
+            await task_service.hold_for_staff(
+                db, state["task_id"], email_conversation_service.STAFF_REASONS[turn.reason]
+            )
+            return {"conversation_id": conversation_id, "dispatch_result": "conversation_hold"}
+        patient = await db.get(Patient, row.patient_id) if row.patient_id else None
+        original_intent = row.original_intent
+        origin = str(row.origin_email_id) if row.origin_email_id else None
+    update: dict = {"conversation_id": conversation_id, **_patient_state(patient)}
+    if turn.decision == "resume":
+        # Verified: carry on with what they first asked, routed the way
+        # route_identity would have routed it had the sender been known then.
+        return update | {
+            "conversation_resume": True,
+            "identity_outcome": identity_service.IdentityOutcome.MATCHED.value,
+            "intent": original_intent,
+            "content_email_id": origin,
+        }
+    if turn.decision == "book":
+        return update | {"booking_choice": turn.choice}
+    return update | {
+        "branch": email_conversation_service.BRANCH,
+        "template_text": turn.text,
+        "next_stage": turn.next_stage,
+        "offer": turn.offer,
+    }
+
+
+async def book(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """Turn 3: book the offered time the patient confirmed, if their record is
+    bookable and the time is still free, then confirm it. Otherwise a human
+    (email_conversation_service.book_choice)."""
+    choice = state["booking_choice"]
+    async with runtime.context.session_factory() as db:
+        _, _, actor = await _rows(db, state, runtime)
+        turn = await email_conversation_service.book_choice(
+            db, conversation_id=state["conversation_id"], choice=choice, actor=actor
+        )
+        await record_event(
+            db,
+            actor=actor,
+            case_id=_case_id(state),
+            action="agent.booking_decision",
+            details={
+                "conversation_id": state["conversation_id"],
+                "decision": turn.decision,
+                "reason": turn.reason,
+                "doctor_id": choice["doctor_id"],
+                "time_slot": choice["start"],
+            },
+        )
+        await db.commit()
+        if turn.decision == "staff":
+            await task_service.hold_for_staff(
+                db, state["task_id"], email_conversation_service.STAFF_REASONS[turn.reason]
+            )
+            return {"dispatch_result": "conversation_hold"}
+    return {
+        "branch": email_conversation_service.BRANCH,
+        "template_text": turn.text,
+        "next_stage": ConversationStage.BOOKED.value,
+        "offer": [],
+    }
+
+
+async def request_verification(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """A patient-specific inquiry from a sender who cannot be identified.
+
+    Staff get the held Task exactly as identity_hold gives it to them, and at
+    the same time the sender is asked for the details that would identify
+    them, so they are not left waiting. Once per case, never to a machine.
+    """
+    async with runtime.context.session_factory() as db:
+        _, email, actor = await _rows(db, state, runtime)
+        await identity_service.hold_for_staff(
+            db, state["task_id"], identity_service.IdentityOutcome(state["identity_outcome"])
+        )
+        row, _ = await email_conversation_service.get_or_create(
+            db,
+            case_id=_case_id(state),
+            intent=state["intent"],
+            origin_email_id=email.id,
+            patient_id=None,
+            stage=ConversationStage.AWAITING_VERIFICATION,
+        )
+        conversation_id = str(row.id)
+        if not email_conversation_service.can_auto_reply(email):
+            skipped = "automatic_message"
+        elif (
+            row.verification_sent_at is not None
+            or row.stage != ConversationStage.AWAITING_VERIFICATION
+        ):
+            skipped = "verification_already_sent"
+        else:
+            skipped = None
+        await record_event(
+            db,
+            actor=actor,
+            case_id=_case_id(state),
+            action="agent.verification_requested",
+            details={
+                "conversation_id": conversation_id,
+                "sending": skipped is None,
+                "skipped": skipped,
+            },
+        )
+        await db.commit()
+    if skipped:
+        return {"dispatch_result": "identity_hold"}
+    return {
+        "conversation_id": conversation_id,
+        "branch": email_conversation_service.VERIFICATION_BRANCH,
+        "template_text": email_conversation_service.verification_text(),
+        "next_stage": ConversationStage.AWAITING_VERIFICATION.value,
+        "offer": [],
+    }
+
+
 async def identity_hold(state: CaseState, runtime: Runtime[Context]) -> dict:
     async with runtime.context.session_factory() as db:
         await identity_service.hold_for_staff(
@@ -238,7 +439,12 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
     revising = state.get("critic_verdict") == "reject"
     feedback = state.get("critic_reason") if revising else None
     branch = state.get("branch")
-    if branch == onboarding_service.BRANCH:
+    if branch in email_service.TEMPLATE_BRANCHES:
+        # Fixed text the conversation node decided. A critic redraft gets the
+        # same text back and ends in escalation, which is right for a
+        # template the critic will not pass.
+        update: dict = {"draft_text": state["template_text"], "grounded": False}
+    elif branch == onboarding_service.BRANCH:
         async with runtime.context.session_factory() as db:
             _, email, actor = await _rows(db, state, runtime)
             text = await onboarding_service.draft_onboarding_reply(
@@ -250,7 +456,7 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
                 feedback=feedback,
             )
         # Nothing is retrieved: the reply asks for details, it states none.
-        update: dict = {"draft_text": text, "grounded": False}
+        update = {"draft_text": text, "grounded": False}
     elif branch == booking_service.BRANCH:
         # A template, no model call. What time the clinic told a patient to
         # turn up is not something a model gets to decide (§10.3).
@@ -285,6 +491,10 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
     else:
         async with runtime.context.session_factory() as db:
             task, email, actor = await _rows(db, state, runtime)
+            if state.get("content_email_id"):
+                # A verification reply only says who the sender is; the
+                # question to answer is in the email that opened the case.
+                email = await db.get(Email, UUID(state["content_email_id"])) or email
             retry = email_service.reformulator(db, actor)
             text, grounded = await email_service.generate_draft(
                 db, task, email, actor, feedback=feedback, reformulate=retry
@@ -361,7 +571,21 @@ async def auto_send(state: CaseState, runtime: Runtime[Context]) -> dict:
             )
         except (EmailSendError, OutlookAuthRequiredError) as exc:
             return {"delivery_error": str(exc)}
+        await _record_conversation_send(db, state)
     return {"dispatch_result": "sent", "delivery_error": None}
+
+
+async def _record_conversation_send(db: AsyncSession, state: CaseState) -> None:
+    """A conversation reply went out: the next turn is checked against it."""
+    if state.get("conversation_id") and state.get("branch") in email_service.TEMPLATE_BRANCHES:
+        await email_conversation_service.record_sent(
+            db,
+            state["conversation_id"],
+            text=state.get("draft_text"),
+            next_stage=state.get("next_stage"),
+            offer=state.get("offer"),
+            verification=state["branch"] == email_conversation_service.VERIFICATION_BRANCH,
+        )
 
 
 async def dispatch(state: CaseState, runtime: Runtime[Context]) -> dict:
@@ -377,4 +601,6 @@ async def dispatch(state: CaseState, runtime: Runtime[Context]) -> dict:
             approval_id=state.get("approval_request_id"),
             delivery_error=state.get("delivery_error"),
         )
+        if sent:
+            await _record_conversation_send(db, state)
     return {"dispatch_result": "sent" if sent else "send_failed"}

@@ -35,6 +35,54 @@ async def assert_not_provisional(db: AsyncSession, patient_id: UUID | None) -> N
         )
 
 
+# What a provisional patient needs on file before the email booking flow may
+# book them. The email address is the one they wrote from.
+BOOKING_FIELDS = ("name", "dob", "phone", "email")
+
+
+def assert_bookable(patient: Patient, *, confirmed_email_id: UUID | None) -> None:
+    """The exception to assert_not_provisional, and its only one.
+
+    A registered patient is always bookable. A provisional one only with every
+    BOOKING_FIELDS value on file and their own written confirmation of a time
+    the clinic offered (the email id that said so). Deliberately not a
+    CAPTURED consent record: promote_patient and the records branch both read
+    any CAPTURED non-implied record as real consent, so a booking reply would
+    unlock promotion and records as a side effect.
+    """
+    if not patient.is_provisional:
+        return
+    missing = [f for f in BOOKING_FIELDS if not getattr(patient, f)]
+    if missing or confirmed_email_id is None:
+        raise ProvisionalPatientError(
+            f"Provisional patient {patient.id} is not bookable yet: "
+            f"missing {missing or 'written confirmation'}"
+        )
+
+
+async def fill_provisional_fields(
+    db: AsyncSession, patient: Patient, *, actor: User, **values: object
+) -> list[str]:
+    """Fill the gaps in a provisional record from what the patient wrote.
+    Never overwrites: a value already on file is the one staff and earlier
+    turns relied on, and a contradicting one is for a human to settle.
+    Returns the names of the fields it set. Does not commit."""
+    filled = []
+    for field, value in values.items():
+        if value and not getattr(patient, field):
+            setattr(patient, field, value)
+            filled.append(field)
+    if filled:
+        await record_event(
+            db,
+            actor=actor,
+            action="patient.provisional_updated",
+            # Field names only: audit rows outlive the provisional purge.
+            details={"patient_id": str(patient.id), "fields": filled},
+        )
+    return filled
+
+
 async def _generate_unique_mrn(db: AsyncSession) -> str:
     for _ in range(_MRN_GENERATION_ATTEMPTS):
         candidate = f"MRN-{secrets.token_hex(4).upper()}"

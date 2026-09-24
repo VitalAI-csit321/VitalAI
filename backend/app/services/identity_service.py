@@ -13,12 +13,12 @@ import enum
 import json
 import logging
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import date
 from uuid import UUID
 
 from langchain_core.language_models import BaseLanguageModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.guardrail import InputBlockedError, guarded_invoke
@@ -60,6 +60,9 @@ class IdentityFields:
     name: str | None = None
     dob: date | None = None
     phone: str | None = None
+    # Only ever set with email_booking_conversation_enabled on. An identifier,
+    # not proof: resolve_patient accepts it only from the address on file.
+    mrn: str | None = None
 
     def present(self) -> list[str]:
         return [k for k, v in asdict(self).items() if v]
@@ -78,10 +81,18 @@ Respond with ONLY a JSON object, no other text, in this exact shape:
 {{"name": "<full name or null>", "dob": "<date of birth as YYYY-MM-DD or null>", \
 "phone": "<phone number or null>"}}
 
-EMAIL:
+{sender_name}EMAIL:
 {content}
 
 JSON:"""
+
+# Conversation flow only: the From display name is where a first email's name
+# often is when the body just says "Hi, can I get an appointment?".
+_SENDER_NAME = (
+    'Take the name from the signature, from a greeting such as "I\'m ..." or '
+    '"This is ...", or from the From display name if it is clearly a person\'s '
+    "full name.\nFROM DISPLAY NAME: {name}\n\n"
+)
 
 
 def _text(value: object) -> str | None:
@@ -114,12 +125,25 @@ def _past_date(value: object) -> date | None:
 
 
 async def extract_identity_fields(
-    db: AsyncSession, llm: BaseLanguageModel, content: str, *, actor: User
+    db: AsyncSession,
+    llm: BaseLanguageModel,
+    content: str,
+    *,
+    actor: User,
+    sender_name: str | None = None,
 ) -> IdentityFields:
-    """Unparseable or blocked output means no fields, never an error."""
+    """Unparseable or blocked output means no fields, never an error.
+
+    sender_name is passed only by the conversation flow; without it the
+    prompt is exactly the one the flag-off graph has always sent."""
+    hint = _SENDER_NAME.format(name=sender_name) if sender_name else ""
     try:
         raw = await guarded_invoke(
-            db, llm, _PROMPT.format(content=content), actor=actor, route="email.identity_extract"
+            db,
+            llm,
+            _PROMPT.format(content=content, sender_name=hint),
+            actor=actor,
+            route="email.identity_extract",
         )
     except InputBlockedError:
         return IdentityFields()
@@ -158,8 +182,24 @@ async def resolve_patient(
 ) -> IdentityResult:
     """Exact, normalised matching only. Full match = name AND DOB AND (sender
     email OR phone). Exactly one full match is MATCHED; more than one, or a
-    partial match on name, sender email or phone, is AMBIGUOUS."""
+    partial match on name, sender email or phone, is AMBIGUOUS.
+
+    An MRN is the one shortcut: it matches only when the sender writes from
+    the address on that patient's record. Anyone can copy an MRN out of a
+    shared inbox or a forwarded email; only the patient's own address makes
+    it theirs. From any other address it is ignored and the usual rule runs.
+    """
     name, email, phone = _name(fields.name), _email(sender), _phone(fields.phone)
+    if fields.mrn and email:
+        by_mrn = (
+            await db.execute(
+                select(Patient).where(
+                    func.upper(Patient.mrn) == fields.mrn.upper(), Patient.purged_at.is_(None)
+                )
+            )
+        ).scalar_one_or_none()
+        if by_mrn is not None and _email(by_mrn.email) == email:
+            return IdentityResult(IdentityOutcome.MATCHED, by_mrn)
     # Purged rows are anonymised and never candidates; provisional ones are,
     # so a new patient's follow-up email finds their record, not a duplicate.
     # ponytail: a full scan of live patients, fine at clinic scale; move the
@@ -191,6 +231,8 @@ async def identify_sender(
     sender: str | None,
     content: str | None,
     actor: User,
+    sender_name: str | None = None,
+    mrn: str | None = None,
 ) -> tuple[IdentityResult, IdentityFields]:
     """Resolve, record, and for a patient-specific MATCHED link the case.
 
@@ -206,7 +248,11 @@ async def identify_sender(
         result = IdentityResult(IdentityOutcome.MATCHED, linked)
     else:
         if specific:
-            fields = await extract_identity_fields(db, llm, content or "", actor=actor)
+            fields = await extract_identity_fields(
+                db, llm, content or "", actor=actor, sender_name=sender_name
+            )
+            if mrn:
+                fields = replace(fields, mrn=mrn)
         result = await resolve_patient(db, sender=sender, fields=fields)
         if specific and result.outcome == IdentityOutcome.MATCHED and case is not None:
             case.patient_id = result.patient.id

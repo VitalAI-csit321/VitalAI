@@ -31,6 +31,7 @@ class FakeLLM:
         worthy: bool = True,
         reformulation: str = "",
         identity: dict | str | None = None,
+        booking: list[dict] | None = None,
     ):
         self.category = category
         self.confidence = confidence
@@ -44,11 +45,19 @@ class FakeLLM:
         # str as-is. None falls through to the classifier JSON, which is
         # exactly the "unparseable, no fields" case.
         self.identity = identity
+        # The conversation flow's reply extraction: one dict per reply, in
+        # order, the last one repeating. None or empty answers "{}", the
+        # empty extraction (intent unclear, confidence 0).
+        self.booking = list(booking or [])
         self.prompts: list[str] = []
 
     @property
     def identity_prompts(self) -> list[str]:
         return [p for p in self.prompts if _is_identity(p)]
+
+    @property
+    def booking_prompts(self) -> list[str]:
+        return [p for p in self.prompts if _is_booking(p)]
 
     @property
     def draft_prompts(self) -> list[str]:
@@ -60,6 +69,9 @@ class FakeLLM:
             return self.reformulation
         if _is_identity(prompt) and self.identity is not None:
             return self.identity if isinstance(self.identity, str) else json.dumps(self.identity)
+        if _is_booking(prompt):
+            answer = self.booking.pop(0) if len(self.booking) > 1 else next(iter(self.booking), {})
+            return json.dumps(answer)
         if "worthy" in prompt.lower():
             return json.dumps({"worthy": self.worthy, "reason": "test verdict"})
         if _is_draft(prompt):
@@ -70,6 +82,10 @@ class FakeLLM:
 
 def _is_identity(prompt: str) -> bool:
     return "IDENTITY DETAILS" in prompt
+
+
+def _is_booking(prompt: str) -> bool:
+    return "BOOKING REPLY EXTRACTION" in prompt
 
 
 def _is_draft(prompt: str) -> bool:

@@ -22,6 +22,15 @@ class EmailIngestRequest(BaseModel):
     external_source: str | None = None
     received_at: datetime | None = None
 
+    # Threading and reply parsing (app/models/email.py explains each). Only
+    # the conversation flow reads them.
+    sender_name: str | None = Field(default=None, max_length=255)
+    internet_message_id: str | None = Field(default=None, max_length=998)
+    in_reply_to: str | None = None
+    references: str | None = None
+    new_text: str | None = None
+    auto_submitted: bool = False
+
 
 class EmailOut(BaseModel):
     id: UUID

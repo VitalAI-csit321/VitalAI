@@ -69,6 +69,19 @@ class CaseState(TypedDict, total=False):
     # the medication history, which the draft itself never sees.
     prescription_review_due: bool | None
 
+    # The email conversation flow (email_conversation_service). The row that
+    # carries one turn's facts to the next; the fixed text this turn replies
+    # with; the stage and offered times to record once it has really been
+    # sent; the offered time a patient just picked; and, after a verification
+    # reply identified the sender, the email whose inquiry should be answered.
+    conversation_id: str | None
+    template_text: str | None
+    next_stage: str | None
+    offer: list[dict]
+    booking_choice: dict | None
+    conversation_resume: bool | None
+    content_email_id: str | None
+
     draft_text: str | None
     grounded: bool | None
     critic_verdict: str | None

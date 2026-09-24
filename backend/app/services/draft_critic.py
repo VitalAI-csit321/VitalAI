@@ -63,6 +63,9 @@ SENSITIVE_REQUEST_REASON = (
 EMPTY_REASON = "The draft is empty."
 
 
+_UNVERIFIED_READER_BRANCHES = frozenset({"onboarding", "verification", "booking_conversation"})
+
+
 def critique(draft: str | None, branch: str | None = None) -> str | None:
     """None if the draft passes, otherwise the reason it was rejected.
 
@@ -76,6 +79,8 @@ def critique(draft: str | None, branch: str | None = None) -> str | None:
     text = draft.lower()
     if any(phrase in text for phrase in _SUITABILITY_PHRASES):
         return SUITABILITY_REASON
-    if branch == "onboarding" and any(term in text for term in _SENSITIVE_TERMS):
+    # The conversation flow's templates go to the same kind of reader: someone
+    # who may not be identified yet, over email.
+    if branch in _UNVERIFIED_READER_BRANCHES and any(term in text for term in _SENSITIVE_TERMS):
         return SENSITIVE_REQUEST_REASON
     return None

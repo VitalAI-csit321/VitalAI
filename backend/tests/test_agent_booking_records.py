@@ -31,6 +31,15 @@ from app.services import appointment_service, booking_service, consent_service, 
 from app.services.task_routing_gate import TaskRoutingGateResult, TaskRoutingOutcome
 from tests.agent_fakes import FakeLLM, seed_email
 
+
+@pytest.fixture(autouse=True)
+def _conversation_flow_off(monkeypatch):
+    """These tests pin the routing that email_booking_conversation_enabled
+    replaces (onboarding, the §10 proposal, a silent staff hold). The flag-on
+    versions are in tests/test_email_conversation.py."""
+    monkeypatch.setattr(settings, "email_booking_conversation_enabled", False)
+
+
 SYDNEY = ZoneInfo("Australia/Sydney")
 # A confident, auto-routed outcome: the auto-send predicate would pass it, so
 # only the HIGH risk tier stands between these drafts and the patient.
@@ -330,14 +339,23 @@ async def test_a_failing_booking_node_takes_the_failure_path(
 
 
 def test_nothing_in_the_agent_layer_books_an_appointment():
-    """Gate (j). The agent proposes; a human confirming is the only way in."""
+    """Gate (j). The §10 agent proposes; a human confirming is the only way in.
+
+    One deliberate exception (Amin, 2026-09-24): the email booking
+    conversation books a time the patient confirmed in writing, behind
+    email_booking_conversation_enabled, through
+    email_conversation_service.book_choice. Exactly one call there, and still
+    none anywhere in app/agents."""
     app_dir = Path(__file__).resolve().parent.parent / "app"
-    call_sites = [
+    call_sites = sorted(
         str(p.relative_to(app_dir))
         for p in app_dir.rglob("*.py")
         for _ in re.finditer(r"(?<!def )\bbook_appointment\(", p.read_text())
+    )
+    assert call_sites == [
+        "services/appointment_service.py",
+        "services/email_conversation_service.py",
     ]
-    assert call_sites == ["services/appointment_service.py"]
     agents = [
         str(p.relative_to(app_dir))
         for p in (app_dir / "agents").rglob("*.py")

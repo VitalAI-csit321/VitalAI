@@ -16,11 +16,18 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.agents import nodes
 from app.agents.checkpointer import open_checkpointer
 from app.agents.state import CaseState, Context
+from app.config import settings
 from app.database import AsyncSessionLocal
 from app.models.approval import ApprovalRequest
 from app.models.task import TaskCategory
 from app.models.user import User
-from app.services import approval_service, email_service, identity_service, task_service
+from app.services import (
+    approval_service,
+    email_conversation_service,
+    email_service,
+    identity_service,
+    task_service,
+)
 from app.services.reply_gate import ReplyWorthiness
 from app.services.system_actor import get_or_create_agent_actor
 from app.services.task_routing_gate import TaskRoutingGateResult, TaskRoutingOutcome
@@ -166,6 +173,11 @@ def route_intent(state: CaseState) -> str:
     intent = TaskCategory(state["intent"]) if state.get("intent") else None
     if state.get("routing_outcome") == TaskRoutingOutcome.HUMAN_REVIEW or intent in _HUMAN_ONLY:
         return "human_review"
+    # A reply in an open email conversation (set by load only with the flag
+    # on) skips the reply gate, which would judge "Tuesday 10am works" not
+    # worth answering, and identity, which the conversation already settled.
+    if state.get("conversation_id"):
+        return "conversation"
     agent = _AGENT_FOR_INTENT.get(intent, "retrieval") if intent else "retrieval"
     if state.get("is_provisional") and agent in _NOT_FOR_PROVISIONAL:
         return "human_review"
@@ -183,7 +195,14 @@ def route_identity(state: CaseState) -> str:
     if intent not in identity_service.PATIENT_SPECIFIC:
         return "draft"
     outcome = identity_service.IdentityOutcome(state["identity_outcome"])
+    # The email conversation flow: an appointment request becomes a
+    # conversation (provisional patients included, which is the point), and a
+    # sender nobody can identify is asked to verify rather than left waiting.
+    conversations = email_conversation_service.enabled()
+    booking = conversations and intent == TaskCategory.APPOINTMENT_REQUEST
     if outcome == identity_service.IdentityOutcome.MATCHED:
+        if booking:
+            return "conversation"
         agent = _AGENT_FOR_INTENT.get(intent, "retrieval")
         if state.get("is_provisional") and agent in _NOT_FOR_PROVISIONAL:
             return "staff"
@@ -192,8 +211,18 @@ def route_identity(state: CaseState) -> str:
         outcome == identity_service.IdentityOutcome.NO_MATCH
         and intent in identity_service.ONBOARDING_INTENTS
     ):
-        return "onboarding"
-    return "staff"
+        return "conversation" if booking else "onboarding"
+    return "request_verification" if conversations else "staff"
+
+
+def after_conversation(state: CaseState) -> str:
+    if state.get("dispatch_result") == "conversation_hold":
+        return END
+    if state.get("conversation_resume"):
+        return route_identity(state)
+    if state.get("booking_choice"):
+        return "book"
+    return "draft"
 
 
 def auto_send_or_approve(state: CaseState) -> str:
@@ -206,6 +235,10 @@ def auto_send_or_approve(state: CaseState) -> str:
     redraft is HIGH, so it reaches a human too and neither path auto-sends it."""
     if state.get("risk_tier") == "high":
         return "create_approval"
+    # The conversation flow's fixed texts (email_service.TEMPLATE_BRANCHES):
+    # they go out on their own, unless auto-send is switched off entirely.
+    if state.get("risk_tier") == "template":
+        return "auto_send" if settings.email_auto_send_enabled else "create_approval"
     eligible = email_service.auto_send_eligible(
         verdict=ReplyWorthiness(state["reply_verdict"]),
         gate_outcome=TaskRoutingOutcome(state["routing_outcome"]),
@@ -293,6 +326,9 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         ("records", nodes.records),
         ("prescription", nodes.prescription),
         ("identity_hold", nodes.identity_hold),
+        ("conversation", nodes.conversation),
+        ("book", nodes.book),
+        ("request_verification", nodes.request_verification),
         ("draft", nodes.draft),
         ("escalate", nodes.escalate),
         ("guardrail", nodes.guardrail),
@@ -320,6 +356,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
             "records": "reply_gate",
             "prescription": "reply_gate",
             "onboarding": "reply_gate",
+            "conversation": "conversation",
             END: END,
         },
     )
@@ -337,8 +374,33 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
             "booking": "booking",
             "records": "records",
             "prescription": "prescription",
+            "conversation": "conversation",
+            "request_verification": "request_verification",
             END: END,
         },
+    )
+    builder.add_conditional_edges(
+        "conversation",
+        _unless_failed(after_conversation),
+        {
+            "draft": "draft",
+            "book": "book",
+            # A verified sender's original inquiry, routed by route_identity.
+            "staff": "identity_hold",
+            "records": "records",
+            "prescription": "prescription",
+            END: END,
+        },
+    )
+    builder.add_conditional_edges(
+        "book",
+        _unless_failed(
+            lambda s: END if s.get("dispatch_result") == "conversation_hold" else "draft"
+        ),
+    )
+    builder.add_conditional_edges(
+        "request_verification",
+        _unless_failed(lambda s: END if s.get("dispatch_result") == "identity_hold" else "draft"),
     )
     builder.add_conditional_edges(
         "onboarding",

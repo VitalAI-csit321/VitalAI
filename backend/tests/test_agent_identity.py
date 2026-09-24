@@ -26,6 +26,15 @@ from app.services.identity_service import IdentityFields, IdentityOutcome
 from app.services.task_routing_gate import TaskRoutingGateResult, TaskRoutingOutcome
 from tests.agent_fakes import DRAFT, FakeLLM, seed_email
 
+
+@pytest.fixture(autouse=True)
+def _conversation_flow_off(monkeypatch):
+    """These tests pin the routing that email_booking_conversation_enabled
+    replaces (onboarding, the §10 proposal, a silent staff hold). The flag-on
+    versions are in tests/test_email_conversation.py."""
+    monkeypatch.setattr(settings, "email_booking_conversation_enabled", False)
+
+
 FLAGGED = TaskRoutingGateResult(
     outcome=TaskRoutingOutcome.AUTO_ROUTED_FLAGGED, override_reason=None
 )

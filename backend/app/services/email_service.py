@@ -84,13 +84,27 @@ async def ingest_email(
         if case is None:
             raise CaseNotFoundError(f"Case {payload.case_id} not found")
     else:
-        case = IntakeCase(
-            contact_reason=payload.subject,
-            contact_channel="email",
-            status=IntakeStatus.RECEIVED,
-        )
-        db.add(case)
-        await db.flush()
+        case = None
+        if settings.agentic_pipeline_enabled and settings.email_booking_conversation_enabled:
+            # A reply continues its conversation's case rather than opening a
+            # new one. Imported here: the conversation service imports half the
+            # services layer, and flag-off ingest never needs it.
+            from app.services import email_conversation_service
+
+            case = await email_conversation_service.find_case_for_reply(
+                db,
+                sender=payload.sender,
+                in_reply_to=payload.in_reply_to,
+                references=payload.references,
+            )
+        if case is None:
+            case = IntakeCase(
+                contact_reason=payload.subject,
+                contact_channel="email",
+                status=IntakeStatus.RECEIVED,
+            )
+            db.add(case)
+            await db.flush()
 
     email = Email(
         case_id=case.id,
@@ -103,6 +117,12 @@ async def ingest_email(
         received_at=payload.received_at or datetime.now(UTC),
         external_id=payload.external_id,
         external_source=payload.external_source,
+        sender_name=payload.sender_name,
+        internet_message_id=payload.internet_message_id,
+        in_reply_to=payload.in_reply_to,
+        references_header=payload.references,
+        new_text=payload.new_text,
+        auto_submitted=payload.auto_submitted,
     )
     db.add(email)
     await db.flush()
@@ -291,6 +311,12 @@ def auto_send_eligible(
 # time to attend (§10), or what happens to a patient's records (§11). Literal
 # names rather than an import, so this module does not import the branches.
 _ALWAYS_HUMAN_BRANCHES = frozenset({"booking", "records", "prescription"})
+# The conversation flow's fixed texts (email_conversation_service): a request
+# for verification details, the booking acknowledgement, offered times and a
+# booking confirmation. Amin's call (2026-09-24): these go out with nobody
+# approving them, so a patient is never left waiting on the queue for a form
+# letter. The critic and output guardrail still run on every one.
+TEMPLATE_BRANCHES = frozenset({"verification", "booking_conversation"})
 
 
 def reply_risk_tier(
@@ -312,6 +338,11 @@ def reply_risk_tier(
     # graph's corrected rewrite could auto-send.
     if revision_count > 0:
         return "high"
+    # Before the provisional rule on purpose: the booking flow's first reply
+    # is to a provisional patient by design. auto_send_or_approve reads this
+    # tier as "send it, unless email_auto_send_enabled is off".
+    if branch in TEMPLATE_BRANCHES and settings.email_booking_conversation_enabled:
+        return "template"
     # Chunks found by an LLM's rewrite cleared the floor against the rewrite,
     # not against what the patient wrote: weaker evidence. Drafted, never
     # auto-sent (spec §7). Flag off the same email is ungrounded, so it goes
