@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     voicemail_min_avg_logprob: float = -1.0
     voicemail_max_no_speech_prob: float = 0.6
     voicemail_min_language_probability: float = 0.5
+    voicemail_audio_retention_days: int = 30
+    voicemail_sweep_interval_seconds: int = 300
 
     # Bedrock
     aws_region: str = "ap-southeast-2"

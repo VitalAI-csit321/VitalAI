@@ -107,9 +107,15 @@ async def lifespan(application: FastAPI):
 
         reminder_task = asyncio.create_task(run_reminders())
 
+    # Voicemail retention and recovery. Always on: deleting audio after the
+    # retention period is a privacy duty, not a feature.
+    from app.services.voicemail_sweep import run_voicemail_sweep
+
+    voicemail_task: asyncio.Task | None = asyncio.create_task(run_voicemail_sweep())
+
     yield
 
-    for task in (poller_task, purge_task, reminder_task):
+    for task in (poller_task, purge_task, reminder_task, voicemail_task):
         if task is not None:
             task.cancel()
             with suppress(asyncio.CancelledError):

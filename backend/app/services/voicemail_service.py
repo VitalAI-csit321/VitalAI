@@ -362,3 +362,39 @@ def callback_script(call: Call, state: Mapping) -> str:
     elif state.get("dispatch_result") == "booking_hold":
         lines.append("No appointment time could be proposed: book by hand.")
     return "\n".join(lines)
+
+
+async def handle_call_ended(db: AsyncSession, call: Call, actor: User) -> Task | None:
+    """The call ended with no recording coming (spec §4 step 5). Pressed 9
+    first: an URGENT callback task. Otherwise nothing to act on."""
+    if call.status not in (CallStatus.IN_PROGRESS, CallStatus.RECORDING):
+        return None
+    call.status = CallStatus.ABANDONED
+    task = None
+    if call.urgent_pressed:
+        task = Task(
+            case_id=call.case_id,
+            call_id=call.id,
+            source=TaskSource.CALL,
+            category=TaskCategory.GENERAL_ADMINISTRATIVE,
+            target_role=resolve_target_role(TaskCategory.GENERAL_ADMINISTRATIVE),
+            priority=TaskPriority.URGENT,
+            status=TaskItemStatus.PENDING,
+            handover_context=urgent_script(
+                call, ["caller pressed 9 and hung up before leaving a message"]
+            ),
+        )
+        db.add(task)
+    else:
+        case = await db.get(IntakeCase, call.case_id)
+        if case is not None:
+            case.status = IntakeStatus.INCOMPLETE
+    await record_event(
+        db,
+        case_id=call.case_id,
+        actor=actor,
+        action="voicemail.abandoned",
+        details={"call_id": str(call.id), "urgent": call.urgent_pressed},
+    )
+    await db.commit()
+    return task
