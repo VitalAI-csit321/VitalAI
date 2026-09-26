@@ -6,6 +6,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 // Auth
 import { LoginPage } from "./pages/LoginPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 
 // Core pages (first 10 designs)
 import { DashboardPage } from "./pages/DashboardPage";
@@ -52,6 +53,7 @@ export default function App() {
           {/* Public */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Platform Operations — separate shell. Its endpoints require
               READ_AUDIT (admin only), so the whole shell is admin-gated. */}

@@ -228,7 +228,7 @@ the main app but renders its own layout (`PlatformOpsLayout`, in
 
 `frontend/frontend/README.md` additionally documents a `src/api/_placeholder.ts` seam for
 the handful of fields not yet backed by a real endpoint (the dashboard's weekly chart, the
-consent-form label rotation, and the forgot-password and platform-ops auth flows); that
+consent-form label rotation, and the platform-ops auth flow); that
 detail did not change during this merge, so read it there if you're wiring up new backend
 fields.
 

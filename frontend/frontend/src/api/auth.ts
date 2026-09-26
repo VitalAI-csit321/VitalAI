@@ -61,3 +61,11 @@ export async function getUserGrants(userId: string): Promise<string[]> {
   return res.permissions;
 }
 
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  await apiPost("/api/v1/auth/password-reset/request", { email });
+}
+
+export async function confirmPasswordReset(token: string, newPassword: string): Promise<void> {
+  await apiPost("/api/v1/auth/password-reset/confirm", { token, new_password: newPassword });
+}

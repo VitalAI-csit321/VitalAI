@@ -43,7 +43,6 @@ types. Anything the backend doesn't serve yet is fed from ONE file,
 | --- | --- | --- |
 | Dashboard weekly chart | placeholder bars (`placeholderWorkflowByDay`); count tiles and the Pending Reviews list are live | replace the `workflowByDay` source in `getDashboard` (`src/api/misc.ts`) |
 | Consent queue form label | placeholder rotation (`placeholderConsentForms`); the queue itself is built from real cases + consent records | replace once a forms backend exists, in `listConsentQueue` (`src/api/consent.ts`) |
-| Forgot-password submit | confirmation only, no request sent | point at a reset endpoint when one exists, in `ForgotPasswordPage.tsx` |
 | Platform Ops login | accepts any input, no real auth check | wire to a real operator-auth endpoint |
 
 `_placeholder.ts` also still exports `placeholderPatientFields` and

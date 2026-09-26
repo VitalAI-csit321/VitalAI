@@ -85,3 +85,12 @@ class ActiveStatusUpdateRequest(BaseModel):
 
 class UserGrantsResponse(BaseModel):
     permissions: list[str]
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str = Field(min_length=1, max_length=2048)
+    new_password: str = Field(min_length=8, max_length=128)
