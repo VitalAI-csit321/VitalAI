@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.state import CaseState, Context
 from app.llm.output_guardrail import OutputBlockedError, check_output
+from app.models.call import Call
 from app.models.case import IntakeCase
 from app.models.email import Email
 from app.models.email_conversation import ConversationStage
@@ -33,6 +34,7 @@ from app.services import (
     prescription_service,
     records_service,
     task_service,
+    voicemail_service,
 )
 from app.services.audit_service import record_event
 from app.services.draft_critic import critique
@@ -52,6 +54,13 @@ async def _rows(
     return task, email, actor
 
 
+async def _actor(db: AsyncSession, runtime: Runtime[Context]) -> User:
+    actor = await db.get(User, runtime.context.actor_id)
+    if actor is None:
+        raise LookupError("agent actor row missing")
+    return actor
+
+
 def _case_id(state: CaseState) -> UUID | None:
     return UUID(state["case_id"]) if state.get("case_id") else None
 
@@ -62,6 +71,8 @@ def _patient_id(state: CaseState) -> UUID | None:
 
 async def load(state: CaseState, runtime: Runtime[Context]) -> dict:
     """Populate state from the rows ingest_email already committed."""
+    if state["channel"] == "voicemail":
+        return await _load_voicemail(state, runtime)
     async with runtime.context.session_factory() as db:
         task, email, _ = await _rows(db, state, runtime)
         case = await db.get(IntakeCase, email.case_id) if email.case_id else None
@@ -82,6 +93,21 @@ async def load(state: CaseState, runtime: Runtime[Context]) -> dict:
         "patient_name": patient.name if patient else None,
         "patient_status": patient.status.value if patient else None,
         "is_provisional": patient.is_provisional if patient else None,
+    }
+
+
+async def _load_voicemail(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """The voicemail loader (spec §8): the Call row process() finished."""
+    async with runtime.context.session_factory() as db:
+        task = await db.get(Task, UUID(state["task_id"]))
+        call = await db.get(Call, UUID(state["source_id"]))
+        if task is None or call is None:
+            raise LookupError(f"task/call missing for thread {state['source_id']}")
+    return {
+        "case_id": str(call.case_id),
+        "intent": task.category.value if task.category else None,
+        "content": call.transcript,
+        "sender_identifier": call.phone_number,
     }
 
 
@@ -191,7 +217,7 @@ async def booking(state: CaseState, runtime: Runtime[Context]) -> dict:
     a human with the reason on the Task, not an email that proposes nothing.
     """
     async with runtime.context.session_factory() as db:
-        _, _, actor = await _rows(db, state, runtime)
+        actor = await _actor(db, runtime)
         assigned = await booking_service.doctor_for_patient(db, UUID(state["patient_id"]))
         if assigned is None:
             await task_service.hold_for_staff(
@@ -604,3 +630,60 @@ async def dispatch(state: CaseState, runtime: Runtime[Context]) -> dict:
         if sent:
             await _record_conversation_send(db, state)
     return {"dispatch_result": "sent" if sent else "send_failed"}
+
+
+async def voicemail_identity(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """Caller ID + keypad DOB, one patient or nobody. The match is probable:
+    it goes into state and the script, never onto the case."""
+    async with runtime.context.session_factory() as db:
+        actor = await _actor(db, runtime)
+        call = await db.get(Call, UUID(state["source_id"]))
+        if call is None:
+            raise LookupError(f"call missing for thread {state['source_id']}")
+        patient = (
+            None
+            if call.phone_number == voicemail_service.WITHHELD
+            else await identity_service.match_phone_dob(db, call.phone_number, call.keypad_dob)
+        )
+        await record_event(
+            db,
+            case_id=call.case_id,
+            actor=actor,
+            action="voicemail.identity_resolved",
+            details={"call_id": str(call.id), "probable_match": patient is not None},
+        )
+        await db.commit()
+    if patient is None:
+        return {"identity_outcome": identity_service.IdentityOutcome.NO_MATCH.value}
+    return {
+        "identity_outcome": identity_service.IdentityOutcome.MATCHED.value,
+        "patient_id": str(patient.id),
+        "patient_name": patient.name,
+        "patient_status": patient.status.value,
+        "is_provisional": patient.is_provisional,
+    }
+
+
+async def callback(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """Terminal for voicemail: the callback script on the Task."""
+    async with runtime.context.session_factory() as db:
+        actor = await _actor(db, runtime)
+        call = await db.get(Call, UUID(state["source_id"]))
+        task = await db.get(Task, UUID(state["task_id"]))
+        if call is None or task is None:
+            raise LookupError(f"task/call missing for thread {state['source_id']}")
+        task.handover_context = voicemail_service.callback_script(call, state)
+        await record_event(
+            db,
+            case_id=call.case_id,
+            actor=actor,
+            action="voicemail.callback_ready",
+            details={
+                "call_id": str(call.id),
+                "task_id": str(task.id),
+                "probable_patient": bool(state.get("patient_id")),
+                "slots_offered": len(state.get("proposed_slots") or []),
+            },
+        )
+        await db.commit()
+    return {"dispatch_result": "callback_ready"}

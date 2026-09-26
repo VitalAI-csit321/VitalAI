@@ -293,3 +293,19 @@ _HOLD_REASONS = {
 
 async def hold_for_staff(db: AsyncSession, task_id: str | UUID, outcome: IdentityOutcome) -> None:
     await task_service.hold_for_staff(db, task_id, _HOLD_REASONS[outcome])
+
+
+async def match_phone_dob(db: AsyncSession, phone: str | None, dob: date | None) -> Patient | None:
+    """The voicemail rule (voicemail spec §8): caller ID and keypad DOB match
+    exactly one live patient, or nobody. A name is never used: speech-to-text
+    mangles names, and staff confirm the name on the callback anyway."""
+    digits = _phone(phone)
+    if digits is None or dob is None:
+        return None
+    candidates = (
+        (await db.execute(select(Patient).where(Patient.purged_at.is_(None), Patient.dob == dob)))
+        .scalars()
+        .all()
+    )
+    hits = [p for p in candidates if _phone(p.phone) == digits]
+    return hits[0] if len(hits) == 1 else None

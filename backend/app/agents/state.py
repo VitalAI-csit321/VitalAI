@@ -28,6 +28,9 @@ class CaseState(TypedDict, total=False):
     channel: str
     source_id: str
     sender_identifier: str | None
+    # Voicemail only: process() already wrote the urgent script, so the graph
+    # stops after consent.
+    urgent: bool | None
     content: str | None
 
     patient_id: str | None

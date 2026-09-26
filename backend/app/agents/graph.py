@@ -184,6 +184,31 @@ def route_intent(state: CaseState) -> str:
     return agent
 
 
+def route_after_consent(state: CaseState) -> str:
+    """Voicemail never drafts (spec D6): urgent ones already have their
+    script; the rest go to caller matching. Email is route_intent, unchanged."""
+    if state.get("channel") == "voicemail":
+        return END if state.get("urgent") else "voicemail_identity"
+    return route_intent(state)
+
+
+def after_voicemail_identity(state: CaseState) -> str:
+    intent = TaskCategory(state["intent"]) if state.get("intent") else None
+    if (
+        intent == TaskCategory.APPOINTMENT_REQUEST
+        and state.get("patient_id")
+        and not state.get("is_provisional")
+    ):
+        return "booking"
+    return "callback"
+
+
+def after_booking(state: CaseState) -> str:
+    if state.get("channel") == "voicemail":
+        return "callback"  # a hold still gets a script, saying "book by hand"
+    return END if state.get("dispatch_result") == "booking_hold" else "draft"
+
+
 def route_identity(state: CaseState) -> str:
     """§8.2, after the reply gate: intent x identity outcome x provisional.
 
@@ -335,6 +360,8 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         ("auto_send", nodes.auto_send),
         ("create_approval", create_approval),
         ("dispatch", nodes.dispatch),
+        ("voicemail_identity", nodes.voicemail_identity),
+        ("callback", nodes.callback),
     ):
         builder.add_node(name, _guarded(name, fn))
     builder.add_node("risk", nodes.risk)
@@ -347,7 +374,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
     builder.add_conditional_edges("load", _to("consent"))
     builder.add_conditional_edges(
         "consent",
-        _unless_failed(route_intent),
+        _unless_failed(route_after_consent),
         {
             "human_review": END,
             "retrieval": "reply_gate",
@@ -357,6 +384,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
             "prescription": "reply_gate",
             "onboarding": "reply_gate",
             "conversation": "conversation",
+            "voicemail_identity": "voicemail_identity",
             END: END,
         },
     )
@@ -407,10 +435,9 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         _unless_failed(lambda s: END if s.get("dispatch_result") == "identity_hold" else "draft"),
     )
     # No doctor or no free time: the reason is on the Task and nothing is drafted.
-    builder.add_conditional_edges(
-        "booking",
-        _unless_failed(lambda s: END if s.get("dispatch_result") == "booking_hold" else "draft"),
-    )
+    builder.add_conditional_edges("booking", _unless_failed(after_booking))
+    builder.add_conditional_edges("voicemail_identity", _unless_failed(after_voicemail_identity))
+    builder.add_edge("callback", END)
     builder.add_conditional_edges("records", _to("draft"))
     builder.add_conditional_edges("prescription", _to("draft"))
     builder.add_edge("identity_hold", END)
@@ -485,6 +512,25 @@ async def start(
         # Node failures are handled inside the graph (_guarded). This catches
         # what is left, the checkpointer or the run itself failing, which has
         # nobody to raise to from a background task.
+        logger.exception("Agent graph run failed for thread %s", tid)
+        await _record_run_failure("run", exc, task_id=task_id)
+
+
+async def start_voicemail(task_id: UUID, call_id: UUID, *, urgent: bool) -> None:
+    """Run the graph for one processed voicemail (voicemail spec §8)."""
+    tid = thread_id("voicemail", str(call_id))
+    try:
+        await run(
+            tid,
+            {
+                "channel": "voicemail",
+                "source_id": str(call_id),
+                "task_id": str(task_id),
+                "urgent": urgent,
+                "revision_count": 0,
+            },
+        )
+    except Exception as exc:
         logger.exception("Agent graph run failed for thread %s", tid)
         await _record_run_failure("run", exc, task_id=task_id)
 

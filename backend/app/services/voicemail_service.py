@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from collections.abc import Mapping
 from datetime import date, datetime
 from functools import cache
 from pathlib import PurePath
@@ -26,7 +27,7 @@ from app.models.call import Call, CallKind, CallStatus
 from app.models.case import IntakeCase, IntakeStatus
 from app.models.task import Task, TaskCategory, TaskItemStatus, TaskPriority, TaskSource
 from app.models.user import User, UserRole
-from app.services import task_service
+from app.services import booking_service, task_service
 from app.services.audit_service import record_event
 from app.services.call_service import _priority_for_gate
 from app.services.content_classifier import classify_content
@@ -325,3 +326,39 @@ async def process(call_id: UUID) -> None:
         from app.agents import graph
 
         await graph.start_voicemail(task.id, call_id, urgent=task.priority == TaskPriority.URGENT)
+
+
+_EXCERPT = 200
+
+
+def callback_script(call: Call, state: Mapping) -> str:
+    """The callback task's text. A template: no model decides what staff are
+    told to offer."""
+    lines = [
+        "Caller ID withheld: listen for a callback number in the message."
+        if call.phone_number == WITHHELD
+        else f"Call back {call.phone_number}."
+    ]
+    if state.get("patient_name"):
+        lines.append(
+            f"Probable patient: {state['patient_name']} (caller ID and keypad date of birth match)."
+        )
+    else:
+        lines.append("Caller not identified: confirm who called.")
+    lines.append("Confirm the caller's full name and date of birth before discussing anything.")
+    if state.get("intent"):
+        lines.append(f"Reason: {state['intent'].replace('_', ' ')}.")
+    excerpt = (call.transcript or "").strip()
+    if excerpt:
+        more = "..." if len(excerpt) > _EXCERPT else ""
+        lines.append(f'They said: "{excerpt[:_EXCERPT]}{more}"')
+    if (call.transcript_quality or {}).get("low"):
+        lines.append("The transcript is unreliable: listen to the recording.")
+    if state.get("proposed_slots"):
+        slots = ", ".join(
+            booking_service.format_slot(datetime.fromisoformat(s)) for s in state["proposed_slots"]
+        )
+        lines.append(f"Offer {booking_service.titled(state['booking_doctor_name'])}: {slots}.")
+    elif state.get("dispatch_result") == "booking_hold":
+        lines.append("No appointment time could be proposed: book by hand.")
+    return "\n".join(lines)
