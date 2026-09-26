@@ -36,6 +36,12 @@ class Settings(BaseSettings):
 
     # Call transcription (Phase 1 MVP — local STT, no Twilio yet)
     whisper_model: str = "base"
+    # Voicemail transcript quality gate (voicemail spec §9). Provisional: set
+    # from faster-whisper's usual ranges, to be calibrated on at least 15 real
+    # voicemails before anyone trusts them.
+    voicemail_min_avg_logprob: float = -1.0
+    voicemail_max_no_speech_prob: float = 0.6
+    voicemail_min_language_probability: float = 0.5
 
     # Bedrock
     aws_region: str = "ap-southeast-2"
