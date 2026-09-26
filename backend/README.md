@@ -338,3 +338,18 @@ Every state-changing operation writes to the audit log with the authenticated ac
 `.env` is gitignored and must never be committed. `.env.example` should only ever
 contain placeholder values. If you generate a real secret, it goes in `.env` and
 nowhere else.
+## Twilio voicemail line
+
+Off by default (`TWILIO_ENABLED=false`); the `/api/v1/voice/*` routes are not mounted then.
+The simulated path (Log call, Simulate voicemail) runs the same pipeline without Twilio.
+
+1. Buy an Australian number in the Twilio console.
+2. Voice settings: turn on **Enforce HTTP Auth on Media URLs**, so a recording cannot be
+   fetched by anyone holding its link before we delete it.
+3. Expose the API: `ngrok http 8000`, and set `TWILIO_WEBHOOK_BASE_URL` to the https origin.
+4. On the number: "A call comes in" -> Webhook, POST, `<base>/api/v1/voice/incoming`;
+   "Call status changes" -> POST, `<base>/api/v1/voice/status`.
+5. `.env`: `TWILIO_ENABLED=true`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WEBHOOK_BASE_URL`.
+
+Recordings are downloaded, stored in MinIO, then deleted from Twilio. Twilio's own
+request logs still hold the keypad digits and caller number for its log retention period.

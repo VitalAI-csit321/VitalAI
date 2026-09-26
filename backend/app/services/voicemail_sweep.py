@@ -13,7 +13,7 @@ from sqlalchemy import select
 from app.config import settings
 from app.database import AsyncSessionLocal
 from app.models.call import Call, CallKind, CallStatus
-from app.services import voicemail_service
+from app.services import twilio_client, voicemail_service
 from app.services.audit_service import record_event
 from app.storage import object_storage
 
@@ -39,7 +39,10 @@ async def sweep_once(now: datetime | None = None) -> None:
             .all()
         )
         for call in expired:
-            await asyncio.to_thread(object_storage.delete_object, call.audio_key)
+            key = call.audio_key
+            if key is None:  # the query excludes it; this narrows the type
+                continue
+            await asyncio.to_thread(object_storage.delete_object, key)
             call.audio_key = None
             await record_event(
                 db,
@@ -49,6 +52,19 @@ async def sweep_once(now: datetime | None = None) -> None:
                 details={"call_id": str(call.id)},
             )
         await db.commit()
+
+        if settings.twilio_enabled:
+            undeleted = (
+                (await db.execute(select(Call).where(Call.twilio_deleted.is_(False))))
+                .scalars()
+                .all()
+            )
+            for call in undeleted:
+                if call.twilio_recording_sid:
+                    call.twilio_deleted = await twilio_client.delete_recording(
+                        call.twilio_recording_sid
+                    )
+            await db.commit()
 
         stale = (
             (

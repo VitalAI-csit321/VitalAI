@@ -32,6 +32,9 @@ langchain-aws>=0.1.0
 faster-whisper>=1.0.0
 # Public holidays for the voicemail line's opening hours.
 holidays>=0.60
+# Voicemail line: webhook signature checks and TwiML only (recordings go
+# through httpx, see app/services/twilio_client.py).
+twilio>=9.0
 
 # Rate limiting
 slowapi>=0.1.9

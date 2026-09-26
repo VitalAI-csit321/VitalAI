@@ -219,6 +219,13 @@ app.include_router(human_review.router, prefix=API_PREFIX)
 app.include_router(settings_routes.router, prefix=API_PREFIX)
 app.include_router(health.detailed_router, prefix=API_PREFIX)
 
+# The Twilio voicemail line: public, signature-checked webhooks. Not mounted
+# unless enabled, so no environment exposes them by accident.
+if settings.twilio_enabled:
+    from app.routes import voice
+
+    app.include_router(voice.router, prefix=API_PREFIX)
+
 
 @app.get("/")
 def root() -> dict:

@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     voicemail_min_language_probability: float = 0.5
     voicemail_audio_retention_days: int = 30
     voicemail_sweep_interval_seconds: int = 300
+    # Twilio voicemail line. Off: the /voice routes are not mounted at all.
+    twilio_enabled: bool = False
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    # The public origin Twilio calls (an ngrok URL in dev). Signatures are
+    # checked against this, never request.url, which is wrong behind a proxy.
+    twilio_webhook_base_url: str = ""
 
     # Bedrock
     aws_region: str = "ap-southeast-2"
@@ -180,6 +187,13 @@ class Settings(BaseSettings):
             raise ValueError("JWT_SECRET_KEY must be set")
         if self.outlook_enabled and not self.outlook_client_id:
             raise ValueError("OUTLOOK_CLIENT_ID must be set when OUTLOOK_ENABLED=true")
+        if self.twilio_enabled and not (
+            self.twilio_account_sid and self.twilio_auth_token and self.twilio_webhook_base_url
+        ):
+            raise ValueError(
+                "TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_WEBHOOK_BASE_URL must be set "
+                "when TWILIO_ENABLED=true"
+            )
         return self
 
 

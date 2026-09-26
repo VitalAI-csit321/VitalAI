@@ -112,3 +112,18 @@ async def test_loop_waits_one_interval_before_the_first_sweep(monkeypatch):
     with pytest.raises(asyncio.CancelledError):
         await task
     assert calls == []
+
+
+async def test_sweep_retries_failed_twilio_deletes(db_session, storage, monkeypatch):
+    from app.config import settings
+    from app.services import twilio_client
+
+    monkeypatch.setattr(settings, "twilio_enabled", True)
+    call = await _call(db_session, status=CallStatus.PROCESSED, age=timedelta(hours=1))
+    call.twilio_recording_sid = "RE" + "4" * 32
+    call.twilio_deleted = False
+    await db_session.commit()
+    monkeypatch.setattr(twilio_client, "delete_recording", AsyncMock(return_value=True))
+    await voicemail_sweep.sweep_once(NOW)
+    await db_session.refresh(call)
+    assert call.twilio_deleted is True

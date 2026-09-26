@@ -27,7 +27,7 @@ from app.models.call import Call, CallKind, CallStatus
 from app.models.case import IntakeCase, IntakeStatus
 from app.models.task import Task, TaskCategory, TaskItemStatus, TaskPriority, TaskSource
 from app.models.user import User, UserRole
-from app.services import booking_service, task_service
+from app.services import booking_service, task_service, twilio_client
 from app.services.audit_service import record_event
 from app.services.call_service import _priority_for_gate
 from app.services.content_classifier import classify_content
@@ -233,6 +233,12 @@ async def _process(db: AsyncSession, call_id: UUID, actor: User) -> Task | None:
         return None
     task = await _task_for(db, call)
 
+    if call.audio_key is None and call.twilio_recording_sid:
+        data = await twilio_client.download_recording(call.twilio_recording_sid)
+        await store_audio(db, call, data, ".wav")
+        call.twilio_deleted = await twilio_client.delete_recording(call.twilio_recording_sid)
+        await db.commit()
+
     audio = (
         await asyncio.to_thread(object_storage.get_object, call.audio_key)
         if call.audio_key
@@ -306,6 +312,11 @@ async def process(call_id: UUID) -> None:
             actor = await intake_actor(db)  # rollback expired the old instance
             call = await db.get(Call, call_id)
             if call is None:
+                return
+            if call.audio_key is None and call.twilio_recording_sid:
+                # The audio never arrived (Twilio or the network): leave the
+                # call `received` so the sweep retries the download.
+                # ponytail: no retry cap; add one if a recording ever fails for good.
                 return
             # Past this point the audio is ours, so a retry would fail the
             # same way: hand it to a human instead of looping.

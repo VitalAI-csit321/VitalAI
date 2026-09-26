@@ -7,7 +7,12 @@
 aiohappyeyeballs==2.6.2
     # via aiohttp
 aiohttp==3.13.5
-    # via langchain-community
+    # via
+    #   aiohttp-retry
+    #   langchain-community
+    #   twilio
+aiohttp-retry==2.9.1
+    # via twilio
 aiosignal==1.4.0
     # via aiohttp
 alembic==1.18.4
@@ -319,6 +324,7 @@ pyjwt[crypto]==2.14.0
     # via
     #   msal
     #   pyjwt
+    #   twilio
 pypdf==6.14.2
     # via -r requirements.txt
 pytest==9.0.3
@@ -367,6 +373,7 @@ requests==2.34.2
     #   msal
     #   ray
     #   requests-toolbelt
+    #   twilio
 requests-toolbelt==1.0.0
     # via langsmith
 rich==15.0.0
@@ -432,6 +439,8 @@ transformers==5.9.0
     # via
     #   -r requirements.txt
     #   sentence-transformers
+twilio==9.11.1
+    # via -r requirements.txt
 typer==0.25.1
     # via
     #   huggingface-hub

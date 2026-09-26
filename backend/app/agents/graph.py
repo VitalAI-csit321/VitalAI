@@ -193,9 +193,8 @@ def route_after_consent(state: CaseState) -> str:
 
 
 def after_voicemail_identity(state: CaseState) -> str:
-    intent = TaskCategory(state["intent"]) if state.get("intent") else None
     if (
-        intent == TaskCategory.APPOINTMENT_REQUEST
+        state.get("intent") == TaskCategory.APPOINTMENT_REQUEST.value
         and state.get("patient_id")
         and not state.get("is_provisional")
     ):
