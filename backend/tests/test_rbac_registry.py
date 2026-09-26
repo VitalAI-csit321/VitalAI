@@ -81,4 +81,5 @@ def test_total_route_count():
     # 97 as of the voicemail channel: the password reset work (6a98b8a) added 2
     # routes without bumping this (96 real), +1 for POST /voicemails/simulate
     # (MANAGE_CASES).
-    assert len({(e.method, e.path) for e in registry}) == 97
+    # 98: +1 for GET /calls/{call_id}/audio (PLAY_VOICEMAIL).
+    assert len({(e.method, e.path) for e in registry}) == 98

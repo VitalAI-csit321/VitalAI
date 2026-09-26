@@ -26,6 +26,8 @@ class InboxMessageOut(BaseModel):
     taskStatus: str = "pending"  # noqa: N815
     emailId: str | None = None  # noqa: N815
     handoverContext: str | None = None  # noqa: N815
+    callId: str | None = None  # noqa: N815
+    hasAudio: bool = False  # noqa: N815
 
 
 class InboxListResponse(BaseModel):

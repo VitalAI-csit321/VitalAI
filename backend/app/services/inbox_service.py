@@ -141,6 +141,9 @@ async def _to_message(db: AsyncSession, task: Task, actor: User) -> InboxMessage
         threadReference=f"CALL-{task.id}",
         avatarColor="#059669",
         taskStatus=task.status.value,
+        handoverContext=task.handover_context,
+        callId=str(call.id),
+        hasAudio=call.audio_key is not None,
     )
 
 

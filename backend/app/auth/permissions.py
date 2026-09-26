@@ -25,9 +25,12 @@ READ_AUDIT = "read_audit"
 REGISTER_PATIENT = "register_patient"
 VIEW_ALL_QUEUES = "view_all_queues"
 DELETE_MESSAGES = "delete_messages"
+# Every staff role, doctors included (voicemail spec D4, a clinic decision).
+PLAY_VOICEMAIL = "play_voicemail"
 
 ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
     UserRole.FRONT_DESK: {
+        PLAY_VOICEMAIL,
         VIEW_QUEUE,
         CAPTURE_CONSENT,
         VIEW_RECORDS_GENERAL,
@@ -36,6 +39,7 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         REGISTER_PATIENT,
     },
     UserRole.OPERATOR: {
+        PLAY_VOICEMAIL,
         VIEW_QUEUE,
         MANAGE_CASES,
         APPROVE_ACTION,
@@ -49,6 +53,7 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         DELETE_MESSAGES,
     },
     UserRole.ADMIN: {
+        PLAY_VOICEMAIL,
         VIEW_QUEUE,
         MANAGE_CASES,
         APPROVE_ACTION,
@@ -66,6 +71,7 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
         DELETE_MESSAGES,
     },
     UserRole.DOCTOR: {
+        PLAY_VOICEMAIL,
         VIEW_CLINICAL,
         VIEW_RECORDS_GENERAL,
         MANAGE_OWN_CALENDAR,
