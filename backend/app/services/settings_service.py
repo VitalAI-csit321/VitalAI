@@ -65,6 +65,14 @@ SETTINGS_REGISTRY: dict[str, SettingSpec] = {
         "Set via environment configuration. The clinic hours are read in this zone.",
         editable=False,
     ),
+    "clinic_holiday_region": SettingSpec(
+        str,
+        "General",
+        "Public holiday region",
+        "Set via environment configuration. The voicemail line is closed on this "
+        "state's public holidays.",
+        editable=False,
+    ),
     "default_appointment_duration_minutes": SettingSpec(
         int,
         "General",

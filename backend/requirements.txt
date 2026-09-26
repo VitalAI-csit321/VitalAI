@@ -30,6 +30,8 @@ langchain-aws>=0.1.0
 
 # Call transcription (Phase 1 MVP, local STT)
 faster-whisper>=1.0.0
+# Public holidays for the voicemail line's opening hours.
+holidays>=0.60
 
 # Rate limiting
 slowapi>=0.1.9

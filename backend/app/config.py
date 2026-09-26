@@ -77,6 +77,11 @@ class Settings(BaseSettings):
     # window. Read-only in settings_service.SETTINGS_REGISTRY: a name that is
     # not a real zone would raise inside zoneinfo on every calendar call.
     clinic_timezone: str = "Australia/Sydney"
+    # Public holidays the clinic closes on, as a python-holidays subdivision
+    # code for Australia. Read-only like clinic_timezone: both describe where
+    # the clinic is. ponytail: public holidays only; add a closed-dates list if
+    # the clinic wants ad-hoc closures.
+    clinic_holiday_region: str = "NSW"
     # Used when a booking does not specify a duration explicitly.
     default_appointment_duration_minutes: int = 30
 
