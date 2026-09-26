@@ -115,7 +115,31 @@ def main() -> None:
             holdout_auto_accuracy=float(np.mean([ok[i] for i in auto])) if auto else None,
         )
     oos = [i for i, v in enumerate(y) if v == "out_of_scope"]
-    oos_margin = [float(m) for m in score(emb_real[oos], ["general_administrative"] * len(oos))[2]]
+    oos_score = score(emb_real[oos], ["general_administrative"] * len(oos))
+    oos_margin = [float(m) for m in oos_score[2]]
+
+    # Added after the first run: the step-2 rule. Send to a human when the regression
+    # disagrees with the LLM's category or its margin is below t; otherwise keep the LLM's.
+    rule = {}
+    for name, idx, preds, margins in [
+        ("in_scope", in_scope, pred, margin),
+        ("out_of_scope", oos, oos_score[1], oos_score[2]),
+    ]:
+        llm_pred = [llm[labels[i]["email_id"]]["llm_pred"] for i in idx]
+        human = [bool(p != q or m < t) for p, q, m in zip(preds, llm_pred, margins, strict=True)]
+        llm_ok = [q == y[i] for q, i in zip(llm_pred, idx, strict=True)]
+        rule[name] = {
+            "n": len(idx),
+            "to_human": sum(human),
+            "llm_wrong": llm_ok.count(False),
+            "llm_wrong_caught": sum(h and not k for h, k in zip(human, llm_ok, strict=True)),
+            "llm_right_sent_to_human": sum(h and k for h, k in zip(human, llm_ok, strict=True)),
+            "auto_routed_accuracy": float(
+                np.mean([k for h, k in zip(human, llm_ok, strict=True) if not h])
+            )
+            if not all(human)
+            else None,
+        }
 
     joblib.dump(
         {
@@ -135,6 +159,7 @@ def main() -> None:
                 "real_in_scope_llm_accuracy": llm_acc,
                 "real_threshold_CONTAMINATED": held,
                 "real_out_of_scope_margins": oos_margin,
+                "step2_rule_CONTAMINATED": rule,
                 "real_errors": [
                     {
                         "email_id": labels[i]["email_id"],
@@ -152,7 +177,7 @@ def main() -> None:
     )
     print(
         f"v1 heldout {synth_v1['accuracy']:.3f} | v2 heldout {synth_v2['accuracy']:.3f} | "
-        f"real {real['accuracy']:.3f} (LLM {llm_acc:.3f}) | threshold {held}"
+        f"real {real['accuracy']:.3f} (LLM {llm_acc:.3f}) | threshold {held} | rule {rule}"
     )
 
 

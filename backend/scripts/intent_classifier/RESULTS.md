@@ -342,6 +342,52 @@ staff time. Missing 29 of 45 emergencies is the real problem (spec F.97).
 - **Retraining the regression with real phrasings would help, but not on these 58 emails.**
   They are the only real test set there is. Train on them and nothing is left to measure with.
 
+## Retrained regression, v2 (2026-09-26)
+
+**Contamination warning.** Everything in this section was built *after* the 58 real emails
+had been read and scored, so the real-email numbers below are not an independent test. They
+show direction only. A clean measure needs emails that nobody working on this has seen.
+
+**What changed.** `generate_v2.py` added 180 emails, 18 per category, all with a subject line
+(production classifies `Subject: ...` plus the body). 83 are single short questions, 20 are in
+another language (Vietnamese, Arabic, Hindi, Dutch, Spanish, Mandarin) and 11 carry a quoted
+reply chain. Of the new scenarios, 3 (9 emails) were written *because of* real-email failures
+and are tagged `informed_by_real_test=True`. `evaluate_v2.py` was committed (`97d6360`) before
+it ran. It keeps the original split and fits one regression, same settings, on both training
+halves (441 emails). The step-2 rule check was added after the first run; that addition shows
+up as a diff to the committed script.
+
+| | v1 model | v2 model |
+|---|---|---|
+| Original synthetic held-out (135) | 89.6% | 88.1% |
+| New synthetic held-out (54) | n/a | 88.9% |
+| Real in-scope (53), **contaminated** | 75.5% | **83.0%**; LLM 96.2% |
+| Real: AUROC of margin, right vs wrong | 0.96 | 0.98 |
+| Pre-set threshold rule, real held-out half | t=0.0335: 12/19 auto, all right | t=0.0427: 13/19 auto, all right |
+| Largest margin on a real error | 0.036 | 0.017 |
+
+The regression is still well behind the LLM on real mail, even with contamination on its
+side. **The category should stay with the LLM.** The v2 regression's 9 real errors are all
+the "is there any GP" family plus the Dutch email, and every one has a margin of 0.017 or
+less.
+
+### The step-2 rule on the real emails (contaminated)
+
+Rule: keep the LLM's category, but send the email to a human when the v2 regression
+**disagrees** with it or its **margin is below 0.0427**.
+
+| | Today | With the rule |
+|---|---|---|
+| In-scope sent to a human by confidence | 0 of 53 | 13 of 53 (9 disagreements, 4 low margins) |
+| The LLM's 2 wrong categories | both auto-routed | **both caught** |
+| Accuracy of what still auto-routes | 51/53 | **40/40** |
+| Out-of-scope (gibberish, a newsletter, tests) | 5 of 5 auto-routed | **5 of 5 to a human** |
+| Cost | none | 11 correct emails get a human look |
+
+Two LLM errors is an anecdote, and the threshold was set on these same emails. The shape of
+the result is what matters: disagreement between two independent classifiers catches what
+the LLM's own number cannot. It needs confirming on fresh mail before the flag goes on.
+
 ## Honest read (written 2026-09-23, before the real-email run)
 
 - **These are synthetic emails, and synthetic emails are easier than real ones.** Read the
@@ -391,6 +437,8 @@ Done on 2026-09-24: the real-email measurement above. Still open:
 | `real_labels.jsonl` | Labels for the 58 `vitalai_qa` emails, by id, committed before any prediction |
 | `evaluate_real.py` | Real-email measurement (reads `vitalai_qa` read-only, no retraining) |
 | `real_results.json` | Every real-email number above |
+| `generate_v2.py`, `dataset_v2.jsonl` | Second synthetic batch (180), written after the real-email run |
+| `evaluate_v2.py`, `results_v2.json`, `model_v2.joblib` | Retrained regression, its measurements and the step-2 rule check |
 | `real_predictions.jsonl` | Per real email, by id: label, both predictions, margin, LLM confidence, gate outcome, keyword hit (no email text) |
 
 The AUROC, McNemar and gate-replay figures were computed afterwards from
