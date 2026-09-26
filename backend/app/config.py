@@ -82,6 +82,14 @@ class Settings(BaseSettings):
     # gates task-routing classification confidence, not RAG grounding.
     task_routing_auto_threshold: float = 0.90
     task_routing_floor: float = 0.70
+    # Computed second opinion on the email classifier (app.services.intent_check).
+    # The LLM's own confidence measured as noise offline (0.90 on gibberish), so
+    # when this is on, an email whose embedding regression disagrees with the LLM's
+    # category, or whose margin is below the threshold, gets confidence 0.0 and goes
+    # to a human. Off by default: the threshold (0.0427) came from 58 real emails
+    # that also shaped the model, so it is provisional until checked on fresh mail.
+    intent_check_enabled: bool = False
+    intent_check_margin_threshold: float = 0.0427
 
     # Clinic hours. The calendar UI renders an 8am-6pm grid; these are the
     # single source of truth so a clinic that opens at 7 needs no code change.

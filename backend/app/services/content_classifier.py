@@ -17,9 +17,11 @@ from typing import Literal
 from langchain_core.language_models import BaseLanguageModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.llm.guardrail import InputBlockedError, guarded_invoke
 from app.models.task import TaskCategory
 from app.models.user import User
+from app.services.intent_check import regression_view
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +85,10 @@ async def classify_content(
     guardrail block on the content itself — a 0.0 confidence always routes to
     human_review via evaluate_task_routing_gate(), so an unparseable or
     blocked classification is never silently auto-routed.
+
+    With settings.intent_check_enabled, an email also gets 0.0 when the embedding
+    regression (app.services.intent_check) disagrees with the LLM's category or is
+    unsure. The category is kept; only the routing changes.
     """
     prompt = _PROMPT_TEMPLATE.format(
         channel_framing=_CHANNEL_FRAMING[channel], categories=_CATEGORY_VALUES, content=text
@@ -97,7 +103,30 @@ async def classify_content(
 
     raw_text = raw if isinstance(raw, str) else getattr(raw, "content", str(raw))
     try:
-        return _parse_classification(raw_text)
+        category, confidence = _parse_classification(raw_text)
     except ClassificationParseError:
         logger.exception("classify_content: failed to parse %s classifier output", channel)
         return TaskCategory.GENERAL_ADMINISTRATIVE, 0.0
+
+    # Email only: the regression was trained on email text, never on call transcripts.
+    if channel == "email" and settings.intent_check_enabled:
+        try:
+            second_opinion, margin = await regression_view(text)
+        except Exception:
+            logger.exception("classify_content: intent check failed, routing to human review")
+            return category, 0.0
+        if second_opinion != category.value:
+            logger.info(
+                "classify_content: regression says %s, LLM says %s; routing to human review",
+                second_opinion,
+                category.value,
+            )
+            return category, 0.0
+        if margin < settings.intent_check_margin_threshold:
+            logger.info(
+                "classify_content: regression margin %.4f below %.4f; routing to human review",
+                margin,
+                settings.intent_check_margin_threshold,
+            )
+            return category, 0.0
+    return category, confidence

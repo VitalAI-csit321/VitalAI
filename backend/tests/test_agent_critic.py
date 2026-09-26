@@ -37,6 +37,28 @@ def test_an_ordinary_reply_passes():
     assert critique("We open at 9am on Saturdays.") is None
 
 
+@pytest.mark.parametrize(
+    "draft",
+    [
+        "Dear [Patient Name],\n\nWe open at 9am on Saturdays.",
+        "Your appointment is at [Start time] with Dr Lee.",
+        "More details are on our site: [website link]",
+    ],
+)
+def test_a_placeholder_inside_a_sentence_is_rejected(draft):
+    """Measured on real drafts: 19 of 32 held one. Auto-sent, the patient reads
+    "Dear [Patient Name]", so the draft goes to a person instead."""
+    reason = critique(draft)
+    assert reason is not None
+    assert "placeholder" in reason
+
+
+def test_a_sign_off_placeholder_on_its_own_line_passes():
+    """Dropped at automatic send, filled by the human on the approval path."""
+    draft = "Hi,\n\nWe open at nine.\n\nSincerely,\n[Your Name]\nGreenCare"
+    assert critique(draft) is None
+
+
 @pytest.fixture
 def retrieve(monkeypatch):
     mock = AsyncMock(return_value=[])

@@ -5,7 +5,6 @@ out of this function so ingestion and drafting can be tested independently.
 """
 
 import logging
-import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -28,6 +27,7 @@ from app.services import approval_service, outlook_auth, outlook_client
 from app.services.audit_service import record_event
 from app.services.content_classifier import classify_content
 from app.services.draft_critic import critique
+from app.services.draft_critic import drop_placeholder_lines as _drop_placeholder_lines
 from app.services.outlook_auth import OutlookAuthRequiredError
 from app.services.reply_gate import ReplyGateResult, ReplyWorthiness, evaluate_reply_worthiness
 from app.services.task_routing_gate import (
@@ -358,19 +358,6 @@ def reply_risk_tier(
     return "low"
 
 
-# "Sincerely,\n[Your Name]\nClinic Administrator" is what the model writes when
-# it has no name to sign with. A human editing the draft replaces it; an
-# automatic send has nobody to, so the line goes rather than ship a template
-# artefact to a patient. Whole lines only: an inline "[date]" mid-sentence
-# would leave a hole, and that draft is better off in front of a human.
-_PLACEHOLDER_LINE = re.compile(r"^\s*\[[^\]]{0,60}\]\s*$")
-
-
-def _drop_placeholder_lines(draft: str) -> str:
-    kept = [ln for ln in draft.splitlines() if not _PLACEHOLDER_LINE.match(ln)]
-    return "\n".join(kept)
-
-
 async def deliver_reply(
     db: AsyncSession,
     *,
@@ -385,7 +372,7 @@ async def deliver_reply(
     """Send a reply. The only caller of outlook_client.send_reply in the app.
 
     `automated` means nobody read this before it left: the model's sign-off
-    placeholder is dropped (see _drop_placeholder_lines). On the approval path
+    placeholder is dropped (see draft_critic.drop_placeholder_lines). On the approval path
     it stays in, because the human editing the draft is the one who fills it.
 
     With the Outlook connector disabled "sent" is DB-level state and no message

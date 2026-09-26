@@ -9,6 +9,8 @@ Used by both paths: the agent graph (reject -> redraft, at most twice) and
 the flag-off draft_reply (reject -> held for staff with the reason, no redraft).
 """
 
+import re
+
 # Prescription policy: staff may not tell a patient a medication is suitable
 # for them; that is a clinician's call.
 # ponytail: a phrase list, a naive heuristic. It catches the obvious wording
@@ -62,6 +64,26 @@ SENSITIVE_REQUEST_REASON = (
 )
 EMPTY_REASON = "The draft is empty."
 
+# Template artefacts (spec F.92, F.99): measured on 32 real drafts, 26 held a
+# "[Patient Name]"-style placeholder and 19 held one inside a sentence.
+# "Sincerely,\n[Your Name]\nClinic Administrator" is what the model writes when it
+# has no name to sign with: a line that is only a placeholder is dropped at
+# automatic send (drop_placeholder_lines) and filled by the human on the approval
+# path. One inside a sentence would reach the patient as a hole, so that draft
+# is rejected and goes to a person.
+_PLACEHOLDER_LINE = re.compile(r"^\s*\[[^\]]{0,60}\]\s*$")
+_INLINE_PLACEHOLDER = re.compile(r"\[[^\]\n]{1,60}\]")
+
+PLACEHOLDER_REASON = (
+    "The draft still contains a placeholder such as [Patient Name]. Write the sentence "
+    "without it; if a detail is unknown, leave it out rather than marking a gap."
+)
+
+
+def drop_placeholder_lines(draft: str) -> str:
+    kept = [ln for ln in draft.splitlines() if not _PLACEHOLDER_LINE.match(ln)]
+    return "\n".join(kept)
+
 
 _UNVERIFIED_READER_BRANCHES = frozenset({"onboarding", "verification", "booking_conversation"})
 
@@ -79,6 +101,8 @@ def critique(draft: str | None, branch: str | None = None) -> str | None:
     text = draft.lower()
     if any(phrase in text for phrase in _SUITABILITY_PHRASES):
         return SUITABILITY_REASON
+    if _INLINE_PLACEHOLDER.search(drop_placeholder_lines(draft)):
+        return PLACEHOLDER_REASON
     # The conversation flow's templates go to the same kind of reader: someone
     # who may not be identified yet, over email.
     if branch in _UNVERIFIED_READER_BRANCHES and any(term in text for term in _SENSITIVE_TERMS):
