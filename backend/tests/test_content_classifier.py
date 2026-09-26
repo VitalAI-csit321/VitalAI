@@ -76,3 +76,96 @@ async def test_classify_content_falls_back_when_input_guardrail_blocks(db_sessio
 
     assert category == TaskCategory.GENERAL_ADMINISTRATIVE
     assert confidence == 0.0
+
+
+# --- intent check (settings.intent_check_enabled) ---
+
+
+def _second_opinion(monkeypatch, category: str, margin: float) -> list[str]:
+    seen: list[str] = []
+
+    async def fake(text: str) -> tuple[str, float]:
+        seen.append(text)
+        return category, margin
+
+    monkeypatch.setattr("app.services.content_classifier.regression_view", fake)
+    return seen
+
+
+_LLM_SAYS_RX = json.dumps({"category": "prescription_renewal", "confidence": 0.9})
+
+
+@pytest.mark.asyncio
+async def test_intent_check_off_leaves_the_llm_answer_alone(
+    db_session, front_desk_user, monkeypatch
+):
+    monkeypatch.setattr("app.config.settings.intent_check_enabled", False)
+    seen = _second_opinion(monkeypatch, "billing_insurance_enquiry", 0.0)
+
+    result = await classify_content(
+        db_session, _FakeLLM(_LLM_SAYS_RX), "repeat please", actor=front_desk_user, channel="email"
+    )
+
+    assert result == (TaskCategory.PRESCRIPTION_RENEWAL, 0.9)
+    assert seen == []
+
+
+@pytest.mark.parametrize(
+    ("regression", "margin", "expected_confidence"),
+    [
+        ("prescription_renewal", 0.2, 0.9),  # agrees and sure: LLM answer stands
+        ("billing_insurance_enquiry", 0.2, 0.0),  # disagrees: human
+        ("prescription_renewal", 0.01, 0.0),  # agrees but unsure: human
+    ],
+)
+@pytest.mark.asyncio
+async def test_intent_check_routes_disagreement_and_doubt_to_a_human(
+    db_session, front_desk_user, monkeypatch, regression, margin, expected_confidence
+):
+    monkeypatch.setattr("app.config.settings.intent_check_enabled", True)
+    _second_opinion(monkeypatch, regression, margin)
+
+    category, confidence = await classify_content(
+        db_session, _FakeLLM(_LLM_SAYS_RX), "repeat please", actor=front_desk_user, channel="email"
+    )
+
+    assert category == TaskCategory.PRESCRIPTION_RENEWAL  # the category is never overridden
+    assert confidence == expected_confidence
+
+
+@pytest.mark.asyncio
+async def test_intent_check_never_runs_on_calls(db_session, front_desk_user, monkeypatch):
+    monkeypatch.setattr("app.config.settings.intent_check_enabled", True)
+    seen = _second_opinion(monkeypatch, "billing_insurance_enquiry", 0.0)
+
+    result = await classify_content(
+        db_session, _FakeLLM(_LLM_SAYS_RX), "repeat please", actor=front_desk_user, channel="call"
+    )
+
+    assert result == (TaskCategory.PRESCRIPTION_RENEWAL, 0.9)
+    assert seen == []
+
+
+@pytest.mark.asyncio
+async def test_intent_check_failure_fails_safe_to_a_human(db_session, front_desk_user, monkeypatch):
+    monkeypatch.setattr("app.config.settings.intent_check_enabled", True)
+
+    async def broken(text: str) -> tuple[str, float]:
+        raise RuntimeError("embedding model unavailable")
+
+    monkeypatch.setattr("app.services.content_classifier.regression_view", broken)
+
+    category, confidence = await classify_content(
+        db_session, _FakeLLM(_LLM_SAYS_RX), "repeat please", actor=front_desk_user, channel="email"
+    )
+
+    assert (category, confidence) == (TaskCategory.PRESCRIPTION_RENEWAL, 0.0)
+
+
+def test_shipped_weights_give_a_probability_over_all_ten_categories():
+    from app.services.intent_check import probabilities
+
+    probs = probabilities([0.0] * 511 + [1.0])
+
+    assert set(probs) == {c.value for c in TaskCategory}
+    assert abs(sum(probs.values()) - 1.0) < 1e-9
