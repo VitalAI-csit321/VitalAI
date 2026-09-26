@@ -10,7 +10,9 @@ import {
 } from "../api/misc";
 import type { Message, MessagePriority } from "../api/types";
 import { useAuth } from "../lib/auth";
+import { listTasks } from "../api/tasks";
 import { Avatar, Spinner } from "../components/ui";
+import { VoicemailPlayer } from "../components/VoicemailPlayer";
 
 type Tab = "all" | "urgent" | "archived";
 
@@ -46,6 +48,23 @@ export function InboxPage() {
   const [editedDraft, setEditedDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [urgentCalls, setUrgentCalls] = useState(0);
+
+  // GET /tasks, never the inbox list: every inbox load summarises each call
+  // with a model call, which must not run every 30 seconds.
+  useEffect(() => {
+    const check = () =>
+      listTasks()
+        .then((tasks) =>
+          setUrgentCalls(
+            tasks.filter((t) => t.source === "call" && t.priority === "urgent" && t.status === "pending").length,
+          ),
+        )
+        .catch(() => {});
+    check();
+    const id = window.setInterval(check, 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   function refresh(preferId?: string | null) {
     return listMessages(tab === "archived").then((m) => {
@@ -177,6 +196,17 @@ export function InboxPage() {
         </div>
       </div>
 
+      {urgentCalls > 0 && (
+        <div role="alert" className="mt-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          <span>
+            <span className="font-semibold">{urgentCalls} urgent call{urgentCalls === 1 ? "" : "s"}</span> waiting for a callback.
+          </span>
+          <button onClick={() => { setTab("urgent"); refresh(null); }} className="font-semibold underline">
+            Show
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="mt-8">
           <Spinner />
@@ -279,6 +309,10 @@ export function InboxPage() {
                     <span className="font-semibold">Note for staff: </span>
                     {selected.handoverContext}
                   </div>
+                )}
+
+                {selected.callId && selected.hasAudio && (
+                  <VoicemailPlayer key={selected.callId} callId={selected.callId} />
                 )}
 
                 {showReply && (

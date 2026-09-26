@@ -1,4 +1,4 @@
-import { apiPost, apiPostForm } from "../lib/apiClient";
+import { apiGetBlob, apiPost, apiPostForm } from "../lib/apiClient";
 
 export interface CallRouteResult {
   task_id: string;
@@ -30,4 +30,26 @@ export async function createCall(
 
 export async function routeCall(callId: string): Promise<CallRouteResult> {
   return apiPost<CallRouteResult>(`/api/v1/calls/${callId}/route`, {});
+}
+
+export interface SimulateVoicemailInput {
+  file: File;
+  fromNumber: string;
+  dobDigits: string;
+  intentDigit: string;
+  urgent: boolean;
+}
+
+export async function simulateVoicemail(input: SimulateVoicemailInput): Promise<{ call_id: string }> {
+  const form = new FormData();
+  form.append("audio", input.file);
+  form.append("from_number", input.fromNumber);
+  if (input.dobDigits) form.append("dob_digits", input.dobDigits);
+  if (input.intentDigit) form.append("intent_digit", input.intentDigit);
+  form.append("urgent", String(input.urgent));
+  return apiPostForm<{ call_id: string }>("/api/v1/voicemails/simulate", form);
+}
+
+export async function fetchCallAudio(callId: string): Promise<Blob> {
+  return apiGetBlob(`/api/v1/calls/${callId}/audio`);
 }

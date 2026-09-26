@@ -4,6 +4,7 @@ import { transcribeAudio, createCall, routeCall } from "../api/calls";
 import type { CallRouteResult } from "../api/calls";
 import { listCases } from "../api/cases";
 import type { Case } from "../api/types";
+import { VoicemailSimulator } from "../components/VoicemailSimulator";
 
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 
@@ -12,6 +13,23 @@ function formatLabel(value: string): string {
     .split("_")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
+}
+
+function ModeToggle({ mode, onChange }: { mode: "call" | "voicemail"; onChange: (m: "call" | "voicemail") => void }) {
+  return (
+    <div className="mb-6 inline-flex rounded-lg border border-slate-200 p-1 text-sm">
+      {(["call", "voicemail"] as const).map((m) => (
+        <button
+          key={m}
+          type="button"
+          onClick={() => onChange(m)}
+          className={`rounded-md px-4 py-1.5 font-medium ${mode === m ? "bg-brand text-white" : "text-slate-600"}`}
+        >
+          {m === "call" ? "Log a call" : "Simulate voicemail"}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export function LogCallPage() {
@@ -25,6 +43,7 @@ export function LogCallPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CallRouteResult | null>(null);
+  const [mode, setMode] = useState<"call" | "voicemail">("call");
 
   useEffect(() => {
     listCases({ limit: 100 }).then((r) => setCases(r.items)).catch(() => {});
@@ -114,8 +133,18 @@ export function LogCallPage() {
     );
   }
 
+  if (mode === "voicemail") {
+    return (
+      <div className="p-6">
+        <ModeToggle mode={mode} onChange={setMode} />
+        <VoicemailSimulator />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
+      <ModeToggle mode={mode} onChange={setMode} />
       <h1 className="text-2xl font-bold text-slate-900 mb-1">Log a call</h1>
       <p className="text-sm text-slate-500 mb-6">
         Upload a recorded call. It's transcribed locally, then you review the transcript before

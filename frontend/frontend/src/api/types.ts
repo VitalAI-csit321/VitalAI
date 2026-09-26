@@ -129,6 +129,7 @@ export interface Message {
   unread: boolean; receivedLabel: string; threadReference: string; avatarColor: string;
   draftText: string | null; draftApprovalId: string | null; draftSent: boolean;
   taskStatus: TaskStatus; emailId: string | null; handoverContext: string | null;
+  callId?: string | null; hasAudio?: boolean;
 }
 
 export interface DashboardSummary {
