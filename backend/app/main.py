@@ -37,6 +37,7 @@ from app.routes import (
     routing,
     tasks,
     triage,
+    voicemails,
 )
 from app.routes import settings as settings_routes
 from app.services.outlook_poller import run_poller
@@ -192,6 +193,7 @@ API_PREFIX = "/api/v1"
 app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(intake.router, prefix=API_PREFIX)
 app.include_router(calls.router, prefix=API_PREFIX)
+app.include_router(voicemails.router, prefix=API_PREFIX)
 app.include_router(tasks.router, prefix=API_PREFIX)
 app.include_router(consent.router, prefix=API_PREFIX)
 app.include_router(email.router, prefix=API_PREFIX)

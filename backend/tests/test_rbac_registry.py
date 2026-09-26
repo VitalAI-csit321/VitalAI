@@ -78,4 +78,7 @@ def test_total_route_count():
     # CAPTURE_CONSENT (front desk, operators and admins, not clinicians) and
     # replaces a frontend page that listed intake cases and labelled them from
     # a hardcoded array of form names.
-    assert len({(e.method, e.path) for e in registry}) == 94
+    # 97 as of the voicemail channel: the password reset work (6a98b8a) added 2
+    # routes without bumping this (96 real), +1 for POST /voicemails/simulate
+    # (MANAGE_CASES).
+    assert len({(e.method, e.path) for e in registry}) == 97
