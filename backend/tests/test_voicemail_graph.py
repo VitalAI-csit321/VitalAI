@@ -141,3 +141,13 @@ async def test_urgent_voicemail_keeps_its_urgent_script(db_session):
     _, task = await _voicemail(db_session, urgent=True)
     assert task.handover_context.startswith("URGENT voicemail")
     assert "Probable patient" not in task.handover_context  # graph ended before identity
+
+
+async def test_complaint_gets_a_callback_script(db_session, monkeypatch):
+    monkeypatch.setattr(
+        voicemail_service, "get_llm", lambda: FakeClassifier("complaint_escalation")
+    )
+    await _patient(db_session)
+    _, task = await _voicemail(db_session, intent=None)
+    assert task.handover_context is not None
+    assert "Call back +61412345678." in task.handover_context

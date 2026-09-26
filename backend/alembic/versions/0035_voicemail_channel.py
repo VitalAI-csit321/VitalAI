@@ -25,7 +25,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    for value in ("in_progress", "recording", "abandoned"):
+    for value in ("in_progress", "recording", "processing", "abandoned"):
         op.execute(sa.text(f"ALTER TYPE call_status ADD VALUE IF NOT EXISTS '{value}'"))
 
     call_kind = postgresql.ENUM("logged", "voicemail", name="call_kind")
@@ -54,7 +54,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # The three call_status values stay: Postgres cannot drop an enum value.
+    # The four call_status values stay: Postgres cannot drop an enum value.
     for column in (
         "transcript_quality",
         "urgent_pressed",

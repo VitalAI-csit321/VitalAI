@@ -181,3 +181,15 @@ async def test_download_failure_leaves_it_for_the_sweep(twilio, db_session):
 def test_recording_url_refuses_anything_but_a_recording_sid():
     with pytest.raises(ValueError):
         twilio_client._recording_url("../../Calls/CA123", ".wav")
+
+
+async def test_pressed_nine_then_hung_up_during_the_record_prompt(twilio, db_session):
+    """Status is `recording` from the intent digit on, but if the caller hangs
+    up before <Record> runs, no recording callback ever comes."""
+    await _through_menu(twilio, urgent="9")
+    await _post(twilio, "/status", {"CallStatus": "completed"})
+    call = await _call(db_session)
+    assert call.status == CallStatus.RECORDING  # a recording may still arrive
+    task = (await db_session.execute(select(Task).where(Task.call_id == call.id))).scalar_one()
+    assert task.priority == TaskPriority.URGENT
+    assert "caller pressed 9" in task.handover_context

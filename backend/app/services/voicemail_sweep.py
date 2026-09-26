@@ -81,6 +81,24 @@ async def sweep_once(now: datetime | None = None) -> None:
         for call in stale:
             await voicemail_service.handle_call_ended(db, call, actor)
 
+        # A run that died mid-processing (restart) left its claim behind.
+        abandoned_claims = (
+            (
+                await db.execute(
+                    select(Call).where(
+                        Call.status == CallStatus.PROCESSING,
+                        Call.updated_at < now - STALE_LIVE_CALL,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for call in abandoned_claims:
+            call.status = CallStatus.RECEIVED
+        await db.commit()
+        reclaimed = [call.id for call in abandoned_claims]
+
         stuck = (
             (
                 await db.execute(
@@ -94,7 +112,7 @@ async def sweep_once(now: datetime | None = None) -> None:
             .scalars()
             .all()
         )
-    for call_id in stuck:
+    for call_id in [*reclaimed, *(c for c in stuck if c not in reclaimed)]:
         await voicemail_service.process(call_id)
 
 

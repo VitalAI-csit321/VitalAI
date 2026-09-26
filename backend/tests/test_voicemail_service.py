@@ -219,3 +219,68 @@ async def test_failure_after_audio_is_recorded_and_not_retried(
     task = await _task(db_session, call)
     assert call.status == CallStatus.PROCESSED
     assert "RuntimeError" in (task.handover_context or "")
+
+
+async def test_urgent_call_stays_urgent_when_processing_fails(
+    db_session, storage, classifier, monkeypatch
+):
+    def boom(data):
+        raise RuntimeError("whisper crashed")
+
+    monkeypatch.setattr(voicemail_service, "transcribe_audio_with_quality", boom)
+    call = await _received(db_session, urgent_pressed=True)
+    await process(call.id)
+    task = await _task(db_session, call)
+    assert task.priority == TaskPriority.URGENT
+    assert "caller pressed 9" in task.handover_context
+    assert "RuntimeError" in task.handover_context
+
+
+async def test_urgent_call_is_urgent_while_its_download_is_failing(
+    db_session, storage, classifier, monkeypatch
+):
+    from unittest.mock import AsyncMock
+
+    from app.services import twilio_client
+
+    monkeypatch.setattr(
+        twilio_client, "download_recording", AsyncMock(side_effect=RuntimeError("twilio down"))
+    )
+    actor = await voicemail_service.intake_actor(db_session)
+    call = await create_voicemail(
+        db_session,
+        from_number="+61412345678",
+        actor=actor,
+        status=CallStatus.RECEIVED,
+        urgent_pressed=True,
+    )
+    call.twilio_recording_sid = "RE" + "5" * 32
+    await db_session.commit()
+    await process(call.id)
+    await db_session.refresh(call)
+    task = await _task(db_session, call)
+    assert call.status == CallStatus.RECEIVED  # the sweep retries the download
+    assert task.priority == TaskPriority.URGENT
+    assert "caller pressed 9" in task.handover_context
+    assert "could not be downloaded" in task.handover_context
+
+
+async def test_a_second_run_during_processing_does_not_process_again(
+    db_session, storage, monkeypatch
+):
+    """The sweep or a concurrent callback can call process() while a first
+    run is still transcribing. Only the run that claimed the call works."""
+    fake_transcript(monkeypatch, "Hello.")
+    call = await _received(db_session)
+    calls = []
+
+    class ReentrantClassifier(FakeClassifier):
+        async def ainvoke(self, prompt):
+            calls.append(1)
+            if len(calls) == 1:
+                await process(call.id)  # the overlapping run
+            return await super().ainvoke(prompt)
+
+    monkeypatch.setattr(voicemail_service, "get_llm", lambda: ReentrantClassifier())
+    await process(call.id)
+    assert len(calls) == 1

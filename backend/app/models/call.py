@@ -22,6 +22,9 @@ class CallStatus(enum.StrEnum):
     # status callback arrives first. abandoned: ended with no recording.
     IN_PROGRESS = "in_progress"
     RECORDING = "recording"
+    # Claimed by one process() run, so an overlapping run (the sweep, a
+    # duplicate callback) cannot transcribe and classify the same call twice.
+    PROCESSING = "processing"
     ABANDONED = "abandoned"
 
 

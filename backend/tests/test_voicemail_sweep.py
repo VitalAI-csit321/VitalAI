@@ -127,3 +127,15 @@ async def test_sweep_retries_failed_twilio_deletes(db_session, storage, monkeypa
     await voicemail_sweep.sweep_once(NOW)
     await db_session.refresh(call)
     assert call.twilio_deleted is True
+
+
+async def test_sweep_recovers_calls_stuck_in_processing(db_session, storage, monkeypatch):
+    stuck = await _call(db_session, status=CallStatus.PROCESSING, age=timedelta(minutes=40))
+    stuck.updated_at = NOW - timedelta(minutes=31)
+    await db_session.commit()
+    process = AsyncMock()
+    monkeypatch.setattr(voicemail_service, "process", process)
+    await voicemail_sweep.sweep_once(NOW)
+    await db_session.refresh(stuck)
+    assert stuck.status == CallStatus.RECEIVED
+    process.assert_awaited_once_with(stuck.id)

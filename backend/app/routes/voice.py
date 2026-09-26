@@ -175,11 +175,13 @@ async def call_status(form: dict = Depends(twilio_form), db: AsyncSession = Depe
     call = await voicemail_service.get_by_sid(db, form["CallSid"])
     # Only a call still in the menu. `recording` waits for the recording
     # callback, which Twilio can send after this one.
-    if (
-        form.get("CallStatus") in _ENDED
-        and call is not None
-        and call.status == CallStatus.IN_PROGRESS
-    ):
-        actor = await voicemail_service.intake_actor(db)
-        await voicemail_service.handle_call_ended(db, call, actor)
+    if form.get("CallStatus") in _ENDED and call is not None:
+        if call.status == CallStatus.IN_PROGRESS:
+            actor = await voicemail_service.intake_actor(db)
+            await voicemail_service.handle_call_ended(db, call, actor)
+        elif call.status == CallStatus.RECORDING and call.urgent_pressed:
+            # A hang-up during the record prompt sends no recording callback
+            # at all. Raise the urgent task now; a recording that does arrive
+            # later is processed onto this same task.
+            await voicemail_service.ensure_task(db, call)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

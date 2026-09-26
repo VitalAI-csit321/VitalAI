@@ -17,7 +17,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 import holidays
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -184,7 +184,7 @@ def urgent_script(call: Call, reasons: list[str]) -> str:
 def _urgent_reasons(call: Call, category: TaskCategory, transcript: str) -> list[str]:
     reasons = []
     if call.urgent_pressed:
-        reasons.append("caller pressed 9")
+        reasons.append(PRESSED_NINE)
     if category == TaskCategory.URGENT_EMERGENCY:
         reasons.append("urgent category")
     if transcript and is_urgent(transcript):
@@ -192,9 +192,13 @@ def _urgent_reasons(call: Call, category: TaskCategory, transcript: str) -> list
     return reasons
 
 
-async def _task_for(db: AsyncSession, call: Call) -> Task:
-    """Created before any slow step, so a failure lands on a Task that links
-    to the call (and its audio) instead of a detached failure note."""
+PRESSED_NINE = "caller pressed 9"
+
+
+async def ensure_task(db: AsyncSession, call: Call) -> Task:
+    """The call's one Task, created before any slow step so a failure lands
+    on a Task that links to the call (and its audio). A caller who pressed 9
+    is URGENT from this moment: no later failure can lose that (D9, D11)."""
     result = await db.execute(select(Task).where(Task.call_id == call.id))
     task = result.scalars().first()
     if task is None:
@@ -204,8 +208,9 @@ async def _task_for(db: AsyncSession, call: Call) -> Task:
             source=TaskSource.CALL,
             category=TaskCategory.GENERAL_ADMINISTRATIVE,
             target_role=resolve_target_role(TaskCategory.GENERAL_ADMINISTRATIVE),
-            priority=TaskPriority.HIGH,
+            priority=TaskPriority.URGENT if call.urgent_pressed else TaskPriority.HIGH,
             status=TaskItemStatus.PENDING,
+            handover_context=urgent_script(call, [PRESSED_NINE]) if call.urgent_pressed else None,
         )
         db.add(task)
         await db.commit()
@@ -227,11 +232,23 @@ async def _categorise(
     return category, confidence
 
 
-async def _process(db: AsyncSession, call_id: UUID, actor: User) -> Task | None:
-    call = await db.get(Call, call_id)
-    if call is None or call.status != CallStatus.RECEIVED:
-        return None
-    task = await _task_for(db, call)
+async def _process(db: AsyncSession, call_id: UUID, actor: User) -> tuple[Task | None, list[str]]:
+    # Claim atomically: a plain status read lets the sweep or a duplicate
+    # callback start a second run while this one is still transcribing.
+    claimed = (
+        await db.execute(
+            update(Call)
+            .where(Call.id == call_id, Call.status == CallStatus.RECEIVED)
+            .values(status=CallStatus.PROCESSING)
+            .returning(Call.id)
+        )
+    ).scalar_one_or_none()
+    await db.commit()
+    if claimed is None:
+        return None, []
+    call = await db.get(Call, call_id, populate_existing=True)
+    assert call is not None  # just claimed
+    task = await ensure_task(db, call)
 
     if call.audio_key is None and call.twilio_recording_sid:
         data = await twilio_client.download_recording(call.twilio_recording_sid)
@@ -296,7 +313,10 @@ async def _process(db: AsyncSession, call_id: UUID, actor: User) -> Task | None:
     )
     await db.commit()
     await db.refresh(task)
-    return task
+    return task, reasons
+
+
+_DOWNLOAD_PENDING = "The recording could not be downloaded yet; it is retried automatically."
 
 
 async def process(call_id: UUID) -> None:
@@ -305,23 +325,34 @@ async def process(call_id: UUID) -> None:
     async with AsyncSessionLocal() as db:
         actor = await intake_actor(db)
         try:
-            task = await _process(db, call_id, actor)
+            task, reasons = await _process(db, call_id, actor)
         except Exception as exc:
             logger.exception("Voicemail processing failed for call %s", call_id)
             await db.rollback()
             actor = await intake_actor(db)  # rollback expired the old instance
-            call = await db.get(Call, call_id)
+            call = await db.get(Call, call_id, populate_existing=True)
             if call is None:
                 return
+            task = await ensure_task(db, call)
+            urgent_prefix = (
+                urgent_script(call, [PRESSED_NINE]) + "\n" if call.urgent_pressed else ""
+            )
             if call.audio_key is None and call.twilio_recording_sid:
-                # The audio never arrived (Twilio or the network): leave the
-                # call `received` so the sweep retries the download.
+                # The audio never arrived (Twilio or the network): back to
+                # `received` so the sweep retries the download. Staff see why.
                 # ponytail: no retry cap; add one if a recording ever fails for good.
+                call.status = CallStatus.RECEIVED
+                number = "" if call.phone_number == WITHHELD else f" Call {call.phone_number}"
+                task.handover_context = (
+                    urgent_prefix
+                    + _DOWNLOAD_PENDING
+                    + (f"{number} back if it cannot wait." if number else "")
+                )
+                await db.commit()
                 return
             # Past this point the audio is ours, so a retry would fail the
             # same way: hand it to a human instead of looping.
             call.status = CallStatus.PROCESSED
-            task = await _task_for(db, call)
             await task_service.record_agent_failure(
                 db,
                 task_id=task.id,
@@ -331,12 +362,17 @@ async def process(call_id: UUID) -> None:
                 error_type=type(exc).__name__,
                 error_detail=str(exc),
             )
+            if urgent_prefix:
+                await db.refresh(task)
+                task.handover_context = urgent_prefix + (task.handover_context or "")
             await db.commit()
             return
     if task is not None and settings.agentic_pipeline_enabled:
         from app.agents import graph
 
-        await graph.start_voicemail(task.id, call_id, urgent=task.priority == TaskPriority.URGENT)
+        # Only a real urgency reason skips the callback script. A complaint is
+        # URGENT by the routing gate yet still needs someone to call back.
+        await graph.start_voicemail(task.id, call_id, urgent=bool(reasons))
 
 
 _EXCERPT = 200
@@ -383,19 +419,12 @@ async def handle_call_ended(db: AsyncSession, call: Call, actor: User) -> Task |
     call.status = CallStatus.ABANDONED
     task = None
     if call.urgent_pressed:
-        task = Task(
-            case_id=call.case_id,
-            call_id=call.id,
-            source=TaskSource.CALL,
-            category=TaskCategory.GENERAL_ADMINISTRATIVE,
-            target_role=resolve_target_role(TaskCategory.GENERAL_ADMINISTRATIVE),
-            priority=TaskPriority.URGENT,
-            status=TaskItemStatus.PENDING,
-            handover_context=urgent_script(
-                call, ["caller pressed 9 and hung up before leaving a message"]
-            ),
+        # ensure_task: /voice/status may already have raised it (hang-up
+        # during the record prompt); never a second task for one call.
+        task = await ensure_task(db, call)
+        task.handover_context = urgent_script(
+            call, ["caller pressed 9 and hung up before leaving a message"]
         )
-        db.add(task)
     else:
         case = await db.get(IntakeCase, call.case_id)
         if case is not None:
