@@ -28,6 +28,7 @@ _CATEGORY_VALUES = ", ".join(c.value for c in TaskCategory)
 _CHANNEL_FRAMING: dict[str, str] = {
     "email": "Below is the body of an incoming email to a GP clinic.",
     "call": "Below is the transcript of an incoming phone call to a GP clinic.",
+    "voicemail": "Below is the transcript of a voicemail left for a GP clinic.",
 }
 
 _PROMPT_TEMPLATE = """You are a classification assistant for a GP clinic's intake system.
@@ -74,7 +75,7 @@ async def classify_content(
     text: str,
     *,
     actor: User,
-    channel: Literal["email", "call"],
+    channel: Literal["email", "call", "voicemail"],
 ) -> tuple[TaskCategory, float]:
     """Classify email/call content into a TaskCategory with a confidence score.
 
