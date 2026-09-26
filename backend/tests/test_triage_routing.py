@@ -1,6 +1,5 @@
 import uuid
 
-import pytest
 from httpx import AsyncClient
 
 from app.models import Patient
@@ -115,13 +114,10 @@ async def test_triage_patient_flag_escalates(
     assert response.json()["escalated"] is True
 
 
-@pytest.mark.xfail(
-    reason="TODO(Phase 3): _matches_any has no negation handling — 'not urgent' hits the urgent keyword and incorrectly escalates"
-)
-async def test_triage_negation_not_urgent_escalates_incorrectly(
+async def test_triage_negated_urgency_word_is_routine(
     client: AsyncClient, admin_headers: dict, patient: Patient
 ):
-    """'not urgent' should be routine but the substring match hits 'urgent'."""
+    """'not urgent' is routine: is_urgent() ignores a negated urgency word."""
     case_id = await _case_with_consent(client, admin_headers, patient)
     response = await client.post(
         "/api/v1/triage",

@@ -1,8 +1,8 @@
 """Confidence gate for task routing (FR-GOV-02), reusing the existing
 3-tier shape from app.rag.gating. Pure function of a category + confidence
 score, no DB, no LLM call. Two hard overrides bypass the threshold logic
-entirely: an urgent-content keyword match (reuses triage_service's own
-URGENT_KEYWORDS check) and the Complaint/Escalation category, both per
+entirely: an urgent-content match (triage_service.is_urgent: red-flag
+symptoms plus non-negated urgency words) and the Complaint/Escalation category, both per
 docs/superpowers/specs/2026-07-20-ai-task-routing-design.md section 12, plus
 the Urgent/Emergency category (a third, so a classifier-labelled emergency
 never depends on the sender having used a keyword).
@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.services.task_routing_rules import TaskCategory
-from app.services.triage_service import URGENT_KEYWORDS, matches_any
+from app.services.triage_service import is_urgent
 
 
 class TaskRoutingOutcome(enum.StrEnum):
@@ -38,7 +38,7 @@ def evaluate_task_routing_gate(
     """Decide whether a classified task auto-routes, auto-routes but gets
     flagged for audit sampling, or goes straight to the human reviewer queue.
     """
-    if matches_any(text.lower(), URGENT_KEYWORDS):
+    if is_urgent(text):
         return TaskRoutingGateResult(
             outcome=TaskRoutingOutcome.HUMAN_REVIEW, override_reason="urgent_keyword"
         )

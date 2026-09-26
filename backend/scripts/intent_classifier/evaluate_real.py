@@ -24,7 +24,7 @@ from app.config import settings
 from app.models.task import TaskCategory
 from app.rag.embeddings import get_embedding_provider
 from app.services.task_routing_gate import evaluate_task_routing_gate
-from app.services.triage_service import URGENT_KEYWORDS, matches_any
+from app.services.triage_service import is_urgent
 from scripts.intent_classifier.evaluate import evaluate, run_llm, spread
 
 HERE = Path(__file__).parent
@@ -147,13 +147,13 @@ def main() -> None:
             "llm_conf": float(llm_conf[i]),
             "llm_parse_failed": llm_out[i]["parse_failed"],
             "llm_gate": gate[i].outcome.value,
-            "urgent_keyword_hit": matches_any(texts[i].lower(), URGENT_KEYWORDS),
+            "urgent_keyword_hit": is_urgent(texts[i]),
         }
         for i in range(len(y))
     ]
     synthetic = [json.loads(ln) for ln in (HERE / "dataset.jsonl").read_text().splitlines()]
     kw = [
-        (r["label"] == "urgent_emergency", matches_any(r["text"].lower(), URGENT_KEYWORDS))
+        (r["label"] == "urgent_emergency", is_urgent(r["text"]))
         for r in synthetic
     ]
     result = {
