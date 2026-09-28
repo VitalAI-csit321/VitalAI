@@ -59,11 +59,11 @@ export async function getDashboard(): Promise<DashboardSummary> {
       getWeeklyAppointmentCounts(),
     ]);
 
-  const openCases = intakeRes.status==="fulfilled" ? intakeRes.value.total : 0;
-  const auditEvents = auditRes.status==="fulfilled" ? auditRes.value.total : 0;
+  const openCases = intakeRes.status==="fulfilled" ? intakeRes.value.total : null;
+  const auditEvents = auditRes.status==="fulfilled" ? auditRes.value.total : null;
   const pending = pendingRes.status==="fulfilled" ? pendingRes.value.total : 0;
   const inProgress = inProgressRes.status==="fulfilled" ? inProgressRes.value.total : 0;
-  const escalated = escalatedRes.status==="fulfilled" ? escalatedRes.value.counts.escalated : 0;
+  const escalated = escalatedRes.status==="fulfilled" ? escalatedRes.value.counts.escalated : null;
   const workflowByDay = weeklyRes.status==="fulfilled" ? weeklyRes.value : [];
 
   // Pending Reviews list: real human-review tasks, enriched with the real
@@ -96,7 +96,8 @@ export async function getDashboard(): Promise<DashboardSummary> {
 
   return {
     openCases,
-    awaitingApproval: pending + inProgress,
+    awaitingApproval:
+      pendingRes.status === "fulfilled" || inProgressRes.status === "fulfilled" ? pending + inProgress : null,
     escalations: escalated,
     auditEvents,
     workflowByDay,

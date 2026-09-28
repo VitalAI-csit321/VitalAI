@@ -133,7 +133,8 @@ export interface Message {
 }
 
 export interface DashboardSummary {
-  openCases: number; awaitingApproval: number; escalations: number; auditEvents: number;
+  // null: this role may not read that count (a doctor has no /intake, /audit or /tasks).
+  openCases: number | null; awaitingApproval: number | null; escalations: number | null; auditEvents: number | null;
   workflowByDay: { day: string; date: string; value: number }[];
   pendingReviews: { id: string; name: string; kind: string; isNew: boolean }[];
 }

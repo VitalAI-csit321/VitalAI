@@ -8,7 +8,7 @@ import { ApiError, describeApiError } from "../lib/apiClient";
 import { demoPatients } from "../data/demoData";
 import type { AppointmentType, Availability, Doctor, Patient } from "../api/types";
 import { Spinner } from "../components/ui";
-import { TYPE_LABEL, formatTime, parseClinicDateTime, toDateInputValue, toTimeInputValueUTC } from "../components/calendarHelpers";
+import { TYPE_LABEL, formatTime, parseClinicDateTime, toDateInputValue, toTimeInputValueClinic } from "../components/calendarHelpers";
 
 const DURATIONS = [15, 30, 45, 60, 90, 120];
 
@@ -271,7 +271,7 @@ export function AppointmentNewPage() {
             <div className="mt-3 grid grid-cols-2 gap-2">
               {availability?.slots.filter(s => new Date(s.start).getUTCMinutes() === 0 || new Date(s.start).getUTCMinutes() === 30).map(s => {
                 const t = new Date(s.start);
-                const hhmm = toTimeInputValueUTC(t);
+                const hhmm = toTimeInputValueClinic(t);
                 const isSelected = hhmm === startTime;
                 return (
                   <button key={s.start} disabled={!s.available && !isSelected} onClick={() => setStartTime(hhmm)}

@@ -8,7 +8,7 @@ import { useAuth } from "../lib/auth";
 import { Spinner, StatusBadge } from "../components/ui";
 import {
   MONTH_NAMES, STATUS_LABEL, STATUS_TONE, TYPE_COLOR, TYPE_LABEL,
-  formatDateLong, formatDateShort, formatTime, patientDisplayName, toDateInputValue,
+  clinicHour, formatDateLong, formatDateShort, formatTime, patientDisplayName, toDateInputValue, toDateInputValueClinic,
 } from "../components/calendarHelpers";
 
 type ViewMode = "month" | "week" | "day" | "list";
@@ -145,7 +145,7 @@ function WeekView({ appointments, weekStart, onOpen }: { appointments: Appointme
     const map = new Map<string, Appointment[]>();
     for (const d of days) map.set(toDateInputValue(d), []);
     for (const a of appointments) {
-      const key = toDateInputValue(new Date(a.timeSlot));
+      const key = toDateInputValueClinic(new Date(a.timeSlot));
       if (map.has(key)) map.get(key)!.push(a);
     }
     return map;
@@ -186,7 +186,7 @@ function WeekView({ appointments, weekStart, onOpen }: { appointments: Appointme
                   // 8-18 rows) are defined in UTC, not the viewer's local
                   // timezone -- reading local hours here silently dropped
                   // every booking once the browser's timezone wasn't UTC.
-                  const startHour = start.getUTCHours() + start.getUTCMinutes() / 60;
+                  const startHour = clinicHour(start);
                   if (startHour < hours[0] || startHour > hours[hours.length - 1] + 1) return null;
                   const top = (startHour - hours[0]) * HOUR_PX;
                   const height = Math.max((a.durationMinutes / 60) * HOUR_PX, 20);
@@ -220,7 +220,7 @@ function DayViewPanel({ data, onOpen, onNew }: { data: DayView; onOpen: (id: str
         {hours.map(h => {
           const isLunch = h === 12;
           // UTC, same reasoning as WeekView above.
-          const items = data.appointments.filter(a => new Date(a.timeSlot).getUTCHours() === h);
+          const items = data.appointments.filter(a => Math.floor(clinicHour(new Date(a.timeSlot))) === h);
           return (
             <div key={h} className="flex border-b border-slate-100 last:border-0" style={{ minHeight: HOUR_PX }}>
               <div className="w-20 shrink-0 border-r border-slate-100 px-3 py-2 text-xs text-slate-400">
@@ -307,7 +307,7 @@ function ListViewPanel({ month, onOpen, doctors }: { month: CalendarMonth | null
   const grouped = useMemo(() => {
     const map = new Map<string, Appointment[]>();
     for (const a of items) {
-      const key = toDateInputValue(new Date(a.timeSlot));
+      const key = toDateInputValueClinic(new Date(a.timeSlot));
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(a);
     }
@@ -319,7 +319,7 @@ function ListViewPanel({ month, onOpen, doctors }: { month: CalendarMonth | null
   function exportCsv() {
     const rows = [
       ["Date", "Time", "Patient", "Type", "Provider", "Status"],
-      ...items.map(a => [toDateInputValue(new Date(a.timeSlot)), formatTime(a.timeSlot), patientDisplayName(a), TYPE_LABEL[a.appointmentType], a.doctorName ?? "", STATUS_LABEL[a.status]]),
+      ...items.map(a => [toDateInputValueClinic(new Date(a.timeSlot)), formatTime(a.timeSlot), patientDisplayName(a), TYPE_LABEL[a.appointmentType], a.doctorName ?? "", STATUS_LABEL[a.status]]),
     ];
     const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });

@@ -11,7 +11,7 @@ const NAV: { to: string; label: string; icon: typeof LayoutGrid; roles?: Role[] 
   { to: "/records", label: "Records", icon: FolderClosed },
   { to: "/inbox", label: "Inbox", icon: Mail },
   { to: "/review-queue", label: "Review Queue", icon: ClipboardList },
-  { to: "/escalations", label: "Escalations", icon: AlertTriangle },
+  { to: "/escalations", label: "Escalations", icon: AlertTriangle, roles: ["front_desk", "operator", "admin"] },
   { to: "/audit", label: "Audit", icon: ShieldCheck, roles: ["admin"] },
   { to: "/users", label: "Users", icon: UserCog, roles: ["admin"] },
   { to: "/settings", label: "Settings", icon: Settings },

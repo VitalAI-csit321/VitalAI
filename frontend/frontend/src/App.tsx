@@ -107,7 +107,14 @@ export default function App() {
             <Route path="/review-queue/add" element={<AddCasePage />} />
 
             {/* Escalations */}
-            <Route path="/escalations" element={<EscalationsPage />} />
+            <Route
+              path="/escalations"
+              element={
+                <ProtectedRoute roles={["front_desk", "operator", "admin"]}>
+                  <EscalationsPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Audit — admin only */}
             <Route

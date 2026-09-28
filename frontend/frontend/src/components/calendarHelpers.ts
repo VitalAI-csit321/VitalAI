@@ -28,16 +28,33 @@ export const STATUS_TONE: Record<AppointmentStatus, "green" | "amber" | "red" | 
   completed: "green",
 };
 
+// Clinic wall-clock time. The backend schedules in settings.clinic_timezone
+// (Australia/Sydney by default) and GET /health reports it. These helpers used
+// to assume the clinic ran on UTC: an "11:00" booking was stored as 10pm in
+// Sydney, and the email agent's 8am bookings showed at 9 or 10pm the day before.
+let clinicTimeZone = "Australia/Sydney";
+
+export function setClinicTimeZone(zone: string): void {
+  clinicTimeZone = zone;
+}
+
+function clinicParts(d: Date): { date: string; hour: number; minute: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: clinicTimeZone, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(d);
+  const get = (type: string) => parts.find(p => p.type === type)!.value;
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, hour: Number(get("hour")), minute: Number(get("minute")) };
+}
+
 export function formatTime(iso: string): string {
-  // UTC, not the viewer's local timezone: appointment times are stored and
-  // scheduled against the clinic's fixed 8am-6pm UTC business hours
-  // (settings.clinic_open_hour/close_hour), so a browser outside UTC would
-  // otherwise show clinic-hours bookings at shifted, misleading clock times.
-  return new Date(iso).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-  });
+  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: clinicTimeZone });
+}
+
+/** Hours since clinic midnight, fractional, for placing an appointment on the day grid. */
+export function clinicHour(d: Date): number {
+  const p = clinicParts(d);
+  return p.hour + p.minute / 60;
 }
 
 export function formatDateLong(iso: string): string {
@@ -52,25 +69,28 @@ export function toDateInputValue(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// The three helpers below exist because clinic wall-clock hours are UTC on the
-// backend (settings.clinic_open_hour/close_hour, no per-timezone support) but
-// <input type="date">/<input type="time"> give plain strings with no timezone
-// of their own. Reading them with local Date getters, or building a Date from
-// them without forcing UTC, silently shifts every booked/displayed time by the
-// viewer's UTC offset -- the same class of bug already fixed for the calendar
-// week/day views (see CalendarPage.tsx's getUTCHours usage). These three make
-// the booking/edit forms follow the same convention.
-
-export function toDateInputValueUTC(d: Date): string {
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+export function toDateInputValueClinic(d: Date): string {
+  return clinicParts(d).date;
 }
 
-export function toTimeInputValueUTC(d: Date): string {
-  return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+export function toTimeInputValueClinic(d: Date): string {
+  const p = clinicParts(d);
+  return `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`;
 }
 
+/** The instant a clinic wall-clock date and time names, daylight saving included. */
 export function parseClinicDateTime(date: string, time: string): Date {
-  return new Date(`${date}T${time}:00.000Z`);
+  const [y, m, d] = date.split("-").map(Number);
+  const [h, min] = time.split(":").map(Number);
+  const wanted = Date.UTC(y, m - 1, d, h, min);
+  let instant = wanted;
+  // Twice: once to apply the zone's offset, once more in case that crossed a DST change.
+  for (let i = 0; i < 2; i++) {
+    const p = clinicParts(new Date(instant));
+    const [py, pm, pd] = p.date.split("-").map(Number);
+    instant += wanted - Date.UTC(py, pm - 1, pd, p.hour, p.minute);
+  }
+  return new Date(instant);
 }
 
 export function patientDisplayName(a: { patientName: string | null }): string {
