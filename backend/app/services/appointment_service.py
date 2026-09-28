@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.scoping import assigned_patient_ids_subquery, is_assigned
 from app.config import settings
 from app.models.appointment import Appointment, AppointmentStatus, AppointmentType
+from app.models.assignment import DoctorPatientAssignment
 from app.models.case import IntakeCase
 from app.models.patient import Patient
 from app.models.user import User, UserRole
@@ -58,6 +59,28 @@ class AppointmentStateError(Exception):
     """Raised when rescheduling/cancelling an appointment in an illegal state."""
 
 
+class OutsideClinicHoursError(Exception):
+    """Raised when an appointment would start before opening or end after closing."""
+
+
+def assert_within_clinic_hours(start: datetime, duration_minutes: int) -> None:
+    """Refuse a time the clinic is closed, read in the clinic's timezone.
+
+    The calendar UI once sent 11:00 UTC for an "11:00" booking, which is 10pm
+    in Sydney, and nothing here stopped it. A naive value is UTC, as SQLite
+    hands stored times back.
+    """
+    tz = ZoneInfo(settings.clinic_timezone)
+    local = (start if start.tzinfo else start.replace(tzinfo=UTC)).astimezone(tz)
+    opens = local.replace(hour=settings.clinic_open_hour, minute=0, second=0, microsecond=0)
+    closes = local.replace(hour=settings.clinic_close_hour, minute=0, second=0, microsecond=0)
+    if local < opens or local + timedelta(minutes=duration_minutes) > closes:
+        raise OutsideClinicHoursError(
+            f"{local:%a %d %b %H:%M} ({settings.clinic_timezone}) is outside clinic hours "
+            f"{settings.clinic_open_hour:02d}:00-{settings.clinic_close_hour:02d}:00"
+        )
+
+
 class DoctorPatientAccessError(Exception):
     """Raised when a Doctor tries to manage a patient who is not assigned to them."""
 
@@ -96,6 +119,7 @@ async def book_appointment(
     series_id: UUID | None = None,
     commit: bool = True,
     allow_provisional: bool = False,
+    enforce_hours: bool = False,
 ) -> Appointment:
     # Validated up front so a bogus doctor_id/case_id can't slip through as a
     # "successful" booking, and so the later IntegrityError catch can only
@@ -119,6 +143,10 @@ async def book_appointment(
             raise DoctorPatientAccessError(
                 f"Patient for case {case_id} is not assigned to doctor {actor.id}"
             )
+    # Routes pass enforce_hours: people type times there. Internal callers
+    # (the agent books offered in-hours slots) and fixtures do not need it.
+    if enforce_hours:
+        assert_within_clinic_hours(time_slot, duration_minutes)
 
     appointment = Appointment(
         doctor_id=doctor_id,
@@ -144,6 +172,7 @@ async def book_appointment(
             f"Doctor {doctor_id} already has an appointment at {time_slot}"
         ) from exc
 
+    await _assign_if_unassigned(db, doctor_id, case.patient_id, case_id, actor)
     await record_event(
         db,
         case_id=case_id,
@@ -161,8 +190,37 @@ async def book_appointment(
     return appointment
 
 
+async def _assign_if_unassigned(
+    db: AsyncSession, doctor_id: UUID, patient_id: UUID | None, case_id: UUID, actor: User
+) -> None:
+    """A patient nobody looks after becomes the booked doctor's. Doctors see
+    appointments and records through assignment, so an unassigned patient's
+    booking (every new patient the email agent books) was invisible to the
+    doctor holding it. Not committed here: the series books in one transaction."""
+    if patient_id is None:
+        return
+    taken = await db.execute(
+        select(DoctorPatientAssignment.doctor_id)
+        .where(DoctorPatientAssignment.patient_id == patient_id)
+        .limit(1)
+    )
+    if taken.first() is not None:
+        return
+    db.add(
+        DoctorPatientAssignment(doctor_id=doctor_id, patient_id=patient_id, assigned_by=actor.id)
+    )
+    await db.flush()
+    await record_event(
+        db,
+        case_id=case_id,
+        actor=actor,
+        action="assignment.created",
+        details={"doctor_id": str(doctor_id), "patient_id": str(patient_id), "reason": "booking"},
+    )
+
+
 async def book_appointment_series(
-    db: AsyncSession, payload: AppointmentCreate, actor: User
+    db: AsyncSession, payload: AppointmentCreate, actor: User, enforce_hours: bool = False
 ) -> list[Appointment]:
     """Book one appointment, or a linked series when payload.repeat is set.
 
@@ -195,6 +253,7 @@ async def book_appointment_series(
                 notify_provider=payload.notify_provider,
                 series_id=series_id,
                 commit=False,
+                enforce_hours=enforce_hours,
             )
         )
 
@@ -286,6 +345,7 @@ async def reschedule_appointment(
     new_time_slot: datetime,
     actor: User,
     scoped_doctor_id: UUID | None,
+    enforce_hours: bool = False,
 ) -> Appointment | None:
     appointment = await _get_scoped(db, appointment_id, actor, scoped_doctor_id)
     if appointment is None:
@@ -294,6 +354,8 @@ async def reschedule_appointment(
         raise AppointmentStateError("Cannot reschedule a cancelled appointment")
 
     doctor_id = appointment.doctor_id
+    if enforce_hours:
+        assert_within_clinic_hours(new_time_slot, appointment.duration_minutes)
     appointment.time_slot = new_time_slot
     # The reminder that went out described the old time (spec §16.2).
     appointment.reminder_sent_at = None
@@ -326,6 +388,7 @@ async def update_appointment(
     payload: AppointmentUpdate,
     actor: User,
     scoped_doctor_id: UUID | None,
+    enforce_hours: bool = False,
 ) -> Appointment | None:
     appointment = await _get_scoped(db, appointment_id, actor, scoped_doctor_id)
     if appointment is None:
@@ -365,6 +428,11 @@ async def update_appointment(
     # The doctor who'd actually hold the colliding slot: the new one if this
     # PATCH is reassigning, otherwise the appointment's existing doctor.
     doctor_id = new_doctor_id if new_doctor_id is not None else appointment.doctor_id
+    if enforce_hours and ("time_slot" in changes or "duration_minutes" in changes):
+        assert_within_clinic_hours(
+            changes.get("time_slot", appointment.time_slot),
+            changes.get("duration_minutes", appointment.duration_minutes),
+        )
     for field, value in changes.items():
         setattr(appointment, field, value)
     # A PATCH moves the appointment just as much as /reschedule does, and the

@@ -246,3 +246,67 @@ async def test_a_blocked_transcript_shows_a_placeholder_rather_than_crashing_the
     )
 
     assert text == inbox_service.BLOCKED_SUMMARY
+
+
+async def test_doctor_work_with_no_doctor_to_see_it_reaches_the_operator(
+    client: AsyncClient,
+    operator_headers: dict,
+    doctor_headers: dict,
+    doctor_user,
+    patient,
+    admin_user,
+    db_session,
+    monkeypatch,
+):
+    # Black-box run (A4): a results enquiry from a patient nobody was assigned
+    # to sat in the doctor queue, where only an admin could ever see it.
+    from unittest.mock import AsyncMock, patch
+    from uuid import UUID
+
+    from app.models.assignment import DoctorPatientAssignment
+    from app.models.case import IntakeCase
+    from app.models.task import Task
+
+    _mock_email_classifier(monkeypatch, "results_enquiry", 0.95)  # -> doctor
+    with patch(
+        "app.services.email_service._generate_org_grounded_reply",
+        new=AsyncMock(return_value=("ok", True)),
+    ):
+        created = await client.post(
+            "/api/v1/email/ingest",
+            json={
+                "sender": "patient@example.com",
+                "recipient": "clinic@example.com",
+                "subject": "Are my results back?",
+                "body": "Are my blood test results back yet?",
+            },
+            headers=operator_headers,
+        )
+    task = await db_session.get(Task, UUID(created.json()["task_id"]))
+
+    def subjects(response):
+        return {m["subject"] for m in response.json()["items"]}
+
+    assert "Are my results back?" in subjects(
+        await client.get("/api/v1/inbox", headers=operator_headers)
+    )
+
+    case = await db_session.get(IntakeCase, task.case_id)
+    case.patient_id = patient.id
+    await db_session.commit()
+    assert "Are my results back?" in subjects(
+        await client.get("/api/v1/inbox", headers=operator_headers)
+    )
+
+    db_session.add(
+        DoctorPatientAssignment(
+            doctor_id=doctor_user.id, patient_id=patient.id, assigned_by=admin_user.id
+        )
+    )
+    await db_session.commit()
+    assert "Are my results back?" not in subjects(
+        await client.get("/api/v1/inbox", headers=operator_headers)
+    )
+    assert "Are my results back?" in subjects(
+        await client.get("/api/v1/inbox", headers=doctor_headers)
+    )

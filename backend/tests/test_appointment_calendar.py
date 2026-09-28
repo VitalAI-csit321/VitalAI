@@ -305,7 +305,7 @@ async def test_repeat_creates_a_linked_series(
         json={
             "doctor_id": str(seeded_doctor.id),
             "case_id": case_id,
-            "time_slot": "2026-11-02T09:00:00Z",
+            "time_slot": "2026-11-02T01:00:00Z",
             "duration_minutes": 30,
             "repeat": {"interval_days": 7, "occurrences": 3},
         },
@@ -350,7 +350,7 @@ async def test_repeat_series_collision_leaves_no_partial_series(
     doctor_id = str(pg_doctor_user.id)
 
     # Create a standalone appointment at a specific time slot.
-    collision_slot = "2026-11-09T10:00:00Z"
+    collision_slot = "2026-11-09T02:00:00Z"
     standalone = await pg_client.post(
         "/api/v1/appointments",
         headers=pg_admin_headers,
@@ -365,16 +365,16 @@ async def test_repeat_series_collision_leaves_no_partial_series(
     standalone_id = standalone.json()["id"]
 
     # Attempt to book a series where occurrence 2 collides with the standalone appointment.
-    # Occurrence 1: 2026-11-02T10:00:00Z (free)
-    # Occurrence 2: 2026-11-09T10:00:00Z (collision!)
-    # Occurrence 3: 2026-11-16T10:00:00Z (free)
+    # Occurrence 1: 2026-11-02T02:00:00Z (free)
+    # Occurrence 2: 2026-11-09T02:00:00Z (collision!)
+    # Occurrence 3: 2026-11-16T02:00:00Z (free)
     response = await pg_client.post(
         "/api/v1/appointments",
         headers=pg_admin_headers,
         json={
             "doctor_id": doctor_id,
             "case_id": case_id,
-            "time_slot": "2026-11-02T10:00:00Z",
+            "time_slot": "2026-11-02T02:00:00Z",
             "duration_minutes": 30,
             "repeat": {"interval_days": 7, "occurrences": 3},
         },
@@ -426,7 +426,7 @@ async def test_patch_status_pending_to_confirmed_succeeds(
         json={
             "doctor_id": str(doctor_user.id),
             "case_id": case_id,
-            "time_slot": "2026-09-05T09:00:00Z",
+            "time_slot": "2026-09-05T01:00:00Z",
             "duration_minutes": 30,
             "status": "pending",
         },

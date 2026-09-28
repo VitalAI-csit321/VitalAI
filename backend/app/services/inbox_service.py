@@ -8,13 +8,14 @@ import logging
 from datetime import datetime
 
 from langchain_core.language_models import BaseLanguageModel
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.permissions import VIEW_ALL_QUEUES, effective_permissions
 from app.auth.scoping import assigned_patient_ids_subquery
 from app.llm import get_llm
 from app.llm.guardrail import InputBlockedError, guarded_invoke
+from app.models.assignment import DoctorPatientAssignment
 from app.models.call import Call
 from app.models.case import IntakeCase
 from app.models.email import Email
@@ -78,7 +79,22 @@ async def _visible_tasks(db: AsyncSession, actor: User, archived: bool = False) 
     )
     query = select(Task).where(status_filter, Task.deleted_at.is_(None))
     if VIEW_ALL_QUEUES not in effective_permissions(actor):
-        query = query.where(Task.target_role == actor.role)
+        in_queue = Task.target_role == actor.role
+        if actor.role == UserRole.OPERATOR:
+            # Doctors see doctor work only for patients assigned to them, so a
+            # results or referral email for a patient with no doctor (or no
+            # identified patient) was visible to nobody but an admin.
+            has_doctor = (
+                select(IntakeCase.id)
+                .join(
+                    DoctorPatientAssignment,
+                    DoctorPatientAssignment.patient_id == IntakeCase.patient_id,
+                )
+                .where(IntakeCase.id == Task.case_id)
+                .exists()
+            )
+            in_queue = or_(in_queue, and_(Task.target_role == UserRole.DOCTOR, ~has_doctor))
+        query = query.where(in_queue)
     if actor.role == UserRole.DOCTOR:
         query = query.join(IntakeCase, Task.case_id == IntakeCase.id).where(
             IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id))

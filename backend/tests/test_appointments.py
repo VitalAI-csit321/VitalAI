@@ -23,7 +23,10 @@ async def _create_case(client: AsyncClient, headers: dict, patient: Patient) -> 
 
 
 def _slot(offset_days: int = 1) -> str:
-    return (datetime.now(UTC).replace(microsecond=0) + timedelta(days=offset_days)).isoformat()
+    # 01:00 UTC is 11am or noon in Sydney: inside clinic hours, which the
+    # routes now enforce, whatever time of day the suite runs.
+    day = (datetime.now(UTC) + timedelta(days=offset_days)).date()
+    return datetime(day.year, day.month, day.day, 1, 0, tzinfo=UTC).isoformat()
 
 
 def _same_instant(a: str, b: str) -> bool:
@@ -199,7 +202,7 @@ async def test_list_appointments_hides_unassigned_patient(
     client: AsyncClient,
     admin_headers: dict,
     doctor_user: User,
-    doctor_headers: dict,
+    unassigned_doctor_headers: dict,
     patient: Patient,
 ):
     case_id = await _create_case(client, admin_headers, patient)
@@ -217,7 +220,7 @@ async def test_list_appointments_hides_unassigned_patient(
 
     response = await client.get(
         "/api/v1/appointments",
-        headers=doctor_headers,
+        headers=unassigned_doctor_headers,
     )
 
     assert response.status_code == 200
@@ -327,7 +330,7 @@ async def test_reschedule_appointment_denied_for_unassigned_patient(
     client: AsyncClient,
     admin_headers: dict,
     doctor_user: User,
-    doctor_headers: dict,
+    unassigned_doctor_headers: dict,
     patient: Patient,
 ):
     case_id = await _create_case(client, admin_headers, patient)
@@ -346,7 +349,7 @@ async def test_reschedule_appointment_denied_for_unassigned_patient(
     response = await client.post(
         f"/api/v1/appointments/{appointment_id}/reschedule",
         json={"time_slot": _slot(3)},
-        headers=doctor_headers,
+        headers=unassigned_doctor_headers,
     )
 
     assert response.status_code == 404
@@ -379,7 +382,7 @@ async def test_cancel_appointment_denied_for_unassigned_patient(
     client: AsyncClient,
     admin_headers: dict,
     doctor_user: User,
-    doctor_headers: dict,
+    unassigned_doctor_headers: dict,
     patient: Patient,
 ):
     case_id = await _create_case(client, admin_headers, patient)
@@ -397,7 +400,7 @@ async def test_cancel_appointment_denied_for_unassigned_patient(
 
     response = await client.post(
         f"/api/v1/appointments/{appointment_id}/cancel",
-        headers=doctor_headers,
+        headers=unassigned_doctor_headers,
     )
 
     assert response.status_code == 404

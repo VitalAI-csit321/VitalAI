@@ -21,6 +21,8 @@ def health_check() -> dict:
         "version": settings.app_version,
         "environment": settings.app_env,
         "synthetic_only": settings.synthetic_only,
+        # Public so every role's calendar can render clinic time, not UTC.
+        "clinic_timezone": settings.clinic_timezone,
     }
 
 

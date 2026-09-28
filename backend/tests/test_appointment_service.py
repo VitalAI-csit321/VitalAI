@@ -421,3 +421,105 @@ async def test_a_patch_that_leaves_the_time_alone_keeps_the_reminder_guard(
     assert updated.location == "Room 4"
     assert updated.reminder_sent_at is not None
     assert updated.reminder_sent_at.replace(tzinfo=None) == sent_at.replace(tzinfo=None)
+
+
+# --- clinic hours and assignment on booking (doctor black-box run, 2026-09-28) ---
+
+_SYDNEY_10AM = datetime(2026, 10, 7, 23, 0, tzinfo=UTC)  # Thu 8 Oct 10:00 AEDT
+
+
+@pytest.mark.parametrize(
+    ("start", "duration", "ok"),
+    [
+        (_SYDNEY_10AM, 30, True),
+        # What the calendar UI sent for "11:00": 11:00 UTC, 10pm in Sydney.
+        (datetime(2026, 10, 7, 11, 0, tzinfo=UTC), 30, False),
+        (datetime(2026, 10, 7, 20, 30, tzinfo=UTC), 30, False),  # 7:30am, before opening
+        (datetime(2026, 10, 8, 6, 30, tzinfo=UTC), 60, False),  # 5:30pm, runs past 6pm
+        (datetime(2026, 10, 8, 6, 30, tzinfo=UTC), 30, True),  # 5:30pm, ends at 6pm
+    ],
+)
+async def test_bookings_outside_clinic_hours_are_refused(db_session, start, duration, ok):
+    admin, doctor = _user(UserRole.ADMIN), _user(UserRole.DOCTOR)
+    db_session.add_all([admin, doctor])
+    await db_session.commit()
+    case = await _case(db_session)
+
+    if ok:
+        await appointment_service.book_appointment(
+            db_session,
+            doctor.id,
+            case.id,
+            start,
+            admin,
+            duration_minutes=duration,
+            enforce_hours=True,
+        )
+    else:
+        with pytest.raises(appointment_service.OutsideClinicHoursError):
+            await appointment_service.book_appointment(
+                db_session,
+                doctor.id,
+                case.id,
+                start,
+                admin,
+                duration_minutes=duration,
+                enforce_hours=True,
+            )
+
+
+async def test_rescheduling_outside_clinic_hours_is_refused(db_session):
+    admin, doctor = _user(UserRole.ADMIN), _user(UserRole.DOCTOR)
+    db_session.add_all([admin, doctor])
+    await db_session.commit()
+    case = await _case(db_session)
+    appointment = await appointment_service.book_appointment(
+        db_session, doctor.id, case.id, _SYDNEY_10AM, admin
+    )
+
+    with pytest.raises(appointment_service.OutsideClinicHoursError):
+        await appointment_service.reschedule_appointment(
+            db_session,
+            appointment.id,
+            datetime(2026, 10, 8, 11, 0, tzinfo=UTC),
+            admin,
+            None,
+            enforce_hours=True,
+        )
+
+
+async def test_booking_a_patient_with_no_doctor_assigns_the_booked_doctor(db_session):
+    # A new patient booked into a doctor's diary was invisible to that doctor:
+    # doctor visibility runs on assignment, and nobody had assigned one.
+    from app.models.assignment import DoctorPatientAssignment
+
+    admin, doctor, other = _user(UserRole.ADMIN), _user(UserRole.DOCTOR), _user(UserRole.DOCTOR)
+    db_session.add_all([admin, doctor, other])
+    await db_session.commit()
+    patient = await _patient(db_session)
+    already = await _patient(db_session)
+    db_session.add(
+        DoctorPatientAssignment(doctor_id=other.id, patient_id=already.id, assigned_by=admin.id)
+    )
+    await db_session.commit()
+
+    await appointment_service.book_appointment(
+        db_session, doctor.id, (await _case(db_session, patient.id)).id, _SYDNEY_10AM, admin
+    )
+    await appointment_service.book_appointment(
+        db_session,
+        doctor.id,
+        (await _case(db_session, already.id)).id,
+        _SYDNEY_10AM + timedelta(hours=1),
+        admin,
+    )
+
+    pairs = {
+        (a.doctor_id, a.patient_id)
+        for a in (await db_session.execute(select(DoctorPatientAssignment))).scalars()
+    }
+    assert (doctor.id, patient.id) in pairs
+    # Someone already looks after this one: booking does not add a second doctor.
+    assert (doctor.id, already.id) not in pairs
+    events = (await db_session.execute(select(AuditEvent))).scalars().all()
+    assert any(e.action == "assignment.created" for e in events)

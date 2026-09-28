@@ -492,7 +492,7 @@ async def booked_appointment(client, admin_headers, doctor_user, patient):
         json={
             "doctor_id": str(doctor_user.id),
             "case_id": case_id,
-            "time_slot": "2026-09-01T09:00:00Z",
+            "time_slot": "2026-09-01T01:00:00Z",
             "duration_minutes": 30,
         },
     )
@@ -518,8 +518,10 @@ async def assigned_doctor_headers(client, admin_headers, doctor_user, patient):
 
 
 @pytest_asyncio.fixture
-def unassigned_doctor_headers(doctor_headers: dict[str, str]) -> dict[str, str]:
-    """doctor_user with NO assignment row -- conftest never creates one by default.
+async def unassigned_doctor_headers(
+    doctor_headers: dict[str, str], db_session: AsyncSession, patient: Patient, admin_user: User
+) -> dict[str, str]:
+    """doctor_user, whose booked patient is assigned to ANOTHER doctor.
 
     Deliberately the SAME doctor booked_appointment belongs to, so the
     doctor_id filter in _own_calendar_scope cannot mask a missing
@@ -527,7 +529,28 @@ def unassigned_doctor_headers(doctor_headers: dict[str, str]) -> dict[str, str]:
     it must be excluded purely by the patient-assignment check, not by
     doctor identity. This is what makes these tests a real confidentiality
     gate rather than a vacuous pass.
+
+    The patient belongs to someone else because booking now assigns a patient
+    nobody looks after to the booked doctor
+    (appointment_service._assign_if_unassigned); an unassigned patient would
+    become this doctor's the moment it was booked.
     """
+    from app.models.assignment import DoctorPatientAssignment
+
+    other = User(
+        email="other-doctor@example.com",
+        hashed_password=hash_password("password123"),
+        full_name="Other Doctor",
+        role=UserRole.DOCTOR,
+    )
+    db_session.add(other)
+    await db_session.flush()
+    db_session.add(
+        DoctorPatientAssignment(
+            doctor_id=other.id, patient_id=patient.id, assigned_by=admin_user.id
+        )
+    )
+    await db_session.commit()
     return doctor_headers
 
 
