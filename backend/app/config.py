@@ -160,6 +160,13 @@ class Settings(BaseSettings):
     # templated emails and the booking itself go out with no human approving
     # them, which is why it is off by default.
     email_booking_conversation_enabled: bool = False
+    # The registration form link (patient_form_service): an unknown sender who
+    # asks to book or to sign up is sent a link to a web form instead of an
+    # email asking for their details. Needs both flags above too. Env-only, like
+    # them: not in settings_service.SETTINGS_REGISTRY.
+    patient_form_link_enabled: bool = False
+    # slowapi limit for the form's two public endpoints, per client IP.
+    public_form_rate_limit: str = "10/minute"
 
     # LLM generation params. Previously never passed to the provider at all;
     # get_llm() now forwards them, and settings_service clears its lru_cache

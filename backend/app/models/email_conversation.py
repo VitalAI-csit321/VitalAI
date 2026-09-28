@@ -76,3 +76,10 @@ class EmailConversation(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     appointment_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("appointments.id", ondelete="SET NULL"), nullable=True
     )
+    # The registration form link (patient_form_service). Only the hash is kept
+    # here; the link itself is in the email that was sent.
+    form_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    form_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    form_submitted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
