@@ -426,7 +426,7 @@ async def test_patch_status_pending_to_confirmed_succeeds(
         json={
             "doctor_id": str(doctor_user.id),
             "case_id": case_id,
-            "time_slot": "2026-09-05T01:00:00Z",
+            "time_slot": "2026-09-07T01:00:00Z",
             "duration_minutes": 30,
             "status": "pending",
         },

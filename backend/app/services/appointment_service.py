@@ -3,9 +3,11 @@ import secrets
 import uuid
 from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
+from functools import cache
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+import holidays
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -59,6 +61,21 @@ class AppointmentStateError(Exception):
     """Raised when rescheduling/cancelling an appointment in an illegal state."""
 
 
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+@cache
+def _holidays(region: str, year: int) -> holidays.HolidayBase:
+    return holidays.country_holidays("AU", subdiv=region, years=year)
+
+
+def is_clinic_day(day: date) -> bool:
+    """A weekday that is not a public holiday in the clinic's state. The
+    clinic is closed on those, and email booking offered Labour Day slots."""
+    return day.weekday() < 5 and day not in _holidays(settings.clinic_holiday_region, day.year)
+
+
 class OutsideClinicHoursError(Exception):
     """Raised when an appointment would start before opening or end after closing."""
 
@@ -71,7 +88,15 @@ def assert_within_clinic_hours(start: datetime, duration_minutes: int) -> None:
     hands stored times back.
     """
     tz = ZoneInfo(settings.clinic_timezone)
-    local = (start if start.tzinfo else start.replace(tzinfo=UTC)).astimezone(tz)
+    start = start if start.tzinfo else start.replace(tzinfo=UTC)
+    local = start.astimezone(tz)
+    # The UI booked three days in the past and on a Saturday, both confirmed.
+    if start < _now():
+        raise OutsideClinicHoursError(f"{local:%a %d %b %H:%M} is in the past")
+    if not is_clinic_day(local.date()):
+        raise OutsideClinicHoursError(
+            f"The clinic is closed on {local:%a %d %b} (weekend or public holiday)"
+        )
     opens = local.replace(hour=settings.clinic_open_hour, minute=0, second=0, microsecond=0)
     closes = local.replace(hour=settings.clinic_close_hour, minute=0, second=0, microsecond=0)
     if local < opens or local + timedelta(minutes=duration_minutes) > closes:

@@ -5,7 +5,8 @@ under one classifier and gate.
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 from langchain_core.language_models import BaseLanguageModel
 from sqlalchemy import and_, or_, select
@@ -13,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.permissions import VIEW_ALL_QUEUES, effective_permissions
 from app.auth.scoping import assigned_patient_ids_subquery
+from app.config import settings
 from app.llm import get_llm
 from app.llm.guardrail import InputBlockedError, guarded_invoke
 from app.models.assignment import DoctorPatientAssignment
@@ -43,7 +45,11 @@ def _initials(name: str) -> str:
 
 
 def _received_label(dt: datetime) -> str:
-    return dt.strftime("%d %b %Y, %H:%M")
+    # Stored instants are UTC; staff read clinic time, like the calendar does.
+    local = (dt if dt.tzinfo else dt.replace(tzinfo=UTC)).astimezone(
+        ZoneInfo(settings.clinic_timezone)
+    )
+    return local.strftime("%d %b %Y, %H:%M")
 
 
 BLOCKED_SUMMARY = "Summary unavailable. Open the call to read the transcript."

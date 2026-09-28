@@ -310,3 +310,15 @@ async def test_doctor_work_with_no_doctor_to_see_it_reaches_the_operator(
     assert "Are my results back?" in subjects(
         await client.get("/api/v1/inbox", headers=doctor_headers)
     )
+
+
+def test_received_label_is_clinic_local_time():
+    # The inbox showed 05:27 for mail that arrived at 15:27 in Sydney: the
+    # label formatted the stored UTC instant as-is (Playwright run, 2026-09-28).
+    from datetime import UTC, datetime
+
+    from app.services.inbox_service import _received_label
+
+    assert _received_label(datetime(2026, 9, 28, 5, 27, tzinfo=UTC)) == "28 Sep 2026, 15:27"
+    # Naive values out of the SQLite backend are UTC.
+    assert _received_label(datetime(2026, 9, 28, 5, 27)) == "28 Sep 2026, 15:27"

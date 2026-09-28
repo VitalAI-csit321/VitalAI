@@ -11,11 +11,9 @@ is not a thing a model may decide.
 
 import re
 from datetime import UTC, date, datetime, timedelta
-from functools import cache
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-import holidays
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +21,7 @@ from app.config import settings
 from app.models.assignment import DoctorPatientAssignment
 from app.models.user import User, UserRole
 from app.services import appointment_service
+from app.services.appointment_service import is_clinic_day
 
 BRANCH = "booking"
 
@@ -61,17 +60,6 @@ async def doctor_for_patient(db: AsyncSession, patient_id: UUID) -> tuple[UUID, 
         )
     ).first()
     return (row[0], row[1]) if row else None
-
-
-@cache
-def _holidays(region: str, year: int) -> holidays.HolidayBase:
-    return holidays.country_holidays("AU", subdiv=region, years=year)
-
-
-def is_clinic_day(day: date) -> bool:
-    """A weekday that is not a public holiday in the clinic's state. The
-    clinic is closed on those, and email booking offered Labour Day slots."""
-    return day.weekday() < 5 and day not in _holidays(settings.clinic_holiday_region, day.year)
 
 
 async def find_slots(

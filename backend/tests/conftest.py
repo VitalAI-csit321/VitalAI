@@ -580,3 +580,14 @@ def _no_real_llm_calls(monkeypatch):
 
     monkeypatch.setattr(_OllamaCommon, "_create_stream", blocked)
     monkeypatch.setattr(_OllamaCommon, "_acreate_stream", blocked)
+
+
+@pytest.fixture(autouse=True)
+def _booking_clock_before_fixture_dates(monkeypatch):
+    # Routes refuse bookings in the past. Tests book fixed 2026 dates, so pin
+    # "now" before all of them rather than let each go stale on its date.
+    from datetime import UTC, datetime
+
+    from app.services import appointment_service
+
+    monkeypatch.setattr(appointment_service, "_now", lambda: datetime(2026, 1, 1, tzinfo=UTC))

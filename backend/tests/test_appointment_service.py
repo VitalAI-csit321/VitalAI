@@ -523,3 +523,32 @@ async def test_booking_a_patient_with_no_doctor_assigns_the_booked_doctor(db_ses
     assert (doctor.id, already.id) not in pairs
     events = (await db_session.execute(select(AuditEvent))).scalars().all()
     assert any(e.action == "assignment.created" for e in events)
+
+
+# --- past and closed days (Playwright black-box run, 2026-09-28) ---
+
+
+@pytest.mark.parametrize(
+    ("start", "why"),
+    [
+        (datetime(2026, 9, 24, 23, 0, tzinfo=UTC), "past"),  # Fri 25 Sep 9am, three days ago
+        (datetime(2026, 10, 2, 23, 0, tzinfo=UTC), "closed"),  # Sat 3 Oct 9am
+        (datetime(2026, 10, 4, 22, 0, tzinfo=UTC), "closed"),  # Mon 5 Oct 9am, NSW Labour Day
+    ],
+)
+async def test_bookings_in_the_past_or_on_closed_days_are_refused(
+    db_session, monkeypatch, start, why
+):
+    # The UI booked Fri 25 Sep (in the past) and a Saturday, both `confirmed`.
+    monkeypatch.setattr(
+        appointment_service, "_now", lambda: datetime(2026, 9, 28, 5, 0, tzinfo=UTC)
+    )
+    admin, doctor = _user(UserRole.ADMIN), _user(UserRole.DOCTOR)
+    db_session.add_all([admin, doctor])
+    await db_session.commit()
+    case = await _case(db_session)
+
+    with pytest.raises(appointment_service.OutsideClinicHoursError, match=why):
+        await appointment_service.book_appointment(
+            db_session, doctor.id, case.id, start, admin, enforce_hours=True
+        )
