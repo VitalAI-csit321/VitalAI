@@ -14,7 +14,7 @@ function SignaturePad({onChange,canvasRef}:{onChange:(v:boolean)=>void;canvasRef
   return <canvas ref={canvasRef} onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerLeave={end} className="h-40 w-full cursor-crosshair rounded-lg border border-slate-200 bg-slate-50 touch-none"/>;
 }
 
-export const CLAUSES=["I hereby consent to receive medical treatment at Royal Melbourne Hospital, including examination, diagnostic procedures, and treatment deemed necessary by my healthcare provider.","I understand that no guarantees have been made concerning results of treatment and healthcare professionals will use their best judgment.","I authorize the hospital to disclose my medical information as necessary for treatment, payment, and healthcare operations."];
+export const CLAUSES=["I hereby consent to receive medical treatment at GreenCare Family Medical Clinic, including examination, diagnostic procedures, and treatment deemed necessary by my healthcare provider.","I understand that no guarantees have been made concerning results of treatment and healthcare professionals will use their best judgment.","I authorize GreenCare Family Medical Clinic to disclose my medical information as necessary for treatment, payment, and healthcare operations."];
 const CHECKS=["I have read and understood the consent form","I have had the opportunity to ask questions","I consent to share my records with other healthcare providers as needed","I consent to be contacted for research purposes"];
 
 export function ConsentCapturePage() {

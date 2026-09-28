@@ -100,7 +100,12 @@ export function PatientOnboardingPage() {
     }
   }
 
+  // Blank gender was saved as male and blank DOB as 2000-01-01.
+  const REQUIRED = "First name, last name, date of birth and gender are required.";
+  const hasBasics = () => !!(form.firstName.trim() && form.lastName.trim() && form.dateOfBirth.trim() && form.gender);
+
   async function saveDraft() {
+    if (!hasBasics()) { setError(REQUIRED); return; }
     setBusy(true); setError(null);
     try {
       const patient = await createPatientFromOnboarding(buildPayload());
@@ -111,7 +116,11 @@ export function PatientOnboardingPage() {
     }
   }
 
-  function next() { if (step < 4) setStep(s => s + 1); else submit(); }
+  function next() {
+    if (step === 0 && !hasBasics()) { setError(REQUIRED); return; }
+    setError(null);
+    if (step < 4) setStep(s => s + 1); else submit();
+  }
   function back() { if (step > 0) setStep(s => s - 1); }
 
   const stepTitle = ["Patient onboarding", "Patient onboarding", "Patient onboarding", "Patient onboarding", "Patient onboarding"];
@@ -148,7 +157,13 @@ export function PatientOnboardingPage() {
               <Field label="First Name"><input className={inputClass} value={form.firstName} onChange={e => update("firstName", e.target.value)} /></Field>
               <Field label="Last Name"><input className={inputClass} value={form.lastName} onChange={e => update("lastName", e.target.value)} /></Field>
               <Field label="Date of Birth"><input className={inputClass} placeholder="DD/MM/YYYY" value={form.dateOfBirth} onChange={e => update("dateOfBirth", e.target.value)} /></Field>
-              <Field label="Gender"><input className={inputClass} value={form.gender} onChange={e => update("gender", e.target.value)} /></Field>
+              <Field label="Gender">
+                <select className={inputClass} value={form.gender} onChange={e => update("gender", e.target.value)}>
+                  <option value="">Select...</option>
+                  <option value="male">Male</option><option value="female">Female</option>
+                  <option value="non_binary">Non-binary</option>
+                </select>
+              </Field>
             </div>
             <div className="mt-5">
               <Field label="MRN"><input className={`${inputClass} bg-slate-50 text-slate-400`} value="Assigned automatically after submission" disabled /></Field>
@@ -273,9 +288,9 @@ export function PatientOnboardingPage() {
                 className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
               I confirm all details verified with patient
             </label>
-            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
           </>
         )}
+        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
         <div className="mt-8 border-t border-slate-100 pt-5 flex items-center justify-between">
           <button onClick={back} disabled={step === 0}

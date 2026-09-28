@@ -156,9 +156,8 @@ export async function createPatientFromOnboarding(input:{
   contactReason?:string; contactChannel?:string;
 } & ProfileFields):Promise<Patient> {
   const name=`${input.firstName} ${input.lastName}`.trim();
-  const dob = input.dateOfBirth ? ddmmyyyyToIso(input.dateOfBirth) : "2000-01-01";
-  const genderMap:Record<string,string>={male:"male",female:"female","non binary":"non_binary",nonbinary:"non_binary"};
-  const gender=genderMap[(input.gender??"male").toLowerCase()]??"male";
+  const dob = input.dateOfBirth ? ddmmyyyyToIso(input.dateOfBirth) : "";
+  const gender = input.gender ?? "";
 
   const patient = await toPatient(await apiPost<RawPatient>("/api/v1/patients", {
     name, dob, gender, ...profileFieldsToPayload(input),
