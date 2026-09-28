@@ -139,14 +139,14 @@ export function ConsentQueuePage() {
                     <button
                       onClick={() =>
                         navigate(
-                          r.status === "pending"
+                          r.status === "pending" && r.consentType !== "online_registration"
                             ? `/consent/capture?case=${r.caseId}`
                             : `/consent/${r.caseId}/view`,
                         )
                       }
                       className="font-medium text-brand hover:underline"
                     >
-                      {r.status === "pending" ? "Capture" : "View"}
+                      {r.status !== "pending" ? "View" : r.consentType === "online_registration" ? "Verify ID" : "Capture"}
                     </button>
                   </td>
                 </tr>

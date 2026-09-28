@@ -65,6 +65,10 @@ export async function resolveConsentReview(
   );
 }
 
+export async function verifyConsent(consentId: string): Promise<Consent> {
+  return toConsent(await apiPost<RawConsent>(`/api/v1/consent/${consentId}/verify`));
+}
+
 export const CONSENT_TYPES: { value: string; label: string }[] = [
   { value: "general_treatment", label: "General Treatment" },
   { value: "surgical_procedure", label: "Surgical Procedure" },
@@ -72,8 +76,11 @@ export const CONSENT_TYPES: { value: string; label: string }[] = [
   { value: "research_study", label: "Research Study" },
 ];
 
+// Types staff never create by hand, so not offered in CONSENT_TYPES.
+const OTHER_TYPE_LABELS: Record<string, string> = { online_registration: "Online registration" };
+
 export function consentTypeLabel(value: string): string {
-  return CONSENT_TYPES.find((t) => t.value === value)?.label ?? value;
+  return CONSENT_TYPES.find((t) => t.value === value)?.label ?? OTHER_TYPE_LABELS[value] ?? value;
 }
 
 export async function listConsentsForPatient(patientId: string): Promise<Consent[]> {
@@ -124,6 +131,7 @@ export async function listConsentQueue(limit = 50, offset = 0): Promise<ConsentQ
     caseId: r.case_id,
     patientName: r.patient_name ?? "Unknown patient",
     form: consentTypeLabel(r.consent_type),
+    consentType: r.consent_type,
     submitted: r.created_at,
     status: queueStatusFor(r.status, r.captured_at),
   }));

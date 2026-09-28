@@ -1,18 +1,10 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { createConsent, captureConsent, consentTypeLabel } from "../api/consent";
 import { apiGet } from "../lib/apiClient";
+import { SignaturePad } from "../components/SignaturePad";
 
-function SignaturePad({onChange,canvasRef}:{onChange:(v:boolean)=>void;canvasRef:React.RefObject<HTMLCanvasElement>}) {
-  const drawing=useRef(false); const inked=useRef(false);
-  useEffect(()=>{const c=canvasRef.current;if(!c)return;const r=window.devicePixelRatio||1;c.width=c.offsetWidth*r;c.height=c.offsetHeight*r;const ctx=c.getContext("2d");if(ctx){ctx.scale(r,r);ctx.strokeStyle="#0f172a";ctx.lineWidth=2;ctx.lineCap="round";ctx.lineJoin="round";}},[canvasRef]);
-  function pos(e:React.PointerEvent){const r=canvasRef.current!.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
-  function start(e:React.PointerEvent){drawing.current=true;const ctx=canvasRef.current!.getContext("2d")!;const{x,y}=pos(e);ctx.beginPath();ctx.moveTo(x,y);}
-  function move(e:React.PointerEvent){if(!drawing.current)return;const ctx=canvasRef.current!.getContext("2d")!;const{x,y}=pos(e);ctx.lineTo(x,y);ctx.stroke();if(!inked.current){inked.current=true;onChange(true);}}
-  function end(){drawing.current=false;}
-  return <canvas ref={canvasRef} onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerLeave={end} className="h-40 w-full cursor-crosshair rounded-lg border border-slate-200 bg-slate-50 touch-none"/>;
-}
 
 export const CLAUSES=["I hereby consent to receive medical treatment at GreenCare Family Medical Clinic, including examination, diagnostic procedures, and treatment deemed necessary by my healthcare provider.","I understand that no guarantees have been made concerning results of treatment and healthcare professionals will use their best judgment.","I authorize GreenCare Family Medical Clinic to disclose my medical information as necessary for treatment, payment, and healthcare operations."];
 const CHECKS=["I have read and understood the consent form","I have had the opportunity to ask questions","I consent to share my records with other healthcare providers as needed","I consent to be contacted for research purposes"];

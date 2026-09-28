@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getConsentForCase, resolveConsentReview } from "../api/consent";
+import { getConsentForCase, resolveConsentReview, verifyConsent } from "../api/consent";
 import { getCase } from "../api/cases";
 import type { Case, Consent } from "../api/types";
 import { StatusBadge, Spinner } from "../components/ui";
@@ -16,6 +16,7 @@ export function ConsentViewPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     if (!caseId) return;
@@ -52,6 +53,20 @@ export function ConsentViewPage() {
     }
   }
 
+  const online = consent.consentType === "online_registration";
+
+  async function verify() {
+    if (!consent) return;
+    setVerifying(true); setSaveError(null);
+    try {
+      setConsent(await verifyConsent(consent.id));
+    } catch {
+      setSaveError("Could not verify this consent. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  }
+
   return (
     <div className="p-6">
       <button onClick={() => navigate("/consent")} className="text-sm text-slate-500 hover:text-slate-700">← Back to queue</button>
@@ -66,7 +81,7 @@ export function ConsentViewPage() {
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="rounded-xl border border-slate-200 bg-white p-6">
           <h2 className="font-semibold text-slate-900 capitalize">{consent.consentType.replace(/_/g, " ")}</h2>
-          <div className="mt-4 space-y-4">{CLAUSES.map((c, i) => <p key={i} className="text-sm text-slate-700">{i + 1}. {c}</p>)}</div>
+          <div className="mt-4 space-y-4">{!online && CLAUSES.map((c, i) => <p key={i} className="text-sm text-slate-700">{i + 1}. {c}</p>)}</div>
           <div className="my-5 h-px bg-slate-100" />
           {checks.length > 0 ? (
             <div className="space-y-3">
@@ -104,6 +119,15 @@ export function ConsentViewPage() {
               <div className="flex h-40 w-full items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-400">No signature recorded</div>
             )}
           </div>
+          {online && consent.status === "pending" && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
+              <p>The patient gave this consent on the online registration form. Check their photo ID, then verify it.</p>
+              <button onClick={verify} disabled={verifying} className="mt-4 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-50">
+                {verifying ? "Verifying…" : "ID checked, verify consent"}
+              </button>
+              {saveError && <p className="mt-2 text-sm text-red-600">{saveError}</p>}
+            </div>
+          )}
           {consent.capturedAt && (
             <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm">
               <div className="text-xs text-slate-500 uppercase tracking-wide">Captured</div>

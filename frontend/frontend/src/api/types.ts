@@ -75,6 +75,7 @@ export interface Consent {
 
 export interface ConsentQueueRow {
   id: string; caseId: string; patientName: string; form: string; submitted: string; status: ConsentQueueStatus;
+  consentType: string;
 }
 
 export type TaskSource = "email" | "call";
