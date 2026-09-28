@@ -19,11 +19,24 @@ class ConsentFormCheck(BaseModel):
 
 class ConsentFormSnapshot(BaseModel):
     checks: list[ConsentFormCheck]
-    signature: str
+    # None when an online registration consent is left for the patient to
+    # sign at the clinic, or after the provisional purge removed it.
+    signature: str | None = None
 
 
 class ConsentCaptureIn(BaseModel):
     form_snapshot: ConsentFormSnapshot | None = None
+
+
+class ConsentVerifyIn(BaseModel):
+    """Staff finishing an online registration consent at the clinic: one
+    answer per statement already on the record, and the signature if the
+    patient did not sign online."""
+
+    checks: list[bool] | None = None
+    signature: str | None = Field(
+        default=None, max_length=200_000, pattern=r"^data:image/png;base64,[A-Za-z0-9+/=]+$"
+    )
 
 
 class ConsentOut(BaseModel):

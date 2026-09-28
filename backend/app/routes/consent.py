@@ -17,6 +17,7 @@ from app.schemas.consent import (
     ConsentOut,
     ConsentQueueResponse,
     ConsentQueueRow,
+    ConsentVerifyIn,
 )
 from app.services import consent_service
 from app.services.consent_service import ConsentStateError
@@ -145,12 +146,20 @@ async def capture_consent_endpoint(
 @router.post("/{consent_id}/verify", response_model=ConsentOut)
 async def verify_consent_endpoint(
     consent_id: UUID,
+    payload: ConsentVerifyIn | None = None,
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_permission(CAPTURE_CONSENT)),
 ):
-    """Staff checked ID for a patient who registered online."""
+    """Staff checked ID for a patient who registered online, and finished
+    anything the patient left for the clinic."""
     try:
-        record = await consent_service.verify_online_consent(db, consent_id, actor)
+        record = await consent_service.verify_online_consent(
+            db,
+            consent_id,
+            actor,
+            checks=payload.checks if payload else None,
+            signature=payload.signature if payload else None,
+        )
     except ConsentStateError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     if record is None:

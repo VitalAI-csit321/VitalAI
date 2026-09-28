@@ -23,6 +23,31 @@ IMPLIED_INBOUND_CONTACT = "implied_inbound_contact"
 # Pending until staff have seen ID and verify it.
 ONLINE_REGISTRATION = "online_registration"
 
+# The clinic's own consent: what staff capture in person, and what the
+# registration form shows the patient to agree to ahead of the visit. Keep in
+# step with CLAUSES and CHECKS in frontend ConsentCapturePage.tsx.
+CLINIC_CLAUSES = (
+    (
+        "I hereby consent to receive medical treatment at GreenCare Family Medical Clinic, "
+        "including examination, diagnostic procedures, and treatment deemed necessary by my "
+        "healthcare provider."
+    ),
+    (
+        "I understand that no guarantees have been made concerning results of treatment and "
+        "healthcare professionals will use their best judgment."
+    ),
+    (
+        "I authorize GreenCare Family Medical Clinic to disclose my medical information as "
+        "necessary for treatment, payment, and healthcare operations."
+    ),
+)
+CLINIC_CHECKS = (
+    "I have read and understood the consent form",
+    "I have had the opportunity to ask questions",
+    "I consent to share my records with other healthcare providers as needed",
+    "I consent to be contacted for research purposes",
+)
+
 
 async def create_consent_record(
     db: AsyncSession,
@@ -145,28 +170,40 @@ async def capture_consent(
 
 
 async def verify_online_consent(
-    db: AsyncSession, consent_id: UUID, actor: User
+    db: AsyncSession,
+    consent_id: UUID,
+    actor: User,
+    *,
+    checks: list[bool] | None = None,
+    signature: str | None = None,
 ) -> ConsentRecord | None:
     """Staff have seen ID: the patient's online consent becomes captured.
 
-    The patient's own statements and signature are kept. capture_consent
-    replaces the snapshot with whatever it is given, so it is given the
-    existing one back, plus who verified it.
+    The patient may have left the clinic's statements unticked or not signed;
+    staff finish it with them at the clinic. `checks` answers the statements
+    already on the record, in order (the wording cannot change here), and
+    `signature` is taken when the record has none. A statement still unticked
+    goes to review, as capture_consent does for any consent.
+
+    capture_consent replaces the snapshot with whatever it is given, so it is
+    given the existing one back, updated, plus who verified it.
     """
     record = await db.get(ConsentRecord, consent_id)
     if record is None:
         return None
-    if (
-        record.consent_type != ONLINE_REGISTRATION
-        or record.status != ConsentStatus.PENDING
-        or not (record.form_snapshot or {}).get("signature")
-    ):
-        raise ConsentStateError(
-            "Only a pending online registration consent with a signature can be verified."
-        )
-    return await capture_consent(
-        db, consent_id, actor, {**record.form_snapshot, "verified_by": str(actor.id)}
-    )
+    if record.consent_type != ONLINE_REGISTRATION or record.status != ConsentStatus.PENDING:
+        raise ConsentStateError("Only a pending online registration consent can be verified.")
+    snapshot = dict(record.form_snapshot or {})
+    stored = snapshot.get("checks") or []
+    if checks is not None:
+        if len(checks) != len(stored):
+            raise ConsentStateError("Answer each consent statement once.")
+        snapshot["checks"] = [{**c, "checked": v} for c, v in zip(stored, checks, strict=True)]
+    if signature:
+        snapshot["signature"] = signature
+    if not snapshot.get("signature"):
+        raise ConsentStateError("The patient's signature is needed before this can be verified.")
+    return await capture_consent(db, consent_id, actor, {**snapshot, "verified_by": str(actor.id)})
 
 
 async def update_consent_checklist(

@@ -29,7 +29,12 @@ from app.models.patient import Patient
 from app.models.task import TaskItemStatus
 from app.routes.public_registration import NOT_VALID
 from app.schemas.email import EmailIngestRequest
-from app.services import email_conversation_service, email_service, patient_form_service
+from app.services import (
+    consent_service,
+    email_conversation_service,
+    email_service,
+    patient_form_service,
+)
 
 SYDNEY = ZoneInfo("Australia/Sydney")
 SENDER = "jane@example.com"
@@ -265,6 +270,9 @@ async def test_the_link_opens_with_the_address_and_the_statements(
         "email": SENDER,
         "needs_preferred_day": True,
         "statements": list(patient_form_service.CONSENT_STATEMENTS),
+        # The clinic's own consent, the one staff capture in person.
+        "clauses": list(consent_service.CLINIC_CLAUSES),
+        "clinic_checks": list(consent_service.CLINIC_CHECKS),
     }
 
 
@@ -316,10 +324,12 @@ async def test_submitting_creates_the_record_and_one_pending_consent(
     assert consent.consent_type == "online_registration"
     assert consent.status == ConsentStatus.PENDING
     assert consent.form_snapshot["signature"] == SIGNATURE
-    assert [c["label"] for c in consent.form_snapshot["checks"]] == list(
-        patient_form_service.CONSENT_STATEMENTS
-    )
-    assert all(c["checked"] for c in consent.form_snapshot["checks"])
+    assert [c["label"] for c in consent.form_snapshot["checks"]] == [
+        *patient_form_service.CONSENT_STATEMENTS,
+        *consent_service.CLINIC_CHECKS,
+    ]
+    # The two registration statements are required; the clinic's are not.
+    assert [c["checked"] for c in consent.form_snapshot["checks"]] == [True, True] + [False] * 4
     (event,) = (
         (
             await db_session.execute(
@@ -369,6 +379,7 @@ async def test_a_link_works_once(client, db_session, admin_user, doctor_user, ll
         {"name": ""},
         {"phone": "call me"},
         {"phone": "(((((("},  # no digits: identity could never match it
+        {"clinic_checks": [True]},  # one answer per clinic statement, or none
         {"name": "Jane\x00Citizen"},
         {"address": "1 Test Street\x07"},
         {"preferred_day": lambda: (date.today() + timedelta(days=90)).isoformat()},
@@ -784,3 +795,32 @@ async def test_a_reply_with_no_details_while_the_link_is_open_sends_nothing(
     conversation = await _conversation(db_session, email.case_id)
     assert conversation.stage == ConversationStage.AWAITING_DETAILS
     assert (await client.get(f"{URL}/{token}")).status_code == 200
+
+
+async def test_the_clinic_consent_can_be_left_part_done_and_unsigned(
+    client, db_session, admin_user, doctor_user, llm, sends
+):
+    email, _, token = await _link_sent(db_session, admin_user, llm, sends)
+    case_id = email.case_id
+
+    response = await client.post(
+        f"{URL}/{token}",
+        json=_form(_weekday_ahead(), clinic_checks=[True, False, True, False], signature=""),
+    )
+
+    assert response.status_code == 201
+    (consent,) = (
+        (await db_session.execute(select(ConsentRecord).where(ConsentRecord.case_id == case_id)))
+        .scalars()
+        .all()
+    )
+    assert consent.status == ConsentStatus.PENDING  # completed at the clinic
+    assert consent.form_snapshot["signature"] is None
+    assert [c["checked"] for c in consent.form_snapshot["checks"]] == [
+        True,
+        True,
+        True,
+        False,
+        True,
+        False,
+    ]

@@ -186,7 +186,7 @@ def _check_day(conversation: EmailConversation, day) -> None:
 
 def _given(payload: RegistrationSubmit) -> list[str]:
     """Which fields were filled in, for the audit log. Never their values."""
-    skip = {"signature", "agree_data", "agree_contact"}
+    skip = {"signature", "agree_data", "agree_contact", "clinic_checks"}
     return sorted(k for k, v in payload.model_dump(exclude=skip).items() if v)
 
 
@@ -340,7 +340,17 @@ async def submit(
         consent_type=CONSENT_TYPE,
         notes=_CONSENT_NOTES,
         form_snapshot={
-            "checks": [{"label": s, "checked": True} for s in CONSENT_STATEMENTS],
+            "checks": [
+                *({"label": s, "checked": True} for s in CONSENT_STATEMENTS),
+                *(
+                    {"label": s, "checked": v}
+                    for s, v in zip(
+                        consent_service.CLINIC_CHECKS,
+                        payload.clinic_checks or [False] * len(consent_service.CLINIC_CHECKS),
+                        strict=True,
+                    )
+                ),
+            ],
             "signature": payload.signature,
             "submitted_at": now.isoformat(),
         },

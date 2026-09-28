@@ -9,6 +9,7 @@ from pydantic_core import PydanticCustomError
 
 from app.config import settings
 from app.models.patient import Gender
+from app.services.consent_service import CLINIC_CHECKS
 
 _OPTIONAL_TEXT = (
     "address",
@@ -26,7 +27,11 @@ class RegistrationLinkOut(BaseModel):
     email: str
     needs_preferred_day: bool
     # The consent wording lives here, so the page shows exactly what is stored.
+    # statements: required to register. clauses and clinic_checks: the clinic's
+    # own consent, optional here and finished at the clinic.
     statements: list[str]
+    clauses: list[str]
+    clinic_checks: list[str]
 
 
 class RegistrationSubmit(BaseModel):
@@ -48,9 +53,15 @@ class RegistrationSubmit(BaseModel):
     part_of_day: Literal["morning", "afternoon", "any"] | None = None
     agree_data: Literal[True]
     agree_contact: Literal[True]
-    signature: str = Field(max_length=200_000, pattern=r"^data:image/png;base64,[A-Za-z0-9+/=]+$")
+    # One answer per CLINIC_CHECKS statement, in order, or none at all.
+    clinic_checks: list[bool] = Field(default_factory=list)
+    signature: str | None = Field(
+        default=None, max_length=200_000, pattern=r"^data:image/png;base64,[A-Za-z0-9+/=]+$"
+    )
 
-    @field_validator("gender", "preferred_day", "part_of_day", *_OPTIONAL_TEXT, mode="before")
+    @field_validator(
+        "gender", "preferred_day", "part_of_day", "signature", *_OPTIONAL_TEXT, mode="before"
+    )
     @classmethod
     def _blank_is_none(cls, value: object) -> object:
         # An empty input on the form arrives as "".
@@ -64,6 +75,13 @@ class RegistrationSubmit(BaseModel):
         # The clinic's today, as _check_day uses, not the server's.
         if value >= datetime.now(ZoneInfo(settings.clinic_timezone)).date():
             raise PydanticCustomError("dob", "Date of birth must be before today.")
+        return value
+
+    @field_validator("clinic_checks")
+    @classmethod
+    def _one_answer_each(cls, value: list[bool]) -> list[bool]:
+        if value and len(value) != len(CLINIC_CHECKS):
+            raise PydanticCustomError("clinic_checks", "Answer each clinic consent statement once.")
         return value
 
     @field_validator("phone")

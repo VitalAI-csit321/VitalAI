@@ -13,7 +13,7 @@ from app.database import get_db
 from app.limiter import limiter
 from app.models.email import Email
 from app.schemas.registration import RegistrationLinkOut, RegistrationSubmit
-from app.services import patient_form_service
+from app.services import consent_service, patient_form_service
 from app.services.system_actor import get_or_create_agent_actor
 
 router = APIRouter(prefix="/public/registration", tags=["public"])
@@ -45,6 +45,8 @@ async def open_registration_link(
         email=origin.sender.strip(),
         needs_preferred_day=patient_form_service.needs_preferred_day(conversation),
         statements=list(patient_form_service.CONSENT_STATEMENTS),
+        clauses=list(consent_service.CLINIC_CLAUSES),
+        clinic_checks=list(consent_service.CLINIC_CHECKS),
     )
 
 
