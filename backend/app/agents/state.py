@@ -84,6 +84,9 @@ class CaseState(TypedDict, total=False):
     template_text: str | None
     next_stage: str | None
     offer: list[dict]
+    # True when the template being sent is the registration form link, so
+    # record_sent stamps form_sent_at once it has really gone out.
+    form_link: bool | None
     booking_choice: dict | None
     conversation_resume: bool | None
     content_email_id: str | None

@@ -31,6 +31,7 @@ from app.services import (
     email_service,
     identity_service,
     onboarding_service,
+    patient_form_service,
     prescription_service,
     records_service,
     task_service,
@@ -466,6 +467,53 @@ async def request_verification(state: CaseState, runtime: Runtime[Context]) -> d
     }
 
 
+async def form_link(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """An unknown sender asking to book or to sign up: a link to the
+    registration form instead of a request to email their details
+    (patient_form_service). No patient is created here; the form creates
+    one on submit, so an ignored link leaves no record behind."""
+    async with runtime.context.session_factory() as db:
+        task, email, actor = await _rows(db, state, runtime)
+        if not email_conversation_service.can_auto_reply(email):
+            await record_event(
+                db,
+                actor=actor,
+                case_id=_case_id(state),
+                action="agent.booking_decision",
+                details={"decision": "staff", "reason": "automatic_message"},
+            )
+            await task_service.hold_for_staff(db, state["task_id"], _AUTOMATIC_REASON)
+            return {"dispatch_result": "conversation_hold"}
+        row, _ = await email_conversation_service.get_or_create(
+            db,
+            case_id=_case_id(state),
+            intent=state["intent"],
+            origin_email_id=email.id,
+            patient_id=None,
+            stage=ConversationStage.AWAITING_DETAILS,
+        )
+        link = patient_form_service.issue_link(row)
+        task.handover_context = patient_form_service.WAITING_REASON
+        # The conversation id only: the token is a credential.
+        await record_event(
+            db,
+            actor=actor,
+            case_id=_case_id(state),
+            action="agent.form_link_issued",
+            details={"conversation_id": str(row.id)},
+        )
+        await db.commit()
+        conversation_id = str(row.id)
+    return {
+        "conversation_id": conversation_id,
+        "branch": email_conversation_service.BRANCH,
+        "template_text": patient_form_service.link_text(link),
+        "next_stage": ConversationStage.AWAITING_DETAILS.value,
+        "offer": [],
+        "form_link": True,
+    }
+
+
 async def identity_hold(state: CaseState, runtime: Runtime[Context]) -> dict:
     async with runtime.context.session_factory() as db:
         await identity_service.hold_for_staff(
@@ -628,6 +676,7 @@ async def _record_conversation_send(db: AsyncSession, state: CaseState) -> None:
             next_stage=state.get("next_stage"),
             offer=state.get("offer"),
             verification=state["branch"] == email_conversation_service.VERIFICATION_BRANCH,
+            form_link=bool(state.get("form_link")),
         )
 
 

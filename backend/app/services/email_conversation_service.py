@@ -849,6 +849,7 @@ async def record_sent(
     next_stage: str | None,
     offer: list[dict] | None,
     verification: bool,
+    form_link: bool = False,
 ) -> None:
     """After a reply really went out: what the patient was shown is now what
     the next turn is checked against. Never before, so a reply that failed
@@ -863,6 +864,9 @@ async def record_sent(
         conversation.offered_slots = offer
     if verification:
         conversation.verification_sent_at = datetime.now(UTC)
+    if form_link:
+        # The registration link only opens once its email really went out.
+        conversation.form_sent_at = datetime.now(UTC)
     await db.commit()
 
 

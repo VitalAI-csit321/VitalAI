@@ -26,6 +26,7 @@ from app.services import (
     email_conversation_service,
     email_service,
     identity_service,
+    patient_form_service,
     task_service,
 )
 from app.services.reply_gate import ReplyWorthiness
@@ -241,6 +242,10 @@ def route_identity(state: CaseState) -> str:
         outcome == identity_service.IdentityOutcome.NO_MATCH
         and intent in identity_service.ONBOARDING_INTENTS
     ):
+        # The registration form replaces asking for details by email, for a
+        # booking and a sign-up alike (patient_form_service).
+        if patient_form_service.enabled():
+            return "form_link"
         if booking:
             return "conversation"
         # No name, no provisional record: ask for the details rather than
@@ -365,6 +370,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         ("conversation", nodes.conversation),
         ("book", nodes.book),
         ("request_verification", nodes.request_verification),
+        ("form_link", nodes.form_link),
         ("draft", nodes.draft),
         ("escalate", nodes.escalate),
         ("guardrail", nodes.guardrail),
@@ -415,6 +421,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
             "prescription": "prescription",
             "conversation": "conversation",
             "request_verification": "request_verification",
+            "form_link": "form_link",
             END: END,
         },
     )
@@ -440,6 +447,12 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
     builder.add_conditional_edges(
         "request_verification",
         _unless_failed(lambda s: END if s.get("dispatch_result") == "identity_hold" else "draft"),
+    )
+    builder.add_conditional_edges(
+        "form_link",
+        _unless_failed(
+            lambda s: END if s.get("dispatch_result") == "conversation_hold" else "draft"
+        ),
     )
     builder.add_conditional_edges(
         "onboarding",
