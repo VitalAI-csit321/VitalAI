@@ -220,6 +220,22 @@ async def test_an_upcoming_appointment_is_cancelled_and_the_patient_told_first(
     assert (await audit_service.verify_chain(db_session))["valid"] is True
 
 
+async def test_several_upcoming_appointments_go_in_one_notice(
+    db_session, admin_user, doctor_user, purgeable, mail
+):
+    _, email = purgeable
+    first = await _appointment(db_session, email.case_id, doctor_user, days=10)
+    second = await _appointment(db_session, email.case_id, doctor_user, days=12)
+
+    await provisional_purge.purge_due(db_session, admin_user)
+
+    mail.assert_awaited_once()
+    body = mail.await_args.args[3]
+    assert "These appointments have been cancelled" in body
+    assert f"- {format_slot(first.time_slot)}" in body
+    assert f"- {format_slot(second.time_slot)}" in body
+
+
 async def test_a_past_appointment_keeps_its_status_but_loses_its_notes(
     db_session, admin_user, doctor_user, purgeable, mail
 ):

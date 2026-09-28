@@ -138,7 +138,16 @@ EXTRAS = (
     "preferred_language",
     "preferred_communication",
 )
-SUBMITTED_REASON = "The patient completed the registration form."
+# Until the follow-up has gone: a restart between the response and the
+# background send loses it, and this must not read as normal progress.
+FOLLOWUP_PENDING_REASON = (
+    "The patient completed the registration form. The email with their reference number "
+    "is being sent; if this note has not changed within a few minutes, contact them by hand."
+)
+SUBMITTED_REASON = (
+    "The patient completed the registration form and was emailed their reference number. "
+    "Waiting for them to reply with the day they would like."
+)
 MISMATCH_REASON = (
     "The name or date of birth on the registration form differs from what the patient "
     "wrote by email. Check who this is before replying."
@@ -198,12 +207,13 @@ async def _audit(db, actor, conversation, outcome: str, patient_id, given) -> No
 
 def _for_staff(task: Task | None, reason: str) -> None:
     """A hand-off from the form path. There is no new inbound email to carry
-    it, so it goes on the Task that sent the link, which staff may have read
-    or archived while waiting: it comes back unread into the inbox."""
+    it, so it goes on the Task that sent the link, which staff may have read,
+    archived or deleted while waiting: it comes back unread into the inbox."""
     if task is None:
         return
     task.handover_context = reason
     task.read_at = None
+    task.deleted_at = task.deleted_by = None
     if task.status == TaskItemStatus.COMPLETED:
         task.status = TaskItemStatus.PENDING
 
@@ -321,7 +331,7 @@ async def submit(
         case.patient_id, case.patient_name = patient.id, patient.name
     conversation.preferred_day = payload.preferred_day
     if task is not None:
-        task.handover_context = SUBMITTED_REASON
+        task.handover_context = FOLLOWUP_PENDING_REASON
     await _audit(db, actor, conversation, outcome, patient.id, given)
     await consent_service.create_consent_record(
         db,
@@ -364,10 +374,24 @@ async def send_followup(conversation_id: UUID, part_of_day: str | None) -> None:
             )
             await db.rollback()
             conversation = await db.get(EmailConversation, conversation_id)
-            task = await task_for(db, conversation.case_id) if conversation else None
-            if task is not None:
-                _for_staff(task, FOLLOWUP_FAILED_REASON)
-                await db.commit()
+            if conversation is not None:
+                await _followup_failed(db, conversation, type(exc).__name__)
+
+
+async def _followup_failed(
+    db: AsyncSession, conversation: EmailConversation, error: str, *, actor: User | None = None
+) -> None:
+    """Staff told on the Task, and the failure audited: ids and the error
+    type only, never the address or the text."""
+    _for_staff(await task_for(db, conversation.case_id), FOLLOWUP_FAILED_REASON)
+    await record_event(
+        db,
+        actor=actor or await get_or_create_agent_actor(db),
+        case_id=conversation.case_id,
+        action="patient.form_followup_failed",
+        details={"conversation_id": str(conversation.id), "error": error},
+    )
+    await db.commit()
 
 
 async def _followup(db: AsyncSession, conversation_id: UUID, part_of_day: str | None) -> None:
@@ -398,9 +422,7 @@ async def _followup(db: AsyncSession, conversation_id: UUID, part_of_day: str | 
         except OutputBlockedError:
             blocked = True
     if blocked:
-        if task is not None:
-            _for_staff(task, FOLLOWUP_FAILED_REASON)
-            await db.commit()
+        await _followup_failed(db, conversation, "blocked", actor=actor)
         return
 
     # task_id=None: the Task's draft_sent is already true from the link email,

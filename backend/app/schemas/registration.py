@@ -1,8 +1,13 @@
-from datetime import date
+import re
+import unicodedata
+from datetime import date, datetime
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic_core import PydanticCustomError
 
+from app.config import settings
 from app.models.patient import Gender
 
 _OPTIONAL_TEXT = (
@@ -12,6 +17,9 @@ _OPTIONAL_TEXT = (
     "preferred_language",
     "preferred_communication",
 )
+
+
+_PHONE = re.compile(r"[0-9 +()\-]+")
 
 
 class RegistrationLinkOut(BaseModel):
@@ -29,7 +37,7 @@ class RegistrationSubmit(BaseModel):
 
     name: str = Field(min_length=1, max_length=255)
     dob: date
-    phone: str = Field(pattern=r"^[0-9 +()\-]{6,32}$")
+    phone: str = Field(max_length=32)
     gender: Gender | None = None
     address: str | None = Field(default=None, max_length=255)
     emergency_contact_name: str | None = Field(default=None, max_length=255)
@@ -48,9 +56,32 @@ class RegistrationSubmit(BaseModel):
         # An empty input on the form arrives as "".
         return None if isinstance(value, str) and not value.strip() else value
 
+    # PydanticCustomError, not ValueError: its message reaches the patient as
+    # written, without pydantic's "Value error, " prefix or a regex.
     @field_validator("dob")
     @classmethod
     def _born_before_today(cls, value: date) -> date:
-        if value >= date.today():
-            raise ValueError("Date of birth must be before today")
+        # The clinic's today, as _check_day uses, not the server's.
+        if value >= datetime.now(ZoneInfo(settings.clinic_timezone)).date():
+            raise PydanticCustomError("dob", "Date of birth must be before today.")
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def _phone_has_digits(cls, value: str) -> str:
+        # At least 6 digits: identity matching compares digits, so "((((((" could
+        # never match anyone.
+        if not _PHONE.fullmatch(value) or sum(c.isdigit() for c in value) < 6:
+            raise PydanticCustomError(
+                "phone", "Please enter a phone number with at least 6 digits."
+            )
+        return value
+
+    @field_validator("name", *_OPTIONAL_TEXT)
+    @classmethod
+    def _no_control_characters(cls, value: str | None) -> str | None:
+        # A NUL byte is refused by Postgres (a 500), and a newline in a name
+        # lands inside emails and the Task.
+        if value and any(unicodedata.category(c) == "Cc" for c in value):
+            raise PydanticCustomError("text", "Please remove special characters.")
         return value

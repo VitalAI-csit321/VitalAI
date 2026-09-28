@@ -8,6 +8,7 @@ from app.auth.permissions import CAPTURE_CONSENT, VIEW_RECORDS_GENERAL
 from app.auth.scoping import is_assigned
 from app.database import get_db
 from app.models.case import IntakeCase
+from app.models.consent import ConsentRecord
 from app.models.patient import Patient
 from app.models.user import User, UserRole
 from app.schemas.consent import (
@@ -87,6 +88,8 @@ async def consent_queue_endpoint(
 @router.get("/by-case/{case_id}", response_model=ConsentOut)
 async def get_consent_by_case_endpoint(
     case_id: UUID,
+    # A case can hold several records; the consent queue names the one it listed.
+    consent_id: UUID | None = None,
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_permission(VIEW_RECORDS_GENERAL)),
 ):
@@ -105,7 +108,12 @@ async def get_consent_by_case_endpoint(
                 status_code=status.HTTP_404_NOT_FOUND, detail="Consent record not found"
             )
 
-    record = await consent_service.get_consent_for_case(db, case_id)
+    if consent_id is None:
+        record = await consent_service.get_consent_for_case(db, case_id)
+    else:
+        record = await db.get(ConsentRecord, consent_id)
+        if record is not None and record.case_id != case_id:
+            record = None
     if record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Consent record not found"

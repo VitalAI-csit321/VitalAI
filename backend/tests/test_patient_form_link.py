@@ -146,11 +146,19 @@ def test_only_unknown_bookers_and_sign_ups_are_sent_the_form(intent, outcome, ex
     assert route_identity(state) == expected
 
 
-def test_with_the_form_flag_off_routing_is_unchanged(monkeypatch):
+@pytest.mark.parametrize(
+    ("intent", "fields", "expected"),
+    [
+        ("appointment_request", {}, "conversation"),
+        ("new_patient_onboarding", {}, "request_verification"),
+        ("new_patient_onboarding", {"name": "Jane Citizen"}, "onboarding"),
+    ],
+)
+def test_with_the_form_flag_off_routing_is_unchanged(monkeypatch, intent, fields, expected):
     monkeypatch.setattr(settings, "patient_form_link_enabled", False)
-    state = {"intent": "appointment_request", "identity_outcome": "no_match", "identity_fields": {}}
+    state = {"intent": intent, "identity_outcome": "no_match", "identity_fields": fields}
 
-    assert route_identity(state) == "conversation"
+    assert route_identity(state) == expected
 
 
 # --- the link email ----------------------------------------------------------------
@@ -360,6 +368,9 @@ async def test_a_link_works_once(client, db_session, admin_user, doctor_user, ll
         {"medicare_number": "1234 56789 1"},
         {"name": ""},
         {"phone": "call me"},
+        {"phone": "(((((("},  # no digits: identity could never match it
+        {"name": "Jane\x00Citizen"},
+        {"address": "1 Test Street\x07"},
         {"preferred_day": lambda: (date.today() + timedelta(days=90)).isoformat()},
     ],
 )
@@ -578,6 +589,65 @@ async def test_a_failed_follow_up_keeps_the_registration_and_tells_staff(
     assert conversation.offered_slots == []
     await db_session.refresh(task)
     assert task.handover_context == patient_form_service.FOLLOWUP_FAILED_REASON
+    (failed,) = (
+        (
+            await db_session.execute(
+                select(AuditEvent).where(AuditEvent.action == "patient.form_followup_failed")
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert failed.details["error"] == "EmailSendError"
+    assert SENDER not in json.dumps(failed.details)
+
+
+async def test_a_follow_up_the_critic_rejects_is_not_sent_and_staff_are_told(
+    client, db_session, admin_user, doctor_user, llm, sends, followups, monkeypatch
+):
+    email, task, token = await _link_sent(db_session, admin_user, llm, sends)
+    monkeypatch.setattr(patient_form_service, "critique", lambda text, branch=None: "no")
+
+    response = await client.post(f"{URL}/{token}", json=_form(_weekday_ahead()))
+
+    assert response.status_code == 201
+    assert len(sends) == 1  # the link only
+    await db_session.refresh(task)
+    assert task.handover_context == patient_form_service.FOLLOWUP_FAILED_REASON
+    (failed,) = (
+        (
+            await db_session.execute(
+                select(AuditEvent).where(AuditEvent.action == "patient.form_followup_failed")
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert failed.details["error"] == "blocked"
+
+
+async def test_until_the_follow_up_goes_the_task_says_it_is_on_its_way(
+    client, db_session, admin_user, doctor_user, llm, sends, monkeypatch
+):
+    # A follow-up lost to a restart must not look like normal progress.
+    email, task, token = await _link_sent(db_session, admin_user, llm, sends)
+    monkeypatch.setattr(patient_form_service, "send_followup", AsyncMock())
+
+    assert (await client.post(f"{URL}/{token}", json=_form(_weekday_ahead()))).status_code == 201
+
+    await db_session.refresh(task)
+    assert task.handover_context == patient_form_service.FOLLOWUP_PENDING_REASON
+
+
+async def test_a_refused_phone_says_why_in_plain_words(client, db_session, admin_user, llm, sends):
+    _, _, token = await _link_sent(db_session, admin_user, llm, sends)
+
+    response = await client.post(f"{URL}/{token}", json=_form(_weekday_ahead(), phone="call me"))
+
+    assert response.status_code == 422
+    assert [e["msg"] for e in response.json()["detail"]] == [
+        "Please enter a phone number with at least 6 digits."
+    ]
 
 
 @pytest.mark.parametrize("references", ["<f1@example.com>", None])
@@ -644,6 +714,8 @@ async def test_a_hand_off_to_staff_reopens_an_archived_task(
     email, task, token = await _link_sent(db_session, admin_user, llm, sends)
     task.status = TaskItemStatus.COMPLETED
     task.read_at = datetime.now(UTC)
+    task.deleted_at = datetime.now(UTC)
+    task.deleted_by = admin_user.id
     await db_session.commit()
 
     assert (await client.post(f"{URL}/{token}", json=_form(_weekday_ahead()))).status_code == 201
@@ -652,6 +724,7 @@ async def test_a_hand_off_to_staff_reopens_an_archived_task(
     assert task.handover_context == email_conversation_service.STAFF_REASONS["no_slots"]
     assert task.status == TaskItemStatus.PENDING
     assert task.read_at is None
+    assert task.deleted_at is None and task.deleted_by is None
 
 
 async def test_form_details_contradicting_the_emailed_ones_go_to_staff(

@@ -1,5 +1,7 @@
 """Staff turn a patient's online registration consent into captured consent."""
 
+from uuid import uuid4
+
 import pytest
 
 from app.models.consent import ConsentStatus
@@ -85,3 +87,28 @@ async def test_verify_unknown_is_404_and_doctors_may_not(
     assert missing.status_code == 404
     assert doctor.status_code == 403
     assert online.status == ConsentStatus.PENDING
+
+
+async def test_by_case_can_open_a_named_consent_not_only_the_latest(
+    client, admin_headers, admin_user, db_session, seeded_case, online
+):
+    # The queue lists every record; "Verify ID" must open that one even when
+    # a later consent exists on the same case.
+    later = await consent_service.create_consent_record(
+        db_session, seeded_case.id, admin_user, consent_type="general_treatment"
+    )
+    url = f"/api/v1/consent/by-case/{seeded_case.id}"
+
+    latest = await client.get(url, headers=admin_headers)
+    named = await client.get(url, params={"consent_id": str(online.id)}, headers=admin_headers)
+    elsewhere = await client.get(
+        f"/api/v1/consent/by-case/{uuid4()}",
+        params={"consent_id": str(online.id)},
+        headers=admin_headers,
+    )
+    wrong = await client.get(url, params={"consent_id": str(uuid4())}, headers=admin_headers)
+
+    assert latest.json()["id"] == str(later.id)
+    assert named.json()["id"] == str(online.id)
+    assert elsewhere.status_code == 404
+    assert wrong.status_code == 404
