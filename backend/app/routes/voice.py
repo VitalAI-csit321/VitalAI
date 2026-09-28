@@ -20,26 +20,36 @@ router = APIRouter(prefix="/voice", tags=["voice"])
 
 _ROUTE_ROOT = "/api/v1/voice"
 _LANG = "en-AU"
+_VOICE = "Polly.Nicole"
 
 CLOSED = (
-    "The clinic is closed. Please call back between 8am and 6pm, Monday to Friday. "
-    "If this is an emergency, hang up and dial triple zero."
+    "Hi, thanks for calling Green Care Family Medical Clinic. "
+    "We're closed right now, but we're open 8am to 6pm, "
+    "Monday to Friday, and we'd love to help then. "
+    "If this is an emergency, please hang up and dial triple zero. Take care."
 )
 NOTICE = (
-    "If this is an emergency, hang up and dial triple zero. "
-    "This call is recorded so our staff can respond to your message."
+    "Hi, thanks for calling Green Care Family Medical Clinic. "
+    "If this is an emergency, please hang up and dial triple zero. "
+    "Just so you know, this call is recorded so our team can get back to you."
 )
-URGENT_PROMPT = "If this is urgent, press 9. Otherwise press any other key or wait."
+URGENT_PROMPT = "If your call is urgent, press 9. Otherwise, just stay on the line."
 DOB_PROMPT = (
-    "Enter the patient's date of birth as day, month, year, "
-    "for example 0 3 0 7 1 9 8 5, then press hash."
+    "Please enter the patient's date of birth, as day, month and year. "
+    "For example, 0 3 0 7 1 9 8 5. Then press hash."
 )
-INTENT_PROMPT = "Press 1 for appointments, 2 for results, 3 for prescriptions, 4 for anything else."
+INTENT_PROMPT = (
+    "For appointments, press 1. For test results, press 2. "
+    "For prescriptions, press 3. For anything else, press 4."
+)
 RECORD_PROMPT = (
-    "After the tone, say the patient's full name, a number we can call you back on, "
-    "and your message. Press hash when you're done."
+    "After the tone, please tell us the patient's full name, the best number to call you "
+    "back on, and how we can help. Press hash when you're finished."
 )
-THANKS = "Thank you. We'll call you back."
+THANKS = (
+    "Thanks so much. We've got your message, and someone from our team "
+    "will call you back soon. Goodbye!"
+)
 _ENDED = {"completed", "busy", "no-answer", "failed", "canceled"}
 
 
@@ -66,7 +76,7 @@ def _gather(
     if finish_on_key:
         kwargs["finish_on_key"] = finish_on_key
     gather = Gather(**kwargs)
-    gather.say(prompt, language=_LANG)
+    gather.say(prompt, language=_LANG, voice=_VOICE)
     vr.append(gather)
 
 
@@ -94,13 +104,13 @@ async def incoming(form: dict = Depends(twilio_form), db: AsyncSession = Depends
     if not voicemail_service.clinic_is_open(datetime.now(UTC)):
         await record_event(db, actor=actor, action="voicemail.after_hours_call", details={})
         await db.commit()
-        vr.say(CLOSED, language=_LANG)
+        vr.say(CLOSED, language=_LANG, voice=_VOICE)
         vr.hangup()
         return _twiml(vr)
     await voicemail_service.create_voicemail(
         db, from_number=form.get("From"), actor=actor, call_sid=form["CallSid"]
     )
-    vr.say(NOTICE, language=_LANG)
+    vr.say(NOTICE, language=_LANG, voice=_VOICE)
     _gather(vr, "urgent", URGENT_PROMPT, num_digits=1)
     return _twiml(vr)
 
@@ -126,7 +136,7 @@ async def gather(
     else:
         call.keypad_intent = voicemail_service.INTENT_DIGITS.get(digits)
         call.status = CallStatus.RECORDING
-        vr.say(RECORD_PROMPT, language=_LANG)
+        vr.say(RECORD_PROMPT, language=_LANG, voice=_VOICE)
         vr.record(
             action=_url("/done"),
             method="POST",
@@ -145,7 +155,7 @@ async def gather(
 @router.post("/done")
 async def done(form: dict = Depends(twilio_form)):
     vr = VoiceResponse()
-    vr.say(THANKS, language=_LANG)
+    vr.say(THANKS, language=_LANG, voice=_VOICE)
     vr.hangup()
     return _twiml(vr)
 
