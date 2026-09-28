@@ -134,6 +134,24 @@ async def capture_consent_endpoint(
     return record
 
 
+@router.post("/{consent_id}/verify", response_model=ConsentOut)
+async def verify_consent_endpoint(
+    consent_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(CAPTURE_CONSENT)),
+):
+    """Staff checked ID for a patient who registered online."""
+    try:
+        record = await consent_service.verify_online_consent(db, consent_id, actor)
+    except ConsentStateError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Consent record not found"
+        )
+    return record
+
+
 @router.post("/{consent_id}/resolve-review", response_model=ConsentOut)
 async def resolve_review_endpoint(
     consent_id: UUID,

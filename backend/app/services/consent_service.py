@@ -19,6 +19,9 @@ class ConsentStateError(Exception):
 # recorded PENDING, never CAPTURED: CAPTURED is the only status the consent
 # gate accepts, so an implied record must never satisfy it.
 IMPLIED_INBOUND_CONTACT = "implied_inbound_contact"
+# Given by the patient on the registration form (patient_form_service).
+# Pending until staff have seen ID and verify it.
+ONLINE_REGISTRATION = "online_registration"
 
 
 async def create_consent_record(
@@ -139,6 +142,31 @@ async def capture_consent(
     await db.commit()
     await db.refresh(record)
     return record
+
+
+async def verify_online_consent(
+    db: AsyncSession, consent_id: UUID, actor: User
+) -> ConsentRecord | None:
+    """Staff have seen ID: the patient's online consent becomes captured.
+
+    The patient's own statements and signature are kept. capture_consent
+    replaces the snapshot with whatever it is given, so it is given the
+    existing one back, plus who verified it.
+    """
+    record = await db.get(ConsentRecord, consent_id)
+    if record is None:
+        return None
+    if (
+        record.consent_type != ONLINE_REGISTRATION
+        or record.status != ConsentStatus.PENDING
+        or not (record.form_snapshot or {}).get("signature")
+    ):
+        raise ConsentStateError(
+            "Only a pending online registration consent with a signature can be verified."
+        )
+    return await capture_consent(
+        db, consent_id, actor, {**record.form_snapshot, "verified_by": str(actor.id)}
+    )
 
 
 async def update_consent_checklist(
