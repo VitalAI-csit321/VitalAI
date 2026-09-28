@@ -6,7 +6,7 @@ test_email_conversation.py. FakeLLM stands in for the model.
 
 import json
 import re
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import AsyncMock
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -26,6 +26,7 @@ from app.models.case import IntakeCase
 from app.models.consent import ConsentRecord, ConsentStatus
 from app.models.email_conversation import ConversationStage, EmailConversation
 from app.models.patient import Patient
+from app.models.task import TaskItemStatus
 from app.routes.public_registration import NOT_VALID
 from app.schemas.email import EmailIngestRequest
 from app.services import email_conversation_service, email_service, patient_form_service
@@ -349,20 +350,23 @@ async def test_a_link_works_once(client, db_session, admin_user, doctor_user, ll
     "overrides",
     [
         {"preferred_day": ""},  # a booking needs a day
-        {"dob": date.today().isoformat()},
-        {"dob": (date.today() + timedelta(days=30)).isoformat()},
+        # Days from today as callables: parametrize runs at collection, and a
+        # run that crosses midnight would turn "today" into yesterday.
+        {"dob": lambda: date.today().isoformat()},
+        {"dob": lambda: (date.today() + timedelta(days=30)).isoformat()},
         {"agree_contact": False},
         {"signature": "data:text/html;base64,PHNjcmlwdD4="},
         {"signature": "data:image/png;base64," + "A" * 200_001},
         {"medicare_number": "1234 56789 1"},
         {"name": ""},
         {"phone": "call me"},
-        {"preferred_day": (date.today() + timedelta(days=90)).isoformat()},
+        {"preferred_day": lambda: (date.today() + timedelta(days=90)).isoformat()},
     ],
 )
 async def test_a_bad_form_is_refused_and_the_link_stays_open(
     client, db_session, admin_user, llm, sends, overrides
 ):
+    overrides = {k: v() if callable(v) else v for k, v in overrides.items()}
     email, _, token = await _link_sent(db_session, admin_user, llm, sends)
     # Read now: the route's rollback on a refused form expires every object in
     # the session the test shares with it.
@@ -603,3 +607,107 @@ async def test_replying_with_an_offered_time_books_it(
     conversation = await _conversation(db_session, email.case_id)
     assert conversation.stage == ConversationStage.BOOKED
     assert "Your appointment is booked for" in sends[-1][1]
+
+
+# --- after the form: what staff see, and what later emails do ------------------------
+
+
+async def test_an_email_after_the_form_went_to_staff_gets_no_second_link(
+    client, db_session, admin_user, doctor_user, llm, sends
+):
+    email, _, token = await _link_sent(db_session, admin_user, llm, sends)
+    case_id = email.case_id
+    db_session.add(
+        Patient(mrn="MRN-OTHER02", name="Sam Other", phone="0412 345 678", is_provisional=False)
+    )
+    await db_session.commit()
+    assert (await client.post(f"{URL}/{token}", json=_form(_weekday_ahead()))).status_code == 201
+
+    _, later = await _mail(
+        db_session,
+        admin_user,
+        "Any news on my registration?",
+        message_id="<f4@example.com>",
+        references="<f1@example.com>",
+    )
+
+    assert len(sends) == 1  # the first link only
+    conversation = await _conversation(db_session, case_id)
+    assert conversation.stage == ConversationStage.STAFF
+    assert later.handover_context == email_conversation_service.STAFF_REASONS["closed"]
+
+
+async def test_a_hand_off_to_staff_reopens_an_archived_task(
+    client, db_session, admin_user, llm, sends
+):
+    # No doctor exists, so the follow-up finds no free time and hands to staff.
+    email, task, token = await _link_sent(db_session, admin_user, llm, sends)
+    task.status = TaskItemStatus.COMPLETED
+    task.read_at = datetime.now(UTC)
+    await db_session.commit()
+
+    assert (await client.post(f"{URL}/{token}", json=_form(_weekday_ahead()))).status_code == 201
+
+    await db_session.refresh(task)
+    assert task.handover_context == email_conversation_service.STAFF_REASONS["no_slots"]
+    assert task.status == TaskItemStatus.PENDING
+    assert task.read_at is None
+
+
+async def test_form_details_contradicting_the_emailed_ones_go_to_staff(
+    client, db_session, admin_user, doctor_user, llm, sends
+):
+    email, task, token = await _link_sent(db_session, admin_user, llm, sends)
+    llm.booking = [
+        {"name": "Jane Citizen", "dob": "1990-02-01", "intent": "unclear", "confidence": 0.9}
+    ]
+    await _mail(
+        db_session,
+        admin_user,
+        "Jane Citizen, born 1/2/1990",
+        message_id="<f2@example.com>",
+        references="<f1@example.com>",
+    )
+    case_id = email.case_id
+    sent_before = len(sends)
+
+    response = await client.post(f"{URL}/{token}", json=_form(_weekday_ahead(), dob="1991-03-04"))
+
+    assert response.status_code == 201
+    assert len(sends) == sent_before  # no follow-up
+    conversation = await _conversation(db_session, case_id)
+    assert conversation.stage == ConversationStage.STAFF
+    patient = await db_session.get(Patient, conversation.patient_id)
+    await db_session.refresh(patient)
+    assert patient.dob == date(1990, 2, 1)  # nothing overwritten
+    await db_session.refresh(task)
+    assert task.handover_context.startswith(patient_form_service.MISMATCH_REASON)
+    assert "04/03/1991" in task.handover_context
+
+
+async def test_a_reply_with_no_details_while_the_link_is_open_sends_nothing(
+    client, db_session, admin_user, llm, sends
+):
+    email, _, token = await _link_sent(db_session, admin_user, llm, sends)
+    llm.booking = [
+        {"intent": "unclear", "confidence": 0.9},
+        {"intent": "unclear", "confidence": 0.3},
+    ]
+
+    for i, body in enumerate(("Thanks, I will fill it in tonight", "ok")):
+        _, reply_task = await _mail(
+            db_session,
+            admin_user,
+            body,
+            message_id=f"<t{i}@example.com>",
+            references="<f1@example.com>",
+        )
+        assert (
+            reply_task.handover_context
+            == (email_conversation_service.STAFF_REASONS["form_pending"])
+        )
+
+    assert len(sends) == 1
+    conversation = await _conversation(db_session, email.case_id)
+    assert conversation.stage == ConversationStage.AWAITING_DETAILS
+    assert (await client.get(f"{URL}/{token}")).status_code == 200

@@ -82,4 +82,7 @@ def test_total_route_count():
     # routes without bumping this (96 real), +1 for POST /voicemails/simulate
     # (MANAGE_CASES).
     # 98: +1 for GET /calls/{call_id}/audio (PLAY_VOICEMAIL).
-    assert len({(e.method, e.path) for e in registry}) == 98
+    # 101 as of the registration form link: +2 for GET and POST
+    # /public/registration/{token} (public, allowlisted) and +1 for
+    # POST /consent/{consent_id}/verify (CAPTURE_CONSENT).
+    assert len({(e.method, e.path) for e in registry}) == 101

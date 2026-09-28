@@ -19,9 +19,10 @@ from app.config import settings
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.audit import AuditEvent
 from app.models.case import IntakeCase
+from app.models.consent import ConsentStatus
 from app.models.email import Email
 from app.models.patient import PROFILE_FIELDS, PatientStatus
-from app.services import audit_service, patient_service, provisional_purge
+from app.services import audit_service, consent_service, patient_service, provisional_purge
 from app.services.booking_service import format_slot
 from tests.agent_fakes import seed_email
 
@@ -286,3 +287,61 @@ async def test_the_cancelled_slot_can_be_booked_again(
         )
     )
     await db_session.commit()  # raises IntegrityError if the slot were still held
+
+
+async def test_the_purge_drops_the_signature_of_an_online_consent(
+    db_session, admin_user, purgeable
+):
+    _, email = purgeable
+    checks = [{"label": "I agree to the clinic keeping my details.", "checked": True}]
+    record = await consent_service.create_consent_record(
+        db_session,
+        email.case_id,
+        admin_user,
+        consent_type=consent_service.ONLINE_REGISTRATION,
+        form_snapshot={"checks": checks, "signature": "data:image/png;base64,AAAA"},
+    )
+
+    await provisional_purge.purge_due(db_session, admin_user)
+
+    await db_session.refresh(record)
+    assert record.status == ConsentStatus.WITHDRAWN  # nobody can verify it now
+    assert record.form_snapshot["signature"] is None
+    assert record.form_snapshot["checks"] == checks
+
+
+async def test_each_purged_patient_is_committed_before_the_next(
+    db_session, admin_user, purgeable, monkeypatch
+):
+    first, _ = purgeable
+    other, _ = await seed_email(db_session, sender="sam@example.com")
+    second = await patient_service.create_provisional_patient(
+        db_session,
+        case_id=other.case_id,
+        name="Sam Newcomer",
+        email="sam@example.com",
+        phone="0499 000 111",
+        dob=date(1990, 1, 1),
+        actor=admin_user,
+    )
+    second.created_at = first.created_at
+    await db_session.commit()
+    real = provisional_purge._cancel
+    calls = 0
+
+    async def fails_second_time(*args):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("database went away")
+        await real(*args)
+
+    monkeypatch.setattr(provisional_purge, "_cancel", fails_second_time)
+
+    with pytest.raises(RuntimeError):
+        await provisional_purge.purge_due(db_session, admin_user)
+
+    await db_session.rollback()
+    for p in (first, second):
+        await db_session.refresh(p)
+    assert [p.purged_at is not None for p in (first, second)].count(True) == 1

@@ -31,7 +31,7 @@ from app.models.case import IntakeCase
 from app.models.email import Email
 from app.models.email_conversation import ConversationStage, EmailConversation
 from app.models.patient import Patient
-from app.models.task import Task, TaskCategory, TaskSource
+from app.models.task import Task, TaskCategory, TaskItemStatus, TaskSource
 from app.models.user import User
 from app.schemas.registration import RegistrationSubmit
 from app.services import (
@@ -139,6 +139,10 @@ EXTRAS = (
     "preferred_communication",
 )
 SUBMITTED_REASON = "The patient completed the registration form."
+MISMATCH_REASON = (
+    "The name or date of birth on the registration form differs from what the patient "
+    "wrote by email. Check who this is before replying."
+)
 
 
 class RegistrationRejectedError(Exception):
@@ -192,11 +196,47 @@ async def _audit(db, actor, conversation, outcome: str, patient_id, given) -> No
     )
 
 
+def _for_staff(task: Task | None, reason: str) -> None:
+    """A hand-off from the form path. There is no new inbound email to carry
+    it, so it goes on the Task that sent the link, which staff may have read
+    or archived while waiting: it comes back unread into the inbox."""
+    if task is None:
+        return
+    task.handover_context = reason
+    task.read_at = None
+    if task.status == TaskItemStatus.COMPLETED:
+        task.status = TaskItemStatus.PENDING
+
+
+async def _hand_over(db, actor, conversation, task, payload, given, *, reason, outcome) -> None:
+    """Staff decide; no follow-up is sent. They act on the typed details, so
+    the Task carries them; the audit log does not."""
+    conversation.stage = ConversationStage.STAFF.value
+    _for_staff(
+        task,
+        f"{reason} The registration form gave: {payload.name}, born {payload.dob:%d/%m/%Y}, "
+        f"phone {payload.phone}.",
+    )
+    await _audit(db, actor, conversation, outcome, conversation.patient_id, given)
+    await db.commit()
+
+
+def _contradicts(patient: Patient, payload: RegistrationSubmit) -> bool:
+    return bool(
+        (patient.dob and patient.dob != payload.dob)
+        or (
+            patient.name
+            and identity_service._name(patient.name) != identity_service._name(payload.name)
+        )
+    )
+
+
 async def submit(
     db: AsyncSession, conversation: EmailConversation, payload: RegistrationSubmit, actor: User
 ) -> Patient | None:
     """Record a submitted form. Returns the patient it landed on, or None
-    when the details partly match someone else and staff take over.
+    when staff take over: the details partly match someone else, or they
+    contradict the record the patient's earlier email started.
 
     One transaction on the row find_open(lock=True) locked. Nothing commits
     until create_consent_record, which is written last and commits it all.
@@ -214,6 +254,20 @@ async def submit(
     # using the link; the form fills it rather than making a second one.
     patient = await db.get(Patient, conversation.patient_id) if conversation.patient_id else None
     outcome = "existing"
+    if patient is not None and _contradicts(patient, payload):
+        # The email's details were read by a model, the form's were typed; which
+        # is right is for a human, and nothing on file is overwritten.
+        await _hand_over(
+            db,
+            actor,
+            conversation,
+            task,
+            payload,
+            given,
+            reason=MISMATCH_REASON,
+            outcome="mismatch",
+        )
+        return None
     if patient is None:
         result = await identity_service.resolve_patient(
             db,
@@ -221,16 +275,16 @@ async def submit(
             fields=IdentityFields(name=payload.name, dob=payload.dob, phone=payload.phone),
         )
         if result.outcome == IdentityOutcome.AMBIGUOUS:
-            conversation.stage = ConversationStage.STAFF.value
-            if task is not None:
-                # Staff act on these, so the Task carries them; the audit log does not.
-                task.handover_context = (
-                    f"{email_conversation_service.STAFF_REASONS['ambiguous']} The registration "
-                    f"form gave: {payload.name}, born {payload.dob:%d/%m/%Y}, "
-                    f"phone {payload.phone}."
-                )
-            await _audit(db, actor, conversation, "ambiguous", None, given)
-            await db.commit()
+            await _hand_over(
+                db,
+                actor,
+                conversation,
+                task,
+                payload,
+                given,
+                reason=email_conversation_service.STAFF_REASONS["ambiguous"],
+                outcome="ambiguous",
+            )
             return None
         patient, outcome = result.patient, "matched"
 
@@ -312,7 +366,7 @@ async def send_followup(conversation_id: UUID, part_of_day: str | None) -> None:
             conversation = await db.get(EmailConversation, conversation_id)
             task = await task_for(db, conversation.case_id) if conversation else None
             if task is not None:
-                task.handover_context = FOLLOWUP_FAILED_REASON
+                _for_staff(task, FOLLOWUP_FAILED_REASON)
                 await db.commit()
 
 
@@ -345,7 +399,7 @@ async def _followup(db: AsyncSession, conversation_id: UUID, part_of_day: str | 
             blocked = True
     if blocked:
         if task is not None:
-            task.handover_context = FOLLOWUP_FAILED_REASON
+            _for_staff(task, FOLLOWUP_FAILED_REASON)
             await db.commit()
         return
 
@@ -367,7 +421,9 @@ async def _followup(db: AsyncSession, conversation_id: UUID, part_of_day: str | 
         stage, note = ConversationStage.AWAITING_DETAILS, SUBMITTED_REASON
     else:
         stage, note = ConversationStage.STAFF, email_conversation_service.STAFF_REASONS["no_slots"]
-    if task is not None:
+    if stage == ConversationStage.STAFF:
+        _for_staff(task, note)
+    elif task is not None:
         task.handover_context = note
     await email_conversation_service.record_sent(
         db,

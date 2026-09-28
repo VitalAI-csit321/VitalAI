@@ -101,6 +101,8 @@ STAFF_REASONS = {
     "needed to book. Nothing was booked.",
     "closed": "The patient wrote again after this email booking conversation was booked or "
     "handed to staff. Nothing was sent; reply by hand.",
+    "form_pending": "The patient replied while their registration form link is still open, "
+    "with no details to act on. Nothing was sent; the link still works.",
 }
 
 
@@ -806,6 +808,18 @@ async def _decide(
     # and "Could I book next Wednesday?" reads as a question to the model.
     if extraction.intent == "cancel" or (extraction.intent == "question" and not first_turn):
         return _staff(conversation, extraction.intent)
+    # "Thanks, I'll fill it in tonight" while the registration link is open: a
+    # note for staff and nothing sent. Asking for details here would ask for
+    # what the form asks, and a second such reply would close the link.
+    # Stage unchanged, so the link stays usable.
+    if (
+        conversation.form_sent_at is not None
+        and conversation.form_submitted_at is None
+        and patient is None
+        and not (fields.name or fields.dob or fields.phone)
+        and not (extraction.preferred_day or extraction.chosen_time)
+    ):
+        return Turn("staff", reason="form_pending")
     # A registered patient is bookable as they are (patient_service.assert_bookable).
     missing = _missing(patient) if patient is None or patient.is_provisional else []
     name = patient.name if patient else fields.name

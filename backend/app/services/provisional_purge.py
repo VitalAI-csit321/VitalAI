@@ -24,9 +24,10 @@ from app.config import settings
 from app.database import AsyncSessionLocal
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.case import IntakeCase
+from app.models.consent import ConsentRecord, ConsentStatus
 from app.models.patient import PROFILE_FIELDS, Patient, PatientStatus
 from app.models.user import User
-from app.services import email_service
+from app.services import consent_service, email_service
 from app.services.audit_service import record_event
 from app.services.booking_service import format_slot
 from app.services.system_actor import get_or_create_agent_actor
@@ -128,6 +129,33 @@ async def _cancel(db: AsyncSession, actor: User, appointments: list[Appointment]
         appointment.internal_notes = None
 
 
+async def _drop_online_signatures(db: AsyncSession, actor: User, patient_id: UUID) -> None:
+    """The registration form's drawn signature is personal data like the rest
+    of the record. The statements agreed to stay. A consent nobody verified is
+    withdrawn: there is no longer anyone on the record to check ID against."""
+    records = (
+        await db.execute(
+            select(ConsentRecord)
+            .join(IntakeCase, IntakeCase.id == ConsentRecord.case_id)
+            .where(
+                IntakeCase.patient_id == patient_id,
+                ConsentRecord.consent_type == consent_service.ONLINE_REGISTRATION,
+            )
+        )
+    ).scalars()
+    for record in records:
+        record.form_snapshot = {**(record.form_snapshot or {}), "signature": None}
+        if record.status == ConsentStatus.PENDING:
+            record.status = ConsentStatus.WITHDRAWN
+            await record_event(
+                db,
+                actor=actor,
+                case_id=record.case_id,
+                action="consent.withdrawn",
+                details={"consent_id": str(record.id), "reason": "patient record purged"},
+            )
+
+
 async def purge_due(db: AsyncSession, actor: User) -> list[UUID]:
     """Anonymise every provisional patient past the TTL. Returns their ids.
 
@@ -155,6 +183,7 @@ async def purge_due(db: AsyncSession, actor: User) -> list[UUID]:
         if upcoming and patient.email:
             await _notify(db, actor, patient, upcoming)
         await _cancel(db, actor, appointments, now)
+        await _drop_online_signatures(db, actor, patient.id)
         patient.name = PURGED_NAME  # still NOT NULL
         patient.dob = None
         patient.gender = None
@@ -177,7 +206,10 @@ async def purge_due(db: AsyncSession, actor: User) -> list[UUID]:
                 "ttl_days": settings.provisional_patient_ttl_days,
             },
         )
-    await db.commit()
+        # One patient at a time: their notice has gone, so their cancellations
+        # and anonymising must not roll back with a later patient's failure,
+        # or tomorrow's run would email them again.
+        await db.commit()
     return [p.id for p in due]
 
 

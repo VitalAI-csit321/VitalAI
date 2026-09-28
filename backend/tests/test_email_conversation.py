@@ -51,6 +51,9 @@ def clinic(monkeypatch):
     monkeypatch.setattr(settings, "default_appointment_duration_minutes", 30)
     monkeypatch.setattr(settings, "agentic_pipeline_enabled", True)
     monkeypatch.setattr(settings, "email_booking_conversation_enabled", True)
+    # These tests are the flow that asks for details by email; the registration
+    # form link (test_patient_form_link.py) replaces its first reply.
+    monkeypatch.setattr(settings, "patient_form_link_enabled", False)
 
 
 @pytest.fixture

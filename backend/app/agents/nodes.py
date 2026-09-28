@@ -484,7 +484,7 @@ async def form_link(state: CaseState, runtime: Runtime[Context]) -> dict:
             )
             await task_service.hold_for_staff(db, state["task_id"], _AUTOMATIC_REASON)
             return {"dispatch_result": "conversation_hold"}
-        row, _ = await email_conversation_service.get_or_create(
+        row, created = await email_conversation_service.get_or_create(
             db,
             case_id=_case_id(state),
             intent=state["intent"],
@@ -492,6 +492,21 @@ async def form_link(state: CaseState, runtime: Runtime[Context]) -> dict:
             patient_id=None,
             stage=ConversationStage.AWAITING_DETAILS,
         )
+        if not created and (row.stage not in OPEN_STAGES or row.form_submitted_at is not None):
+            # Handed to staff, booked, or the form already used: as in
+            # conversation, a new email must not restart the automated flow,
+            # and a new link here would be dead on arrival.
+            await record_event(
+                db,
+                actor=actor,
+                case_id=_case_id(state),
+                action="agent.booking_decision",
+                details={"decision": "staff", "reason": "closed"},
+            )
+            await task_service.hold_for_staff(
+                db, state["task_id"], email_conversation_service.STAFF_REASONS["closed"]
+            )
+            return {"dispatch_result": "conversation_hold"}
         link = patient_form_service.issue_link(row)
         task.handover_context = patient_form_service.WAITING_REASON
         # The conversation id only: the token is a credential.
