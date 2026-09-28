@@ -33,6 +33,10 @@ _NO_PERMISSION_GATE: frozenset[tuple[str, str]] = frozenset(
         ("POST", "/api/v1/auth/login"),
         ("GET", "/api/v1/auth/me"),
         ("POST", "/api/v1/auth/me/password"),
+        # The registration form: the emailed link is the credential
+        # (app/routes/public_registration.py).
+        ("GET", "/api/v1/public/registration/{token}"),
+        ("POST", "/api/v1/public/registration/{token}"),
     }
 )
 

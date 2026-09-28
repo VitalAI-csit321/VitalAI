@@ -21,10 +21,12 @@ from app.config import settings
 from app.limiter import limiter
 from app.models.audit import AuditEvent
 from app.models.case import IntakeCase
+from app.models.consent import ConsentRecord, ConsentStatus
 from app.models.email_conversation import ConversationStage, EmailConversation
 from app.models.patient import Patient
+from app.routes.public_registration import NOT_VALID
 from app.schemas.email import EmailIngestRequest
-from app.services import email_service, patient_form_service
+from app.services import email_conversation_service, email_service, patient_form_service
 
 SYDNEY = ZoneInfo("Australia/Sydney")
 SENDER = "jane@example.com"
@@ -97,6 +99,10 @@ async def _mail(db, actor, body, *, message_id, references=None, sender=SENDER, 
         actor,
     )
     await agent_graph.start(task.id, email.id, actor.id, gate, confidence)
+    # Ends the savepoint ingest_email's refresh opened, which the graph's own
+    # sessions nested inside. Left open, a route that rolls back (a refused
+    # form) would undo the graph's rows too, which cannot happen outside tests.
+    await db.commit()
     await db.refresh(task)
     return email, task
 
@@ -214,3 +220,252 @@ async def test_with_auto_send_off_the_link_waits_for_approval_and_opens_once_sen
     conversation = await _conversation(db_session, email.case_id)
     assert conversation.form_token_hash is not None
     assert conversation.form_sent_at is None
+
+
+# --- the form ----------------------------------------------------------------------
+
+
+def _form(day: date | None, **overrides) -> dict:
+    body = {
+        "name": "Jane Citizen",
+        "dob": "1990-02-01",
+        "phone": "0412 345 678",
+        "address": "1 Test Street",
+        "preferred_language": "",
+        "preferred_day": day.isoformat() if day else "",
+        "part_of_day": "any",
+        "agree_data": True,
+        "agree_contact": True,
+        "signature": SIGNATURE,
+    }
+    return body | overrides
+
+
+async def test_the_link_opens_with_the_address_and_the_statements(
+    client, db_session, admin_user, llm, sends
+):
+    await _link_sent(db_session, admin_user, llm, sends)
+    token = LINK.search(sends[-1][1]).group(1)
+
+    response = await client.get(f"{URL}/{token}")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "email": SENDER,
+        "needs_preferred_day": True,
+        "statements": list(patient_form_service.CONSENT_STATEMENTS),
+    }
+
+
+async def test_a_bad_link_and_a_disabled_feature_look_the_same(
+    client, db_session, admin_user, llm, sends, monkeypatch
+):
+    _, _, token = await _link_sent(db_session, admin_user, llm, sends)
+
+    unknown = await client.get(f"{URL}/not-a-real-token")
+    monkeypatch.setattr(settings, "patient_form_link_enabled", False)
+    disabled = await client.get(f"{URL}/{token}")
+
+    for response in (unknown, disabled):
+        assert response.status_code == 404
+        assert response.json() == {"detail": NOT_VALID}
+
+
+async def test_submitting_creates_the_record_and_one_pending_consent(
+    client, db_session, admin_user, doctor_user, llm, sends
+):
+    email, task, token = await _link_sent(db_session, admin_user, llm, sends)
+    day = _weekday_ahead()
+
+    response = await client.post(f"{URL}/{token}", json=_form(day))
+
+    assert response.status_code == 201
+    case = await db_session.get(IntakeCase, email.case_id)
+    await db_session.refresh(case)
+    patient = await db_session.get(Patient, case.patient_id)
+    assert patient.is_provisional
+    assert (patient.name, patient.dob, patient.phone, patient.email) == (
+        "Jane Citizen",
+        date(1990, 2, 1),
+        "0412 345 678",
+        SENDER,
+    )
+    assert patient.address == "1 Test Street"
+    assert patient.preferred_language is None
+    conversation = await _conversation(db_session, email.case_id)
+    assert conversation.patient_id == patient.id
+    assert conversation.preferred_day == day
+    assert conversation.form_submitted_at is not None
+    consents = (
+        (await db_session.execute(select(ConsentRecord).where(ConsentRecord.case_id == case.id)))
+        .scalars()
+        .all()
+    )
+    (consent,) = consents
+    assert consent.consent_type == "online_registration"
+    assert consent.status == ConsentStatus.PENDING
+    assert consent.form_snapshot["signature"] == SIGNATURE
+    assert [c["label"] for c in consent.form_snapshot["checks"]] == list(
+        patient_form_service.CONSENT_STATEMENTS
+    )
+    assert all(c["checked"] for c in consent.form_snapshot["checks"])
+    (event,) = (
+        (
+            await db_session.execute(
+                select(AuditEvent).where(AuditEvent.action == "patient.form_submitted")
+            )
+        )
+        .scalars()
+        .all()
+    )
+    details = json.dumps(event.details)
+    for value in ("Jane", "Citizen", "Test Street", SIGNATURE[:30]):
+        assert value not in details
+    assert event.details["outcome"] == "created"
+    assert event.details["fields"] == [
+        "address",
+        "dob",
+        "name",
+        "part_of_day",
+        "phone",
+        "preferred_day",
+    ]
+
+
+async def test_a_link_works_once(client, db_session, admin_user, doctor_user, llm, sends):
+    _, _, token = await _link_sent(db_session, admin_user, llm, sends)
+
+    first = await client.post(f"{URL}/{token}", json=_form(_weekday_ahead()))
+    second = await client.post(f"{URL}/{token}", json=_form(_weekday_ahead()))
+
+    assert first.status_code == 201
+    assert second.status_code == 404
+    assert (await client.get(f"{URL}/{token}")).status_code == 404
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"preferred_day": ""},  # a booking needs a day
+        {"dob": date.today().isoformat()},
+        {"dob": (date.today() + timedelta(days=30)).isoformat()},
+        {"agree_contact": False},
+        {"signature": "data:text/html;base64,PHNjcmlwdD4="},
+        {"signature": "data:image/png;base64," + "A" * 200_001},
+        {"medicare_number": "1234 56789 1"},
+        {"name": ""},
+        {"phone": "call me"},
+        {"preferred_day": (date.today() + timedelta(days=90)).isoformat()},
+    ],
+)
+async def test_a_bad_form_is_refused_and_the_link_stays_open(
+    client, db_session, admin_user, llm, sends, overrides
+):
+    email, _, token = await _link_sent(db_session, admin_user, llm, sends)
+    # Read now: the route's rollback on a refused form expires every object in
+    # the session the test shares with it.
+    case_id = email.case_id
+
+    response = await client.post(f"{URL}/{token}", json=_form(_weekday_ahead(), **overrides))
+
+    assert response.status_code == 422
+    case = await db_session.get(IntakeCase, case_id)
+    await db_session.refresh(case)
+    assert case.patient_id is None
+    assert (await client.get(f"{URL}/{token}")).status_code == 200
+
+
+async def test_details_matching_one_registered_patient_link_to_them_and_change_nothing(
+    client, db_session, admin_user, doctor_user, llm, sends
+):
+    email, _, token = await _link_sent(db_session, admin_user, llm, sends)
+    existing = Patient(
+        mrn="MRN-EXIST01",
+        name="Jane Citizen",
+        dob=date(1990, 2, 1),
+        phone="+61 412 345 678",
+        email="jane.old@example.com",
+        is_provisional=False,
+    )
+    db_session.add(existing)
+    await db_session.commit()
+
+    response = await client.post(f"{URL}/{token}", json=_form(_weekday_ahead()))
+
+    assert response.status_code == 201
+    await db_session.refresh(existing)
+    assert existing.email == "jane.old@example.com"
+    assert existing.address is None
+    conversation = await _conversation(db_session, email.case_id)
+    assert conversation.patient_id == existing.id
+    count = (
+        (await db_session.execute(select(Patient).where(Patient.name == "Jane Citizen")))
+        .scalars()
+        .all()
+    )
+    assert len(count) == 1
+
+
+async def test_details_partly_matching_someone_go_to_staff_quietly(
+    client, db_session, admin_user, doctor_user, llm, sends
+):
+    email, task, token = await _link_sent(db_session, admin_user, llm, sends)
+    db_session.add(
+        Patient(mrn="MRN-OTHER01", name="Sam Other", phone="0412 345 678", is_provisional=False)
+    )
+    await db_session.commit()
+
+    response = await client.post(f"{URL}/{token}", json=_form(_weekday_ahead()))
+
+    assert response.status_code == 201
+    case = await db_session.get(IntakeCase, email.case_id)
+    await db_session.refresh(case)
+    assert case.patient_id is None
+    conversation = await _conversation(db_session, email.case_id)
+    assert conversation.stage == ConversationStage.STAFF
+    await db_session.refresh(task)
+    assert task.handover_context.startswith(email_conversation_service.STAFF_REASONS["ambiguous"])
+    assert "Jane Citizen" in task.handover_context
+    assert len(sends) == 1  # the link only; no follow-up
+
+
+async def test_a_link_used_after_an_email_reply_fills_that_record_not_a_new_one(
+    client, db_session, admin_user, doctor_user, llm, sends
+):
+    email, _, token = await _link_sent(db_session, admin_user, llm, sends)
+    # The patient answers by email instead, with details but no day.
+    llm.booking = [
+        {"name": "Jane Citizen", "dob": "1990-02-01", "intent": "unclear", "confidence": 0.9}
+    ]
+    await _mail(
+        db_session,
+        admin_user,
+        "Jane Citizen, born 1/2/1990",
+        message_id="<f2@example.com>",
+        references="<f1@example.com>",
+    )
+    conversation = await _conversation(db_session, email.case_id)
+    first_record = conversation.patient_id
+    assert first_record is not None
+
+    response = await client.post(f"{URL}/{token}", json=_form(_weekday_ahead()))
+
+    assert response.status_code == 201
+    conversation = await _conversation(db_session, email.case_id)
+    assert conversation.patient_id == first_record
+    patient = await db_session.get(Patient, first_record)
+    await db_session.refresh(patient)
+    assert patient.phone == "0412 345 678"
+    same_name = (
+        (await db_session.execute(select(Patient).where(Patient.name == "Jane Citizen")))
+        .scalars()
+        .all()
+    )
+    assert len(same_name) == 1
+
+
+async def test_the_public_endpoints_are_rate_limited(client):
+    statuses = [(await client.get(f"{URL}/guess-{i}")).status_code for i in range(11)]
+
+    assert statuses[:10] == [404] * 10
+    assert statuses[10] == 429

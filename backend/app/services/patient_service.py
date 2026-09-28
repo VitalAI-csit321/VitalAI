@@ -187,6 +187,7 @@ async def create_provisional_patient(
     phone: str | None,
     dob,
     actor: User,
+    commit: bool = True,
 ) -> Patient:
     """A patient known only from an inbound message (spec §9.0), linked to its
     case. PENDING and provisional until a human promotes them."""
@@ -212,8 +213,11 @@ async def create_provisional_patient(
         action="patient.provisional_created",
         details={"patient_id": str(patient.id), "mrn": patient.mrn},
     )
-    await db.commit()
-    await db.refresh(patient)
+    # commit=False lets the registration form create the record inside its own
+    # transaction, with the conversation row still locked.
+    if commit:
+        await db.commit()
+        await db.refresh(patient)
     return patient
 
 

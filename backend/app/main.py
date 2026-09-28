@@ -33,6 +33,7 @@ from app.routes import (
     intake,
     llm,
     patients,
+    public_registration,
     rag,
     routing,
     tasks,
@@ -215,6 +216,7 @@ app.include_router(appointments.router, prefix=API_PREFIX)
 app.include_router(clinical_documents.router, prefix=API_PREFIX)
 app.include_router(doctors.router, prefix=API_PREFIX)
 app.include_router(approvals.router, prefix=API_PREFIX)
+app.include_router(public_registration.router, prefix=API_PREFIX)
 app.include_router(human_review.router, prefix=API_PREFIX)
 app.include_router(settings_routes.router, prefix=API_PREFIX)
 app.include_router(health.detailed_router, prefix=API_PREFIX)

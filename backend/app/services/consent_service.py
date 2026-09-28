@@ -27,12 +27,14 @@ async def create_consent_record(
     actor: User,
     consent_type: str = "administrative",
     notes: str | None = None,
+    form_snapshot: dict | None = None,
 ) -> ConsentRecord:
     record = ConsentRecord(
         case_id=case_id,
         status=ConsentStatus.PENDING,
         consent_type=consent_type,
         notes=notes,
+        form_snapshot=form_snapshot,
     )
     db.add(record)
     await db.flush()
