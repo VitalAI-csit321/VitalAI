@@ -11,6 +11,7 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
+import httpx
 import pytest
 from sqlalchemy import select
 
@@ -19,6 +20,7 @@ from app.agents import nodes
 from app.agents.graph import route_identity
 from app.config import settings
 from app.limiter import limiter
+from app.models.appointment import Appointment
 from app.models.audit import AuditEvent
 from app.models.case import IntakeCase
 from app.models.consent import ConsentRecord, ConsentStatus
@@ -469,3 +471,135 @@ async def test_the_public_endpoints_are_rate_limited(client):
 
     assert statuses[:10] == [404] * 10
     assert statuses[10] == 429
+
+
+# --- the follow-up and the booking --------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def followups(monkeypatch, detached_sessionmaker):
+    """send_followup opens its own session, as it does in production. Autouse:
+    every successful submit in this file, Task 3's tests included, schedules it."""
+    monkeypatch.setattr(patient_form_service, "AsyncSessionLocal", detached_sessionmaker)
+
+
+async def _submitted(client, db, admin, llm, sends, day, **form):
+    email, task, token = await _link_sent(db, admin, llm, sends)
+    response = await client.post(f"{URL}/{token}", json=_form(day, **form))
+    assert response.status_code == 201
+    await db.refresh(task)
+    return email, task
+
+
+async def test_the_follow_up_gives_the_mrn_and_the_free_times(
+    client, db_session, admin_user, doctor_user, llm, sends, followups
+):
+    day = _weekday_ahead()
+    email, task = await _submitted(client, db_session, admin_user, llm, sends, day)
+
+    assert len(sends) == 2
+    message_id, text = sends[1]
+    assert message_id == email.external_id  # a reply in the original thread
+    conversation = await _conversation(db_session, email.case_id)
+    patient = await db_session.get(Patient, conversation.patient_id)
+    assert f"Your reference number (MRN) is {patient.mrn}" in text
+    assert "These times are available on" in text
+    assert "Nothing has been booked yet" in text
+    assert "By confirming a time you agree" in text
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+    assert conversation.offered_slots
+    assert conversation.last_outbound_text == text
+    assert task.handover_context == patient_form_service.OFFERED_REASON
+
+
+async def test_a_weekend_day_is_offered_the_nearest_weekdays(
+    client, db_session, admin_user, doctor_user, llm, sends, followups
+):
+    saturday = _weekday_ahead()
+    while saturday.weekday() != 5:
+        saturday += timedelta(days=1)
+
+    email, _ = await _submitted(client, db_session, admin_user, llm, sends, saturday)
+
+    assert "We have nothing free on" in sends[1][1]
+    conversation = await _conversation(db_session, email.case_id)
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+
+
+async def test_a_sign_up_without_a_day_gets_the_mrn_and_is_asked_for_one(
+    client, db_session, admin_user, doctor_user, llm, sends, followups
+):
+    email, task, token = await _link_sent(
+        db_session, admin_user, llm, sends, category="new_patient_onboarding"
+    )
+    assert (await client.get(f"{URL}/{token}")).json()["needs_preferred_day"] is False
+
+    response = await client.post(f"{URL}/{token}", json=_form(None))
+
+    assert response.status_code == 201
+    text = sends[1][1]
+    assert "MRN" in text
+    assert "reply to this email with the day you would prefer" in text
+    conversation = await _conversation(db_session, email.case_id)
+    assert conversation.stage == ConversationStage.AWAITING_DETAILS
+    assert conversation.offered_slots == []
+
+
+async def test_no_free_time_tells_the_patient_and_hands_to_staff(
+    client, db_session, admin_user, llm, sends, followups
+):
+    # No doctor exists, so nothing is free anywhere.
+    email, task = await _submitted(client, db_session, admin_user, llm, sends, _weekday_ahead())
+
+    assert "A member of our team will be in touch" in sends[1][1]
+    conversation = await _conversation(db_session, email.case_id)
+    assert conversation.stage == ConversationStage.STAFF
+    assert task.handover_context == email_conversation_service.STAFF_REASONS["no_slots"]
+
+
+async def test_a_failed_follow_up_keeps_the_registration_and_tells_staff(
+    client, db_session, admin_user, doctor_user, llm, sends, followups, monkeypatch
+):
+    email, task, token = await _link_sent(db_session, admin_user, llm, sends)
+
+    async def refused(token, message_id, body):
+        raise httpx.HTTPError("mailbox unavailable")
+
+    monkeypatch.setattr("app.services.outlook_client.send_reply", refused)
+    response = await client.post(f"{URL}/{token}", json=_form(_weekday_ahead()))
+
+    assert response.status_code == 201
+    conversation = await _conversation(db_session, email.case_id)
+    assert conversation.patient_id is not None
+    assert conversation.offered_slots == []
+    await db_session.refresh(task)
+    assert task.handover_context == patient_form_service.FOLLOWUP_FAILED_REASON
+
+
+@pytest.mark.parametrize("references", ["<f1@example.com>", None])
+async def test_replying_with_an_offered_time_books_it(
+    client, db_session, admin_user, doctor_user, llm, sends, followups, references
+):
+    # references=None: webmail that drops threading headers; the address
+    # fallback must still find the conversation.
+    email, _ = await _submitted(client, db_session, admin_user, llm, sends, _weekday_ahead())
+    conversation = await _conversation(db_session, email.case_id)
+    pick = conversation.offered_slots[0]
+    llm.booking = [{"intent": "confirm", "confidence": 0.95}]
+
+    await _mail(
+        db_session,
+        admin_user,
+        "The first one please",
+        message_id="<f3@example.com>",
+        references=references,
+    )
+
+    appointment = (
+        await db_session.execute(select(Appointment).where(Appointment.case_id == email.case_id))
+    ).scalar_one()
+    assert str(appointment.doctor_id) == pick["doctor_id"]
+    assert appointment.appointment_type == "new_patient"
+    conversation = await _conversation(db_session, email.case_id)
+    assert conversation.stage == ConversationStage.BOOKED
+    assert "Your appointment is booked for" in sends[-1][1]

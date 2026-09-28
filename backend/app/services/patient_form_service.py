@@ -15,6 +15,7 @@ the address it was sent to, and read nothing.
 from __future__ import annotations
 
 import hashlib
+import logging
 import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
@@ -24,6 +25,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.database import AsyncSessionLocal
+from app.llm.output_guardrail import OutputBlockedError, check_output
 from app.models.case import IntakeCase
 from app.models.email import Email
 from app.models.email_conversation import ConversationStage, EmailConversation
@@ -32,13 +35,19 @@ from app.models.task import Task, TaskCategory, TaskSource
 from app.models.user import User
 from app.schemas.registration import RegistrationSubmit
 from app.services import (
+    booking_service,
     consent_service,
     email_conversation_service,
+    email_service,
     identity_service,
     patient_service,
 )
 from app.services.audit_service import record_event
+from app.services.draft_critic import critique
 from app.services.identity_service import IdentityFields, IdentityOutcome
+from app.services.system_actor import get_or_create_agent_actor
+
+logger = logging.getLogger(__name__)
 
 FORM_LINK_DAYS = 7
 # A urlsafe token of 32 bytes is 43 characters; anything far longer is not one.
@@ -273,3 +282,98 @@ async def submit(
         },
     )
     return patient
+
+
+OFFERED_REASON = "The patient completed the registration form and was offered times by email."
+FOLLOWUP_FAILED_REASON = (
+    "The patient completed the registration form, but the email with their MRN and "
+    "times could not be sent. Contact them by hand."
+)
+
+
+async def send_followup(conversation_id: UUID, part_of_day: str | None) -> None:
+    """After a submitted form: the MRN and the free times, as a reply in the
+    original thread so the patient's answer links back to the case.
+
+    Runs after the response, in a session of its own. Anything that goes
+    wrong leaves the registration in place and says so on the Task.
+    """
+    async with AsyncSessionLocal() as db:
+        try:
+            await _followup(db, conversation_id, part_of_day)
+        except Exception as exc:
+            # The type only: this was raised while writing to a patient.
+            logger.error(
+                "Registration follow-up for conversation %s failed (%s)",
+                conversation_id,
+                type(exc).__name__,
+            )
+            await db.rollback()
+            conversation = await db.get(EmailConversation, conversation_id)
+            task = await task_for(db, conversation.case_id) if conversation else None
+            if task is not None:
+                task.handover_context = FOLLOWUP_FAILED_REASON
+                await db.commit()
+
+
+async def _followup(db: AsyncSession, conversation_id: UUID, part_of_day: str | None) -> None:
+    actor = await get_or_create_agent_actor(db)
+    conversation = await db.get(EmailConversation, conversation_id)
+    patient = await db.get(Patient, conversation.patient_id)
+    origin = await db.get(Email, conversation.origin_email_id)
+    task = await task_for(db, conversation.case_id)
+
+    days: list = []
+    if conversation.preferred_day is not None:
+        pool = await booking_service.doctor_pool(db, patient.id)
+        days = await booking_service.offer_times(
+            db, actor, pool, conversation.preferred_day, part_of_day=part_of_day
+        )
+    # The MRN only to the address on the record, the rule the email flow uses.
+    own = (patient.email or "").strip().casefold() == origin.sender.strip().casefold()
+    text = email_conversation_service.registered_text(
+        name=patient.name,
+        mrn=patient.mrn if own else None,
+        requested=conversation.preferred_day,
+        days=days,
+    )
+    blocked = critique(text, branch=email_conversation_service.BRANCH) is not None
+    if not blocked:
+        try:
+            await check_output(db, text, actor=actor, case_id=conversation.case_id)
+        except OutputBlockedError:
+            blocked = True
+    if blocked:
+        if task is not None:
+            task.handover_context = FOLLOWUP_FAILED_REASON
+            await db.commit()
+        return
+
+    # task_id=None: the Task's draft_sent is already true from the link email,
+    # and deliver_reply would take that to mean this one went out too.
+    # form_submitted_at is what stops a second follow-up.
+    await email_service.deliver_reply(
+        db,
+        email_id=origin.id,
+        task_id=None,
+        draft=text,
+        actor=actor,
+        case_id=conversation.case_id,
+        automated=True,
+    )
+    if days:
+        stage, note = ConversationStage.AWAITING_CHOICE, OFFERED_REASON
+    elif conversation.preferred_day is None:
+        stage, note = ConversationStage.AWAITING_DETAILS, SUBMITTED_REASON
+    else:
+        stage, note = ConversationStage.STAFF, email_conversation_service.STAFF_REASONS["no_slots"]
+    if task is not None:
+        task.handover_context = note
+    await email_conversation_service.record_sent(
+        db,
+        conversation.id,
+        text=text,
+        next_stage=stage.value,
+        offer=email_conversation_service.offer_payload(days),
+        verification=False,
+    )

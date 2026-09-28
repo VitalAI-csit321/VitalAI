@@ -455,6 +455,43 @@ def ask_details_text(*, name: str | None, missing: list[str], mrn: str | None, d
     return "\n".join(lines) + _SIGN_OFF
 
 
+_CONSENT_LINE = (
+    "By confirming a time you agree to the clinic keeping the details you have sent us "
+    "to arrange your appointment."
+)
+
+
+def offer_payload(days: list[tuple[date, list[booking_service.Slot]]]) -> list[dict]:
+    """The offered times as record_sent stores them. UTC instants, so the
+    stored value survives any backend that drops the offset (SQLite does)."""
+    return [
+        {
+            "doctor_id": str(doctor_id),
+            "doctor_name": doctor,
+            "start": start.astimezone(UTC).isoformat(),
+        }
+        for _, slots in days
+        for start, doctor_id, doctor in slots
+    ]
+
+
+def _offer_lines(requested: date, days: list[tuple[date, list[booking_service.Slot]]]):
+    wanted = f"{requested:%A} {requested.day} {requested:%B}"
+    intro = (
+        f"These times are available on {wanted}:"
+        if days[0][0] == requested
+        else f"We have nothing free on {wanted}. The nearest available times are:"
+    )
+    return [
+        intro,
+        *(
+            f"- {booking_service.format_slot(start)} with {booking_service.titled(doctor)}"
+            for _, slots in days
+            for start, _, doctor in slots
+        ),
+    ]
+
+
 def offer_text(
     *,
     name: str | None,
@@ -462,22 +499,10 @@ def offer_text(
     days: list[tuple[date, list[booking_service.Slot]]],
     missing: list[str],
 ) -> str:
-    wanted = f"{requested:%A} {requested.day} {requested:%B}"
-    intro = (
-        f"These times are available on {wanted}:"
-        if days[0][0] == requested
-        else f"We have nothing free on {wanted}. The nearest available times are:"
-    )
-    times = [
-        f"- {booking_service.format_slot(start)} with {booking_service.titled(doctor)}"
-        for _, slots in days
-        for start, _, doctor in slots
-    ]
     lines = [
         _hi(name),
         "",
-        intro,
-        *times,
+        *_offer_lines(requested, days),
         "",
         "Please reply with the time that suits you. Nothing has been booked yet.",
     ]
@@ -488,11 +513,43 @@ def offer_text(
             + ", ".join(FIELD_LABELS[f] for f in missing)
             + ".",
         ]
-    lines += [
-        "",
-        "By confirming a time you agree to the clinic keeping the details you have sent us "
-        "to arrange your appointment.",
-    ]
+    lines += ["", _CONSENT_LINE]
+    return "\n".join(lines) + _SIGN_OFF
+
+
+def registered_text(
+    *,
+    name: str | None,
+    mrn: str | None,
+    requested: date | None,
+    days: list[tuple[date, list[booking_service.Slot]]],
+) -> str:
+    """After the registration form: the MRN, then times, a request for a
+    day, or word that staff will find a time."""
+    lines = [_hi(name), "", "Thank you for completing the registration form."]
+    if mrn:
+        lines += ["", f"Your reference number (MRN) is {mrn}. Please quote it when you contact us."]
+    if requested is None:
+        lines += [
+            "",
+            "When you would like an appointment, reply to this email with the day you would "
+            "prefer to come in.",
+        ]
+    elif days:
+        lines += [
+            "",
+            *_offer_lines(requested, days),
+            "",
+            "Please reply with the time that suits you. Nothing has been booked yet.",
+            "",
+            _CONSENT_LINE,
+        ]
+    else:
+        lines += [
+            "",
+            f"We have no free times near {requested:%A} {requested.day} {requested:%B}. "
+            "A member of our team will be in touch to find a time with you.",
+        ]
     return "\n".join(lines) + _SIGN_OFF
 
 
@@ -810,17 +867,7 @@ async def _decide(
             "offer",
             text=offer_text(name=name, requested=day, days=days, missing=missing),
             next_stage=ConversationStage.AWAITING_CHOICE.value,
-            offer=[
-                {
-                    "doctor_id": str(doctor_id),
-                    "doctor_name": doctor,
-                    # UTC, as the model says, so the stored instant survives any
-                    # backend that drops the offset (SQLite does).
-                    "start": start.astimezone(UTC).isoformat(),
-                }
-                for _, slots in days
-                for start, doctor_id, doctor in slots
-            ],
+            offer=offer_payload(days),
         )
 
     # Turn 1, or a reply that only filled in details: ask for what is left.

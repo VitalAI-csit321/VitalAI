@@ -66,10 +66,14 @@ async def submit_registration(
     if conversation is None:
         raise _not_valid()
     try:
-        await patient_form_service.submit(db, conversation, payload, actor)
+        patient = await patient_form_service.submit(db, conversation, payload, actor)
     except patient_form_service.RegistrationRejectedError as exc:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
         ) from exc
+    if patient is not None:
+        background.add_task(
+            patient_form_service.send_followup, conversation.id, payload.part_of_day
+        )
     return {"status": "received"}
