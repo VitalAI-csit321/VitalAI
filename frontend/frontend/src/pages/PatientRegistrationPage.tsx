@@ -50,13 +50,14 @@ export function PatientRegistrationPage() {
   const [state, setState] = useState<"loading" | "invalid" | "form" | "done">("loading");
   const [form, setForm] = useState<RegistrationForm>(EMPTY);
   const [signed, setSigned] = useState(false);
+  const [clinicChecks, setClinicChecks] = useState<boolean[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     getRegistrationLink(token)
-      .then((l) => { setLink(l); setState("form"); })
+      .then((l) => { setLink(l); setClinicChecks(l.clinicChecks.map(() => false)); setState("form"); })
       .catch(() => setState("invalid"));
   }, [token]);
 
@@ -66,7 +67,6 @@ export function PatientRegistrationPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!signed) { setError("Please sign in the box before sending the form."); return; }
     setError(null);
     setBusy(true);
     try {
@@ -74,7 +74,9 @@ export function PatientRegistrationPage() {
         ...form,
         agree_data: true,
         agree_contact: true,
-        signature: canvasRef.current?.toDataURL("image/png") ?? "",
+        clinic_checks: clinicChecks,
+        // Optional: an unsigned consent is signed at the clinic.
+        signature: signed ? canvasRef.current?.toDataURL("image/png") ?? null : null,
       });
       setState("done");
     } catch (err) {
@@ -104,8 +106,7 @@ export function PatientRegistrationPage() {
 
         {state === "done" && (
           <div className="mt-6 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            Thank you. Your details have been sent. We will email you your reference number
-            {link?.needsPreferredDay ? " and the times available" : ""} shortly.
+            Thank you. Your details have been sent. We will be in touch soon.
           </div>
         )}
 
@@ -133,7 +134,7 @@ export function PatientRegistrationPage() {
                 <input className={`${input} bg-slate-100 text-slate-500`} value={link.email} disabled />
               </Field>
               <Field label="Phone">
-                <input className={input} type="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} autoComplete="tel" pattern="[0-9 +()\-]{6,32}" required />
+                <input className={input} type="tel" value={form.phone} onChange={(e) => update("phone", e.target.value)} autoComplete="tel" pattern="[0-9 +\(\)\-]{6,32}" required />
               </Field>
               <Field label="Address" optional>
                 <input className={input} value={form.address} onChange={(e) => update("address", e.target.value)} autoComplete="street-address" maxLength={255} />
@@ -168,17 +169,35 @@ export function PatientRegistrationPage() {
               </Field>
             </Section>
 
-            <Section title="Consent">
+            <Section title="Consent to register">
               {link.statements.map((statement) => (
                 <label key={statement} className="flex items-start gap-3 text-sm text-slate-700">
                   <input type="checkbox" required className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 text-brand" />
                   {statement}
                 </label>
               ))}
+            </Section>
+
+            <Section title="Clinic consent (optional)">
+              <p className="text-sm text-slate-500">You can complete this now, or leave any part of it and complete it at the clinic.</p>
+              {link.clauses.map((clause, i) => (
+                <p key={i} className="text-sm text-slate-700">{i + 1}. {clause}</p>
+              ))}
+              {link.clinicChecks.map((statement, i) => (
+                <label key={statement} className="flex items-start gap-3 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={clinicChecks[i] ?? false}
+                    onChange={(e) => setClinicChecks((cs) => cs.map((c, j) => (j === i ? e.target.checked : c)))}
+                    className="mt-0.5 h-5 w-5 shrink-0 rounded border-slate-300 text-brand"
+                  />
+                  {statement}
+                </label>
+              ))}
               <div>
                 <span className="mb-1.5 block text-sm font-medium text-slate-700">Signature</span>
                 <SignaturePad onChange={setSigned} canvasRef={canvasRef} />
-                <p className="mt-1.5 text-xs text-slate-500">Sign with your finger or mouse.</p>
+                <p className="mt-1.5 text-xs text-slate-500">Sign with your finger or mouse, or sign at the clinic.</p>
               </div>
             </Section>
 

@@ -141,7 +141,7 @@ export function ConsentQueuePage() {
                         navigate(
                           r.status === "pending" && r.consentType !== "online_registration"
                             ? `/consent/capture?case=${r.caseId}`
-                            : `/consent/${r.caseId}/view`,
+                            : `/consent/${r.caseId}/view?consent=${r.id}`,
                         )
                       }
                       className="font-medium text-brand hover:underline"

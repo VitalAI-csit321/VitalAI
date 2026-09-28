@@ -7,5 +7,12 @@ export function SignaturePad({onChange,canvasRef}:{onChange:(v:boolean)=>void;ca
   function start(e:React.PointerEvent){drawing.current=true;const ctx=canvasRef.current!.getContext("2d")!;const{x,y}=pos(e);ctx.beginPath();ctx.moveTo(x,y);}
   function move(e:React.PointerEvent){if(!drawing.current)return;const ctx=canvasRef.current!.getContext("2d")!;const{x,y}=pos(e);ctx.lineTo(x,y);ctx.stroke();if(!inked.current){inked.current=true;onChange(true);}}
   function end(){drawing.current=false;}
-  return <canvas ref={canvasRef} onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerLeave={end} className="h-40 w-full cursor-crosshair rounded-lg border border-slate-200 bg-slate-50 touch-none"/>;
+  function clear(){const c=canvasRef.current;if(!c)return;c.getContext("2d")?.clearRect(0,0,c.width,c.height);if(inked.current){inked.current=false;onChange(false);}}
+  // type="button": the pad sits inside forms, and a plain button would submit them.
+  return (
+    <div className="relative">
+      <canvas ref={canvasRef} onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerLeave={end} className="h-40 w-full cursor-crosshair rounded-lg border border-slate-200 bg-slate-50 touch-none"/>
+      <button type="button" onClick={clear} className="absolute right-2 top-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 hover:text-slate-900">Clear</button>
+    </div>
+  );
 }

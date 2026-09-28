@@ -63,7 +63,7 @@ export type ConsentQueueStatus = "pending" | "review" | "complete";
 
 export interface ConsentFormSnapshot {
   checks: { label: string; checked: boolean }[];
-  signature: string;
+  signature: string | null;
 }
 
 export interface Consent {

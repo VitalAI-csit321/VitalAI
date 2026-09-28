@@ -5,7 +5,11 @@ import { apiGet, apiPost } from "../lib/apiClient";
 export interface RegistrationLink {
   email: string;
   needsPreferredDay: boolean;
+  // Required to register.
   statements: string[];
+  // The clinic's own consent: optional here, finished at the clinic.
+  clauses: string[];
+  clinicChecks: string[];
 }
 
 export interface RegistrationForm {
@@ -25,15 +29,30 @@ export interface RegistrationForm {
 const path = (token: string) => `/api/v1/public/registration/${encodeURIComponent(token)}`;
 
 export async function getRegistrationLink(token: string): Promise<RegistrationLink> {
-  const raw = await apiGet<{ email: string; needs_preferred_day: boolean; statements: string[] }>(
-    path(token),
-  );
-  return { email: raw.email, needsPreferredDay: raw.needs_preferred_day, statements: raw.statements };
+  const raw = await apiGet<{
+    email: string;
+    needs_preferred_day: boolean;
+    statements: string[];
+    clauses: string[];
+    clinic_checks: string[];
+  }>(path(token));
+  return {
+    email: raw.email,
+    needsPreferredDay: raw.needs_preferred_day,
+    statements: raw.statements,
+    clauses: raw.clauses,
+    clinicChecks: raw.clinic_checks,
+  };
 }
 
 export async function submitRegistration(
   token: string,
-  form: RegistrationForm & { agree_data: true; agree_contact: true; signature: string },
+  form: RegistrationForm & {
+    agree_data: true;
+    agree_contact: true;
+    clinic_checks: boolean[];
+    signature: string | null;
+  },
 ): Promise<void> {
   await apiPost(path(token), form);
 }

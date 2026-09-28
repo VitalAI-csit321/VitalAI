@@ -27,9 +27,12 @@ function toConsent(raw: RawConsent): Consent {
   };
 }
 
-export async function getConsentForCase(caseId: string): Promise<Consent | null> {
+// consentId names one record; without it, the case's latest.
+export async function getConsentForCase(caseId: string, consentId?: string): Promise<Consent | null> {
   try {
-    return toConsent(await apiGet<RawConsent>(`/api/v1/consent/by-case/${caseId}`));
+    return toConsent(
+      await apiGet<RawConsent>(`/api/v1/consent/by-case/${caseId}`, { consent_id: consentId }),
+    );
   } catch {
     return null;
   }
@@ -65,8 +68,13 @@ export async function resolveConsentReview(
   );
 }
 
-export async function verifyConsent(consentId: string): Promise<Consent> {
-  return toConsent(await apiPost<RawConsent>(`/api/v1/consent/${consentId}/verify`));
+// checks answers the statements already on the record, in order; signature
+// only when the patient did not sign online.
+export async function verifyConsent(
+  consentId: string,
+  finish?: { checks: boolean[]; signature?: string },
+): Promise<Consent> {
+  return toConsent(await apiPost<RawConsent>(`/api/v1/consent/${consentId}/verify`, finish));
 }
 
 export const CONSENT_TYPES: { value: string; label: string }[] = [
