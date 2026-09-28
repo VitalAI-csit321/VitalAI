@@ -20,7 +20,7 @@ from app.llm.output_guardrail import OutputBlockedError, check_output
 from app.models.call import Call
 from app.models.case import IntakeCase
 from app.models.email import Email
-from app.models.email_conversation import ConversationStage
+from app.models.email_conversation import OPEN_STAGES, ConversationStage
 from app.models.patient import Patient
 from app.models.task import Task, TaskCategory
 from app.models.user import User
@@ -204,6 +204,7 @@ async def onboarding(state: CaseState, runtime: Runtime[Context]) -> dict:
         "branch": onboarding_service.BRANCH,
         "requested_fields": requested,
         "patient_id": str(patient.id),
+        "patient_name": patient.name,
         "patient_status": patient.status.value,
         "is_provisional": True,
     }
@@ -319,6 +320,21 @@ async def conversation(state: CaseState, runtime: Runtime[Context]) -> dict:
             stage=ConversationStage.AWAITING_DETAILS,
         )
         conversation_id = str(row.id)
+        if not created and row.stage not in OPEN_STAGES:
+            # Booked, or already with staff: the agent's part is over. Without
+            # this a matched patient's reply re-entered the automated turn and
+            # got fresh offers over the head of the staff member handling it.
+            await record_event(
+                db,
+                actor=actor,
+                case_id=_case_id(state),
+                action="agent.booking_decision",
+                details={"decision": "staff", "reason": "closed", "stage": row.stage},
+            )
+            await task_service.hold_for_staff(
+                db, state["task_id"], email_conversation_service.STAFF_REASONS["closed"]
+            )
+            return {"conversation_id": conversation_id, "dispatch_result": "conversation_hold"}
         turn = await email_conversation_service.handle_turn(
             db,
             email_service.get_llm(),
@@ -477,6 +493,7 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
                 db,
                 email_service.get_llm(),
                 email=email,
+                name=state["patient_name"],
                 requested=state.get("requested_fields", []),
                 actor=actor,
                 feedback=feedback,

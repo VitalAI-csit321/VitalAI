@@ -33,6 +33,8 @@ ASK ONLY FOR: {requested}
 Do not ask for, or invite them to send, any health, medical, Medicare, insurance or \
 payment details by email. Say that the rest of the registration is completed by phone \
 or in the clinic. Do not offer, suggest or confirm any appointment time.
+Address them as {name}. Refer to the clinic as "the clinic". Sign off as "The clinic team". \
+Never write a bracketed placeholder such as [Name].
 
 ORIGINAL EMAIL SUBJECT: {subject}
 ORIGINAL EMAIL BODY: {body}
@@ -85,18 +87,30 @@ async def draft_onboarding_reply(
     llm: BaseLanguageModel,
     *,
     email: Email,
+    name: str,
     requested: list[str],
     actor: User,
     feedback: str | None = None,
 ) -> str:
     from app.rag.answer import revision_block
 
+    if not requested:
+        # Nothing to ask for means nothing for a model to write: asked only to
+        # "confirm the clinic has their details", it echoed them back as
+        # "[Phone number]" placeholders and the critic rejected every draft.
+        return (
+            f"Hello {name},\n\n"
+            "Thank you for your email. We have started your registration with the "
+            "details you sent. The rest of your registration is completed by phone "
+            "or in the clinic, and we will be in touch.\n\n"
+            "Kind regards,\nThe clinic team"
+        )
     result = await guarded_invoke(
         db,
         llm,
         _PROMPT.format(
-            requested=", ".join(ASKABLE[f] for f in requested)
-            or "nothing further; confirm the clinic has their details",
+            name=name,
+            requested=", ".join(ASKABLE[f] for f in requested),
             subject=email.subject,
             body=email.body,
             revision=revision_block(feedback),

@@ -216,6 +216,32 @@ async def test_a_day_first_date_of_birth_is_read_as_written(
     assert fields.dob == expected
 
 
+@pytest.mark.parametrize(
+    ("content", "model_says", "expected"),
+    [
+        # gemma2:2b converted "12/04/1987" to ISO month-first in the black-box
+        # run, and a valid ISO date skipped the day-first fallback, so the
+        # wrong DOB went onto the provisional record.
+        ("born 12/04/1987, phone 0411", "1987-12-04", date(1987, 4, 12)),
+        ("born 12/04/1987, phone 0411", "1987-04-12", date(1987, 4, 12)),
+        # Ambiguity only; a date the email does not contain is left alone.
+        ("born 5 Oct 1985", "1985-10-05", date(1985, 10, 5)),
+        # Same both ways round: nothing to correct.
+        ("born 07/07/1990", "1990-07-07", date(1990, 7, 7)),
+    ],
+)
+async def test_a_model_that_reads_the_written_dob_month_first_is_corrected(
+    db_session, admin_user, content, model_says, expected
+):
+    llm = FakeLLM(identity={"name": "Jane Smith", "dob": model_says})
+
+    fields = await identity_service.extract_identity_fields(
+        db_session, llm, content, actor=admin_user
+    )
+
+    assert fields.dob == expected
+
+
 @pytest.mark.parametrize("raw", ["not json at all", '["a list"]', '{"name": 5}', ""])
 async def test_unparseable_extraction_is_no_fields_never_an_error(db_session, admin_user, raw):
     fields = await identity_service.extract_identity_fields(

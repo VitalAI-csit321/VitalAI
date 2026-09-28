@@ -11,9 +11,11 @@ is not a thing a model may decide.
 
 import re
 from datetime import UTC, date, datetime, timedelta
+from functools import cache
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+import holidays
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,6 +63,17 @@ async def doctor_for_patient(db: AsyncSession, patient_id: UUID) -> tuple[UUID, 
     return (row[0], row[1]) if row else None
 
 
+@cache
+def _holidays(region: str, year: int) -> holidays.HolidayBase:
+    return holidays.country_holidays("AU", subdiv=region, years=year)
+
+
+def is_clinic_day(day: date) -> bool:
+    """A weekday that is not a public holiday in the clinic's state. The
+    clinic is closed on those, and email booking offered Labour Day slots."""
+    return day.weekday() < 5 and day not in _holidays(settings.clinic_holiday_region, day.year)
+
+
 async def find_slots(
     db: AsyncSession,
     actor: User,
@@ -85,7 +98,7 @@ async def find_slots(
         if len(found) >= count:
             break
         day = from_date + timedelta(days=offset)
-        if day.weekday() >= 5:
+        if not is_clinic_day(day):
             continue
         availability = await appointment_service.get_availability(
             db, actor, doctor_id, day, settings.default_appointment_duration_minutes
@@ -189,7 +202,7 @@ async def free_on_day(
     """Every free start time that day across the doctors, earliest first, one
     doctor per time (the first in `doctors` order wins, so an assigned doctor
     is preferred). Weekends and times already past are never free."""
-    if day.weekday() >= 5:
+    if not is_clinic_day(day):
         return []
     tz = ZoneInfo(settings.clinic_timezone)
     now = datetime.now(UTC)

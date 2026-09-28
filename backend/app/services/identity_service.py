@@ -124,6 +124,22 @@ def _past_date(value: object) -> date | None:
     return parsed if parsed < date.today() else None
 
 
+_WRITTEN_DATE = re.compile(r"\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b")
+
+
+def _as_written(dob: date | None, content: str) -> date | None:
+    """The model converts a written 12/04/1987 to ISO itself and sometimes
+    reads it month first, which is a valid date and so skips _past_date's
+    day-first fallback. When the email holds a numeric date whose month-first
+    reading is the model's answer, take the day-first reading instead."""
+    if dob is None:
+        return None
+    for first, second, year in _WRITTEN_DATE.findall(content):
+        if (int(year), int(first), int(second)) == (dob.year, dob.month, dob.day):
+            return _past_date(f"{first}/{second}/{year}")
+    return dob
+
+
 async def extract_identity_fields(
     db: AsyncSession,
     llm: BaseLanguageModel,
@@ -157,7 +173,7 @@ async def extract_identity_fields(
         return IdentityFields()
     return IdentityFields(
         name=_text(parsed.get("name")),
-        dob=_past_date(parsed.get("dob")),
+        dob=_as_written(_past_date(parsed.get("dob")), content),
         phone=_text(parsed.get("phone")),
     )
 

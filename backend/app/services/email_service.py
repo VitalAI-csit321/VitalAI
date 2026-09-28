@@ -135,8 +135,9 @@ async def ingest_email(
     # classify_content itself is unchanged, because the call pipeline shares it
     # and a call has no subject.
     message_text = f"Subject: {payload.subject}\n\n{payload.body}"
+    review_reasons: list[str] = []
     category, confidence = await classify_content(
-        db, llm, message_text, actor=actor, channel="email"
+        db, llm, message_text, actor=actor, channel="email", reasons=review_reasons
     )
     target_role = resolve_target_role(category)
     gate = evaluate_task_routing_gate(category, confidence, message_text)
@@ -149,6 +150,11 @@ async def ingest_email(
         target_role=target_role,
         priority=priority,
         status=TaskItemStatus.PENDING,
+        # Why a low-confidence review is one; the safety overrides already say
+        # so in override_reason.
+        handover_context=review_reasons[0]
+        if review_reasons and gate.outcome == TaskRoutingOutcome.HUMAN_REVIEW
+        else None,
     )
     db.add(task)
     await db.flush()
@@ -166,6 +172,7 @@ async def ingest_email(
             "target_role": target_role.value,
             "outcome": gate.outcome.value,
             "override_reason": gate.override_reason,
+            "review_reason": review_reasons[0] if review_reasons else None,
         },
     )
     await db.commit()

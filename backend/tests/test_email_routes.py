@@ -1,6 +1,7 @@
 import json
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from httpx import AsyncClient
 
 
@@ -87,3 +88,64 @@ async def test_ingest_email_requires_auth(client: AsyncClient):
         },
     )
     assert response.status_code == 401
+
+
+async def test_ingesting_the_same_external_message_twice_is_a_conflict_not_a_500(
+    client: AsyncClient, front_desk_headers: dict, monkeypatch, db_session
+):
+    if db_session.bind.dialect.name == "sqlite":
+        # The unique index is migration 0024's, not the model's, and the SQLite
+        # track builds its schema from the models. Postgres, which CI runs, is
+        # the real check.
+        pytest.skip("the dedupe index only exists after alembic")
+    _mock_classifier(monkeypatch, "general_administrative", 0.95)
+    payload = {
+        "sender": "patient@example.com",
+        "recipient": "clinic@example.com",
+        "subject": "Hours",
+        "body": "When are you open?",
+        "external_id": "AAMk-duplicate",
+        "external_source": "outlook",
+    }
+
+    with patch(
+        "app.services.email_service._generate_org_grounded_reply",
+        new=AsyncMock(return_value=("We open at 8:30.", True)),
+    ):
+        first = await client.post("/api/v1/email/ingest", json=payload, headers=front_desk_headers)
+        second = await client.post("/api/v1/email/ingest", json=payload, headers=front_desk_headers)
+
+    assert first.status_code == 201
+    assert second.status_code == 409
+
+
+async def test_an_intent_check_review_puts_its_reason_on_the_task(
+    client: AsyncClient, front_desk_headers: dict, monkeypatch, db_session
+):
+    from uuid import UUID
+
+    from app.models.task import Task
+
+    _mock_classifier(monkeypatch, "appointment_request", 0.95)
+    monkeypatch.setattr("app.config.settings.intent_check_enabled", True)
+
+    async def disagree(text: str) -> tuple[str, float]:
+        return "general_administrative", 0.3
+
+    monkeypatch.setattr("app.services.content_classifier.regression_view", disagree)
+
+    response = await client.post(
+        "/api/v1/email/ingest",
+        json={
+            "sender": "patient@example.com",
+            "recipient": "clinic@example.com",
+            "subject": "Hi",
+            "body": "The second one please.",
+        },
+        headers=front_desk_headers,
+    )
+
+    assert response.json()["outcome"] == "human_review"
+    task = await db_session.get(Task, UUID(response.json()["task_id"]))
+    await db_session.refresh(task)
+    assert "second opinion: general_administrative" in task.handover_context

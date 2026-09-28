@@ -169,3 +169,67 @@ def test_shipped_weights_give_a_probability_over_all_ten_categories():
 
     assert set(probs) == {c.value for c in TaskCategory}
     assert abs(sum(probs.values()) - 1.0) < 1e-9
+
+
+@pytest.mark.parametrize(
+    ("regression", "margin", "says"),
+    [
+        ("billing_insurance_enquiry", 0.2, "second opinion: billing_insurance_enquiry"),
+        ("prescription_renewal", 0.01, "was unsure"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_a_review_forced_by_the_intent_check_says_why(
+    db_session, front_desk_user, monkeypatch, regression, margin, says
+):
+    # Black-box run: 11 of ~30 emails reached HIGH review with no reason
+    # anywhere a person could see it.
+    monkeypatch.setattr("app.config.settings.intent_check_enabled", True)
+    _second_opinion(monkeypatch, regression, margin)
+    reasons: list[str] = []
+
+    await classify_content(
+        db_session,
+        _FakeLLM(_LLM_SAYS_RX),
+        "repeat please",
+        actor=front_desk_user,
+        channel="email",
+        reasons=reasons,
+    )
+
+    assert len(reasons) == 1 and says in reasons[0]
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_classifier_answer_says_why(db_session, front_desk_user):
+    reasons: list[str] = []
+
+    await classify_content(
+        db_session,
+        _FakeLLM("not json"),
+        "hi",
+        actor=front_desk_user,
+        channel="email",
+        reasons=reasons,
+    )
+
+    assert reasons and "could not be read" in reasons[0]
+
+
+class _DownLLM:
+    async def ainvoke(self, prompt: str) -> str:
+        raise ValueError("Ollama call failed with status code 500")
+
+
+@pytest.mark.asyncio
+async def test_a_model_outage_fails_safe_to_a_human_not_an_error(db_session, front_desk_user):
+    # Black-box run: Ollama returned 500 under load and the ingest itself
+    # answered 500, so the email was never recorded for anyone to see.
+    reasons: list[str] = []
+
+    category, confidence = await classify_content(
+        db_session, _DownLLM(), "hello", actor=front_desk_user, channel="email", reasons=reasons
+    )
+
+    assert (category, confidence) == (TaskCategory.GENERAL_ADMINISTRATIVE, 0.0)
+    assert reasons and "unavailable" in reasons[0]

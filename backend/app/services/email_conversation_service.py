@@ -30,7 +30,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from langchain_core.language_models import BaseLanguageModel
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -99,6 +99,8 @@ STAFF_REASONS = {
     "Offer new times by hand.",
     "not_bookable": "The patient confirmed a time, but their record is still missing details "
     "needed to book. Nothing was booked.",
+    "closed": "The patient wrote again after this email booking conversation was booked or "
+    "handed to staff. Nothing was sent; reply by hand.",
 }
 
 
@@ -240,6 +242,25 @@ class BookingExtraction(BaseModel):
     intent: Literal["confirm", "change", "cancel", "question", "unclear"] = "unclear"
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
 
+    @field_validator(
+        "name",
+        "dob",
+        "phone",
+        "preferred_day",
+        "part_of_day",
+        "chosen_time",
+        "doctor_name",
+        "specialisation",
+        mode="before",
+    )
+    @classmethod
+    def _null_word_is_null(cls, value: object) -> object:
+        # The model writes "chosen_time": "null", and one bad field used to
+        # throw the whole extraction away as unclear.
+        if isinstance(value, str) and value.strip().casefold() in ("", "null", "none"):
+            return None
+        return value
+
 
 _EXTRACT_PROMPT = """BOOKING REPLY EXTRACTION. You read a patient's email to a GP clinic \
 about booking an appointment. Extract ONLY what the patient wrote in their NEW MESSAGE. \
@@ -270,6 +291,64 @@ Respond with ONLY a JSON object, no other text, in this exact shape:
 cancel, question, or unclear>", "confidence": <0.0 to 1.0>}}
 
 JSON:"""
+
+
+_WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+
+
+def named_weekday(day: date | None, text: str, *, today: date) -> date | None:
+    """The model resolves "next Wednesday" badly (today, or even yesterday, in
+    every black-box sample). When the patient named exactly one weekday and
+    the model's day is not that weekday, take the next one after today.
+    ponytail: full day names only; add "wed"/"tues" if real mail uses them."""
+    if day is None:
+        return None
+    named = [i for i, name in enumerate(_WEEKDAYS) if re.search(rf"\b{name}\b", text.casefold())]
+    if len(named) != 1 or day.weekday() == named[0]:
+        return day
+    return today + timedelta(days=(named[0] - today.weekday()) % 7 or 7)
+
+
+_ORDINAL = {
+    "first": 0, "1st": 0, "second": 1, "2nd": 1, "third": 2, "3rd": 2,
+    "fourth": 3, "4th": 3, "fifth": 4, "5th": 4, "sixth": 5, "6th": 5, "last": -1,
+}  # fmt: skip
+_ORDINAL_WORD = re.compile(rf"\b({'|'.join(_ORDINAL)})\b")
+_ORDINAL_PICK = re.compile(rf"\b({'|'.join(_ORDINAL)})\s+(?:one|option|time|slot|appointment)\b")
+_NUMBERED_PICK = re.compile(r"\b(?:option|number|no\.?)\s*#?([1-6])\b")
+_CLOCK = re.compile(r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b")
+
+
+def slot_named_in(text: str, slots: list[dict]) -> dict | None:
+    """The offered slot the patient's own words pick out, or None when they
+    do not pick exactly one. Beats the model's chosen_time: gemma2:2b read
+    "The second one please" as the sixth slot and 10:30am got booked."""
+    text = text.casefold()
+    if _ORDINAL_WORD.findall(text) and len(set(_ORDINAL_WORD.findall(text))) > 1:
+        return None
+    picks = {_ORDINAL[word] for word in _ORDINAL_PICK.findall(text)}
+    picks |= {int(n) - 1 for n in _NUMBERED_PICK.findall(text)}
+    if picks:
+        if len(picks) != 1:
+            return None
+        (index,) = picks
+        return slots[index] if -len(slots) <= index < len(slots) else None
+    tz = ZoneInfo(settings.clinic_timezone)
+    local = [datetime.fromisoformat(s["start"]).astimezone(tz) for s in slots]
+    hits: set[int] = set()
+    for hour_text, minute_text, meridiem in _CLOCK.findall(text):
+        if not minute_text and not meridiem:
+            continue  # a bare number is a date or a count, not a time
+        hour, minute = int(hour_text), int(minute_text or 0)
+        if meridiem:
+            hour = hour % 12 + (12 if meridiem == "pm" else 0)
+        hits |= {
+            i
+            for i, t in enumerate(local)
+            if t.minute == minute
+            and (t.hour == hour or (not meridiem and t.hour % 12 == hour % 12))
+        }
+    return slots[hits.pop()] if len(hits) == 1 else None
 
 
 def _local(instant: datetime) -> datetime:
@@ -622,22 +701,27 @@ async def _decide(
 ) -> Turn:
     if extraction is None:
         return _staff(conversation, "input_blocked")
+    # From the new text only: our own acknowledgement quotes the MRN back.
+    new_text = email.new_text or reply_parsing.strip_quoted(email.body)
     fields = IdentityFields(
         name=identity_service._text(extraction.name) or known.name,
-        dob=identity_service._past_date(extraction.dob) or known.dob,
+        dob=identity_service._as_written(identity_service._past_date(extraction.dob), new_text)
+        or known.dob,
         phone=identity_service._text(extraction.phone) or known.phone,
-        # From the new text only: our own acknowledgement quotes the MRN back.
-        mrn=find_mrn(email.new_text or reply_parsing.strip_quoted(email.body)),
+        mrn=find_mrn(new_text),
     )
     patient = await db.get(Patient, conversation.patient_id) if conversation.patient_id else None
 
     # A reply to the verification request: who is this, now?
     if conversation.stage == ConversationStage.AWAITING_VERIFICATION:
         booking = conversation.original_intent == TaskCategory.APPOINTMENT_REQUEST.value
+        # A sign-up that arrived without a name was asked for these details;
+        # the reply starts the provisional record, as a booking's does.
+        signup = conversation.original_intent == TaskCategory.NEW_PATIENT_ONBOARDING.value
         patient, outcome = await _identify(
-            db, conversation, email=email, fields=fields, actor=actor, onboard=booking
+            db, conversation, email=email, fields=fields, actor=actor, onboard=booking or signup
         )
-        if outcome == IdentityOutcome.MATCHED and not booking:
+        if (outcome == IdentityOutcome.MATCHED or (signup and patient)) and not booking:
             conversation.stage = ConversationStage.VERIFIED.value
             return Turn("resume", patient=patient)
         if patient is None:
@@ -661,7 +745,9 @@ async def _decide(
                 db, patient, actor=actor, name=fields.name, dob=fields.dob, phone=fields.phone
             )
 
-    if extraction.intent in ("cancel", "question"):
+    # On the first turn the classifier already called this a booking request,
+    # and "Could I book next Wednesday?" reads as a question to the model.
+    if extraction.intent == "cancel" or (extraction.intent == "question" and not first_turn):
         return _staff(conversation, extraction.intent)
     # A registered patient is bookable as they are (patient_service.assert_bookable).
     missing = _missing(patient) if patient is None or patient.is_provisional else []
@@ -670,9 +756,15 @@ async def _decide(
     if not trusted and not first_turn:
         return _failure(conversation, "unclear")
 
-    # Turn 3: a time from the list we sent.
-    if trusted and extraction.chosen_time is not None and conversation.offered_slots:
-        choice = _offered(conversation, extraction.chosen_time)
+    # Turn 3: a time from the list we sent. When the patient's words name one
+    # slot and they are accepting, those words win over the model's reading.
+    named = (
+        slot_named_in(new_text, conversation.offered_slots)
+        if conversation.offered_slots and extraction.intent == "confirm"
+        else None
+    )
+    if named or (trusted and extraction.chosen_time is not None and conversation.offered_slots):
+        choice = named or _offered(conversation, extraction.chosen_time)
         if choice is None:
             return _failure(conversation, "unoffered")
         if missing:
@@ -685,18 +777,26 @@ async def _decide(
         return Turn("book", choice=choice, patient=patient)
 
     # Turn 2: a day to look at.
-    day = extraction.preferred_day or (
-        extraction.chosen_time.date() if extraction.chosen_time else None
+    today = _local(email.received_at).date()
+    day = named_weekday(
+        extraction.preferred_day
+        or (extraction.chosen_time.date() if extraction.chosen_time else None),
+        new_text,
+        today=today,
     )
     if trusted and day is not None:
-        today = _local(email.received_at).date()
         if not today <= day <= today + timedelta(days=BOOKING_WINDOW_DAYS):
             return _failure(conversation, "bad_day")
         conversation.preferred_day = day
+        # The model has filed the patient's own name as the doctor asked for.
+        own = [n.casefold() for n in (fields.name, patient.name if patient else None) if n]
+        doctor_name = extraction.doctor_name
+        if doctor_name and any(doctor_name.casefold() in n for n in own):
+            doctor_name = None
         pool = await booking_service.doctor_pool(
             db,
             patient.id if patient else None,
-            doctor_name=extraction.doctor_name,
+            doctor_name=doctor_name,
             specialisation=extraction.specialisation,
         )
         if pool is None:

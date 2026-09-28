@@ -50,6 +50,9 @@ class CaseState(TypedDict, total=False):
     # The task routing gate's outcome, computed once by ingest_email. Carried
     # in, not recomputed, the same way draft_reply_detached receives it.
     routing_outcome: str | None
+    # The gate's safety override (urgent_keyword, complaint_category,
+    # urgent_category); None when HUMAN_REVIEW was only low confidence.
+    routing_override: str | None
     reply_verdict: str | None
 
     retrieval_results: list[dict]

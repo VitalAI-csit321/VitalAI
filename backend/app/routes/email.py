@@ -1,4 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_permission
@@ -22,6 +23,11 @@ async def ingest_email_endpoint(
         email, task, gate, confidence = await email_service.ingest_email(db, payload, actor)
     except email_service.CaseNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except IntegrityError as exc:
+        # The (external_id, external_source) unique index: this message is already in.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="This message was already ingested"
+        ) from exc
     # ingest_email() always sets these before returning.
     assert task.category is not None
     assert task.target_role is not None

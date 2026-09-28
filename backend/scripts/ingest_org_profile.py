@@ -8,7 +8,7 @@ retrieval context, still gated by access_scope like any other chunk.
 
 doc_type comes from the leading `<!-- doc_type: X | access_scope: Y -->`
 comment in each file; the file's own access_scope hint is informational only
--- DOC_TYPE_TO_SCOPE in scripts/ingest_corpus.py is the single source of
+-- DOC_TYPE_TO_SCOPE in app/rag/doc_scopes.py is the single source of
 truth, same as the patient corpus.
 
 Not ray/Loader/Cleaner/Chunker-based like ingest_corpus.py: those assume a
@@ -32,8 +32,9 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.models.chunk import Chunk
+from app.rag.doc_scopes import DOC_TYPE_TO_SCOPE
 from app.rag.embeddings import get_embedding_provider
-from scripts.ingest_corpus import CHUNK_SIZE, EMBEDDING_DIM, DOC_TYPE_TO_SCOPE
+from scripts.ingest_corpus import CHUNK_SIZE, EMBEDDING_DIM
 
 _ORG_PROFILE_DIR = Path(__file__).resolve().parents[2] / "Organization Profile Review"
 _DOC_TYPE_RE = re.compile(r"<!--\s*doc_type:\s*(\w+)\s*\|")
@@ -45,13 +46,41 @@ def _load_doc(file_path: Path) -> tuple[str, str]:
     match = _DOC_TYPE_RE.search(raw)
     if match is None:
         raise ValueError(f"no doc_type front-matter comment found in {file_path}")
-    doc_type = match.group(1)
-    text = re.sub(r"\s+", " ", raw).strip()
-    return doc_type, text
+    return match.group(1), raw
+
+
+_TABLE_RULE = re.compile(r"^\|[\s|:-]+\|$")
 
 
 def _chunk(text: str, chunk_size: int) -> list[str]:
-    return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+    """Pack whole lines into chunks, each led by its section heading.
+
+    Fixed-width slices cut table rows in half ("Saturday |" ending one chunk,
+    "9:00 AM to 2:00 PM" starting the next), so retrieval served a time with
+    no day attached. A line longer than chunk_size becomes its own chunk.
+    """
+    chunks: list[str] = []
+    heading = ""
+    lines: list[str] = []
+
+    def flush() -> None:
+        if lines:
+            chunks.append(" ".join([heading, *lines]).strip())
+            lines.clear()
+
+    for raw_line in text.splitlines():
+        line = re.sub(r"\s+", " ", raw_line).strip()
+        if not line or line.startswith("<!--") or _TABLE_RULE.match(line):
+            continue
+        if line.startswith("#"):
+            flush()
+            heading = line.lstrip("#").strip()
+            continue
+        if lines and len(" ".join([heading, *lines, line])) > chunk_size:
+            flush()
+        lines.append(line)
+    flush()
+    return chunks
 
 
 async def ingest_org_profile(session: AsyncSession) -> int:

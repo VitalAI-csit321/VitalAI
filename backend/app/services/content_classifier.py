@@ -78,6 +78,7 @@ async def classify_content(
     *,
     actor: User,
     channel: Literal["email", "call", "voicemail"],
+    reasons: list[str] | None = None,
 ) -> tuple[TaskCategory, float]:
     """Classify email/call content into a TaskCategory with a confidence score.
 
@@ -89,7 +90,11 @@ async def classify_content(
     With settings.intent_check_enabled, an email also gets 0.0 when the embedding
     regression (app.services.intent_check) disagrees with the LLM's category or is
     unsure. The category is kept; only the routing changes.
+
+    Every forced 0.0 appends a sentence for staff to `reasons`, when given:
+    without one, the Task reached review at HIGH with nothing saying why.
     """
+    reasons = reasons if reasons is not None else []
     prompt = _PROMPT_TEMPLATE.format(
         channel_framing=_CHANNEL_FRAMING[channel], categories=_CATEGORY_VALUES, content=text
     )
@@ -99,6 +104,13 @@ async def classify_content(
         logger.warning(
             "classify_content: guardrail blocked %s content, routing to manual review", channel
         )
+        reasons.append("Held for a person: the input guardrail blocked this message.")
+        return TaskCategory.GENERAL_ADMINISTRATIVE, 0.0
+    except Exception:
+        # A model outage or timeout. Raising here failed the whole ingest, so
+        # the message was never recorded; a person reads it instead.
+        logger.exception("classify_content: %s classifier call failed", channel)
+        reasons.append("Held for a person: the classifier model was unavailable.")
         return TaskCategory.GENERAL_ADMINISTRATIVE, 0.0
 
     raw_text = raw if isinstance(raw, str) else getattr(raw, "content", str(raw))
@@ -106,6 +118,7 @@ async def classify_content(
         category, confidence = _parse_classification(raw_text)
     except ClassificationParseError:
         logger.exception("classify_content: failed to parse %s classifier output", channel)
+        reasons.append("Held for a person: the classifier's answer could not be read.")
         return TaskCategory.GENERAL_ADMINISTRATIVE, 0.0
 
     # Email only: the regression was trained on email text, never on call transcripts.
@@ -114,6 +127,7 @@ async def classify_content(
             second_opinion, margin = await regression_view(text)
         except Exception:
             logger.exception("classify_content: intent check failed, routing to human review")
+            reasons.append("Held for a person: the second-opinion classifier failed.")
             return category, 0.0
         if second_opinion != category.value:
             logger.info(
@@ -121,12 +135,19 @@ async def classify_content(
                 second_opinion,
                 category.value,
             )
+            reasons.append(
+                "Held for a person: the two classifiers disagreed "
+                f"(model: {category.value}, second opinion: {second_opinion})."
+            )
             return category, 0.0
         if margin < settings.intent_check_margin_threshold:
             logger.info(
                 "classify_content: regression margin %.4f below %.4f; routing to human review",
                 margin,
                 settings.intent_check_margin_threshold,
+            )
+            reasons.append(
+                f"Held for a person: the second-opinion classifier was unsure ({category.value})."
             )
             return category, 0.0
     return category, confidence

@@ -351,6 +351,11 @@ async def test_new_patient_email_is_onboarded_and_paused_for_approval(
     (prompt,) = llm.draft_prompts
     assert "phone number" in prompt.lower()
     assert "date of birth" not in prompt.lower().split("ask only for:")[1].split("\n")[0]
+    # Told who they are, not left to invent "Dear [Patient Name]": gemma2:2b did
+    # that on all three drafts in the black-box run, so no reply ever went out.
+    assert f"Address them as {NAME}" in prompt.split("ORIGINAL EMAIL")[0]
+    # ...and who is writing, or it invents "[Clinic Name]" / "[Clinic Administrator Name]".
+    assert 'Sign off as "The clinic team"' in prompt
     # critic passed, HIGH, paused at approval, nothing sent
     approvals = [
         r
@@ -392,3 +397,25 @@ async def test_onboarding_without_a_name_goes_to_staff_with_no_patient(
     assert task.draft_text is None
     assert task.handover_context
     assert llm.draft_prompts == []
+
+
+async def test_nothing_left_to_ask_is_a_fixed_acknowledgement_with_no_model_call():
+    # Asked to "confirm the clinic has their details", gemma2:2b echoed them
+    # back as "[Phone number]"; one run in four failed all three drafts and
+    # the new patient got no reply at all.
+    from app.models.email import Email
+    from app.services import onboarding_service
+
+    llm = FakeLLM()
+    text = await onboarding_service.draft_onboarding_reply(
+        None,
+        llm,
+        email=Email(subject="Register", body="Hi, register me."),
+        name="Priya Castellano",
+        requested=[],
+        actor=None,
+    )
+
+    assert llm.draft_prompts == []
+    assert text.startswith("Hello Priya Castellano,")
+    assert critique(text, onboarding_service.BRANCH) is None

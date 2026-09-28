@@ -28,6 +28,18 @@ from app.services.triage_service import is_urgent, matches_any
         "I have been having thoughts of suicide",
         "Tight chest and sweating since lunch",
         "She collapsed in the kitchen",
+        # Indirect suicidal ideation, as people write it. The black-box run's
+        # "I don't want to be alive anymore... thinking about ending it tonight"
+        # matched no phrase and was urgent only because the model called it a
+        # complaint.
+        "I don't want to be alive anymore",
+        "I have been thinking about ending it tonight",
+        "Honestly I just want to die",
+        "Everyone would be better off without me",
+        "I don't want to live like this anymore",
+        "Some days I feel like there's no reason to live",
+        "I want to end it all",
+        "I've thought about taking my own life",
     ],
 )
 def test_red_flag_symptoms_are_urgent(text):
@@ -67,6 +79,7 @@ def test_negation_never_hides_a_real_signal(text):
         "Please renew my EpiPen script, it expires next month",
         "My phone number is 0400 000 000",
         "Is there parking near the clinic?",
+        "I'm sending it again and attending it next week, and spending it wisely",
     ],
 )
 def test_routine_mail_is_not_urgent(text):

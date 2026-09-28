@@ -576,3 +576,18 @@ def test_neither_template_mentions_a_url_or_reference():
         records_service.draft_records_reply(name="Sam Lee", consent_on_file=True),
     ):
         _assert_no_invention(text)
+
+
+@pytest.mark.parametrize(
+    ("day", "open_"),
+    [
+        # NSW Labour Day. The black-box run was offered six slots on it; the
+        # clinic is closed on NSW public holidays.
+        (date(2026, 10, 5), False),
+        (date(2026, 12, 25), False),
+        (date(2026, 10, 3), False),  # Saturday
+        (date(2026, 10, 6), True),
+    ],
+)
+def test_public_holidays_and_weekends_are_not_clinic_days(day, open_):
+    assert booking_service.is_clinic_day(day) is open_

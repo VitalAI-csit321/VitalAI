@@ -68,11 +68,10 @@ async def _grant_agent_clinical_access(session: AsyncSession) -> None:
     """Give the agent actor VIEW_CLINICAL, attributed to the seeded admin.
 
     The prescription branch reads medication history, and medication_service
-    refuses without this permission (spec G.17). The grant lives here rather
-    than in get_or_create_agent_actor for two reasons: that function returns
-    early for an account that already exists, so the agent actor already in a
-    running database would never receive it; and a self-grant would make the
-    revoke button in the UI a lie, since the next graph run would put it back.
+    refuses without this permission (spec G.17). get_or_create_agent_actor
+    grants it once when it creates the account; this covers an agent actor
+    that already existed before that, which it never re-grants (a revoke in
+    the UI must stay revoked).
 
     Attributed to a real admin, so `GET /auth/users/{id}/grants` shows who
     allowed it and `DELETE` on the same path genuinely takes it away.

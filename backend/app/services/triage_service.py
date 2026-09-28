@@ -136,6 +136,20 @@ RED_FLAG_PHRASES: tuple[str, ...] = (
     "self-harm",
     "self harm",
     "hurt myself",
+    # ...and indirectly, which is how most people write it. Not bare "ending it":
+    # that is inside "sending it" and "attending it".
+    "want to die",
+    "want to be alive",
+    "want to live like this",
+    "want to live anymore",
+    "thinking about ending it",
+    "thinking of ending it",
+    "end it all",
+    "better off without me",
+    "better off dead",
+    "no reason to live",
+    "take my own life",
+    "taking my own life",
     # children
     "rash that doesn't fade",
     "rash that does not fade",

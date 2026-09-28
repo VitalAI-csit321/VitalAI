@@ -69,5 +69,33 @@ async def get_or_create_agent_actor(db: AsyncSession) -> User:
     pass actor straight to record_event and never read actor.role. What the
     agent may and may not touch is enforced in the service layer, which is
     where restrictions belong.
+
+    A new account is granted VIEW_CLINICAL once, at creation, so the
+    prescription branch works in a database the seed script never ran
+    against. Only at creation: a revoke in the Users page must stay revoked.
     """
-    return await get_or_create_system_actor(db, AGENT_EMAIL, AGENT_NAME, UserRole.OPERATOR)
+    existing = await db.execute(select(User).where(User.email == AGENT_EMAIL))
+    agent = existing.scalar_one_or_none()
+    if agent is not None:
+        return agent
+    agent = await get_or_create_system_actor(db, AGENT_EMAIL, AGENT_NAME, UserRole.OPERATOR)
+    await _grant_clinical_at_creation(db, agent)
+    return agent
+
+
+async def _grant_clinical_at_creation(db: AsyncSession, agent: User) -> None:
+    # Imported here: permission_service pulls in the audit layer, which
+    # imports this module's callers.
+    from app.auth.permissions import VIEW_CLINICAL
+    from app.services import permission_service
+
+    admin = (
+        await db.execute(
+            select(User).where(User.role == UserRole.ADMIN).order_by(User.created_at).limit(1)
+        )
+    ).scalar_one_or_none()
+    try:
+        await permission_service.grant_permission(db, agent, VIEW_CLINICAL, admin or agent)
+    except permission_service.DuplicateGrantError:
+        # Two graph nodes raced the first creation; the other one granted it.
+        await db.rollback()

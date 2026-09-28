@@ -297,7 +297,9 @@ async def _agent_actor(db, admin_user):
     from app.services.system_actor import get_or_create_agent_actor
 
     agent = await get_or_create_agent_actor(db)
-    await _grant_clinical(db, agent, admin_user)
+    # A new agent actor is granted this at creation; only add it if absent.
+    if await db.get(UserPermissionGrant, (agent.id, VIEW_CLINICAL)) is None:
+        await _grant_clinical(db, agent, admin_user)
     return agent
 
 
@@ -347,7 +349,13 @@ async def test_the_node_fails_safe_when_the_grant_is_missing(
     patient = await _patient(db_session)
     case = await _linked_case(db_session, patient)
     await _medication(db_session, patient, doctor_user)
-    # deliberately no _grant_clinical
+    # A new agent actor is granted VIEW_CLINICAL at creation; an admin has
+    # since revoked it, which must stay a safe failure.
+    from app.services.system_actor import get_or_create_agent_actor
+
+    agent = await get_or_create_agent_actor(db_session)
+    await db_session.delete(await db_session.get(UserPermissionGrant, (agent.id, VIEW_CLINICAL)))
+    await db_session.commit()
 
     email, task, snapshot = await _run(db_session, agent_saver, case_id=case.id)
 

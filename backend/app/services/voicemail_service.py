@@ -11,12 +11,10 @@ import logging
 import re
 from collections.abc import Mapping
 from datetime import date, datetime
-from functools import cache
 from pathlib import PurePath
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-import holidays
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -73,16 +71,10 @@ AUDIO_TYPES = {
 }
 
 
-@cache
-def _holidays(region: str, year: int) -> holidays.HolidayBase:
-    return holidays.country_holidays("AU", subdiv=region, years=year)
-
-
 def clinic_is_open(now: datetime) -> bool:
     """Weekday, inside clinic hours, not a public holiday, all in clinic time."""
     local = now.astimezone(ZoneInfo(settings.clinic_timezone))
-    closed_day = local.date() in _holidays(settings.clinic_holiday_region, local.year)
-    if local.weekday() >= 5 or closed_day:
+    if not booking_service.is_clinic_day(local.date()):
         return False
     return settings.clinic_open_hour <= local.hour < settings.clinic_close_hour
 

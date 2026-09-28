@@ -209,6 +209,103 @@ async def test_a_first_email_with_no_name_still_opens_the_case_and_asks_for_the_
     assert "MRN" not in text
 
 
+async def test_a_first_booking_request_phrased_as_a_question_is_not_sent_to_staff(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # "Could I book an appointment next Wednesday?" read as intent "question"
+    # in the black-box run, so the plainest booking request went to staff.
+    llm.identity = {"name": "Jane Citizen", "dob": None, "phone": None}
+    llm.booking = [{"intent": "question", "confidence": 0.8}]
+    email, task = await _mail(
+        db_session,
+        admin_user,
+        "Could I book an appointment next week please?\n\nJane Citizen",
+        message_id="<q1@example.com>",
+    )
+
+    conversation = await _conversation(db_session, email.case_id)
+    assert conversation.stage == ConversationStage.AWAITING_DETAILS
+    assert len(sends) == 1
+
+
+def test_the_string_null_from_the_model_is_null_not_a_failed_extraction():
+    # gemma2:2b wrote "chosen_time": "null"; the ValidationError threw away an
+    # otherwise good extraction (afternoon, confirm, 0.9) as "unclear".
+    extraction = email_conversation_service.BookingExtraction.model_validate_json(
+        '{"chosen_time": "null", "preferred_day": "", "part_of_day": "afternoon", '
+        '"doctor_name": "None", "intent": "change", "confidence": 0.9}'
+    )
+
+    assert extraction.chosen_time is None and extraction.preferred_day is None
+    assert extraction.doctor_name is None
+    assert (extraction.part_of_day, extraction.intent) == ("afternoon", "change")
+
+
+@pytest.mark.parametrize(
+    ("text", "model_day", "expected"),
+    [
+        # Received Sunday 27 Sep 2026. gemma2:2b answered today for "next
+        # Wednesday" and yesterday for "next Tuesday" on every sample.
+        ("next Wednesday morning", date(2026, 9, 27), date(2026, 9, 30)),
+        ("next Tuesday arvo", date(2026, 9, 26), date(2026, 9, 29)),
+        # A named weekday the model already got right is left alone,
+        # including "Wednesday week".
+        ("Wednesday week", date(2026, 10, 7), date(2026, 10, 7)),
+        # Nothing named, or two named: the model's day stands.
+        ("tomorrow", date(2026, 9, 28), date(2026, 9, 28)),
+        ("I work Mondays, is Thursday ok?", date(2026, 10, 1), date(2026, 10, 1)),
+        ("next Friday", None, None),
+    ],
+)
+def test_a_named_weekday_overrides_a_model_day_that_is_not_that_weekday(text, model_day, expected):
+    got = email_conversation_service.named_weekday(model_day, text, today=date(2026, 9, 27))
+
+    assert got == expected
+
+
+async def test_a_sign_up_request_with_no_name_is_asked_for_details_then_onboarded(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends, monkeypatch
+):
+    # The resumed inquiry takes the ordinary org-grounded draft path.
+    monkeypatch.setattr("app.rag.retrieval.retrieve", AsyncMock(return_value=[]))
+    # Black-box A2: "I want to become a patient, how do I sign up?" got no
+    # reply at all and sat at LOW priority.
+    llm.category = "new_patient_onboarding"
+    llm.identity = {"name": None, "dob": None, "phone": None}
+    email1, task1 = await _mail(
+        db_session,
+        admin_user,
+        "Hi, I want to become a patient. How do I sign up?",
+        message_id="<su1@example.com>",
+    )
+    ((_, text),) = sends
+    assert "your full name" in text and "your date of birth" in text
+
+    llm.identity = {"name": "Riley Newcomer", "dob": "1992-05-17", "phone": "0400 123 456"}
+    llm.booking = [
+        {
+            "name": "Riley Newcomer",
+            "dob": "1992-05-17",
+            "phone": "0400 123 456",
+            "intent": "unclear",
+            "confidence": 0.9,
+        }
+    ]
+    _, task2 = await _mail(
+        db_session,
+        admin_user,
+        "Riley Newcomer, 17/05/1992, 0400 123 456",
+        message_id="<su2@example.com>",
+        references="<su1@example.com>",
+    )
+
+    case = await db_session.get(IntakeCase, email1.case_id)
+    patient = await db_session.get(Patient, case.patient_id)
+    assert patient.is_provisional and patient.name == "Riley Newcomer"
+    assert task2.handover_context != email_conversation_service.STAFF_REASONS["verification_failed"]
+    assert len(await _approvals(db_session, task2)) == 1
+
+
 async def test_the_display_name_reaches_identity_extraction(
     db_session, agent_saver, admin_user, doctor_user, llm, sends
 ):
@@ -375,6 +472,132 @@ async def test_turn_three_books_an_offered_free_time_and_confirms(
     assert {"agent.booking_extraction", "agent.booking_decision", "appointment.booked"} <= actions
 
 
+async def test_a_low_confidence_reply_in_an_open_conversation_still_books(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # "The second one please." is nothing like a first email, so the
+    # classifier's second opinion zeroed its confidence, HUMAN_REVIEW won in
+    # route_intent, and the black-box patient was never booked.
+    day = _weekday_ahead()
+    email1, _, _ = await _offer(db_session, admin_user, llm, sends, day)
+    pick = (await _conversation(db_session, email1.case_id)).offered_slots[0]
+    llm.confidence = 0.0
+    llm.booking = [
+        {"chosen_time": _local_value(pick["start"]), "intent": "confirm", "confidence": 0.95}
+    ]
+
+    await _mail(
+        db_session,
+        admin_user,
+        "The first one please",
+        message_id="<lc3@example.com>",
+        references="<t1@example.com> <t2@example.com>",
+    )
+
+    assert (await _conversation(db_session, email1.case_id)).stage == ConversationStage.BOOKED
+
+
+async def test_a_red_flag_in_an_open_conversation_still_goes_to_a_person(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    day = _weekday_ahead()
+    email1, _, _ = await _offer(db_session, admin_user, llm, sends, day)
+    pick = (await _conversation(db_session, email1.case_id)).offered_slots[0]
+    llm.booking = [
+        {"chosen_time": _local_value(pick["start"]), "intent": "confirm", "confidence": 0.95}
+    ]
+    sent_before = len(sends)
+
+    await _mail(
+        db_session,
+        admin_user,
+        "The first one please. I've also had chest pain since this morning.",
+        message_id="<rf3@example.com>",
+        references="<t1@example.com> <t2@example.com>",
+    )
+
+    assert (await _conversation(db_session, email1.case_id)).stage != ConversationStage.BOOKED
+    assert len(sends) == sent_before
+
+
+async def test_the_slot_the_patient_names_is_booked_whatever_the_model_picked(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # Black-box run: "The second one please." -> the model answered the sixth
+    # offered time, and 10:30am was booked and confirmed instead of 8:30am.
+    day = _weekday_ahead()
+    email1, _, _ = await _offer(db_session, admin_user, llm, sends, day)
+    slots = (await _conversation(db_session, email1.case_id)).offered_slots
+    llm.booking = [
+        {"chosen_time": _local_value(slots[-1]["start"]), "intent": "confirm", "confidence": 0.9}
+    ]
+
+    await _mail(
+        db_session,
+        admin_user,
+        "The second one please.",
+        message_id="<s3@example.com>",
+        references="<t1@example.com> <t2@example.com>",
+    )
+
+    appointment = (
+        await db_session.execute(select(Appointment).where(Appointment.case_id == email1.case_id))
+    ).scalar_one()
+    booked = appointment.time_slot
+    assert booked.replace(tzinfo=booked.tzinfo or UTC) == datetime.fromisoformat(slots[1]["start"])
+
+
+async def test_a_named_slot_the_patient_turns_down_is_not_booked(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    day = _weekday_ahead()
+    email1, _, _ = await _offer(db_session, admin_user, llm, sends, day)
+    llm.booking = [{"intent": "change", "confidence": 0.9}]
+
+    await _mail(
+        db_session,
+        admin_user,
+        "The second one doesn't suit me, sorry.",
+        message_id="<d3@example.com>",
+        references="<t1@example.com> <t2@example.com>",
+    )
+
+    assert (await _conversation(db_session, email1.case_id)).stage != ConversationStage.BOOKED
+
+
+_SLOTS = [
+    {"start": "2026-09-29T22:00:00+00:00"},  # Wed 30 Sep 8:00am Sydney
+    {"start": "2026-09-29T22:30:00+00:00"},  # 8:30am
+    {"start": "2026-09-30T00:00:00+00:00"},  # 10:00am
+    {"start": "2026-09-30T00:30:00+00:00"},  # 10:30am
+]
+
+
+@pytest.mark.parametrize(
+    ("text", "index"),
+    [
+        ("The second one please.", 1),
+        ("2nd option works for me", 1),
+        ("Option 3 please", 2),
+        ("I'll take the last one", 3),
+        ("The first one, thanks", 0),
+        ("8:30 is perfect", 1),
+        ("10am please", 2),
+        ("Can I do 10:30am?", 3),
+        # Nothing clear: the model's pick stands.
+        ("Sounds good", None),
+        ("The first or second one, whichever", None),
+        ("Is 7:15 possible?", None),
+        ("First, can I ask whether parking is free?", None),
+        ("On 30 September please", None),
+    ],
+)
+def test_the_slot_named_in_the_text(text, index):
+    got = email_conversation_service.slot_named_in(text, _SLOTS)
+
+    assert got == (_SLOTS[index] if index is not None else None)
+
+
 async def test_a_time_we_never_offered_gets_one_clarification_then_staff(
     db_session, agent_saver, admin_user, doctor_user, llm, sends
 ):
@@ -410,6 +633,140 @@ async def test_a_time_we_never_offered_gets_one_clarification_then_staff(
     ).first() is None
 
 
+async def _registered_patient(db, admin, doctor) -> Patient:
+    patient = Patient(
+        mrn="MRN-REGIST01",
+        name="Jane Citizen",
+        dob=date(1990, 2, 1),
+        email=SENDER,
+        phone="0412345678",
+        status=PatientStatus.ACTIVE,
+    )
+    db.add(patient)
+    await db.flush()
+    db.add(
+        DoctorPatientAssignment(doctor_id=doctor.id, patient_id=patient.id, assigned_by=admin.id)
+    )
+    await db.commit()
+    return patient
+
+
+async def test_once_staff_have_a_conversation_the_agent_sends_nothing_more(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # Black-box run: a registered patient's first turn went to staff
+    # (doctor_not_found), then each threaded reply still reached the automated
+    # turn, and a clarification and new offers went out over staff's head.
+    await _registered_patient(db_session, admin_user, doctor_user)
+    llm.identity = {"name": "Jane Citizen", "dob": "1990-02-01", "phone": None}
+    day = _weekday_ahead()
+    llm.booking = [
+        {
+            "preferred_day": day.isoformat(),
+            "doctor_name": "Dr Nobody",
+            "intent": "change",
+            "confidence": 0.9,
+        }
+    ]
+    email1, _ = await _mail(
+        db_session,
+        admin_user,
+        "Jane Citizen, DOB 1/2/1990. Can I see Dr Nobody?",
+        message_id="<w1@example.com>",
+    )
+    assert (await _conversation(db_session, email1.case_id)).stage == ConversationStage.STAFF
+    llm.booking = [{"preferred_day": day.isoformat(), "intent": "change", "confidence": 0.95}]
+
+    _, task = await _mail(
+        db_session,
+        admin_user,
+        "Jane Citizen, DOB 1/2/1990. Anyone that day is fine.",
+        message_id="<w2@example.com>",
+        references="<w1@example.com>",
+    )
+
+    assert sends == []
+    assert task.handover_context == email_conversation_service.STAFF_REASONS["closed"]
+
+
+async def test_the_patients_own_name_is_not_a_doctor_request(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # gemma2:2b put "Daniel Okafor" (the patient) in doctor_name; no doctor
+    # matched and a plain booking went to staff as doctor_not_found.
+    await _registered_patient(db_session, admin_user, doctor_user)
+    llm.identity = {"name": "Jane Citizen", "dob": "1990-02-01", "phone": None}
+    llm.booking = [
+        {
+            "name": "Hi, Jane Citizen",
+            "doctor_name": "Jane Citizen",
+            "preferred_day": _weekday_ahead().isoformat(),
+            "intent": "change",
+            "confidence": 0.9,
+        }
+    ]
+
+    email1, _ = await _mail(
+        db_session,
+        admin_user,
+        "Hi, Jane Citizen, DOB 1/2/1990. Can I book in?",
+        message_id="<o1@example.com>",
+    )
+
+    assert (
+        await _conversation(db_session, email1.case_id)
+    ).stage == ConversationStage.AWAITING_CHOICE
+
+
+async def test_a_reply_after_booking_is_held_for_staff_and_books_nothing_more(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # The confirmation tells the patient to reply to change it.
+    await _registered_patient(db_session, admin_user, doctor_user)
+    llm.identity = {"name": "Jane Citizen", "dob": "1990-02-01", "phone": None}
+    day = _weekday_ahead()
+    llm.booking = [{"preferred_day": day.isoformat(), "intent": "change", "confidence": 0.9}]
+    email1, _ = await _mail(
+        db_session,
+        admin_user,
+        "Jane Citizen, DOB 1/2/1990. Any time that day.",
+        message_id="<k1@example.com>",
+    )
+    slots = (await _conversation(db_session, email1.case_id)).offered_slots
+    llm.booking = [
+        {"chosen_time": _local_value(slots[0]["start"]), "intent": "confirm", "confidence": 0.95}
+    ]
+    await _mail(
+        db_session,
+        admin_user,
+        "Jane Citizen, DOB 1/2/1990. The first one please.",
+        message_id="<k2@example.com>",
+        references="<k1@example.com>",
+    )
+    assert (await _conversation(db_session, email1.case_id)).stage == ConversationStage.BOOKED
+    sent_before = len(sends)
+    llm.booking = [
+        {"chosen_time": _local_value(slots[1]["start"]), "intent": "confirm", "confidence": 0.95}
+    ]
+
+    _, task = await _mail(
+        db_session,
+        admin_user,
+        "Jane Citizen, DOB 1/2/1990. Actually the second one instead?",
+        message_id="<k3@example.com>",
+        references="<k1@example.com> <k2@example.com>",
+    )
+
+    assert len(sends) == sent_before
+    booked = (
+        (await db_session.execute(select(Appointment).where(Appointment.case_id == email1.case_id)))
+        .scalars()
+        .all()
+    )
+    assert len(booked) == 1
+    assert task.handover_context == email_conversation_service.STAFF_REASONS["closed"]
+
+
 async def test_a_changed_date_of_birth_is_questioned_once_then_staff(
     db_session, agent_saver, admin_user, doctor_user, llm, sends
 ):
@@ -442,6 +799,26 @@ async def test_a_changed_date_of_birth_is_questioned_once_then_staff(
         Patient, (await db_session.get(IntakeCase, email1.case_id)).patient_id
     )
     assert patient.dob == date(1990, 2, 1)
+
+
+async def test_a_month_first_misreading_of_the_same_written_dob_is_not_a_mismatch(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # The model turned "1/2/1990" into 1990-01-02; questioning a real patient
+    # about their own birthday, then handing them to staff, was the result.
+    day = _weekday_ahead()
+    await _offer(db_session, admin_user, llm, sends, day)
+    llm.booking = [{"dob": "1990-01-02", "intent": "change", "confidence": 0.9}]
+
+    await _mail(
+        db_session,
+        admin_user,
+        "Sorry, DOB is 1/2/1990 as I said.",
+        message_id="<m1@example.com>",
+        references="<t1@example.com>",
+    )
+
+    assert "does not match the details we have" not in sends[-1][1]
 
 
 async def test_a_slot_taken_before_confirmation_goes_to_a_human(

@@ -47,3 +47,28 @@ def test_every_corpus_doc_type_is_a_known_document_type_and_scope() -> None:
     for doc_type in doc_types:
         ClinicalDocType(doc_type)  # raises ValueError on an unmapped corpus type
         assert doc_type in DOC_TYPE_TO_SCOPE
+
+
+def test_org_profile_ingest_script_imports():
+    # It imported DOC_TYPE_TO_SCOPE from scripts.ingest_corpus after the
+    # mapping moved to app.rag.doc_scopes, so a fresh environment could not
+    # load the org corpus at all and every draft went ungrounded.
+    import scripts.ingest_org_profile  # noqa: F401
+
+
+def test_org_profile_chunks_keep_table_rows_whole_under_their_heading():
+    # Fixed 500-char slices of whitespace-collapsed text ended one chunk on
+    # "Saturday |" and began the next on "9:00 AM to 2:00 PM", so retrieval
+    # served a time with no day and the agent auto-sent "opens at 8:30 AM".
+    from scripts.ingest_org_profile import _chunk
+
+    rows = "\n".join(f"| Day{i} | {i}:00 AM to 2:00 PM |" for i in range(40))
+    text = f"<!-- doc_type: x | access_scope: general -->\n# Clinic\n## Opening Hours\n| Day | Hours |\n|---|---|\n{rows}\n## Parking\nPaid parking nearby."
+    chunks = _chunk(text, 200)
+
+    assert len(chunks) > 1
+    for i in range(40):
+        holding = [c for c in chunks if f"| Day{i} | {i}:00 AM to 2:00 PM |" in c]
+        assert len(holding) == 1 and holding[0].startswith("Opening Hours")
+    assert any(c.startswith("Parking") and "Paid parking" in c for c in chunks)
+    assert not any("doc_type" in c or "|---|" in c for c in chunks)

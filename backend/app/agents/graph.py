@@ -171,13 +171,19 @@ _BRANCH_NODES = frozenset({"booking", "records", "prescription"})
 def route_intent(state: CaseState) -> str:
     """Which agent handles this message. Pure function of state."""
     intent = TaskCategory(state["intent"]) if state.get("intent") else None
-    if state.get("routing_outcome") == TaskRoutingOutcome.HUMAN_REVIEW or intent in _HUMAN_ONLY:
+    review = state.get("routing_outcome") == TaskRoutingOutcome.HUMAN_REVIEW
+    if intent in _HUMAN_ONLY or (review and state.get("routing_override")):
         return "human_review"
     # A reply in an open email conversation (set by load only with the flag
     # on) skips the reply gate, which would judge "Tuesday 10am works" not
     # worth answering, and identity, which the conversation already settled.
+    # Low classifier confidence alone does not end it either: "The second one
+    # please" is nothing like a first email, and the conversation node checks
+    # its own extraction confidence. Red flags and complaints still win above.
     if state.get("conversation_id"):
         return "conversation"
+    if review:
+        return "human_review"
     agent = _AGENT_FOR_INTENT.get(intent, "retrieval") if intent else "retrieval"
     if state.get("is_provisional") and agent in _NOT_FOR_PROVISIONAL:
         return "human_review"
@@ -235,7 +241,13 @@ def route_identity(state: CaseState) -> str:
         outcome == identity_service.IdentityOutcome.NO_MATCH
         and intent in identity_service.ONBOARDING_INTENTS
     ):
-        return "conversation" if booking else "onboarding"
+        if booking:
+            return "conversation"
+        # No name, no provisional record: ask for the details rather than
+        # leave "how do I sign up?" with no reply at all.
+        if conversations and not (state.get("identity_fields") or {}).get("name"):
+            return "request_verification"
+        return "onboarding"
     return "request_verification" if conversations else "staff"
 
 
@@ -503,6 +515,7 @@ async def start(
                 "source_id": str(email_id),
                 "task_id": str(task_id),
                 "routing_outcome": gate.outcome.value,
+                "routing_override": gate.override_reason,
                 "triage_confidence": confidence,
                 "revision_count": 0,
             },
