@@ -18,6 +18,21 @@ if TYPE_CHECKING:
 
 _model: WhisperModel | None = None
 
+# vad_filter: without it large-v3-turbo transcribes silence and hiss as
+# "Thank you." with no_speech_prob near 0, so a silent voicemail passed the
+# quality gate. initial_prompt: clinic vocabulary; on a real call it turned
+# "any peace laws" / "any fees lost" into "any free slots". language is left
+# to detection on purpose: forcing it pins language_probability to 1.0 and
+# disables that quality check.
+_TRANSCRIBE_OPTIONS = {
+    "vad_filter": True,
+    "initial_prompt": (
+        "Clinic voicemail. Appointment, booking, free slots, openings, availability, fees, "
+        "bulk billing, Medicare, test results, prescription, referral, date of birth, "
+        "phone number."
+    ),
+}
+
 
 class EmptyTranscriptError(Exception):
     """Raised when the uploaded audio contains no detectable speech."""
@@ -34,7 +49,7 @@ def _get_model() -> WhisperModel:
 
 def transcribe_audio(audio_bytes: bytes) -> str:
     model = _get_model()
-    segments, _ = model.transcribe(io.BytesIO(audio_bytes))
+    segments, _ = model.transcribe(io.BytesIO(audio_bytes), **_TRANSCRIBE_OPTIONS)
     text = " ".join(segment.text.strip() for segment in segments).strip()
     if not text:
         raise EmptyTranscriptError("No speech detected in the uploaded audio")
@@ -61,7 +76,7 @@ def transcribe_audio_with_quality(audio_bytes: bytes) -> tuple[str, TranscriptQu
     empty, low-quality transcript, never an error: a silent voicemail still
     has a caller ID worth calling back."""
     model = _get_model()
-    segments_iter, info = model.transcribe(io.BytesIO(audio_bytes))
+    segments_iter, info = model.transcribe(io.BytesIO(audio_bytes), **_TRANSCRIBE_OPTIONS)
     segments = list(segments_iter)  # a generator; transcription happens here
     text = " ".join(segment.text.strip() for segment in segments).strip()
     if not segments:

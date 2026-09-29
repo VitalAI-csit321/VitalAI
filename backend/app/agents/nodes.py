@@ -142,7 +142,7 @@ async def identity(state: CaseState, runtime: Runtime[Context]) -> dict:
             db,
             # The model every email step uses, so one fake covers them all.
             llm=email_service.get_llm(),
-            intent=TaskCategory(state["intent"]) if state.get("intent") else None,
+            intent=TaskCategory(i) if (i := state.get("intent")) else None,
             case_id=_case_id(state),
             sender=email.sender,
             content=email.body,
@@ -265,7 +265,7 @@ async def prescription(state: CaseState, runtime: Runtime[Context]) -> dict:
         review_due = await prescription_service.handle_renewal(
             db,
             case_id=UUID(state["case_id"]),
-            patient_id=_patient_id(state),
+            patient_id=UUID(state["patient_id"]),
             actor=actor,
         )
     return {"branch": prescription_service.BRANCH, "prescription_review_due": review_due}
@@ -298,6 +298,8 @@ async def conversation(state: CaseState, runtime: Runtime[Context]) -> dict:
     hold for staff.
     """
     known = state.get("identity_fields") or {}
+    intent = state.get("intent")
+    assert intent is not None  # route_identity only sends patient-specific intents here
     async with runtime.context.session_factory() as db:
         _, email, actor = await _rows(db, state, runtime)
         # Before anything is created: an out-of-office must not open a
@@ -314,8 +316,8 @@ async def conversation(state: CaseState, runtime: Runtime[Context]) -> dict:
             return {"dispatch_result": "conversation_hold"}
         row, created = await email_conversation_service.get_or_create(
             db,
-            case_id=_case_id(state),
-            intent=state["intent"],
+            case_id=UUID(state["case_id"]),
+            intent=intent,
             origin_email_id=email.id,
             patient_id=_patient_id(state),
             stage=ConversationStage.AWAITING_DETAILS,
@@ -350,6 +352,7 @@ async def conversation(state: CaseState, runtime: Runtime[Context]) -> dict:
             ),
         )
         if turn.decision == "staff":
+            assert turn.reason is not None  # _staff always sets one
             await task_service.hold_for_staff(
                 db, state["task_id"], email_conversation_service.STAFF_REASONS[turn.reason]
             )
@@ -402,6 +405,7 @@ async def book(state: CaseState, runtime: Runtime[Context]) -> dict:
         )
         await db.commit()
         if turn.decision == "staff":
+            assert turn.reason is not None  # _staff always sets one
             await task_service.hold_for_staff(
                 db, state["task_id"], email_conversation_service.STAFF_REASONS[turn.reason]
             )
@@ -421,6 +425,8 @@ async def request_verification(state: CaseState, runtime: Runtime[Context]) -> d
     the same time the sender is asked for the details that would identify
     them, so they are not left waiting. Once per case, never to a machine.
     """
+    intent = state.get("intent")
+    assert intent is not None  # route_identity only sends patient-specific intents here
     async with runtime.context.session_factory() as db:
         _, email, actor = await _rows(db, state, runtime)
         await identity_service.hold_for_staff(
@@ -428,8 +434,8 @@ async def request_verification(state: CaseState, runtime: Runtime[Context]) -> d
         )
         row, _ = await email_conversation_service.get_or_create(
             db,
-            case_id=_case_id(state),
-            intent=state["intent"],
+            case_id=UUID(state["case_id"]),
+            intent=intent,
             origin_email_id=email.id,
             patient_id=None,
             stage=ConversationStage.AWAITING_VERIFICATION,
@@ -550,13 +556,15 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
         # template the critic will not pass.
         update: dict = {"draft_text": state["template_text"], "grounded": False}
     elif branch == onboarding_service.BRANCH:
+        name = state.get("patient_name")
+        assert name is not None  # the onboarding node sets it with the branch
         async with runtime.context.session_factory() as db:
             _, email, actor = await _rows(db, state, runtime)
             text = await onboarding_service.draft_onboarding_reply(
                 db,
                 email_service.get_llm(),
                 email=email,
-                name=state["patient_name"],
+                name=name,
                 requested=state.get("requested_fields", []),
                 actor=actor,
                 feedback=feedback,
@@ -623,14 +631,16 @@ async def critic(state: CaseState) -> dict:
 
 
 async def escalate(state: CaseState, runtime: Runtime[Context]) -> dict:
+    reason = state.get("critic_reason")
+    assert reason is not None  # the critic rejected, and a rejection has a reason
     async with runtime.context.session_factory() as db:
-        actor = await db.get(User, runtime.context.actor_id)
+        actor = await _actor(db, runtime)
         await email_service.record_critic_escalation(
             db,
             task_id=state["task_id"],
             case_id=state.get("case_id"),
             actor=actor,
-            reason=state["critic_reason"],
+            reason=reason,
             drafts=state.get("revision_count", 0) + 1,
         )
     return {"dispatch_result": "escalated"}
@@ -638,9 +648,11 @@ async def escalate(state: CaseState, runtime: Runtime[Context]) -> dict:
 
 async def guardrail(state: CaseState, runtime: Runtime[Context]) -> dict:
     async with runtime.context.session_factory() as db:
-        actor = await db.get(User, runtime.context.actor_id)
+        actor = await _actor(db, runtime)
         try:
-            await check_output(db, state["draft_text"], actor=actor, case_id=_case_id(state))
+            draft = state.get("draft_text")
+            assert draft is not None  # the draft node always sets it
+            await check_output(db, draft, actor=actor, case_id=_case_id(state))
         except OutputBlockedError:
             await email_service.persist_draft(db, state["task_id"], None)
             return {"dispatch_result": "blocked"}
@@ -664,7 +676,7 @@ async def auto_send(state: CaseState, runtime: Runtime[Context]) -> dict:
     """Deliver through the one shared send path. A failed delivery routes to
     create_approval with the reason, so the draft reaches the human queue."""
     async with runtime.context.session_factory() as db:
-        actor = await db.get(User, runtime.context.actor_id)
+        actor = await _actor(db, runtime)
         try:
             await email_service.deliver_reply(
                 db,
@@ -699,7 +711,7 @@ async def dispatch(state: CaseState, runtime: Runtime[Context]) -> dict:
     """Never sends. The approvals route's executor already ran deliver_reply
     before scheduling this resume; this reads the result and records it."""
     async with runtime.context.session_factory() as db:
-        actor = await db.get(User, runtime.context.actor_id)
+        actor = await _actor(db, runtime)
         sent = await email_service.record_reply_dispatch(
             db,
             task_id=state.get("task_id"),
@@ -742,6 +754,50 @@ async def voicemail_identity(state: CaseState, runtime: Runtime[Context]) -> dic
         "patient_name": patient.name,
         "patient_status": patient.status.value,
         "is_provisional": patient.is_provisional,
+    }
+
+
+async def voicemail_onboarding(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """An unknown caller asking to book or join: the provisional patient email
+    onboarding (§9.0) would create. The name comes from the transcript, the
+    phone from caller ID and the DOB from the keypad only: spoken digits are
+    the least reliable part of a transcript. Nothing here replies; the
+    callback script tells staff to finish the registration."""
+    async with runtime.context.session_factory() as db:
+        actor = await _actor(db, runtime)
+        call = await db.get(Call, UUID(state["source_id"]))
+        if call is None:
+            raise LookupError(f"call missing for thread {state['source_id']}")
+        if (
+            call.phone_number == voicemail_service.WITHHELD
+            or not call.transcript
+            or (call.transcript_quality or {}).get("low")
+        ):
+            return {}
+        patient = await identity_service.find_provisional_by_phone(db, call.phone_number)
+        outcome = "existing"
+        if patient is None:
+            said = await identity_service.extract_identity_fields(
+                db, email_service.get_llm(), call.transcript, actor=actor
+            )
+            patient = await onboarding_service.start_onboarding(
+                db,
+                case_id=call.case_id,
+                sender=None,
+                fields=identity_service.IdentityFields(
+                    name=said.name, dob=call.keypad_dob, phone=call.phone_number
+                ),
+                actor=actor,
+            )
+            outcome = "created"
+        if patient is None:
+            return {}  # no name to file a record under: staff confirm who called
+    return {
+        "voicemail_onboarding": outcome,
+        "patient_id": str(patient.id),
+        "patient_name": patient.name,
+        "patient_status": patient.status.value,
+        "is_provisional": True,
     }
 
 

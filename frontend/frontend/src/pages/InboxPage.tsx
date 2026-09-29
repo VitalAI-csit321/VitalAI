@@ -51,8 +51,10 @@ export function InboxPage() {
   const [urgentCalls, setUrgentCalls] = useState(0);
 
   // GET /tasks, never the inbox list: every inbox load summarises each call
-  // with a model call, which must not run every 30 seconds.
+  // with a model call, which must not run every 30 seconds. Doctors lack
+  // view_queue, so for them each check would only log a refused request.
   useEffect(() => {
+    if (user?.role === "doctor") return;
     const check = () =>
       listTasks()
         .then((tasks) =>
@@ -64,7 +66,7 @@ export function InboxPage() {
     check();
     const id = window.setInterval(check, 30_000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [user?.role]);
 
   function refresh(preferId?: string | null) {
     return listMessages(tab === "archived").then((m) => {

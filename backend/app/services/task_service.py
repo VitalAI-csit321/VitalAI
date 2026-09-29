@@ -117,7 +117,9 @@ async def _identify(db: AsyncSession, task: Task) -> tuple[str | None, str | Non
 
 
 async def list_tasks(db: AsyncSession) -> list[TaskOut]:
-    result = await db.execute(select(Task).order_by(Task.created_at.desc()))
+    result = await db.execute(
+        select(Task).where(Task.deleted_at.is_(None)).order_by(Task.created_at.desc())
+    )
     tasks = list(result.scalars().all())
 
     out = []

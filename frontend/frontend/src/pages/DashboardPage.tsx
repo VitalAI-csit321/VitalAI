@@ -11,7 +11,7 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardSummary | null>(null);
 
-  useEffect(() => { getDashboard().then(setData).catch(() => {}); }, []);
+  useEffect(() => { getDashboard(user).then(setData).catch(() => {}); }, [user]);
 
   const tiles = [
     { label: "Open cases", key: "openCases", color: "border-t-brand", path: "/patients" },

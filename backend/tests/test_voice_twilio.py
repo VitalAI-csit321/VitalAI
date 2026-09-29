@@ -193,3 +193,17 @@ async def test_pressed_nine_then_hung_up_during_the_record_prompt(twilio, db_ses
     task = (await db_session.execute(select(Task).where(Task.call_id == call.id))).scalar_one()
     assert task.priority == TaskPriority.URGENT
     assert "caller pressed 9" in task.handover_context
+
+
+async def test_record_prompt_does_not_ask_for_a_number_we_already_have(twilio):
+    response = await _through_menu(twilio)
+    assert "patient's full name" in response.text
+    assert "number" not in response.text
+
+
+async def test_record_prompt_asks_a_withheld_caller_for_a_number(twilio):
+    await _post(twilio, "/incoming", {"From": "anonymous"})
+    await _post(twilio, "/gather/urgent", {"Digits": ""})
+    await _post(twilio, "/gather/dob", {"Digits": "03071985"})
+    response = await _post(twilio, "/gather/intent", {"Digits": "2"})
+    assert "number to call you back on" in response.text

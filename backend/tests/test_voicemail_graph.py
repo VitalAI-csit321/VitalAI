@@ -1,5 +1,6 @@
 """Voicemail on the agent graph (voicemail spec §8). Flag on throughout."""
 
+import json
 import re
 from datetime import date
 
@@ -10,6 +11,7 @@ from app.config import settings
 from app.models.assignment import DoctorPatientAssignment
 from app.models.call import CallStatus
 from app.models.case import IntakeCase
+from app.models.consent import ConsentRecord, ConsentStatus
 from app.models.patient import Patient, PatientStatus
 from app.models.task import Task
 from app.services import voicemail_service
@@ -151,3 +153,90 @@ async def test_complaint_gets_a_callback_script(db_session, monkeypatch):
     _, task = await _voicemail(db_session, intent=None)
     assert task.handover_context is not None
     assert "Call back +61412345678." in task.handover_context
+
+
+# Onboarding an unknown caller, the voicemail twin of the email §9.0 path.
+
+
+class _FakeExtractor:
+    """The identity-extraction model (email_service.get_llm)."""
+
+    def __init__(self, name: str | None):
+        self.name = name
+        self.calls = 0
+
+    async def ainvoke(self, prompt: str) -> str:
+        self.calls += 1
+        return json.dumps({"name": self.name, "dob": None, "phone": "0404 759 383"})
+
+
+def _extractor(monkeypatch, name: str | None) -> _FakeExtractor:
+    fake = _FakeExtractor(name)
+    monkeypatch.setattr("app.services.email_service.get_llm", lambda: fake)
+    return fake
+
+
+async def _patients(db) -> list[Patient]:
+    return list((await db.execute(select(Patient).order_by(Patient.created_at))).scalars())
+
+
+async def test_unknown_caller_asking_to_book_becomes_a_provisional_patient(db_session, monkeypatch):
+    _extractor(monkeypatch, "Jeremy")
+    call, task = await _voicemail(db_session, intent="appointment")
+
+    (patient,) = await _patients(db_session)
+    assert patient.name == "Jeremy"
+    assert patient.is_provisional is True
+    assert patient.phone == "+61412345678"  # caller ID, never the spoken number
+    assert patient.dob == DOB  # the keypad, never the transcript
+    case = await db_session.get(IntakeCase, call.case_id)
+    assert case.patient_id == patient.id
+    consent = (
+        await db_session.execute(select(ConsentRecord).where(ConsentRecord.case_id == call.case_id))
+    ).scalar_one()
+    assert consent.status == ConsentStatus.PENDING
+
+    script = task.handover_context
+    assert "New patient: provisional record created for Jeremy" in script
+    assert "Caller not identified" not in script
+    assert "Offer" not in script  # provisional patients are never booked
+
+
+async def test_no_name_in_the_message_creates_nobody(db_session, monkeypatch):
+    _extractor(monkeypatch, None)
+    _, task = await _voicemail(db_session, intent="appointment")
+    assert await _patients(db_session) == []
+    assert "Caller not identified" in task.handover_context
+
+
+async def test_unreliable_transcript_is_not_mined_for_a_name(db_session, monkeypatch):
+    extractor = _extractor(monkeypatch, "Jeremy")
+    fake_transcript(monkeypatch, "mumble", low=True)
+    _, task = await _voicemail(db_session, intent="appointment")
+    assert extractor.calls == 0
+    assert await _patients(db_session) == []
+    assert "Caller not identified" in task.handover_context
+
+
+async def test_withheld_caller_is_not_onboarded(db_session, monkeypatch):
+    _extractor(monkeypatch, "Jeremy")
+    await _voicemail(db_session, from_number="anonymous", intent="appointment")
+    assert await _patients(db_session) == []
+
+
+async def test_other_intents_are_not_onboarded(db_session, monkeypatch):
+    extractor = _extractor(monkeypatch, "Jeremy")
+    await _voicemail(db_session, intent="results")
+    assert extractor.calls == 0
+    assert await _patients(db_session) == []
+
+
+async def test_repeat_caller_reuses_their_provisional_record(db_session, monkeypatch):
+    _extractor(monkeypatch, "Jeremy")
+    await _voicemail(db_session, intent="appointment", dob=None)
+    _, task = await _voicemail(db_session, from_number="0412345678", intent="appointment", dob=None)
+
+    (patient,) = await _patients(db_session)
+    assert patient.is_provisional is True
+    assert "Probable new patient: Jeremy" in task.handover_context
+    assert "same caller ID" in task.handover_context

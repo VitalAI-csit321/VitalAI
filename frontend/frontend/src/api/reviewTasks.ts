@@ -5,6 +5,9 @@ export interface RawReviewTask {
   task_type: string; status: "pending" | "in_progress" | "completed" | "cancelled" | "escalated";
   priority: "low" | "medium" | "high";
   target_role: string | null; assigned_to: string | null; notes: string | null;
+  // Only the list endpoint fills these (from the linked case and its audit trail).
+  contact_reason?: string | null; patient_name?: string | null;
+  created_by?: string | null; assigned_to_name?: string | null;
 }
 
 export async function listReviewTasks(params: { limit?: number; offset?: number } = {}): Promise<{ items: RawReviewTask[]; total: number }> {

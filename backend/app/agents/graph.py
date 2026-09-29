@@ -171,7 +171,7 @@ _BRANCH_NODES = frozenset({"booking", "records", "prescription"})
 
 def route_intent(state: CaseState) -> str:
     """Which agent handles this message. Pure function of state."""
-    intent = TaskCategory(state["intent"]) if state.get("intent") else None
+    intent = TaskCategory(i) if (i := state.get("intent")) else None
     review = state.get("routing_outcome") == TaskRoutingOutcome.HUMAN_REVIEW
     if intent in _HUMAN_ONLY or (review and state.get("routing_override")):
         return "human_review"
@@ -206,6 +206,11 @@ def after_voicemail_identity(state: CaseState) -> str:
         and not state.get("is_provisional")
     ):
         return "booking"
+    if (
+        state.get("identity_outcome") == identity_service.IdentityOutcome.NO_MATCH.value
+        and state.get("intent") in identity_service.ONBOARDING_INTENTS
+    ):
+        return "voicemail_onboarding"
     return "callback"
 
 
@@ -222,7 +227,7 @@ def route_identity(state: CaseState) -> str:
     whatever the outcome. The provisional check is re-applied because
     identity can link a provisional patient that load did not know about.
     """
-    intent = TaskCategory(state["intent"]) if state.get("intent") else None
+    intent = TaskCategory(i) if (i := state.get("intent")) else None
     if intent not in identity_service.PATIENT_SPECIFIC:
         return "draft"
     outcome = identity_service.IdentityOutcome(state["identity_outcome"])
@@ -285,7 +290,7 @@ def auto_send_or_approve(state: CaseState) -> str:
         gate_outcome=TaskRoutingOutcome(state["routing_outcome"]),
         confidence=state["triage_confidence"],
         grounded=bool(state.get("grounded")),
-        category=TaskCategory(state["intent"]) if state.get("intent") else None,
+        category=TaskCategory(i) if (i := state.get("intent")) else None,
     )
     return "auto_send" if eligible else "create_approval"
 
@@ -326,7 +331,7 @@ def _guarded(stage: str, fn: Node) -> Node:
             logger.exception("Agent node %s failed for %s", stage, state.get("source_id"))
             try:
                 async with runtime.context.session_factory() as db:
-                    actor = await db.get(User, runtime.context.actor_id)
+                    actor = await get_or_create_agent_actor(db)
                     await task_service.record_agent_failure(
                         db,
                         task_id=state.get("task_id"),
@@ -378,6 +383,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         ("create_approval", create_approval),
         ("dispatch", nodes.dispatch),
         ("voicemail_identity", nodes.voicemail_identity),
+        ("voicemail_onboarding", nodes.voicemail_onboarding),
         ("callback", nodes.callback),
     ):
         builder.add_node(name, _guarded(name, fn))
@@ -461,6 +467,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
     # No doctor or no free time: the reason is on the Task and nothing is drafted.
     builder.add_conditional_edges("booking", _unless_failed(after_booking))
     builder.add_conditional_edges("voicemail_identity", _unless_failed(after_voicemail_identity))
+    builder.add_conditional_edges("voicemail_onboarding", _to("callback"))
     builder.add_edge("callback", END)
     builder.add_conditional_edges("records", _to("draft"))
     builder.add_conditional_edges("prescription", _to("draft"))

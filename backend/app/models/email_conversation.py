@@ -60,7 +60,7 @@ class EmailConversation(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     # [{"doctor_id", "doctor_name", "start"}], start an ISO UTC instant. Written
     # only once the offer was actually sent, so "a time we offered" means a
     # time the patient was really shown.
-    offered_slots: Mapped[list] = mapped_column(_jsonb, nullable=False, default=list)
+    offered_slots: Mapped[list[dict]] = mapped_column(_jsonb, nullable=False, default=list)
     last_outbound_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Failed turns (unclear, unoffered time, changed DOB). One gets a
     # clarifying reply; the second hands the case to staff.

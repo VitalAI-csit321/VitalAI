@@ -43,8 +43,12 @@ async def list_tasks_endpoint(
         limit=limit,
         offset=offset,
     )
+    details = await human_review_service.describe_tasks(db, items)
     return HumanReviewTaskListResponse(
-        items=[HumanReviewTaskOut.model_validate(i) for i in items], total=total
+        items=[
+            HumanReviewTaskOut.model_validate(i).model_copy(update=details[i.id]) for i in items
+        ],
+        total=total,
     )
 
 

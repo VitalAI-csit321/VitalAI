@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { createReviewTask } from "../api/reviewTasks";
 import { listUsers } from "../api/auth";
 import type { ManagedUser } from "../api/types";
+import { useAuth } from "../lib/auth";
 
 const TASK_TYPES = [
   { value: "triage_review", label: "Triage review" },
@@ -13,6 +14,8 @@ const TASK_TYPES = [
 
 export function AddCasePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canPickOwner = user?.role === "admin";
   const [contactReason, setContactReason] = useState("");
   const [taskType, setTaskType] = useState("triage_review");
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
@@ -23,8 +26,8 @@ export function AddCasePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listUsers({ limit: 100 }).then(r => setUsers(r.items)).catch(() => {});
-  }, []);
+    if (canPickOwner) listUsers({ limit: 100 }).then(r => setUsers(r.items)).catch(() => {});
+  }, [canPickOwner]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -80,13 +83,13 @@ export function AddCasePage() {
           </select>
         </div>
 
-        <div>
+        {canPickOwner && <div>
           <label className="block text-sm font-medium text-slate-700">Owner</label>
           <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
             <option value="">Unassigned</option>
             {users.map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.email})</option>)}
           </select>
-        </div>
+        </div>}
 
         <div className="flex items-center gap-2">
           <input id="reviewed" type="checkbox" checked={reviewed} onChange={e => setReviewed(e.target.checked)} className="h-4 w-4 rounded border-slate-300" />

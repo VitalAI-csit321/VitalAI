@@ -378,7 +378,18 @@ def callback_script(call: Call, state: Mapping) -> str:
         if call.phone_number == WITHHELD
         else f"Call back {call.phone_number}."
     ]
-    if state.get("patient_name"):
+    onboarded = state.get("voicemail_onboarding")
+    if onboarded == "created":
+        lines.append(
+            f"New patient: provisional record created for {state['patient_name']}. "
+            "Complete their registration on this call."
+        )
+    elif onboarded == "existing":
+        lines.append(
+            f"Probable new patient: {state['patient_name']} (provisional record with the "
+            "same caller ID). Complete their registration on this call."
+        )
+    elif state.get("patient_name"):
         lines.append(
             f"Probable patient: {state['patient_name']} (caller ID and keypad date of birth match)."
         )

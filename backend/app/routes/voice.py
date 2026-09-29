@@ -42,7 +42,13 @@ INTENT_PROMPT = (
     "For appointments, press 1. For test results, press 2. "
     "For prescriptions, press 3. For anything else, press 4."
 )
+# Caller ID is the callback number, so only a withheld caller is asked for one:
+# spoken digits are the least reliable part of a transcript.
 RECORD_PROMPT = (
+    "After the tone, please tell us the patient's full name and how we can help. "
+    "Press hash when you're finished."
+)
+RECORD_PROMPT_WITHHELD = (
     "After the tone, please tell us the patient's full name, the best number to call you "
     "back on, and how we can help. Press hash when you're finished."
 )
@@ -136,7 +142,12 @@ async def gather(
     else:
         call.keypad_intent = voicemail_service.INTENT_DIGITS.get(digits)
         call.status = CallStatus.RECORDING
-        vr.say(RECORD_PROMPT, language=_LANG, voice=_VOICE)
+        prompt = (
+            RECORD_PROMPT_WITHHELD
+            if call.phone_number == voicemail_service.WITHHELD
+            else RECORD_PROMPT
+        )
+        vr.say(prompt, language=_LANG, voice=_VOICE)
         vr.record(
             action=_url("/done"),
             method="POST",

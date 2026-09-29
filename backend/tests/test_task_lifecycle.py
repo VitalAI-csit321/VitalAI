@@ -209,6 +209,21 @@ async def test_deleted_task_is_invisible_in_inbox_and_archived_view(
     assert not any(m["id"] == task_id for m in archived.json()["items"])
 
 
+async def test_deleted_task_is_invisible_in_task_list(
+    client: AsyncClient, admin_headers: dict, monkeypatch
+):
+    """GET /tasks feeds the inbox urgent-call banner and the Escalations board."""
+    _mock_classifier(monkeypatch, "general_administrative", 0.95)
+    ingest = await _ingest(client, admin_headers)
+    task_id = ingest["task_id"]
+
+    await client.delete(f"/api/v1/tasks/{task_id}", headers=admin_headers)
+
+    tasks = await client.get("/api/v1/tasks", headers=admin_headers)
+
+    assert not any(t["id"] == task_id for t in tasks.json())
+
+
 async def test_deleted_task_stays_invisible_even_after_archiving(
     client: AsyncClient, admin_headers: dict, monkeypatch
 ):
