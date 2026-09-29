@@ -11,7 +11,7 @@ export function SignaturePad({onChange,canvasRef}:{onChange:(v:boolean)=>void;ca
   // type="button": the pad sits inside forms, and a plain button would submit them.
   return (
     <div className="relative">
-      <canvas ref={canvasRef} onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerLeave={end} className="h-40 w-full cursor-crosshair rounded-lg border border-slate-200 bg-slate-50 touch-none"/>
+      <canvas ref={canvasRef} onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerLeave={end} aria-label="Signature pad: draw your signature" className="h-40 w-full cursor-crosshair rounded-lg border border-slate-200 bg-slate-50 touch-none"/>
       <button type="button" onClick={clear} className="absolute right-2 top-2 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 hover:text-slate-900">Clear</button>
     </div>
   );
