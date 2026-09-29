@@ -270,7 +270,12 @@ async def identify_sender(
             if mrn:
                 fields = replace(fields, mrn=mrn)
         result = await resolve_patient(db, sender=sender, fields=fields)
-        if specific and result.outcome == IdentityOutcome.MATCHED and case is not None:
+        if (
+            specific
+            and result.outcome == IdentityOutcome.MATCHED
+            and result.patient is not None
+            and case is not None
+        ):
             case.patient_id = result.patient.id
             case.patient_name = result.patient.name
     await record_event(

@@ -622,7 +622,7 @@ async def _identify(
     booking, start a provisional profile for a new sender who gave a name.
     Nothing else creates a patient: a stranger asking for records is not one."""
     result = await identity_service.resolve_patient(db, sender=email.sender, fields=fields)
-    if result.outcome == IdentityOutcome.MATCHED:
+    if result.outcome == IdentityOutcome.MATCHED and result.patient is not None:
         await _link(db, conversation, result.patient)
         return result.patient, result.outcome
     if onboard and result.outcome == IdentityOutcome.NO_MATCH and fields.name:
@@ -764,7 +764,9 @@ async def _decide(
         else None
     )
     if named or (trusted and extraction.chosen_time is not None and conversation.offered_slots):
-        choice = named or _offered(conversation, extraction.chosen_time)
+        choice = named or (
+            _offered(conversation, extraction.chosen_time) if extraction.chosen_time else None
+        )
         if choice is None:
             return _failure(conversation, "unoffered")
         if missing:
@@ -825,13 +827,17 @@ async def _decide(
 
     # Turn 1, or a reply that only filled in details: ask for what is left.
     if first_turn or fields.name or fields.dob or fields.phone:
-        own = patient is not None and _who(patient.email) == _who(email.sender)
+        mrn = (
+            patient.mrn
+            if patient is not None and _who(patient.email) == _who(email.sender)
+            else None
+        )
         return Turn(
             "ask_details",
             text=ask_details_text(
                 name=name,
                 missing=missing,
-                mrn=patient.mrn if own else None,
+                mrn=mrn,
                 day_known=conversation.preferred_day is not None,
             ),
             next_stage=conversation.stage
@@ -866,6 +872,13 @@ async def record_sent(
     await db.commit()
 
 
+async def _conversation(db: AsyncSession, conversation_id: str | UUID) -> EmailConversation:
+    conversation = await db.get(EmailConversation, UUID(str(conversation_id)))
+    if conversation is None:
+        raise LookupError(f"email conversation {conversation_id} missing")
+    return conversation
+
+
 async def book_choice(
     db: AsyncSession, *, conversation_id: str | UUID, choice: dict, actor: User
 ) -> Turn:
@@ -876,7 +889,7 @@ async def book_choice(
     the time must still be free now. excl_doctor_overlap is the last word if
     two bookings race for it. Anything short of a clean booking is a human's.
     """
-    conversation = await db.get(EmailConversation, UUID(str(conversation_id)))
+    conversation = await _conversation(db, conversation_id)
     patient = await db.get(Patient, conversation.patient_id) if conversation.patient_id else None
     if patient is None:
         return _staff(conversation, "not_bookable")
@@ -914,7 +927,7 @@ async def book_choice(
         )
     except appointment_service.SlotTakenError:
         # book_appointment rolled the session back; start again from the row.
-        conversation = await db.get(EmailConversation, UUID(str(conversation_id)))
+        conversation = await _conversation(db, conversation_id)
         return _staff(conversation, "slot_taken")
     conversation.stage = ConversationStage.BOOKED.value
     conversation.appointment_id = appointment.id

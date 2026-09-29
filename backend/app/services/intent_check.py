@@ -25,7 +25,8 @@ _WEIGHTS = Path(__file__).resolve().parent.parent / "ml" / "intent_regression.js
 
 @lru_cache(maxsize=1)
 def _weights() -> dict:
-    return json.loads(_WEIGHTS.read_text())
+    weights: dict = json.loads(_WEIGHTS.read_text())
+    return weights
 
 
 def probabilities(vector: list[float]) -> dict[str, float]:

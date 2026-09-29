@@ -181,7 +181,7 @@ async def _profile_from_call(db: AsyncSession, call: Call, task: Task, llm, acto
     fields = replace(fields, phone=call.phone_number)
     result = await identity_service.resolve_patient(db, sender=None, fields=fields)
     created = False
-    if result.outcome == identity_service.IdentityOutcome.MATCHED:
+    if result.outcome == identity_service.IdentityOutcome.MATCHED and result.patient is not None:
         case.patient_id = result.patient.id
         case.patient_name = result.patient.name
     elif result.outcome == identity_service.IdentityOutcome.NO_MATCH and fields.name:
