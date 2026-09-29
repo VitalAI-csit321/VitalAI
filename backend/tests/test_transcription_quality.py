@@ -9,7 +9,7 @@ from app.services.transcription_service import transcribe_audio_with_quality
 
 def _model(segments, language_probability=0.98):
     info = SimpleNamespace(language_probability=language_probability)
-    return SimpleNamespace(transcribe=lambda audio: (iter(segments), info))
+    return SimpleNamespace(transcribe=lambda audio, **kwargs: (iter(segments), info))
 
 
 def _seg(text, avg_logprob=-0.3, no_speech_prob=0.02):
@@ -54,3 +54,21 @@ def test_silence_is_empty_and_low_not_an_error(monkeypatch):
     text, quality = transcribe_audio_with_quality(b"audio")
     assert text == ""
     assert quality.low is True
+
+
+def test_voicemail_transcription_uses_vad_and_clinic_prompt(monkeypatch):
+    """VAD stops turbo inventing "Thank you." from silence; the prompt fixed
+    "any free slots" (heard as "peace laws" / "fees lost") on a real call."""
+    seen = {}
+
+    def transcribe(audio, **kwargs):
+        seen.update(kwargs)
+        return iter([_seg("Hi.")]), SimpleNamespace(language_probability=0.98)
+
+    monkeypatch.setattr(
+        transcription_service, "_get_model", lambda: SimpleNamespace(transcribe=transcribe)
+    )
+    transcribe_audio_with_quality(b"audio")
+    assert seen["vad_filter"] is True
+    assert "free slots" in seen["initial_prompt"]
+    assert "language" not in seen  # forcing it pins language_probability to 1.0
