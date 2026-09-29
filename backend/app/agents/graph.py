@@ -205,6 +205,11 @@ def after_voicemail_identity(state: CaseState) -> str:
         and not state.get("is_provisional")
     ):
         return "booking"
+    if (
+        state.get("identity_outcome") == identity_service.IdentityOutcome.NO_MATCH.value
+        and state.get("intent") in identity_service.ONBOARDING_INTENTS
+    ):
+        return "voicemail_onboarding"
     return "callback"
 
 
@@ -372,6 +377,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         ("create_approval", create_approval),
         ("dispatch", nodes.dispatch),
         ("voicemail_identity", nodes.voicemail_identity),
+        ("voicemail_onboarding", nodes.voicemail_onboarding),
         ("callback", nodes.callback),
     ):
         builder.add_node(name, _guarded(name, fn))
@@ -448,6 +454,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
     # No doctor or no free time: the reason is on the Task and nothing is drafted.
     builder.add_conditional_edges("booking", _unless_failed(after_booking))
     builder.add_conditional_edges("voicemail_identity", _unless_failed(after_voicemail_identity))
+    builder.add_conditional_edges("voicemail_onboarding", _to("callback"))
     builder.add_edge("callback", END)
     builder.add_conditional_edges("records", _to("draft"))
     builder.add_conditional_edges("prescription", _to("draft"))

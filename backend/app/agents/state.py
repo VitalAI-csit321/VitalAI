@@ -38,6 +38,9 @@ class CaseState(TypedDict, total=False):
     patient_status: str | None
     is_provisional: bool | None
     identity_outcome: str | None
+    # Voicemail only: "created" or "existing" provisional record for an
+    # unknown caller, None when nobody was onboarded.
+    voicemail_onboarding: str | None
     # What the sender said about themselves (§8.3), for onboarding. JSON-safe:
     # dob as an ISO string.
     identity_fields: dict | None

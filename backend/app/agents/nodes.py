@@ -681,6 +681,50 @@ async def voicemail_identity(state: CaseState, runtime: Runtime[Context]) -> dic
     }
 
 
+async def voicemail_onboarding(state: CaseState, runtime: Runtime[Context]) -> dict:
+    """An unknown caller asking to book or join: the provisional patient email
+    onboarding (§9.0) would create. The name comes from the transcript, the
+    phone from caller ID and the DOB from the keypad only: spoken digits are
+    the least reliable part of a transcript. Nothing here replies; the
+    callback script tells staff to finish the registration."""
+    async with runtime.context.session_factory() as db:
+        actor = await _actor(db, runtime)
+        call = await db.get(Call, UUID(state["source_id"]))
+        if call is None:
+            raise LookupError(f"call missing for thread {state['source_id']}")
+        if (
+            call.phone_number == voicemail_service.WITHHELD
+            or not call.transcript
+            or (call.transcript_quality or {}).get("low")
+        ):
+            return {}
+        patient = await identity_service.find_provisional_by_phone(db, call.phone_number)
+        outcome = "existing"
+        if patient is None:
+            said = await identity_service.extract_identity_fields(
+                db, email_service.get_llm(), call.transcript, actor=actor
+            )
+            patient = await onboarding_service.start_onboarding(
+                db,
+                case_id=call.case_id,
+                sender=None,
+                fields=identity_service.IdentityFields(
+                    name=said.name, dob=call.keypad_dob, phone=call.phone_number
+                ),
+                actor=actor,
+            )
+            outcome = "created"
+        if patient is None:
+            return {}  # no name to file a record under: staff confirm who called
+    return {
+        "voicemail_onboarding": outcome,
+        "patient_id": str(patient.id),
+        "patient_name": patient.name,
+        "patient_status": patient.status.value,
+        "is_provisional": True,
+    }
+
+
 async def callback(state: CaseState, runtime: Runtime[Context]) -> dict:
     """Terminal for voicemail: the callback script on the Task."""
     async with runtime.context.session_factory() as db:

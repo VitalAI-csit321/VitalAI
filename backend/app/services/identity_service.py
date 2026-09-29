@@ -325,3 +325,23 @@ async def match_phone_dob(db: AsyncSession, phone: str | None, dob: date | None)
     )
     hits = [p for p in candidates if _phone(p.phone) == digits]
     return hits[0] if len(hits) == 1 else None
+
+
+async def find_provisional_by_phone(db: AsyncSession, phone: str | None) -> Patient | None:
+    """The voicemail twin of the email address fallback: an unknown caller who
+    already left a voicemail from this number has a provisional record, so a
+    second call without a keypad DOB must not create another one."""
+    digits = _phone(phone)
+    if digits is None:
+        return None
+    candidates = (
+        (
+            await db.execute(
+                select(Patient).where(Patient.purged_at.is_(None), Patient.is_provisional)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    hits = [p for p in candidates if _phone(p.phone) == digits]
+    return hits[0] if len(hits) == 1 else None
