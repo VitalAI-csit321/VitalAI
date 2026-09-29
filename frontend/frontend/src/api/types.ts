@@ -22,9 +22,12 @@ export interface Patient {
   id: string;
   mrn: string;
   name: string;
-  dob: string;
-  gender: Gender;
+  // Nullable since backend migration 0031: a provisional patient is known only
+  // from an inbound message, so they may have neither yet.
+  dob: string | null;
+  gender: Gender | null;
   status: PatientStatus;
+  isProvisional: boolean;
   createdAt: string;
   address: string | null;
   indigenousStatus: string | null;
@@ -60,7 +63,7 @@ export type ConsentQueueStatus = "pending" | "review" | "complete";
 
 export interface ConsentFormSnapshot {
   checks: { label: string; checked: boolean }[];
-  signature: string;
+  signature: string | null;
 }
 
 export interface Consent {
@@ -72,6 +75,7 @@ export interface Consent {
 
 export interface ConsentQueueRow {
   id: string; caseId: string; patientName: string; form: string; submitted: string; status: ConsentQueueStatus;
+  consentType: string;
 }
 
 export type TaskSource = "email" | "call";
@@ -126,10 +130,12 @@ export interface Message {
   unread: boolean; receivedLabel: string; threadReference: string; avatarColor: string;
   draftText: string | null; draftApprovalId: string | null; draftSent: boolean;
   taskStatus: TaskStatus; emailId: string | null; handoverContext: string | null;
+  callId?: string | null; hasAudio?: boolean;
 }
 
 export interface DashboardSummary {
-  openCases: number; awaitingApproval: number; escalations: number; auditEvents: number;
+  // null: this role may not read that count (a doctor has no /intake, /audit or /tasks).
+  openCases: number | null; awaitingApproval: number | null; escalations: number | null; auditEvents: number | null;
   workflowByDay: { day: string; date: string; value: number }[];
   pendingReviews: { id: string; name: string; kind: string; isNew: boolean }[];
 }

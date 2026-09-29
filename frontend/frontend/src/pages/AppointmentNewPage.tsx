@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { createAppointment, getAvailability } from "../api/appointments";
-import { findLatestCaseForPatient, createCase, listPatients } from "../api/cases";
+import { findLatestCaseForPatient, createCase, getCase, getPatient, listPatients } from "../api/cases";
 import { listDoctors } from "../api/doctors";
 import { isDemoMode } from "../lib/demoMode";
 import { ApiError, describeApiError } from "../lib/apiClient";
 import { demoPatients } from "../data/demoData";
 import type { AppointmentType, Availability, Doctor, Patient } from "../api/types";
 import { Spinner } from "../components/ui";
-import { TYPE_LABEL, formatTime, parseClinicDateTime, toDateInputValue, toTimeInputValueUTC } from "../components/calendarHelpers";
+import { TYPE_LABEL, formatTime, parseClinicDateTime, toDateInputValue, toTimeInputValueClinic } from "../components/calendarHelpers";
 
 const DURATIONS = [15, 30, 45, 60, 90, 120];
 
@@ -51,19 +51,18 @@ export function AppointmentNewPage() {
   // and carry the request text across so front desk does not retype it.
   useEffect(() => {
     if (prefillReason) setReason(prefillReason);
-    if (!prefillPatientId) return;
     if (isDemoMode()) {
       const match = demoPatients.find(p => p.id === prefillPatientId);
       if (match) setSelectedPatient(match);
       return;
     }
-    listPatients({ search: "", limit: 200 })
-      .then(res => {
-        const match = res.items.find(p => p.id === prefillPatientId);
-        if (match) setSelectedPatient(match);
-      })
-      .catch(() => {});
-  }, [prefillPatientId, prefillReason]);
+    // The inbox only knows the case; the case knows the patient. This used to
+    // scan listPatients({limit: 200}), which the API refuses (max 100).
+    (async () => {
+      const patientId = prefillPatientId ?? (prefillCaseId ? (await getCase(prefillCaseId)).patientId : null);
+      if (patientId) setSelectedPatient(await getPatient(patientId));
+    })().catch(() => {});
+  }, [prefillPatientId, prefillCaseId, prefillReason]);
 
   useEffect(() => {
     if (patientQuery.trim().length < 2) { setPatientResults([]); return; }
@@ -271,7 +270,7 @@ export function AppointmentNewPage() {
             <div className="mt-3 grid grid-cols-2 gap-2">
               {availability?.slots.filter(s => new Date(s.start).getUTCMinutes() === 0 || new Date(s.start).getUTCMinutes() === 30).map(s => {
                 const t = new Date(s.start);
-                const hhmm = toTimeInputValueUTC(t);
+                const hhmm = toTimeInputValueClinic(t);
                 const isSelected = hhmm === startTime;
                 return (
                   <button key={s.start} disabled={!s.available && !isSelected} onClick={() => setStartTime(hhmm)}

@@ -109,8 +109,8 @@ async def test_approved_draft_sends_through_graph(db_session, front_desk_user, m
         sent["message_id"] = message_id
         sent["body"] = body
 
-    monkeypatch.setattr("app.routes.approvals.outlook_auth.get_access_token", fake_token)
-    monkeypatch.setattr("app.routes.approvals.outlook_client.send_reply", fake_send)
+    monkeypatch.setattr("app.services.outlook_auth.get_access_token", fake_token)
+    monkeypatch.setattr("app.services.outlook_client.send_reply", fake_send)
 
     email, task, _, _ = await _ingest_high_confidence(
         db_session,
@@ -150,8 +150,8 @@ async def test_failed_send_is_not_recorded_as_sent(db_session, front_desk_user, 
             "403", request=httpx.Request("POST", "https://graph"), response=httpx.Response(403)
         )
 
-    monkeypatch.setattr("app.routes.approvals.outlook_auth.get_access_token", fake_token)
-    monkeypatch.setattr("app.routes.approvals.outlook_client.send_reply", failing_send)
+    monkeypatch.setattr("app.services.outlook_auth.get_access_token", fake_token)
+    monkeypatch.setattr("app.services.outlook_client.send_reply", failing_send)
 
     email, task, _, _ = await _ingest_high_confidence(
         db_session,
@@ -187,7 +187,7 @@ async def test_simulated_send_untouched_when_connector_off(
     async def explode():
         raise AssertionError("must not authenticate when the connector is off")
 
-    monkeypatch.setattr("app.routes.approvals.outlook_auth.get_access_token", explode)
+    monkeypatch.setattr("app.services.outlook_auth.get_access_token", explode)
 
     email, task, _, _ = await _ingest_high_confidence(
         db_session, front_desk_user, monkeypatch, external_id="AAMk-x", external_source="outlook"
@@ -206,3 +206,45 @@ async def test_simulated_send_untouched_when_connector_off(
 
     await db_session.refresh(task)
     assert task.draft_sent is True
+
+
+@pytest.mark.asyncio
+async def test_second_execution_does_not_send_again(db_session, front_desk_user, monkeypatch):
+    """draft_sent is the delivery record, so it has to be read as a guard.
+
+    A resumed graph or a retried executor can call this twice on one approval;
+    without the guard the patient gets the same reply twice.
+    """
+    monkeypatch.setattr("app.routes.approvals.settings.outlook_enabled", True)
+    sends = []
+
+    async def fake_token():
+        return "tok"
+
+    async def counting_send(access_token, message_id, body):
+        sends.append(message_id)
+
+    monkeypatch.setattr("app.services.outlook_auth.get_access_token", fake_token)
+    monkeypatch.setattr("app.services.outlook_client.send_reply", counting_send)
+
+    email, task, _, _ = await _ingest_high_confidence(
+        db_session,
+        front_desk_user,
+        monkeypatch,
+        external_id="AAMk-twice",
+        external_source="outlook",
+    )
+    approval = ApprovalRequest(
+        action_type="email.draft_reply",
+        status=ApprovalStatus.APPROVED,
+        payload={"email_id": str(email.id), "task_id": str(task.id), "draft": "You are booked."},
+        case_id=email.case_id,
+        requested_by_id=front_desk_user.id,
+    )
+    db_session.add(approval)
+    await db_session.flush()
+
+    await _execute_email_draft_reply(db_session, approval, front_desk_user)
+    await _execute_email_draft_reply(db_session, approval, front_desk_user)
+
+    assert sends == ["AAMk-twice"]

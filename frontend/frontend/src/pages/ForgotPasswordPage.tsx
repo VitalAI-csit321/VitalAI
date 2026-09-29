@@ -1,18 +1,34 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { requestPasswordReset } from "../api/auth";
+import { ApiError } from "../lib/apiClient";
 
 export function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // No password-reset endpoint exists on the backend yet. The form shows the
-  // approved confirmation state; wire it to a real reset endpoint when one is
-  // added — this component's markup stays the same.
-  function onSubmit(e: FormEvent) {
+  // The backend answers the same way whether or not the email is registered,
+  // so this confirmation never reveals which accounts exist.
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    setSent(true);
+    setError(null);
+    setBusy(true);
+    try {
+      await requestPasswordReset(email);
+      setSent(true);
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 429
+          ? "Too many attempts. Please wait a minute and try again."
+          : "Could not send the reset link. Check the server is running and try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -51,11 +67,13 @@ export function ForgotPasswordPage() {
                 required
               />
             </div>
+            {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
             <button
               type="submit"
-              className="w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white hover:bg-brand-hover"
+              disabled={busy}
+              className="w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-60"
             >
-              Send reset link
+              {busy ? "Sending..." : "Send reset link"}
             </button>
           </form>
         )}

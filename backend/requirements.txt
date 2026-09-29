@@ -30,12 +30,18 @@ langchain-aws>=0.1.0
 
 # Call transcription (Phase 1 MVP, local STT)
 faster-whisper>=1.0.0
+# Public holidays for the voicemail line's opening hours.
+holidays>=0.60
+# Voicemail line: webhook signature checks and TwiML only (recordings go
+# through httpx, see app/services/twilio_client.py).
+twilio>=9.0
 
 # Rate limiting
 slowapi>=0.1.9
 
 # Phase 3 — orchestration, RAG, observability
-langgraph>=0.1.0
+langgraph>=1.2.1
+langgraph-checkpoint-postgres>=3.0.0
 langsmith>=0.1.0
 langchain-postgres>=0.0.6
 # Bounded like fastapi above: nomic-embed-text-v1's trust_remote_code model

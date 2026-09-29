@@ -1,0 +1,950 @@
+{
+  "train_size": 441,
+  "synthetic_v1_heldout": {
+    "accuracy": 0.8814814814814815,
+    "report": {
+      "appointment_request": {
+        "precision": 0.8571428571428571,
+        "recall": 0.9230769230769231,
+        "f1-score": 0.8888888888888888,
+        "support": 13.0
+      },
+      "new_patient_onboarding": {
+        "precision": 0.8666666666666667,
+        "recall": 1.0,
+        "f1-score": 0.9285714285714286,
+        "support": 13.0
+      },
+      "prescription_renewal": {
+        "precision": 0.7368421052631579,
+        "recall": 1.0,
+        "f1-score": 0.8484848484848485,
+        "support": 14.0
+      },
+      "results_enquiry": {
+        "precision": 0.9230769230769231,
+        "recall": 0.9230769230769231,
+        "f1-score": 0.9230769230769231,
+        "support": 13.0
+      },
+      "referral_request": {
+        "precision": 0.9230769230769231,
+        "recall": 0.9230769230769231,
+        "f1-score": 0.9230769230769231,
+        "support": 13.0
+      },
+      "medical_records_request": {
+        "precision": 0.8235294117647058,
+        "recall": 1.0,
+        "f1-score": 0.9032258064516129,
+        "support": 14.0
+      },
+      "billing_insurance_enquiry": {
+        "precision": 0.9285714285714286,
+        "recall": 1.0,
+        "f1-score": 0.9629629629629629,
+        "support": 13.0
+      },
+      "complaint_escalation": {
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1-score": 0.6666666666666666,
+        "support": 14.0
+      },
+      "general_administrative": {
+        "precision": 1.0,
+        "recall": 0.6428571428571429,
+        "f1-score": 0.782608695652174,
+        "support": 14.0
+      },
+      "urgent_emergency": {
+        "precision": 0.9285714285714286,
+        "recall": 0.9285714285714286,
+        "f1-score": 0.9285714285714286,
+        "support": 14.0
+      },
+      "accuracy": 0.8814814814814815,
+      "macro avg": {
+        "precision": 0.8987477744134091,
+        "recall": 0.8840659340659341,
+        "f1-score": 0.8756134572403858,
+        "support": 135.0
+      },
+      "weighted avg": {
+        "precision": 0.8987122490321665,
+        "recall": 0.8814814814814815,
+        "f1-score": 0.8737726436079768,
+        "support": 135.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        12,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        13,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        14,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        0,
+        12,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        12,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        14,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        13,
+        0,
+        0,
+        0
+      ],
+      [
+        1,
+        0,
+        3,
+        1,
+        0,
+        1,
+        1,
+        7,
+        0,
+        0
+      ],
+      [
+        0,
+        2,
+        1,
+        0,
+        1,
+        1,
+        0,
+        0,
+        9,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        13
+      ]
+    ],
+    "confidence": {
+      "n": 135,
+      "min": 0.13662564804412447,
+      "max": 0.4961383267601852,
+      "mean": 0.27252850141860474,
+      "std": 0.07374463718599171,
+      "p10": 0.18999636703994505,
+      "p50": 0.25780048176192827,
+      "p90": 0.3700527341221037,
+      "distinct_values": 133,
+      "most_common": [
+        [
+          0.179,
+          2
+        ],
+        [
+          0.3239,
+          2
+        ],
+        [
+          0.1366,
+          1
+        ],
+        [
+          0.1512,
+          1
+        ],
+        [
+          0.1664,
+          1
+        ]
+      ]
+    },
+    "mean_conf_when_correct": 0.279712991689265,
+    "mean_conf_when_wrong": 0.2190938550305691,
+    "gate_bands": {
+      "auto (>=0.90)": {
+        "count": 0,
+        "accuracy": null
+      },
+      "flagged (0.70-0.90)": {
+        "count": 0,
+        "accuracy": null
+      },
+      "human (<0.70)": {
+        "count": 135,
+        "accuracy": 0.8814814814814815
+      }
+    },
+    "margin": {
+      "n": 135,
+      "min": 0.0035998457490968305,
+      "max": 0.42429163707684464,
+      "mean": 0.14374845859520516,
+      "std": 0.09360791973716308,
+      "p10": 0.03370789369337977,
+      "p50": 0.12865099123260235,
+      "p90": 0.27166864449176686,
+      "distinct_values": 130,
+      "most_common": [
+        [
+          0.0059,
+          2
+        ],
+        [
+          0.0522,
+          2
+        ],
+        [
+          0.1087,
+          2
+        ],
+        [
+          0.1149,
+          2
+        ],
+        [
+          0.2718,
+          2
+        ]
+      ]
+    },
+    "auroc_margin": 0.8098739495798319
+  },
+  "synthetic_v2_heldout": {
+    "accuracy": 0.8888888888888888,
+    "report": {
+      "appointment_request": {
+        "precision": 0.75,
+        "recall": 0.6,
+        "f1-score": 0.6666666666666666,
+        "support": 5.0
+      },
+      "new_patient_onboarding": {
+        "precision": 1.0,
+        "recall": 0.6,
+        "f1-score": 0.75,
+        "support": 5.0
+      },
+      "prescription_renewal": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 6.0
+      },
+      "results_enquiry": {
+        "precision": 0.7142857142857143,
+        "recall": 1.0,
+        "f1-score": 0.8333333333333334,
+        "support": 5.0
+      },
+      "referral_request": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 5.0
+      },
+      "medical_records_request": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 6.0
+      },
+      "billing_insurance_enquiry": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 5.0
+      },
+      "complaint_escalation": {
+        "precision": 0.75,
+        "recall": 0.6,
+        "f1-score": 0.6666666666666666,
+        "support": 5.0
+      },
+      "general_administrative": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 6.0
+      },
+      "urgent_emergency": {
+        "precision": 0.75,
+        "recall": 1.0,
+        "f1-score": 0.8571428571428571,
+        "support": 6.0
+      },
+      "accuracy": 0.8888888888888888,
+      "macro avg": {
+        "precision": 0.8964285714285716,
+        "recall": 0.8800000000000001,
+        "f1-score": 0.8773809523809524,
+        "support": 54.0
+      },
+      "weighted avg": {
+        "precision": 0.8994708994708994,
+        "recall": 0.8888888888888888,
+        "f1-score": 0.8838183421516753,
+        "support": 54.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        3,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        1,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        5,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        5,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        3,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        6,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        6
+      ]
+    ],
+    "confidence": {
+      "n": 54,
+      "min": 0.13964214456170182,
+      "max": 0.4305975323662435,
+      "mean": 0.2832927379388293,
+      "std": 0.08170272701970789,
+      "p10": 0.16772849492150824,
+      "p50": 0.2847493052239547,
+      "p90": 0.3808763867626614,
+      "distinct_values": 53,
+      "most_common": [
+        [
+          0.3777,
+          2
+        ],
+        [
+          0.1396,
+          1
+        ],
+        [
+          0.1422,
+          1
+        ],
+        [
+          0.1488,
+          1
+        ],
+        [
+          0.1544,
+          1
+        ]
+      ]
+    },
+    "mean_conf_when_correct": 0.2973905909175947,
+    "mean_conf_when_wrong": 0.17050991410870628,
+    "gate_bands": {
+      "auto (>=0.90)": {
+        "count": 0,
+        "accuracy": null
+      },
+      "flagged (0.70-0.90)": {
+        "count": 0,
+        "accuracy": null
+      },
+      "human (<0.70)": {
+        "count": 54,
+        "accuracy": 0.8888888888888888
+      }
+    },
+    "margin": {
+      "n": 54,
+      "min": 0.0011306265350355116,
+      "max": 0.34561789565342116,
+      "mean": 0.16392725893142177,
+      "std": 0.10067478792079432,
+      "p10": 0.015539317479385334,
+      "p50": 0.16917729905228807,
+      "p90": 0.2887391937438962,
+      "distinct_values": 53,
+      "most_common": [
+        [
+          0.1073,
+          2
+        ],
+        [
+          0.0011,
+          1
+        ],
+        [
+          0.0048,
+          1
+        ],
+        [
+          0.0071,
+          1
+        ],
+        [
+          0.0102,
+          1
+        ]
+      ]
+    },
+    "auroc_margin": 0.9409722222222223
+  },
+  "real_in_scope_CONTAMINATED": {
+    "accuracy": 0.8301886792452831,
+    "report": {
+      "appointment_request": {
+        "precision": 1.0,
+        "recall": 0.7368421052631579,
+        "f1-score": 0.8484848484848485,
+        "support": 19.0
+      },
+      "new_patient_onboarding": {
+        "precision": 0.2,
+        "recall": 1.0,
+        "f1-score": 0.3333333333333333,
+        "support": 1.0
+      },
+      "prescription_renewal": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 11.0
+      },
+      "results_enquiry": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 0.0
+      },
+      "referral_request": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 0.0
+      },
+      "medical_records_request": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 1.0
+      },
+      "billing_insurance_enquiry": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 1.0
+      },
+      "complaint_escalation": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 1.0
+      },
+      "general_administrative": {
+        "precision": 1.0,
+        "recall": 0.7647058823529411,
+        "f1-score": 0.8666666666666667,
+        "support": 17.0
+      },
+      "urgent_emergency": {
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1-score": 0.8,
+        "support": 2.0
+      },
+      "accuracy": 0.8301886792452831,
+      "macro avg": {
+        "precision": 0.6866666666666668,
+        "recall": 0.7501547987616098,
+        "f1-score": 0.6848484848484848,
+        "support": 53.0
+      },
+      "weighted avg": {
+        "precision": 0.9723270440251573,
+        "recall": 0.8301886792452831,
+        "f1-score": 0.8827901658090338,
+        "support": 53.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        14,
+        2,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        11,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        2,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        13,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2
+      ]
+    ],
+    "confidence": {
+      "n": 53,
+      "min": 0.13293457045436105,
+      "max": 0.44541897916786377,
+      "mean": 0.24265133437013378,
+      "std": 0.07494831559155225,
+      "p10": 0.14134060952537247,
+      "p50": 0.22901886173456365,
+      "p90": 0.3198254762053206,
+      "distinct_values": 42,
+      "most_common": [
+        [
+          0.306,
+          5
+        ],
+        [
+          0.2128,
+          3
+        ],
+        [
+          0.3121,
+          3
+        ],
+        [
+          0.1746,
+          2
+        ],
+        [
+          0.212,
+          2
+        ]
+      ]
+    },
+    "mean_conf_when_correct": 0.26120195527859746,
+    "mean_conf_when_wrong": 0.15195940992875573,
+    "gate_bands": {
+      "auto (>=0.90)": {
+        "count": 0,
+        "accuracy": null
+      },
+      "flagged (0.70-0.90)": {
+        "count": 0,
+        "accuracy": null
+      },
+      "human (<0.70)": {
+        "count": 53,
+        "accuracy": 0.8301886792452831
+      }
+    },
+    "margin": {
+      "n": 53,
+      "min": 0.0018681974293926762,
+      "max": 0.35533194229859694,
+      "mean": 0.11477999765087736,
+      "std": 0.08754066522034765,
+      "p10": 0.00844784635560898,
+      "p50": 0.09279988231634184,
+      "p90": 0.2042098027365925,
+      "distinct_values": 42,
+      "most_common": [
+        [
+          0.193,
+          5
+        ],
+        [
+          0.0736,
+          3
+        ],
+        [
+          0.1899,
+          3
+        ],
+        [
+          0.0079,
+          2
+        ],
+        [
+          0.0923,
+          2
+        ]
+      ]
+    },
+    "auroc_margin": 0.9772727272727273
+  },
+  "real_in_scope_llm_accuracy": 0.9622641509433962,
+  "real_threshold_CONTAMINATED": {
+    "threshold": 0.042725749516632855,
+    "calibration_n": 18,
+    "holdout_n": 19,
+    "holdout_auto_routed": 13,
+    "holdout_auto_accuracy": 1.0
+  },
+  "real_out_of_scope_margins": [
+    0.08340547583672905,
+    0.03683542692184308,
+    0.019046843559379106,
+    0.027602713968299913,
+    0.0030495478912971052
+  ],
+  "step2_rule_CONTAMINATED": {
+    "in_scope": {
+      "n": 53,
+      "to_human": 13,
+      "llm_wrong": 2,
+      "llm_wrong_caught": 2,
+      "llm_right_sent_to_human": 11,
+      "auto_routed_accuracy": 1.0
+    },
+    "out_of_scope": {
+      "n": 5,
+      "to_human": 5,
+      "llm_wrong": 5,
+      "llm_wrong_caught": 5,
+      "llm_right_sent_to_human": 0,
+      "auto_routed_accuracy": null
+    }
+  },
+  "real_errors": [
+    {
+      "email_id": "0df013b8-2fb5-4a8d-8230-2026e0b731ac",
+      "label": "appointment_request",
+      "pred": "new_patient_onboarding",
+      "margin": 0.012171289731807464,
+      "certainty": "borderline"
+    },
+    {
+      "email_id": "1fd871c1-b6dd-4c5e-b42e-1ba5ac96d5c7",
+      "label": "appointment_request",
+      "pred": "referral_request",
+      "margin": 0.003847673081590036,
+      "certainty": "borderline"
+    },
+    {
+      "email_id": "66e46a70-6079-4109-8baf-8d8d85bf503e",
+      "label": "general_administrative",
+      "pred": "referral_request",
+      "margin": 0.011627910524688229,
+      "certainty": "borderline"
+    },
+    {
+      "email_id": "605fd9fb-1236-4101-b74a-42c57681f909",
+      "label": "general_administrative",
+      "pred": "new_patient_onboarding",
+      "margin": 0.007938029142266934,
+      "certainty": "borderline"
+    },
+    {
+      "email_id": "8004865a-9ad4-4e85-a541-0da7bf3fd2d5",
+      "label": "general_administrative",
+      "pred": "new_patient_onboarding",
+      "margin": 0.007938029142266934,
+      "certainty": "borderline"
+    },
+    {
+      "email_id": "fc8f7df8-323a-4369-b03b-9636a9992f4e",
+      "label": "appointment_request",
+      "pred": "new_patient_onboarding",
+      "margin": 0.0076985670106652915,
+      "certainty": "clear"
+    },
+    {
+      "email_id": "77cf4b62-e906-4c70-8add-0b1361c47785",
+      "label": "general_administrative",
+      "pred": "referral_request",
+      "margin": 0.01661966193172948,
+      "certainty": "borderline"
+    },
+    {
+      "email_id": "e6682930-3882-4b8f-b962-e8a0932cce2d",
+      "label": "appointment_request",
+      "pred": "results_enquiry",
+      "margin": 0.0018681974293926762,
+      "certainty": "borderline"
+    },
+    {
+      "email_id": "3329753c-b831-4115-825f-c275e71bfe13",
+      "label": "appointment_request",
+      "pred": "urgent_emergency",
+      "margin": 0.01048711520897716,
+      "certainty": "clear"
+    }
+  ]
+}

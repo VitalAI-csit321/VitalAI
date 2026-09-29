@@ -16,6 +16,7 @@ from app.rag.chunking import chunk_text
 from app.rag.doc_scopes import access_scope_for_doc_type
 from app.rag.embeddings import get_embedding_provider
 from app.rag.text_extraction import extract_pdf_text
+from app.services import patient_service
 from app.services.audit_service import record_event
 from app.storage import object_storage
 
@@ -164,10 +165,14 @@ async def ingest_document(
 
 
 async def get_document(db: AsyncSession, document_id: UUID) -> ClinicalDocument | None:
-    return await db.get(ClinicalDocument, document_id)
+    document = await db.get(ClinicalDocument, document_id)
+    if document is not None:
+        await patient_service.assert_not_provisional(db, document.patient_id)
+    return document
 
 
 async def list_documents_for_patient(db: AsyncSession, patient_id: UUID) -> list[ClinicalDocument]:
+    await patient_service.assert_not_provisional(db, patient_id)
     result = await db.execute(
         select(ClinicalDocument)
         .where(ClinicalDocument.patient_id == patient_id)

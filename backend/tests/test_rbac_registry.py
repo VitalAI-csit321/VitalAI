@@ -1,5 +1,6 @@
 from app.auth.permissions import MANAGE_APPOINTMENTS_ALL, MANAGE_CASES, MANAGE_OWN_CALENDAR
 from app.auth.rbac_registry import get_rbac_registry
+from app.config import settings
 from app.main import app
 from app.models.user import UserRole
 
@@ -72,4 +73,20 @@ def test_total_route_count():
     # 91 as of the consent form snapshot work: +2 for
     # POST /consent/{consent_id}/resolve-review and GET /audit/verify.
     # 92 as of the corpus-as-documents work: +1 for GET /rag/documents.
-    assert len({(e.method, e.path) for e in registry}) == 92
+    # 93 as of the provisional-patient work (build spec 9.0b): +1 for
+    # POST /patients/{patient_id}/promote, which requires REGISTER_PATIENT.
+    # 94 as of the consent queue fix: +1 for GET /consent/queue, which requires
+    # CAPTURE_CONSENT (front desk, operators and admins, not clinicians) and
+    # replaces a frontend page that listed intake cases and labelled them from
+    # a hardcoded array of form names.
+    # 97 as of the voicemail channel: the password reset work (6a98b8a) added 2
+    # routes without bumping this (96 real), +1 for POST /voicemails/simulate
+    # (MANAGE_CASES).
+    # 98: +1 for GET /calls/{call_id}/audio (PLAY_VOICEMAIL).
+    # 101 as of the registration form link: +2 for GET and POST
+    # /public/registration/{token} (public, allowlisted) and +1 for
+    # POST /consent/{consent_id}/verify (CAPTURE_CONSENT).
+    # The five Twilio webhooks under /voice are mounted only with
+    # TWILIO_ENABLED, so a dev .env that turns the line on adds them.
+    voice = 5 if settings.twilio_enabled else 0
+    assert len({(e.method, e.path) for e in registry}) == 101 + voice

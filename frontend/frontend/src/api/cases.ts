@@ -4,7 +4,8 @@ import type { Case, Patient, PatientStatus } from "./types";
 interface RawCase { id:string; patient_id:string|null; patient_name:string|null; contact_reason:string; contact_channel:string; notes:string|null; status:string; created_at:string; updated_at:string; }
 
 interface RawPatient {
-  id:string; mrn:string; name:string; dob:string; gender:string; status:PatientStatus; created_at:string;
+  id:string; mrn:string; name:string; dob:string|null; gender:string|null; status:PatientStatus;
+  is_provisional:boolean; created_at:string;
   address: string | null; indigenous_status: string | null; preferred_language: string | null;
   phone: string | null; email: string | null;
   emergency_contact_name: string | null; emergency_contact_phone: string | null;
@@ -19,7 +20,8 @@ function toCase(r:RawCase):Case { return {id:r.id,patientId:r.patient_id,patient
 
 function toPatient(r:RawPatient):Patient {
   return {
-    id:r.id, mrn:r.mrn, name:r.name, dob:r.dob, gender:r.gender as Patient["gender"], status:r.status, createdAt:r.created_at,
+    id:r.id, mrn:r.mrn, name:r.name, dob:r.dob, gender:r.gender as Patient["gender"], status:r.status,
+    isProvisional:r.is_provisional ?? false, createdAt:r.created_at,
     address:r.address, indigenousStatus:r.indigenous_status, preferredLanguage:r.preferred_language,
     phone:r.phone, email:r.email,
     emergencyContactName:r.emergency_contact_name, emergencyContactPhone:r.emergency_contact_phone,
@@ -125,8 +127,17 @@ export async function updatePatient(
 ): Promise<Patient> {
   const payload: Record<string, unknown> = profileFieldsToPayload(input);
   if (input.name !== undefined) payload.name = input.name;
-  if (input.dob !== undefined) payload.dob = ddmmyyyyToIso(input.dob);
-  if (input.gender !== undefined) {
+  if (input.dob) payload.dob = ddmmyyyyToIso(input.dob);
+  // A provisional patient's gender is null, and `!== undefined` let that
+  // through into toLowerCase(), so every Save on the edit page threw and the
+  // page showed "Could not save changes" forever. An empty value means "not
+  // chosen" and is simply not sent.
+  //
+  // Empty means "leave it alone", not "clear it". Clearing has never been
+  // possible: patient_service.update_patient only assigns when the field is
+  // not None, so a null dob or gender is ignored server side. Before this,
+  // an emptied date of birth became ddmmyyyyToIso("") == "" and 422'd.
+  if (input.gender) {
     const genderMap:Record<string,string> = { male:"male", female:"female", "non binary":"non_binary", nonbinary:"non_binary" };
     payload.gender = genderMap[input.gender.toLowerCase()] ?? input.gender;
   }
@@ -134,14 +145,19 @@ export async function updatePatient(
   return toPatient(await apiPatch<RawPatient>(`/api/v1/patients/${id}`, payload));
 }
 
+// Provisional -> registered. 409 when there is no explicit captured consent;
+// the caller shows the backend's own reason rather than a generic message.
+export async function promotePatient(id: string): Promise<Patient> {
+  return toPatient(await apiPost<RawPatient>(`/api/v1/patients/${id}/promote`, {}));
+}
+
 export async function createPatientFromOnboarding(input:{
   firstName:string; lastName:string; dateOfBirth?:string; gender?:string;
   contactReason?:string; contactChannel?:string;
 } & ProfileFields):Promise<Patient> {
   const name=`${input.firstName} ${input.lastName}`.trim();
-  const dob = input.dateOfBirth ? ddmmyyyyToIso(input.dateOfBirth) : "2000-01-01";
-  const genderMap:Record<string,string>={male:"male",female:"female","non binary":"non_binary",nonbinary:"non_binary"};
-  const gender=genderMap[(input.gender??"male").toLowerCase()]??"male";
+  const dob = input.dateOfBirth ? ddmmyyyyToIso(input.dateOfBirth) : "";
+  const gender = input.gender ?? "";
 
   const patient = await toPatient(await apiPost<RawPatient>("/api/v1/patients", {
     name, dob, gender, ...profileFieldsToPayload(input),

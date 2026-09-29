@@ -6,9 +6,8 @@ import { ApiError } from "../lib/apiClient";
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("s.kapoor@royalmelb.health");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -64,16 +63,7 @@ export function LoginPage() {
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 text-sm text-slate-600">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
-              />
-              Remember me
-            </label>
+          <div className="flex justify-end">
             <Link to="/forgot-password" className="text-sm font-medium text-brand hover:underline">
               Forgot password?
             </Link>

@@ -77,3 +77,8 @@ class CallEscalationOut(BaseModel):
 
 class CallTranscribeOut(BaseModel):
     transcript: str
+
+
+class VoicemailSimulateOut(BaseModel):
+    call_id: UUID
+    case_id: UUID

@@ -77,6 +77,15 @@ class Appointment(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         String(16), nullable=False, default=lambda: f"APT-{secrets.token_hex(3).upper()}"
     )
     notify_patient: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Idempotency guard for the reminder sweep (spec §16.2), the role
+    # draft_sent plays for replies. Owned by appointment_reminders, which
+    # sets it only after a successful send; cleared again by every path that
+    # moves time_slot. Declared here as well as in migration 0032 because the
+    # SQLite test track builds its schema from Base.metadata.create_all and
+    # never runs Alembic.
+    reminder_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     notify_provider: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     series_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
 

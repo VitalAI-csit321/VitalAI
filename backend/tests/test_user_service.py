@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
+from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -175,3 +176,74 @@ async def test_list_users_pagination(db_session: AsyncSession):
 
     assert len(rows) == 2
     assert total >= 5
+
+
+async def test_the_user_list_filters_by_role_and_department_server_side(db_session):
+    """The Users page loaded one page and filtered it in the browser, so its
+    role and department filters, its search and its "N active" counts all only
+    ever saw the twenty rows it happened to have fetched. Filtering belongs
+    where the rows are, next to the paging and the total.
+    """
+    from app.auth.security import hash_password
+    from app.models.user import User, UserRole
+    from app.services import user_service
+
+    for email, role, dept in [
+        ("filter-a@example.com", UserRole.OPERATOR, "Reception"),
+        ("filter-b@example.com", UserRole.OPERATOR, "Billing"),
+        ("filter-c@example.com", UserRole.DOCTOR, "Reception"),
+    ]:
+        db_session.add(
+            User(
+                email=email,
+                hashed_password=hash_password("pass1234"),
+                full_name=f"Filter {role.value}",
+                role=role,
+                department=dept,
+            )
+        )
+    await db_session.commit()
+
+    operators, op_total = await user_service.list_users(db_session, role=UserRole.OPERATOR)
+    assert op_total >= 2
+    assert all(u.role == UserRole.OPERATOR for u, _ in operators)
+
+    reception, rec_total = await user_service.list_users(db_session, department="Reception")
+    assert rec_total >= 2
+    assert all(u.department == "Reception" for u, _ in reception)
+
+    both, both_total = await user_service.list_users(
+        db_session, role=UserRole.OPERATOR, department="Reception"
+    )
+    assert both_total >= 1
+    assert all(u.role == UserRole.OPERATOR and u.department == "Reception" for u, _ in both)
+    # The total is the count of matches, not of the page returned.
+    assert both_total == len(both) or both_total > len(both)
+
+
+async def test_the_user_list_reports_every_department_not_just_this_page(
+    client: AsyncClient, admin_headers: dict, db_session
+):
+    """The department filter was populated from whichever twenty rows the page
+    had loaded, so departments belonging to anyone further down the list were
+    simply not offered. The list endpoint reports them all."""
+    from app.auth.security import hash_password
+    from app.models.user import User, UserRole
+
+    db_session.add(
+        User(
+            email="dept-far@example.com",
+            hashed_password=hash_password("pass1234"),
+            full_name="Far Away",
+            role=UserRole.OPERATOR,
+            department="Pathology",
+        )
+    )
+    await db_session.commit()
+
+    response = await client.get("/api/v1/auth/users?limit=1", headers=admin_headers)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert len(body["items"]) == 1
+    assert "Pathology" in body["departments"]

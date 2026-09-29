@@ -5,7 +5,7 @@ import { listDoctors } from "../api/doctors";
 import { ApiError, describeApiError } from "../lib/apiClient";
 import type { AppointmentDetail, AppointmentStatus, AppointmentType, Availability, Doctor } from "../api/types";
 import { Spinner } from "../components/ui";
-import { TYPE_LABEL, formatTime, parseClinicDateTime, patientDisplayName, toDateInputValueUTC, toTimeInputValueUTC } from "../components/calendarHelpers";
+import { TYPE_LABEL, formatTime, parseClinicDateTime, patientDisplayName, toDateInputValueClinic, toTimeInputValueClinic } from "../components/calendarHelpers";
 
 const DURATIONS = [15, 30, 45, 60, 90, 120];
 
@@ -41,8 +41,8 @@ export function AppointmentEditPage() {
         setOriginal(a); setDoctors(docs);
         setAppointmentType(a.appointmentType); setDoctorId(a.doctorId);
         const d = new Date(a.timeSlot);
-        setDate(toDateInputValueUTC(d));
-        setStartTime(toTimeInputValueUTC(d));
+        setDate(toDateInputValueClinic(d));
+        setStartTime(toTimeInputValueClinic(d));
         setDurationMinutes(a.durationMinutes); setLocation(a.location ?? "");
         setStatus(a.status === "confirmed" || a.status === "pending" ? a.status : "confirmed");
         setReason(a.reason ?? ""); setInternalNotes(a.internalNotes ?? "");
@@ -63,8 +63,8 @@ export function AppointmentEditPage() {
     return formatTime(end.toISOString());
   }, [date, startTime, durationMinutes]);
 
-  const timeChanged = original && (toDateInputValueUTC(new Date(original.timeSlot)) !== date ||
-    toTimeInputValueUTC(new Date(original.timeSlot)) !== startTime);
+  const timeChanged = original && (toDateInputValueClinic(new Date(original.timeSlot)) !== date ||
+    toTimeInputValueClinic(new Date(original.timeSlot)) !== startTime);
 
   async function handleSave() {
     if (!id || !date || !startTime) return;
@@ -178,7 +178,7 @@ export function AppointmentEditPage() {
             <div className="mt-3 grid grid-cols-2 gap-2">
               {availability?.slots.filter(s => new Date(s.start).getUTCMinutes() === 0 || new Date(s.start).getUTCMinutes() === 30).map(s => {
                 const t = new Date(s.start);
-                const hhmm = toTimeInputValueUTC(t);
+                const hhmm = toTimeInputValueClinic(t);
                 const isCurrent = hhmm === startTime;
                 return (
                   <button key={s.start} disabled={!s.available && !isCurrent} onClick={() => setStartTime(hhmm)}

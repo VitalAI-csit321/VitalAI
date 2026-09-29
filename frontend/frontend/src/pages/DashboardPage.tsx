@@ -11,7 +11,7 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardSummary | null>(null);
 
-  useEffect(() => { getDashboard().then(setData).catch(() => {}); }, []);
+  useEffect(() => { getDashboard(user).then(setData).catch(() => {}); }, [user]);
 
   const tiles = [
     { label: "Open cases", key: "openCases", color: "border-t-brand", path: "/patients" },
@@ -27,7 +27,9 @@ export function DashboardPage() {
           <h1 className="text-2xl font-bold text-slate-900">Overview</h1>
           <p className="mt-1 text-sm text-slate-500">Welcome back, {user?.fullName ?? ""}</p>
         </div>
-        <button onClick={() => navigate("/patients/onboarding")} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover">New case</button>
+        {user?.role !== "doctor" && (
+          <button onClick={() => navigate("/patients/onboarding")} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover">New case</button>
+        )}
       </div>
 
       {!data ? <div className="mt-8"><Spinner /></div> : <>
@@ -35,7 +37,7 @@ export function DashboardPage() {
           {tiles.map(t => (
             <div key={t.key} onClick={() => navigate(t.path)} className={`cursor-pointer rounded-xl border border-slate-200 border-t-2 ${t.color} bg-white p-5 hover:shadow-md transition-shadow`}>
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t.label}</div>
-              <div className="mt-2 text-3xl font-bold text-slate-900">{data[t.key]}</div>
+              <div className="mt-2 text-3xl font-bold text-slate-900">{data[t.key] ?? "—"}</div>
             </div>
           ))}
         </div>

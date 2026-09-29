@@ -3,10 +3,12 @@
 Superseded for live email/call ingestion by app.services.content_classifier's
 LLM-based classifier (FR-TRIAGE-01), which those pipelines call directly.
 This module stays in use for two other reasons: `POST /triage` is still a
-real, tested manual-classification path, and matches_any/URGENT_KEYWORDS/
+real, tested manual-classification path, and matches_any/is_urgent/
 ConsentGatingError defined here are reused by app.llm.guardrail and
 app.services.task_routing_gate. Don't delete this file assuming it's dead.
 """
+
+import re
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,14 +20,148 @@ from app.services.audit_service import record_event
 from app.services.consent_service import get_consent_for_case
 from app.services.routing_rules import decide
 
+# Words that only say "this is urgent". A negation just before one ("not urgent",
+# "non-urgent", "isn't an emergency") cancels it; see is_urgent().
 URGENT_KEYWORDS: tuple[str, ...] = (
     "emergency",
     "urgent",
     "immediate",
     "critical",
+)
+
+# Symptoms that mean a person should see this now. Never cancelled by a negation:
+# "can't breathe" contains one, and a false alarm only costs a human a look.
+# Taken from healthdirect's triple-zero guidance, not tuned against any test set:
+# healthdirect.gov.au/calling-triple-zero, /symptoms-of-serious-illness-in-babies-and-children,
+# /anaphylaxis, /drug-overdose, /are-you-experiencing-suicidal-thoughts.
+# Substring matched, so each is a phrase that is rare in routine mail ("burns" is a
+# surname, "000" is in phone numbers, "epipen" is in routine script renewals).
+RED_FLAG_PHRASES: tuple[str, ...] = (
+    # chest pain
     "chest pain",
+    "pain in my chest",
+    "pain in his chest",
+    "pain in her chest",
+    "tight chest",
+    "chest tightness",
+    # breathing problems
     "difficulty breathing",
+    "trouble breathing",
+    "struggling to breathe",
+    "can't breathe",
+    "cannot breathe",
+    "can not breathe",
+    "not breathing",
+    "short of breath",
+    "shortness of breath",
+    "turning blue",
+    "blue lips",
+    "lips are blue",
+    # loss of consciousness, collapse, very drowsy
     "unconscious",
+    "unresponsive",
+    "passed out",
+    "blacked out",
+    "faint",
+    "collapse",
+    "won't wake",
+    "wont wake",
+    "can't wake",
+    "cannot wake",
+    "hard to wake",
+    "not waking",
+    "very drowsy",
+    "floppy",
+    # stroke
+    "stroke",
+    "slurred",
+    "face drooping",
+    "face is drooping",
+    "drooping face",
+    "trouble speaking",
+    "weakness on one side",
+    "numb on one side",
+    # seizure
+    "seizure",
+    "convulsi",
+    "having a fit",
+    # fall, injury
+    "fallen",
+    "had a fall",
+    "a bad fall",
+    "fell down",
+    "fell over",
+    "fell off",
+    "can't get up",
+    "cannot get up",
+    "can not get up",
+    "unable to get up",
+    "head injury",
+    "hit my head",
+    "hit his head",
+    "hit her head",
+    "severe burn",
+    "badly burned",
+    "badly burnt",
+    "snake bite",
+    "snakebite",
+    "stabbed",
+    "assaulted",
+    # bleeding
+    "bleeding",
+    "vomiting blood",
+    "coughing up blood",
+    # anaphylaxis
+    "anaphyla",
+    "throat swelling",
+    "swelling of the throat",
+    "throat is swelling",
+    "swollen throat",
+    "swollen tongue",
+    "tongue is swelling",
+    # overdose, poisoning
+    "overdose",
+    "too many tablets",
+    "too many pills",
+    "too much medication",
+    "too many of his",
+    "too many of her",
+    "too many of my",
+    "poison",
+    "swallowed",
+    # suicide, self-harm
+    "suicid",
+    "kill myself",
+    "end my life",
+    "self-harm",
+    "self harm",
+    "hurt myself",
+    # ...and indirectly, which is how most people write it. Not bare "ending it":
+    # that is inside "sending it" and "attending it".
+    "want to die",
+    "want to be alive",
+    "want to live like this",
+    "want to live anymore",
+    "thinking about ending it",
+    "thinking of ending it",
+    "end it all",
+    "better off without me",
+    "better off dead",
+    "no reason to live",
+    "take my own life",
+    "taking my own life",
+    # children
+    "rash that doesn't fade",
+    "rash that does not fade",
+    "non-blanching",
+    "bulging fontanelle",
+)
+
+# A negation up to two words before a generic urgency word: "not urgent",
+# "not an emergency", "nothing really urgent", "non-urgent".
+_NEGATED = re.compile(
+    r"\b(?:not|no|non|never|nothing|isn't|isnt|wasn't|aren't|don't|dont|doesn't)"
+    r"(?:\s+\w+){0,2}[\s-]*$"
 )
 
 TIME_SENSITIVE_KEYWORDS: tuple[str, ...] = (
@@ -47,12 +183,27 @@ class ConsentGatingError(Exception):
 def matches_any(text: str, keywords: tuple[str, ...]) -> bool:
     """Substring match — handles multi-word phrases like 'chest pain'.
 
-    WARNING: negation is not handled. "not urgent" will match the URGENT_KEYWORDS
-    list and incorrectly escalate. This is a known limitation of the rules-based
-    classifier and will be addressed when classify() is replaced by the LangGraph
-    NLP pipeline in Phase 3.
+    Deliberately literal, with no negation handling: the input and output guardrails
+    and the reminder screen use it, and "do not ignore previous instructions" must
+    still match there. The urgent scan goes through is_urgent() instead.
     """
     return any(kw in text for kw in keywords)
+
+
+def is_urgent(text: str) -> bool:
+    """True if the text names a red-flag symptom, or uses an urgency word that is
+    not negated. Red flags are never negated away: missing an emergency costs far
+    more than a human reading one routine email."""
+    text = text.lower().replace("’", "'")
+    if matches_any(text, RED_FLAG_PHRASES):
+        return True
+    for kw in URGENT_KEYWORDS:
+        start = text.find(kw)
+        while start != -1:
+            if not _NEGATED.search(text[max(0, start - 40) : start]):
+                return True
+            start = text.find(kw, start + 1)
+    return False
 
 
 async def _assert_consent(db: AsyncSession, case_id) -> ConsentRecord:
@@ -80,7 +231,7 @@ async def classify(db: AsyncSession, request: TriageRequest, actor: User) -> Tri
 
     haystack = request.contact_reason.lower() + " " + " ".join(k.lower() for k in request.keywords)
 
-    has_urgent = matches_any(haystack, URGENT_KEYWORDS)
+    has_urgent = is_urgent(haystack)
     has_time_sensitive = matches_any(haystack, TIME_SENSITIVE_KEYWORDS)
     has_patient_flags = len(request.patient_priority_flags) > 0
     insufficient_info = len(haystack.split()) < 3

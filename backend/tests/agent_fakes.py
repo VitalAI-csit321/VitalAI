@@ -1,0 +1,147 @@
+"""Fakes shared by the agent graph tests and their cross-process worker.
+
+Plain module, no pytest: tests/agent_xproc_worker.py runs in a second
+interpreter and needs the same seeding and the same fake model.
+"""
+
+import json
+from datetime import UTC, datetime
+from uuid import UUID, uuid4
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.case import IntakeCase, IntakeStatus
+from app.models.email import Email
+from app.models.task import Task, TaskCategory, TaskItemStatus, TaskPriority, TaskSource
+from app.services.task_routing_rules import resolve_target_role
+
+DRAFT = "Thanks, we have your request."
+
+
+class FakeLLM:
+    """Answers each of the pipeline's three prompt kinds: the reply-worthiness
+    gate, a draft (plain reply or RAG answer), and the classifier. Records
+    every prompt so a test can see what the model was asked."""
+
+    def __init__(
+        self,
+        category: str = "general_administrative",
+        confidence: float = 0.95,
+        replies: list[str] | None = None,
+        worthy: bool = True,
+        reformulation: str = "",
+        identity: dict | str | None = None,
+        booking: list[dict] | None = None,
+    ):
+        self.category = category
+        self.confidence = confidence
+        self.replies = list(replies or [DRAFT])
+        self.worthy = worthy
+        # The retrieval retry's rewrite (spec §7). Empty by default, which the
+        # retry treats as "no rewrite", so a test that is not about the retry
+        # sees exactly the retrieval calls it saw before the retry existed.
+        self.reformulation = reformulation
+        # Identity extraction's answer (spec §8.3): a dict is sent as JSON, a
+        # str as-is. None falls through to the classifier JSON, which is
+        # exactly the "unparseable, no fields" case.
+        self.identity = identity
+        # The conversation flow's reply extraction: one dict per reply, in
+        # order, the last one repeating. None or empty answers "{}", the
+        # empty extraction (intent unclear, confidence 0).
+        self.booking = list(booking or [])
+        self.prompts: list[str] = []
+
+    @property
+    def identity_prompts(self) -> list[str]:
+        return [p for p in self.prompts if _is_identity(p)]
+
+    @property
+    def booking_prompts(self) -> list[str]:
+        return [p for p in self.prompts if _is_booking(p)]
+
+    @property
+    def draft_prompts(self) -> list[str]:
+        return [p for p in self.prompts if _is_draft(p)]
+
+    async def ainvoke(self, prompt: str) -> str:
+        self.prompts.append(prompt)
+        if prompt.rstrip().endswith("QUERY:"):
+            return self.reformulation
+        if _is_identity(prompt) and self.identity is not None:
+            return self.identity if isinstance(self.identity, str) else json.dumps(self.identity)
+        if _is_booking(prompt):
+            answer = self.booking.pop(0) if len(self.booking) > 1 else next(iter(self.booking), {})
+            return json.dumps(answer)
+        if "worthy" in prompt.lower():
+            return json.dumps({"worthy": self.worthy, "reason": "test verdict"})
+        if _is_draft(prompt):
+            # One reply per draft, the last one repeating.
+            return self.replies.pop(0) if len(self.replies) > 1 else self.replies[0]
+        return json.dumps({"category": self.category, "confidence": self.confidence})
+
+
+def _is_identity(prompt: str) -> bool:
+    return "IDENTITY DETAILS" in prompt
+
+
+def _is_booking(prompt: str) -> bool:
+    return "BOOKING REPLY EXTRACTION" in prompt
+
+
+def _is_draft(prompt: str) -> bool:
+    return prompt.rstrip().endswith(("REPLY:", "ANSWER:"))
+
+
+async def seed_email(
+    db: AsyncSession,
+    *,
+    email_id: UUID | None = None,
+    category: TaskCategory = TaskCategory.GENERAL_ADMINISTRATIVE,
+    body: str = "What time do you open on Saturdays?",
+    external_id: str | None = None,
+    case_id: UUID | None = None,
+    sender: str = "patient@example.com",
+) -> tuple[Email, Task]:
+    """The rows ingest_email commits, without its classifier call."""
+    if case_id is None:
+        case = IntakeCase(
+            contact_reason="Question", contact_channel="email", status=IntakeStatus.RECEIVED
+        )
+        db.add(case)
+        await db.flush()
+        case_id = case.id
+    email = Email(
+        id=email_id or uuid4(),
+        case_id=case_id,
+        sender=sender,
+        recipient="clinic@example.com",
+        subject="Question",
+        body=body,
+        received_at=datetime.now(UTC),
+        external_id=external_id,
+        external_source="outlook" if external_id else None,
+    )
+    task = Task(
+        case_id=case_id,
+        source=TaskSource.EMAIL,
+        category=category,
+        target_role=resolve_target_role(category),
+        priority=TaskPriority.MEDIUM,
+        status=TaskItemStatus.PENDING,
+    )
+    db.add_all([email, task])
+    await db.commit()
+    return email, task
+
+
+def graph_input(email, task, outcome: str = "auto_routed_flagged", confidence=0.8) -> dict:
+    """What graph.start passes in. A flagged (not fully confident) outcome
+    fails the auto-send predicate, so the run pauses for approval."""
+    return {
+        "channel": "email",
+        "source_id": str(email.id),
+        "task_id": str(task.id),
+        "routing_outcome": outcome,
+        "triage_confidence": confidence,
+        "revision_count": 0,
+    }

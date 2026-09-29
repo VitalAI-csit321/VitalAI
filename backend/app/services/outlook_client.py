@@ -98,14 +98,38 @@ def to_ingest_request(message: dict[str, Any]) -> EmailIngestRequest | None:
     # subject line is legal in mail and would otherwise fail validation.
     subject = (message.get("subject") or "").strip() or "(no subject)"
 
+    headers = {
+        (h.get("name") or "").lower(): h.get("value") or ""
+        for h in message.get("internetMessageHeaders") or []
+    }
     return EmailIngestRequest(
         sender=sender,
+        sender_name=((message.get("from") or {}).get("emailAddress", {}).get("name") or None),
+        internet_message_id=message.get("internetMessageId"),
+        in_reply_to=headers.get("in-reply-to"),
+        references=headers.get("references"),
+        # Graph's own split of what this message adds to the thread: the
+        # quoted history underneath is gone, and with it every date the clinic
+        # offered in its last message.
+        new_text=strip_html((message.get("uniqueBody") or {}).get("content", "")) or None,
+        auto_submitted=_is_automatic(headers),
         recipient=recipient,
         subject=subject[:500],
         body=body,
         external_id=message_id,
         external_source=EXTERNAL_SOURCE,
         received_at=_parse_received(message.get("receivedDateTime")),
+    )
+
+
+def _is_automatic(headers: dict[str, str]) -> bool:
+    """An out-of-office or other machine-sent message (RFC 3834, plus the
+    headers Exchange and common autoresponders set instead)."""
+    return (
+        headers.get("auto-submitted", "no").strip().lower() != "no"
+        or "x-autoreply" in headers
+        or "x-autorespond" in headers
+        or headers.get("precedence", "").strip().lower() in {"auto_reply", "bulk", "junk"}
     )
 
 
@@ -122,7 +146,14 @@ async def get_unread_emails(access_token: str, top: int | None = None) -> list[d
     """
     params = {
         "$filter": "isRead eq false",
-        "$select": "id,subject,from,toRecipients,body,receivedDateTime,isRead",
+        "$select": "id,subject,from,toRecipients,body,receivedDateTime,isRead"
+        # Threading and reply parsing, only for the conversation flow, so the
+        # flag-off poll sends exactly the query it always has.
+        + (
+            ",uniqueBody,internetMessageId,internetMessageHeaders"
+            if settings.email_booking_conversation_enabled
+            else ""
+        ),
         "$orderby": "receivedDateTime desc",
         "$top": str(top or settings.outlook_max_messages_per_poll),
     }
@@ -168,5 +199,32 @@ async def send_reply(access_token: str, message_id: str, reply_body: str) -> Non
             f"{GRAPH_URL}/me/messages/{message_id}/reply",
             headers={**_auth_headers(access_token), "Content-Type": "application/json"},
             json={"comment": _plain_text_to_html(reply_body)},
+        )
+        response.raise_for_status()
+
+
+async def send_mail(access_token: str, to_address: str, subject: str, body: str) -> None:
+    """Send a new message, for outbound mail with nothing to reply to.
+
+    A reminder has no inbound message to thread under, so /reply cannot carry
+    it. The payload is a different shape from send_reply's {"comment": ...}:
+    sendMail takes the whole message, and Graph fills in nothing, so the
+    recipient and subject have to be stated here.
+
+    Graph answers 202 Accepted (the request is accepted, not yet delivered),
+    which raise_for_status treats as success.
+    """
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        response = await client.post(
+            f"{GRAPH_URL}/me/sendMail",
+            headers={**_auth_headers(access_token), "Content-Type": "application/json"},
+            json={
+                "message": {
+                    "subject": subject,
+                    "body": {"contentType": "HTML", "content": _plain_text_to_html(body)},
+                    "toRecipients": [{"emailAddress": {"address": to_address}}],
+                },
+                "saveToSentItems": True,
+            },
         )
         response.raise_for_status()

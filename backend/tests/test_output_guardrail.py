@@ -69,8 +69,15 @@ async def test_check_output_records_audit_event_on_block(db_session, front_desk_
             db_session, "Your prescription is ready.", actor=front_desk_user, case_id=case.id
         )
 
+    # Scoped to this actor, not the first row globally: the shared dev database
+    # already holds a governance.output_blocked event committed by an earlier
+    # run, which db_session's rollback cannot remove, and .first() returns that
+    # one instead. Same fix as commit f78d7cc.
     result = await db_session.execute(
-        select(AuditEvent).where(AuditEvent.action == "governance.output_blocked")
+        select(AuditEvent).where(
+            AuditEvent.action == "governance.output_blocked",
+            AuditEvent.actor_id == front_desk_user.id,
+        )
     )
     event = result.scalars().first()
     assert event is not None

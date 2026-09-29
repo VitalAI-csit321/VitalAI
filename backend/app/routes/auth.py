@@ -1,15 +1,23 @@
+import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user, require_permission
 from app.auth.permissions import MANAGE_USERS
-from app.auth.security import create_access_token, hash_password, verify_password
+from app.auth.security import (
+    create_access_token,
+    create_password_reset_token,
+    hash_password,
+    read_password_reset_token,
+    reset_token_matches,
+    verify_password,
+)
 from app.config import settings
-from app.database import get_db
+from app.database import AsyncSessionLocal, get_db
 from app.limiter import limiter
 from app.models.permission_grant import UserPermissionGrant
 from app.models.user import User, UserRole
@@ -18,6 +26,8 @@ from app.schemas.auth import (
     DepartmentUpdateRequest,
     ElevateRoleRequest,
     PasswordChange,
+    PasswordResetConfirm,
+    PasswordResetRequest,
     Token,
     UserGrantsResponse,
     UserListItem,
@@ -26,12 +36,19 @@ from app.schemas.auth import (
     UserRegister,
 )
 from app.schemas.permission import PermissionGrantCreate, PermissionGrantOut
-from app.services import audit_service, permission_service, user_service
+from app.services import (
+    audit_service,
+    email_service,
+    permission_service,
+    user_service,
+)
 from app.services.permission_service import (
     DuplicateGrantError,
     GrantNotFoundError,
     NotGrantableError,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -129,18 +146,23 @@ async def get_user_grants_endpoint(
 @router.get("/users", response_model=UserListResponse)
 async def list_users_endpoint(
     search: str | None = None,
+    role: UserRole | None = None,
+    department: str | None = None,
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_permission(MANAGE_USERS)),
 ) -> UserListResponse:
-    rows, total = await user_service.list_users(db, search=search, limit=limit, offset=offset)
+    rows, total = await user_service.list_users(
+        db, search=search, limit=limit, offset=offset, role=role, department=department
+    )
     return UserListResponse(
         items=[
             UserListItem(**UserOut.model_validate(user).model_dump(), last_active=last_active)
             for user, last_active in rows
         ],
         total=total,
+        departments=await user_service.list_departments(db),
     )
 
 
@@ -240,4 +262,79 @@ async def change_own_password(
     await audit_service.record_event(
         db, action="auth.password_changed", actor=current_user, details={}
     )
+    await db.commit()
+
+
+async def _send_reset_link(email: str, link: str) -> None:
+    if not settings.outlook_enabled:
+        # ponytail: no mail transport in dev, so the link goes to the server log.
+        # Enable the Outlook connector to deliver it for real.
+        logger.warning("Outlook disabled; password reset link for %s: %s", email, link)
+        return
+    try:
+        # A background task: the request's session is closed by now.
+        async with AsyncSessionLocal() as db:
+            user = (await db.execute(select(User).where(User.email == email))).scalar_one()
+            # The one send path for new messages, which audits the send. The
+            # details stay empty: the link is a live credential.
+            await email_service.deliver_new_message(
+                db,
+                to_address=email,
+                subject="Reset your VitalAI password",
+                body="We received a request to reset your VitalAI password.\n\n"
+                f"Open this link within 30 minutes to choose a new one:\n{link}\n\n"
+                "If you did not ask for this, ignore this email; your password is unchanged.",
+                actor=user,
+                case_id=None,
+                action="auth.password_reset_sent",
+                details={},
+            )
+    except Exception:
+        logger.exception("Failed to send password reset email to %s", email)
+
+
+@router.post("/password-reset/request", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit(settings.login_rate_limit)
+async def request_password_reset(
+    request: Request,
+    payload: PasswordResetRequest,
+    background: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Email a reset link if the account exists.
+
+    Always 202 with the same body, and the mail goes out in the background, so
+    neither the response nor its timing reveals whether an email is registered.
+    """
+    result = await db.execute(select(User).where(User.email == payload.email))
+    user = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        return
+    token = create_password_reset_token(user.id, user.hashed_password)
+    link = f"{settings.cors_origins_list[0]}/reset-password?token={token}"
+    await audit_service.record_event(
+        db, action="auth.password_reset_requested", actor=user, details={}
+    )
+    await db.commit()
+    background.add_task(_send_reset_link, user.email, link)
+
+
+@router.post("/password-reset/confirm", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(settings.login_rate_limit)
+async def confirm_password_reset(
+    request: Request,
+    payload: PasswordResetConfirm,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    invalid = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST, detail="Reset link is invalid or has expired"
+    )
+    user_id = read_password_reset_token(payload.token)
+    user = await db.get(User, user_id) if user_id else None
+    if user is None or not user.is_active:
+        raise invalid
+    if not reset_token_matches(payload.token, user.hashed_password):
+        raise invalid
+    user.hashed_password = hash_password(payload.new_password)
+    await audit_service.record_event(db, action="auth.password_reset", actor=user, details={})
     await db.commit()

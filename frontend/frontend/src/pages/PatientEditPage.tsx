@@ -12,7 +12,7 @@ export function PatientEditPage() {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [name, setName] = useState("");
   const [dob, setDob] = useState("");
-  const [gender, setGender] = useState<Patient["gender"]>("male");
+  const [gender, setGender] = useState<NonNullable<Patient["gender"]> | "">("");
   const [fields, setFields] = useState<ProfileFields>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -24,7 +24,7 @@ export function PatientEditPage() {
       setPatient(p);
       setName(p.name);
       setDob(p.dob ? new Date(p.dob).toLocaleDateString("en-GB") : "");
-      setGender(p.gender);
+      setGender(p.gender ?? "");
       setFields({
         address: p.address ?? "", indigenousStatus: p.indigenousStatus ?? "", preferredLanguage: p.preferredLanguage ?? "",
         phone: p.phone ?? "", email: p.email ?? "",
@@ -44,6 +44,7 @@ export function PatientEditPage() {
 
   async function save() {
     if (!id) return;
+    if (!gender) { setError("Choose a gender before saving."); return; }
     setBusy(true); setError(null);
     try {
       await updatePatient(id, { name, dob, gender, ...fields });
@@ -93,7 +94,8 @@ export function PatientEditPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Gender</label>
-              <select className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={gender} onChange={e => setGender(e.target.value as Patient["gender"])}>
+              <select className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={gender} onChange={e => setGender(e.target.value as NonNullable<Patient["gender"]> | "")}>
+                <option value="" disabled>Not recorded</option>
                 <option value="male">Male</option><option value="female">Female</option><option value="non_binary">Non-binary</option>
               </select>
             </div>

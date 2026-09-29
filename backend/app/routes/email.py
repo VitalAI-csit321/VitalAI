@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_permission
@@ -14,6 +15,7 @@ router = APIRouter(prefix="/email", tags=["email"])
 @router.post("/ingest", response_model=EmailIngestResult, status_code=status.HTTP_201_CREATED)
 async def ingest_email_endpoint(
     payload: EmailIngestRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_permission(VIEW_QUEUE)),
 ):
@@ -21,10 +23,21 @@ async def ingest_email_endpoint(
         email, task, gate, confidence = await email_service.ingest_email(db, payload, actor)
     except email_service.CaseNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except IntegrityError as exc:
+        # The (external_id, external_source) unique index: this message is already in.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="This message was already ingested"
+        ) from exc
     # ingest_email() always sets these before returning.
     assert task.category is not None
     assert task.target_role is not None
-    draft_outcome = await email_service.draft_reply(db, task, email, actor, gate, confidence)
+    # Drafting is a 90s-timeout model call, so it runs after the response
+    # rather than holding it open. It gets ids, not rows: get_db's session is
+    # closed by the time a background task runs. With the agentic pipeline on
+    # this is the agent graph instead (email_service.draft_runner).
+    background_tasks.add_task(
+        email_service.draft_runner(), task.id, email.id, actor.id, gate, confidence
+    )
     return EmailIngestResult(
         email=EmailOut.model_validate(email),
         task_id=task.id,
@@ -34,8 +47,4 @@ async def ingest_email_endpoint(
         priority=task.priority,
         outcome=gate.outcome,
         override_reason=gate.override_reason,
-        draft_text=draft_outcome.draft_text,
-        approval_id=draft_outcome.approval_id,
-        sent=draft_outcome.sent,
-        blocked=draft_outcome.blocked,
     )

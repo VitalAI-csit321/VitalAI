@@ -5,27 +5,30 @@ import { listPatients } from "../api/cases";
 import type { Patient } from "../api/types";
 import { StatusBadge, Spinner } from "../components/ui";
 
+const PAGE_SIZE = 25;
+
 export function PatientsPage() {
   const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<"recent" | "pending_missing">("recent");
+  const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
     const t = setTimeout(() => {
       const params = sortMode === "pending_missing"
-        ? { search, limit: 25, status: "pending" as const, sort: "missing_fields" as const }
-        : { search, limit: 25 };
+        ? { search, limit: PAGE_SIZE, offset, status: "pending" as const, sort: "missing_fields" as const }
+        : { search, limit: PAGE_SIZE, offset };
       listPatients(params)
         .then(res => { setPatients(res.items); setTotal(res.total); })
         .catch(() => {})
         .finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(t);
-  }, [search, sortMode]);
+  }, [search, sortMode, offset]);
 
   return (
     <div className="p-6">
@@ -39,14 +42,14 @@ export function PatientsPage() {
 
       <div className="mt-6 relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search patients..."
+        <input value={search} onChange={e => { setSearch(e.target.value); setOffset(0); }} placeholder="Search patients..."
           className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-brand" />
       </div>
 
       <div className="mt-3">
         <select
           value={sortMode}
-          onChange={e => setSortMode(e.target.value as "recent" | "pending_missing")}
+          onChange={e => { setSortMode(e.target.value as "recent" | "pending_missing"); setOffset(0); }}
           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand"
         >
           <option value="recent">Newest first</option>
@@ -67,7 +70,10 @@ export function PatientsPage() {
             : patients.map(p => (
               <tr key={p.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                 <td className="px-6 py-4 font-mono text-sm text-slate-700">{p.mrn}</td>
-                <td className="px-6 py-4 font-medium text-slate-900">{p.name}</td>
+                <td className="px-6 py-4 font-medium text-slate-900">
+                  {p.name}
+                  {p.isProvisional && <span className="ml-2"><StatusBadge tone="amber">Provisional</StatusBadge></span>}
+                </td>
                 <td className="px-6 py-4 text-slate-600">{p.dob ? new Date(p.dob).toLocaleDateString("en-GB") : "—"}</td>
                 <td className="px-6 py-4 text-slate-600 capitalize">{p.gender?.replace("_"," ") ?? "—"}</td>
                 <td className="px-6 py-4">
@@ -82,6 +88,16 @@ export function PatientsPage() {
           </tbody>
         </table>
       </div>
+
+      {total > 0 && (
+        <div className="mt-3 flex items-center justify-end gap-3 text-sm text-slate-600">
+          <span>{offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of {total}</span>
+          <button onClick={() => setOffset(offset - PAGE_SIZE)} disabled={offset === 0}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white">Prev</button>
+          <button onClick={() => setOffset(offset + PAGE_SIZE)} disabled={offset + PAGE_SIZE >= total}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-white">Next</button>
+        </div>
+      )}
     </div>
   );
 }

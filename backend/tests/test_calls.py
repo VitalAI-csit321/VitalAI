@@ -191,6 +191,26 @@ async def test_call_routing_auto_routes_high_confidence(
     assert body["override_reason"] is None
 
 
+async def test_call_routing_urgent_category_without_keyword_goes_to_human_review(
+    client: AsyncClient, operator_headers: dict, patient: Patient, monkeypatch
+):
+    """The call path shares evaluate_task_routing_gate with email, so the
+    urgent-category override must hold here too."""
+    _mock_classifier(monkeypatch, "urgent_emergency", 0.95)
+    case_id = await _create_case(client, operator_headers, patient)
+    await _capture_consent(client, operator_headers, case_id)
+    call = await _create_call(client, operator_headers, case_id, "Please call me back today.")
+
+    response = await client.post(
+        f"/api/v1/calls/{call['id']}/route", json={}, headers=operator_headers
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["outcome"] == "human_review"
+    assert body["override_reason"] == "urgent_category"
+
+
 async def test_call_routing_override_is_reversible_and_audited(
     client: AsyncClient, admin_headers: dict, patient: Patient, monkeypatch
 ):

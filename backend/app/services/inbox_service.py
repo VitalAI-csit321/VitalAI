@@ -4,21 +4,28 @@ so one filter works for both -- the entire point of unifying both channels
 under one classifier and gate.
 """
 
-from datetime import datetime
+import logging
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 from langchain_core.language_models import BaseLanguageModel
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.permissions import VIEW_ALL_QUEUES, effective_permissions
 from app.auth.scoping import assigned_patient_ids_subquery
+from app.config import settings
 from app.llm import get_llm
+from app.llm.guardrail import InputBlockedError, guarded_invoke
+from app.models.assignment import DoctorPatientAssignment
 from app.models.call import Call
 from app.models.case import IntakeCase
 from app.models.email import Email
 from app.models.task import Task, TaskItemStatus, TaskPriority, TaskSource
 from app.models.user import User, UserRole
 from app.schemas.inbox import InboxMessageOut
+
+logger = logging.getLogger(__name__)
 
 _PRIORITY_MAP: dict[TaskPriority, str] = {
     TaskPriority.URGENT: "urgent",
@@ -38,16 +45,35 @@ def _initials(name: str) -> str:
 
 
 def _received_label(dt: datetime) -> str:
-    return dt.strftime("%d %b %Y, %H:%M")
+    # Stored instants are UTC; staff read clinic time, like the calendar does.
+    local = (dt if dt.tzinfo else dt.replace(tzinfo=UTC)).astimezone(
+        ZoneInfo(settings.clinic_timezone)
+    )
+    return local.strftime("%d %b %Y, %H:%M")
 
 
-async def summarize_call(llm: BaseLanguageModel, transcript: str) -> str:
+BLOCKED_SUMMARY = "Summary unavailable. Open the call to read the transcript."
+
+
+async def summarize_call(
+    db: AsyncSession, llm: BaseLanguageModel, transcript: str, actor: User
+) -> str:
+    """One inbox preview line. Through the choke point (spec G.2): a call
+    transcript is untrusted external text, same as an email body.
+
+    A block shows a fixed placeholder rather than raising, so one hostile
+    transcript cannot take down the whole inbox listing.
+    """
     prompt = (
         "Summarize this phone call transcript in one short sentence, for a staff "
         "inbox preview. No preamble, just the sentence.\n\n"
         f"TRANSCRIPT:\n{transcript}\n\nSUMMARY:"
     )
-    result = await llm.ainvoke(prompt)
+    try:
+        result = await guarded_invoke(db, llm, prompt, actor=actor, route="call.summarize")
+    except InputBlockedError:
+        logger.warning("summarize_call: guardrail blocked a transcript, showing a placeholder")
+        return BLOCKED_SUMMARY
     return result if isinstance(result, str) else getattr(result, "content", str(result))
 
 
@@ -59,7 +85,22 @@ async def _visible_tasks(db: AsyncSession, actor: User, archived: bool = False) 
     )
     query = select(Task).where(status_filter, Task.deleted_at.is_(None))
     if VIEW_ALL_QUEUES not in effective_permissions(actor):
-        query = query.where(Task.target_role == actor.role)
+        in_queue = Task.target_role == actor.role
+        if actor.role == UserRole.OPERATOR:
+            # Doctors see doctor work only for patients assigned to them, so a
+            # results or referral email for a patient with no doctor (or no
+            # identified patient) was visible to nobody but an admin.
+            has_doctor = (
+                select(IntakeCase.id)
+                .join(
+                    DoctorPatientAssignment,
+                    DoctorPatientAssignment.patient_id == IntakeCase.patient_id,
+                )
+                .where(IntakeCase.id == Task.case_id)
+                .exists()
+            )
+            in_queue = or_(in_queue, and_(Task.target_role == UserRole.DOCTOR, ~has_doctor))
+        query = query.where(in_queue)
     if actor.role == UserRole.DOCTOR:
         query = query.join(IntakeCase, Task.case_id == IntakeCase.id).where(
             IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id))
@@ -69,7 +110,7 @@ async def _visible_tasks(db: AsyncSession, actor: User, archived: bool = False) 
     return list(result.scalars().all())
 
 
-async def _to_message(db: AsyncSession, task: Task) -> InboxMessageOut | None:
+async def _to_message(db: AsyncSession, task: Task, actor: User) -> InboxMessageOut | None:
     priority = _PRIORITY_MAP[task.priority]
     unread = task.read_at is None
     category = task.category.value if task.category else "uncategorized"
@@ -112,7 +153,9 @@ async def _to_message(db: AsyncSession, task: Task) -> InboxMessageOut | None:
         fromInitials="CL",
         toName="Clinic",
         subject=f"Call from {call.phone_number}",
-        body=await summarize_call(get_llm(), call.transcript) if call.transcript else "",
+        body=(
+            await summarize_call(db, get_llm(), call.transcript, actor) if call.transcript else ""
+        ),
         priority=priority,
         category=category,
         unread=unread,
@@ -120,6 +163,9 @@ async def _to_message(db: AsyncSession, task: Task) -> InboxMessageOut | None:
         threadReference=f"CALL-{task.id}",
         avatarColor="#059669",
         taskStatus=task.status.value,
+        handoverContext=task.handover_context,
+        callId=str(call.id),
+        hasAudio=call.audio_key is not None,
     )
 
 
@@ -132,7 +178,7 @@ async def list_inbox(
 
     items: list[InboxMessageOut] = []
     for task in page:
-        message = await _to_message(db, task)
+        message = await _to_message(db, task, actor)
         if message is not None:
             items.append(message)
     return items, total

@@ -30,11 +30,10 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-_CORPUS_DIR = (
-    Path(__file__).resolve().parents[1] / "ingestion" / "matthew_corpus" / "Synth_Dataset"
-)
+_CORPUS_DIR = Path(__file__).resolve().parents[1] / "ingestion" / "matthew_corpus" / "Synth_Dataset"
 
 from app.models.patient import Gender, Patient, PatientStatus  # noqa: E402
+from app.models.user import User  # noqa: E402
 
 _UUID_RE = re.compile(
     r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
@@ -65,6 +64,41 @@ def _gender_from_form(reg_form: str) -> Gender:
     return _GENDER_MAP[value]
 
 
+async def _grant_agent_clinical_access(session: AsyncSession) -> None:
+    """Give the agent actor VIEW_CLINICAL, attributed to the seeded admin.
+
+    The prescription branch reads medication history, and medication_service
+    refuses without this permission (spec G.17). get_or_create_agent_actor
+    grants it once when it creates the account; this covers an agent actor
+    that already existed before that, which it never re-grants (a revoke in
+    the UI must stay revoked).
+
+    Attributed to a real admin, so `GET /auth/users/{id}/grants` shows who
+    allowed it and `DELETE` on the same path genuinely takes it away.
+    """
+    from app.auth.permissions import VIEW_CLINICAL
+    from app.models.user import UserRole
+    from app.services import permission_service
+    from app.services.system_actor import get_or_create_agent_actor
+
+    admin = (
+        await session.execute(
+            select(User).where(User.role == UserRole.ADMIN).order_by(User.created_at).limit(1)
+        )
+    ).scalar_one_or_none()
+    if admin is None:
+        print("skipped VIEW_CLINICAL grant: no admin user to attribute it to")
+        return
+
+    agent = await get_or_create_agent_actor(session)
+    try:
+        await permission_service.grant_permission(session, agent, VIEW_CLINICAL, admin)
+    except permission_service.DuplicateGrantError:
+        print(f"VIEW_CLINICAL already granted to {agent.email}")
+    else:
+        print(f"granted VIEW_CLINICAL to {agent.email}, by {admin.email}")
+
+
 async def main() -> None:
     from app.config import settings
 
@@ -82,9 +116,7 @@ async def main() -> None:
             try:
                 name, patient_id = _parse_folder(patient_dir.name)
 
-                existing = await session.execute(
-                    select(Patient.id).where(Patient.id == patient_id)
-                )
+                existing = await session.execute(select(Patient.id).where(Patient.id == patient_id))
                 if existing.scalar_one_or_none() is not None:
                     skipped += 1
                     continue
@@ -110,6 +142,7 @@ async def main() -> None:
                 print(f"FAILED  {patient_dir.name}: {exc}")
 
         await session.commit()
+        await _grant_agent_clinical_access(session)
     await engine.dispose()
 
     print()

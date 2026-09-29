@@ -7,11 +7,11 @@ import type { Role } from "../api/types";
 const NAV: { to: string; label: string; icon: typeof LayoutGrid; roles?: Role[] }[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutGrid },
   { to: "/patients", label: "Patients", icon: UsersIcon },
-  { to: "/consent", label: "Consent", icon: FileText },
+  { to: "/consent", label: "Consent", icon: FileText, roles: ["front_desk", "operator", "admin"] },
   { to: "/records", label: "Records", icon: FolderClosed },
   { to: "/inbox", label: "Inbox", icon: Mail },
   { to: "/review-queue", label: "Review Queue", icon: ClipboardList },
-  { to: "/escalations", label: "Escalations", icon: AlertTriangle },
+  { to: "/escalations", label: "Escalations", icon: AlertTriangle, roles: ["front_desk", "operator", "admin"] },
   { to: "/audit", label: "Audit", icon: ShieldCheck, roles: ["admin"] },
   { to: "/users", label: "Users", icon: UserCog, roles: ["admin"] },
   { to: "/settings", label: "Settings", icon: Settings },

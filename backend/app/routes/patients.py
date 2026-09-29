@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_permission
-from app.auth.permissions import REGISTER_PATIENT, VIEW_RECORDS_GENERAL
+from app.auth.permissions import REGISTER_PATIENT, VIEW_RECORDS_GENERAL, effective_permissions
 from app.database import get_db
 from app.models.patient import Patient, PatientStatus
 from app.models.user import User, UserRole
@@ -41,7 +41,16 @@ async def list_patients_endpoint(
 ):
     doctor_id = actor.id if actor.role == UserRole.DOCTOR else None
     items, total, counts = await patient_service.list_patients(
-        db, search=search, status=status, sort=sort, limit=limit, offset=offset, doctor_id=doctor_id
+        db,
+        search=search,
+        status=status,
+        sort=sort,
+        limit=limit,
+        offset=offset,
+        doctor_id=doctor_id,
+        # Only staff who can register patients can see the provisional ones,
+        # so they can find and promote them. Doctors never do.
+        include_provisional=REGISTER_PATIENT in effective_permissions(actor),
     )
     return PatientListResponse(
         items=[PatientOut.model_validate(p) for p in items],
@@ -57,7 +66,12 @@ async def get_patient_endpoint(
     actor: User = Depends(require_permission(VIEW_RECORDS_GENERAL)),
 ):
     doctor_id = actor.id if actor.role == UserRole.DOCTOR else None
-    patient = await patient_service.get_patient_by_id(db, patient_id, doctor_id)
+    patient = await patient_service.get_patient_by_id(
+        db,
+        patient_id,
+        doctor_id,
+        include_provisional=REGISTER_PATIENT in effective_permissions(actor),
+    )
     if patient is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
     return patient
@@ -74,3 +88,20 @@ async def update_patient_endpoint(
     if patient is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
     return await patient_service.update_patient(db, patient, payload, actor)
+
+
+@router.post("/{patient_id}/promote", response_model=PatientOut)
+async def promote_patient_endpoint(
+    patient_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(REGISTER_PATIENT)),
+):
+    """Provisional -> registered. Human-only, and only once explicit consent
+    has been captured through the ordinary consent flow."""
+    try:
+        patient = await patient_service.promote_patient(db, patient_id, actor)
+    except patient_service.PromotionRefusedError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if patient is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient not found")
+    return patient

@@ -22,6 +22,15 @@ class EmailIngestRequest(BaseModel):
     external_source: str | None = None
     received_at: datetime | None = None
 
+    # Threading and reply parsing (app/models/email.py explains each). Only
+    # the conversation flow reads them.
+    sender_name: str | None = Field(default=None, max_length=255)
+    internet_message_id: str | None = Field(default=None, max_length=998)
+    in_reply_to: str | None = None
+    references: str | None = None
+    new_text: str | None = None
+    auto_submitted: bool = False
+
 
 class EmailOut(BaseModel):
     id: UUID
@@ -38,6 +47,13 @@ class EmailOut(BaseModel):
 
 
 class EmailIngestResult(BaseModel):
+    """Classification and routing only.
+
+    Drafting moved off the request path, so draft_text/approval_id/sent/
+    blocked are not known when this is returned. They live on the Task row
+    and surface through the inbox.
+    """
+
     email: EmailOut
     task_id: UUID
     category: TaskCategory
@@ -46,7 +62,3 @@ class EmailIngestResult(BaseModel):
     priority: TaskPriority
     outcome: TaskRoutingOutcome
     override_reason: str | None
-    draft_text: str | None = None
-    approval_id: str | None = None
-    sent: bool = False
-    blocked: bool = False

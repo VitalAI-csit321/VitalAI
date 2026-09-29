@@ -69,7 +69,6 @@ jobs:
 
       - name: Mypy type check
         run: mypy app
-        continue-on-error: true  # tighten once codebase is fully typed
 
       - name: Start MinIO
         # Run as a plain container rather than a services: entry: the minio/minio
@@ -77,11 +76,14 @@ jobs:
         # (with no args it just prints help and exits), and GitHub Actions'
         # services: block has no command/entrypoint override key. -p binds to the
         # runner's own localhost, reachable the same way as the postgres service.
+        # MinIO's own images no longer pull anonymously (quay.io/minio/minio
+        # answers 401, docker.io/minio/minio is gone), so this is Chainguard's
+        # public build of the same server, same command and env.
         run: |
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER=minioadmin \
             -e MINIO_ROOT_PASSWORD=minioadmin \
-            quay.io/minio/minio server /data
+            cgr.dev/chainguard/minio server /data
           timeout 30 bash -c 'until curl -sf http://localhost:9000/minio/health/live; do sleep 1; done'
 
       - name: Run tests with coverage

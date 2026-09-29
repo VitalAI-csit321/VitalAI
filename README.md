@@ -226,11 +226,8 @@ covering System Health and Model & Risk Configuration. It shares the same auth s
 the main app but renders its own layout (`PlatformOpsLayout`, in
 `src/pages/PlatformOps.tsx`).
 
-`frontend/frontend/README.md` additionally documents a `src/api/_placeholder.ts` seam for
-the handful of fields not yet backed by a real endpoint (the dashboard's weekly chart, the
-consent-form label rotation, and the forgot-password and platform-ops auth flows); that
-detail did not change during this merge, so read it there if you're wiring up new backend
-fields.
+`frontend/frontend/README.md` documents the adapter seam in `src/api/`: components use
+domain types only, so wiring a new backend field means changing an adapter, not a page.
 
 ## Tech stack
 

@@ -42,3 +42,7 @@ def get_object(key: str) -> bytes:
     response = client.get_object(Bucket=settings.minio_bucket, Key=key)
     body: bytes = response["Body"].read()
     return body
+
+
+def delete_object(key: str) -> None:
+    _get_client().delete_object(Bucket=settings.minio_bucket, Key=key)

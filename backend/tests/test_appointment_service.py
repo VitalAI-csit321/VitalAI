@@ -10,6 +10,7 @@ from app.models.audit import AuditEvent
 from app.models.case import IntakeCase
 from app.models.patient import Gender, Patient, PatientStatus
 from app.models.user import User, UserRole
+from app.schemas.appointment import AppointmentUpdate
 from app.services import appointment_service
 from app.services.appointment_service import (
     AppointmentStateError,
@@ -350,4 +351,204 @@ async def test_cancel_appointment_twice_raises(db_session: AsyncSession):
     with pytest.raises(AppointmentStateError):
         await appointment_service.cancel_appointment(
             db_session, appointment.id, admin, scoped_doctor_id=None
+        )
+
+
+async def _remindable(db_session: AsyncSession):
+    """A booked appointment whose reminder has already gone out."""
+    admin = _user(UserRole.ADMIN)
+    doctor = _user(UserRole.DOCTOR)
+    db_session.add_all([admin, doctor])
+    await db_session.commit()
+    case = await _case(db_session)
+    appointment = await appointment_service.book_appointment(
+        db_session, doctor.id, case.id, _slot(1), admin
+    )
+    appointment.reminder_sent_at = datetime.now(UTC)
+    await db_session.commit()
+    return admin, appointment
+
+
+async def test_rescheduling_clears_the_reminder_guard(db_session: AsyncSession):
+    """Spec §16.2. The reminder that went out named the old time, so the new
+    one has to be reminded again: a patient moved from Tuesday to Friday
+    after Tuesday's reminder would otherwise never hear about Friday."""
+    admin, appointment = await _remindable(db_session)
+    assert appointment.reminder_sent_at is not None
+
+    updated = await appointment_service.reschedule_appointment(
+        db_session, appointment.id, _slot(2), admin, scoped_doctor_id=None
+    )
+
+    assert updated is not None
+    assert updated.reminder_sent_at is None
+
+
+async def test_a_patch_that_moves_the_time_clears_the_reminder_guard(db_session: AsyncSession):
+    """The other path that writes time_slot: PATCH applies it through a
+    blanket setattr loop rather than an explicit assignment."""
+    admin, appointment = await _remindable(db_session)
+
+    updated = await appointment_service.update_appointment(
+        db_session,
+        appointment.id,
+        AppointmentUpdate(time_slot=_slot(3)),
+        admin,
+        scoped_doctor_id=None,
+    )
+
+    assert updated is not None
+    assert updated.reminder_sent_at is None
+
+
+async def test_a_patch_that_leaves_the_time_alone_keeps_the_reminder_guard(
+    db_session: AsyncSession,
+):
+    """Editing the location must not make the clinic send a second reminder
+    for an appointment that has not moved."""
+    admin, appointment = await _remindable(db_session)
+    sent_at = appointment.reminder_sent_at
+
+    updated = await appointment_service.update_appointment(
+        db_session,
+        appointment.id,
+        AppointmentUpdate(location="Room 4"),
+        admin,
+        scoped_doctor_id=None,
+    )
+
+    assert updated is not None
+    assert updated.location == "Room 4"
+    assert updated.reminder_sent_at is not None
+    assert updated.reminder_sent_at.replace(tzinfo=None) == sent_at.replace(tzinfo=None)
+
+
+# --- clinic hours and assignment on booking (doctor black-box run, 2026-09-28) ---
+
+_SYDNEY_10AM = datetime(2026, 10, 7, 23, 0, tzinfo=UTC)  # Thu 8 Oct 10:00 AEDT
+
+
+@pytest.mark.parametrize(
+    ("start", "duration", "ok"),
+    [
+        (_SYDNEY_10AM, 30, True),
+        # What the calendar UI sent for "11:00": 11:00 UTC, 10pm in Sydney.
+        (datetime(2026, 10, 7, 11, 0, tzinfo=UTC), 30, False),
+        (datetime(2026, 10, 7, 20, 30, tzinfo=UTC), 30, False),  # 7:30am, before opening
+        (datetime(2026, 10, 8, 6, 30, tzinfo=UTC), 60, False),  # 5:30pm, runs past 6pm
+        (datetime(2026, 10, 8, 6, 30, tzinfo=UTC), 30, True),  # 5:30pm, ends at 6pm
+    ],
+)
+async def test_bookings_outside_clinic_hours_are_refused(db_session, start, duration, ok):
+    admin, doctor = _user(UserRole.ADMIN), _user(UserRole.DOCTOR)
+    db_session.add_all([admin, doctor])
+    await db_session.commit()
+    case = await _case(db_session)
+
+    if ok:
+        await appointment_service.book_appointment(
+            db_session,
+            doctor.id,
+            case.id,
+            start,
+            admin,
+            duration_minutes=duration,
+            enforce_hours=True,
+        )
+    else:
+        with pytest.raises(appointment_service.OutsideClinicHoursError):
+            await appointment_service.book_appointment(
+                db_session,
+                doctor.id,
+                case.id,
+                start,
+                admin,
+                duration_minutes=duration,
+                enforce_hours=True,
+            )
+
+
+async def test_rescheduling_outside_clinic_hours_is_refused(db_session):
+    admin, doctor = _user(UserRole.ADMIN), _user(UserRole.DOCTOR)
+    db_session.add_all([admin, doctor])
+    await db_session.commit()
+    case = await _case(db_session)
+    appointment = await appointment_service.book_appointment(
+        db_session, doctor.id, case.id, _SYDNEY_10AM, admin
+    )
+
+    with pytest.raises(appointment_service.OutsideClinicHoursError):
+        await appointment_service.reschedule_appointment(
+            db_session,
+            appointment.id,
+            datetime(2026, 10, 8, 11, 0, tzinfo=UTC),
+            admin,
+            None,
+            enforce_hours=True,
+        )
+
+
+async def test_booking_a_patient_with_no_doctor_assigns_the_booked_doctor(db_session):
+    # A new patient booked into a doctor's diary was invisible to that doctor:
+    # doctor visibility runs on assignment, and nobody had assigned one.
+    from app.models.assignment import DoctorPatientAssignment
+
+    admin, doctor, other = _user(UserRole.ADMIN), _user(UserRole.DOCTOR), _user(UserRole.DOCTOR)
+    db_session.add_all([admin, doctor, other])
+    await db_session.commit()
+    patient = await _patient(db_session)
+    already = await _patient(db_session)
+    db_session.add(
+        DoctorPatientAssignment(doctor_id=other.id, patient_id=already.id, assigned_by=admin.id)
+    )
+    await db_session.commit()
+
+    await appointment_service.book_appointment(
+        db_session, doctor.id, (await _case(db_session, patient.id)).id, _SYDNEY_10AM, admin
+    )
+    await appointment_service.book_appointment(
+        db_session,
+        doctor.id,
+        (await _case(db_session, already.id)).id,
+        _SYDNEY_10AM + timedelta(hours=1),
+        admin,
+    )
+
+    pairs = {
+        (a.doctor_id, a.patient_id)
+        for a in (await db_session.execute(select(DoctorPatientAssignment))).scalars()
+    }
+    assert (doctor.id, patient.id) in pairs
+    # Someone already looks after this one: booking does not add a second doctor.
+    assert (doctor.id, already.id) not in pairs
+    events = (await db_session.execute(select(AuditEvent))).scalars().all()
+    assert any(e.action == "assignment.created" for e in events)
+
+
+# --- past and closed days (Playwright black-box run, 2026-09-28) ---
+
+
+@pytest.mark.parametrize(
+    ("start", "why"),
+    [
+        (datetime(2026, 9, 24, 23, 0, tzinfo=UTC), "past"),  # Fri 25 Sep 9am, three days ago
+        (datetime(2026, 10, 2, 23, 0, tzinfo=UTC), "closed"),  # Sat 3 Oct 9am
+        (datetime(2026, 10, 4, 22, 0, tzinfo=UTC), "closed"),  # Mon 5 Oct 9am, NSW Labour Day
+    ],
+)
+async def test_bookings_in_the_past_or_on_closed_days_are_refused(
+    db_session, monkeypatch, start, why
+):
+    # The UI booked Fri 25 Sep (in the past) and a Saturday, both `confirmed`.
+    monkeypatch.setattr(
+        appointment_service, "_now", lambda: datetime(2026, 9, 28, 5, 0, tzinfo=UTC)
+    )
+    admin, doctor = _user(UserRole.ADMIN), _user(UserRole.DOCTOR)
+    db_session.add_all([admin, doctor])
+    await db_session.commit()
+    case = await _case(db_session)
+
+    with pytest.raises(appointment_service.OutsideClinicHoursError, match=why):
+        await appointment_service.book_appointment(
+            db_session, doctor.id, case.id, start, admin, enforce_hours=True
         )

@@ -21,8 +21,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.llm import get_llm
 from app.llm.guardrail import guarded_invoke
 from app.models.user import User
-from app.rag.gating import RetrievalGateOutcome, evaluate_retrieval
-from app.rag.retrieval import RetrievalContext, RetrievedChunk, retrieve
+from app.rag.gating import RetrievalGateOutcome
+from app.rag.retrieval import RetrievalContext, RetrievedChunk
+from app.rag.retry import Reformulator, retrieve_gated
 
 NOT_ENOUGH_INFO_ANSWER = "I don't have enough information in this patient's records to answer that."
 
@@ -44,7 +45,19 @@ CONTEXT:
 
 QUESTION: {question}
 
-ANSWER:"""
+{revision}ANSWER:"""
+
+
+def revision_block(feedback: str | None) -> str:
+    """Prompt text asking the model to fix a rejected draft; empty when there
+    is none. Shared with email_service's reply generator. Goes into prompts
+    only, never into a retrieval query."""
+    if not feedback:
+        return ""
+    return (
+        f"A REVIEWER REJECTED THE PREVIOUS DRAFT FOR THIS REASON: {feedback}\n"
+        "Write a new reply that does not repeat that problem.\n\n"
+    )
 
 
 class AnswerResult(BaseModel):
@@ -61,10 +74,18 @@ class AnswerResult(BaseModel):
 
 
 async def answer_question(
-    session: AsyncSession, question: str, ctx: RetrievalContext, actor: User
+    session: AsyncSession,
+    question: str,
+    ctx: RetrievalContext,
+    actor: User,
+    feedback: str | None = None,
+    reformulate: Reformulator | None = None,
 ) -> AnswerResult:
-    chunks = await retrieve(session, question, ctx)
-    gate_outcome = evaluate_retrieval(chunks)
+    """feedback: a reviewer's reason for rejecting a previous answer. It is
+    added to the prompt only; retrieval always uses the question as given.
+    reformulate: the agent graph's retrieval retry (app/rag/retry.py). The
+    prompt still carries the original question either way."""
+    gate_outcome = await retrieve_gated(session, question, ctx, reformulate=reformulate)
 
     if gate_outcome.decision == "manual_handling":
         return AnswerResult(
@@ -81,7 +102,10 @@ async def answer_question(
     ]
     context_text = "\n\n".join(chunk.content for chunk in context_chunks)
     prompt = _PROMPT_TEMPLATE.format(
-        refusal_sentinel=NOT_ENOUGH_INFO_ANSWER, context=context_text, question=question
+        refusal_sentinel=NOT_ENOUGH_INFO_ANSWER,
+        context=context_text,
+        question=question,
+        revision=revision_block(feedback),
     )
 
     llm = get_llm()

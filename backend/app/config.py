@@ -36,6 +36,21 @@ class Settings(BaseSettings):
 
     # Call transcription (Phase 1 MVP — local STT, no Twilio yet)
     whisper_model: str = "base"
+    # Voicemail transcript quality gate (voicemail spec §9). Provisional: set
+    # from faster-whisper's usual ranges, to be calibrated on at least 15 real
+    # voicemails before anyone trusts them.
+    voicemail_min_avg_logprob: float = -1.0
+    voicemail_max_no_speech_prob: float = 0.6
+    voicemail_min_language_probability: float = 0.5
+    voicemail_audio_retention_days: int = 30
+    voicemail_sweep_interval_seconds: int = 300
+    # Twilio voicemail line. Off: the /voice routes are not mounted at all.
+    twilio_enabled: bool = False
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    # The public origin Twilio calls (an ngrok URL in dev). Signatures are
+    # checked against this, never request.url, which is wrong behind a proxy.
+    twilio_webhook_base_url: str = ""
 
     # Bedrock
     aws_region: str = "ap-southeast-2"
@@ -67,11 +82,29 @@ class Settings(BaseSettings):
     # gates task-routing classification confidence, not RAG grounding.
     task_routing_auto_threshold: float = 0.90
     task_routing_floor: float = 0.70
+    # Computed second opinion on the email classifier (app.services.intent_check).
+    # The LLM's own confidence measured as noise offline (0.90 on gibberish), so
+    # when this is on, an email whose embedding regression disagrees with the LLM's
+    # category, or whose margin is below the threshold, gets confidence 0.0 and goes
+    # to a human. Off by default: the threshold (0.0427) came from 58 real emails
+    # that also shaped the model, so it is provisional until checked on fresh mail.
+    intent_check_enabled: bool = False
+    intent_check_margin_threshold: float = 0.0427
 
     # Clinic hours. The calendar UI renders an 8am-6pm grid; these are the
     # single source of truth so a clinic that opens at 7 needs no code change.
     clinic_open_hour: int = 8
     clinic_close_hour: int = 18
+    # The zone those hours are in. Stored timestamps stay UTC-aware; this is
+    # only how an instant becomes a clinic day and a clinic day becomes a
+    # window. Read-only in settings_service.SETTINGS_REGISTRY: a name that is
+    # not a real zone would raise inside zoneinfo on every calendar call.
+    clinic_timezone: str = "Australia/Sydney"
+    # Public holidays the clinic closes on, as a python-holidays subdivision
+    # code for Australia. Read-only like clinic_timezone: both describe where
+    # the clinic is. ponytail: public holidays only; add a closed-dates list if
+    # the clinic wants ad-hoc closures.
+    clinic_holiday_region: str = "NSW"
     # Used when a booking does not specify a duration explicitly.
     default_appointment_duration_minutes: int = 30
 
@@ -90,11 +123,50 @@ class Settings(BaseSettings):
     # Holds a live refresh token: gitignored, never commit it.
     outlook_token_cache_path: str = ".outlook_token_cache.json"
     outlook_poll_interval_seconds: int = 60
+    # How long an unclaimed provisional patient record is kept before it is
+    # anonymised in place (build spec 9.1), and how often the sweep runs.
+    provisional_patient_ttl_days: int = 90
+    provisional_purge_interval_seconds: int = 86400
+    # Appointment reminders (build spec §16). Its own flag, deliberately not
+    # agentic_pipeline_enabled: reminders are not part of the agent graph, and
+    # a job that emails real patients must not start because someone pulled
+    # the branch. Every 15 minutes rather than daily, because "24 hours
+    # before" needs finer resolution than a daily job; reminder_sent_at makes
+    # the interval affect only how late a reminder can be, never whether it
+    # duplicates. Neither is in settings_service.SETTINGS_REGISTRY, for the
+    # same reason agentic_pipeline_enabled is not: the sweep only starts in
+    # lifespan, so a registered switch would look like it works while doing
+    # nothing.
+    appointment_reminders_enabled: bool = False
+    appointment_reminder_interval_seconds: int = 900
+    # How long a medication can go unreviewed before a repeat request needs a
+    # review first (spec §12.3). Not in SETTINGS_REGISTRY: it is a clinical
+    # policy value, not a runtime switch for an admin to nudge.
+    medication_review_interval_days: int = 180
     outlook_max_messages_per_poll: int = 25
     # The mailbox this connector reads. Used as the fallback recipient when a
     # message arrives with toRecipients absent, which happens for mail sent to
     # a shared mailbox.
     outlook_mailbox_address: str = ""
+
+    # LangGraph agent pipeline. Off: today's ingest/draft/approve path runs
+    # exactly as before and no checkpointer tables are created.
+    agentic_pipeline_enabled: bool = False
+    # Multi-turn email conversations on one case: replies linked by their
+    # headers, verification requests and the booking flow (appointment request
+    # -> details + preferred day -> offered times -> booked). The email half
+    # lives in the graph, so it also needs agentic_pipeline_enabled; the call
+    # half (a provisional profile from phone + name) needs only this. Its
+    # templated emails and the booking itself go out with no human approving
+    # them, which is why it is off by default.
+    email_booking_conversation_enabled: bool = False
+    # The registration form link (patient_form_service): an unknown sender who
+    # asks to book or to sign up is sent a link to a web form instead of an
+    # email asking for their details. Needs both flags above too. Env-only, like
+    # them: not in settings_service.SETTINGS_REGISTRY.
+    patient_form_link_enabled: bool = False
+    # slowapi limit for the form's two public endpoints, per client IP.
+    public_form_rate_limit: str = "10/minute"
 
     # LLM generation params. Previously never passed to the provider at all;
     # get_llm() now forwards them, and settings_service clears its lru_cache
@@ -130,6 +202,13 @@ class Settings(BaseSettings):
             raise ValueError("JWT_SECRET_KEY must be set")
         if self.outlook_enabled and not self.outlook_client_id:
             raise ValueError("OUTLOOK_CLIENT_ID must be set when OUTLOOK_ENABLED=true")
+        if self.twilio_enabled and not (
+            self.twilio_account_sid and self.twilio_auth_token and self.twilio_webhook_base_url
+        ):
+            raise ValueError(
+                "TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_WEBHOOK_BASE_URL must be set "
+                "when TWILIO_ENABLED=true"
+            )
         return self
 
 

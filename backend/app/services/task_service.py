@@ -117,7 +117,9 @@ async def _identify(db: AsyncSession, task: Task) -> tuple[str | None, str | Non
 
 
 async def list_tasks(db: AsyncSession) -> list[TaskOut]:
-    result = await db.execute(select(Task).order_by(Task.created_at.desc()))
+    result = await db.execute(
+        select(Task).where(Task.deleted_at.is_(None)).order_by(Task.created_at.desc())
+    )
     tasks = list(result.scalars().all())
 
     out = []
@@ -319,3 +321,61 @@ async def override_task(
     await db.commit()
     await db.refresh(task)
     return task
+
+
+async def hold_for_staff(db: AsyncSession, task_id: str | UUID, reason: str) -> None:
+    """No draft: the Task ingest_email created is the human-review item. Say why."""
+    task = await db.get(Task, UUID(str(task_id)))
+    if task is not None:
+        task.handover_context = reason
+        await db.commit()
+
+
+async def record_agent_failure(
+    db: AsyncSession,
+    *,
+    task_id: str | UUID | None,
+    case_id: str | UUID | None,
+    actor: User,
+    stage: str,
+    error_type: str,
+    error_detail: str,
+) -> None:
+    """An agent graph node raised: make sure a human sees the case.
+
+    Notes the failure on the message's existing Task, or creates one when
+    there is none, and audits it. The graph then ends; nothing retries.
+
+    The type and the message are separate arguments on purpose. Staff need the
+    type to tell an injection block from an outage, but the message is where
+    the sensitive part lives: app.llm.guardrail requires that a blocked
+    prompt's matched pattern is never readable back, and handover_context is
+    returned by the inbox API and rendered to staff. The same reasoning covers
+    any exception carrying a connection string, a token in a URL, or a row of
+    patient data. So the message reaches the audit event and nothing else.
+    """
+    reason = f"Automated handling stopped at {stage} ({error_type}). Needs a manual reply."
+    task = await db.get(Task, UUID(str(task_id))) if task_id else None
+    if task is None and case_id:
+        task = await create_task(
+            db,
+            TaskCreate(
+                case_id=UUID(str(case_id)), source=TaskSource.EMAIL, priority=TaskPriority.HIGH
+            ),
+            actor,
+        )
+    if task is not None:
+        task.handover_context = reason
+        case_id = case_id or task.case_id
+    await record_event(
+        db,
+        actor=actor,
+        case_id=UUID(str(case_id)) if case_id else None,
+        action="agent.node_failed",
+        details={
+            "stage": stage,
+            "error": f"{error_type}: {error_detail}",
+            "task_id": str(task.id) if task is not None else None,
+        },
+    )
+    await db.commit()

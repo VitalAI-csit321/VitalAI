@@ -30,8 +30,10 @@ from app.services.appointment_service import (
     DoctorNotFoundError,
     DoctorPatientAccessError,
     NotADoctorError,
+    OutsideClinicHoursError,
     SlotTakenError,
 )
+from app.services.patient_service import ProvisionalPatientError
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
@@ -53,7 +55,9 @@ async def book_appointment_endpoint(
         )
 
     try:
-        created = await appointment_service.book_appointment_series(db, payload, actor)
+        created = await appointment_service.book_appointment_series(
+            db, payload, actor, enforce_hours=True
+        )
         return await appointment_service.serialize_appointment(db, created[0])
     except (DoctorNotFoundError, CaseNotFoundError) as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
@@ -62,6 +66,12 @@ async def book_appointment_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
         ) from exc
     except SlotTakenError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except OutsideClinicHoursError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
+    except ProvisionalPatientError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except DoctorPatientAccessError as exc:
         raise HTTPException(
@@ -217,10 +227,14 @@ async def update_appointment_endpoint(
 
     try:
         appointment = await appointment_service.update_appointment(
-            db, appointment_id, payload, actor, _own_calendar_scope(actor)
+            db, appointment_id, payload, actor, _own_calendar_scope(actor), enforce_hours=True
         )
     except SlotTakenError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except OutsideClinicHoursError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
     except AppointmentStateError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     except DoctorNotFoundError as exc:
@@ -260,10 +274,19 @@ async def reschedule_appointment_endpoint(
 ):
     try:
         appointment = await appointment_service.reschedule_appointment(
-            db, appointment_id, payload.time_slot, actor, _own_calendar_scope(actor)
+            db,
+            appointment_id,
+            payload.time_slot,
+            actor,
+            _own_calendar_scope(actor),
+            enforce_hours=True,
         )
     except SlotTakenError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except OutsideClinicHoursError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
     except AppointmentStateError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 

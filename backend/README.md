@@ -71,6 +71,45 @@ pip-compile requirements.txt --output-file requirements.lock
 
 ## Running tests
 
+### The clean run (use this one)
+
+```bash
+scripts/run_tests_clean.sh              # whole suite
+scripts/run_tests_clean.sh tests/test_audit_verify.py -x
+```
+
+This creates a throwaway database, runs `alembic upgrade head` against virgin
+schema, runs the suite, and drops the database afterwards. It is what CI does,
+and it is the only invocation whose failures all mean something.
+
+Pointing `DATABASE_URL` at the shared dev database (`vitalai`) instead produces
+around seventeen failures that have nothing to do with your change. That
+database carries committed rows from every earlier run:
+
+- `app_settings`, `appointments` and `human_review_tasks` rows, which break
+  tests that assert on a count or an exact list.
+- An `audit_events` hash chain that is already broken, so `verify_audit_chain()`
+  reports `valid = false` before any test runs. `audit_events` is append-only and
+  undeletable by design, which is the point of it, so that chain can never be
+  repaired in place. Every chain-verification test fails there permanently.
+
+Tests that could be scoped to their own fixtures have been. The rest are correct
+tests that need a database nobody has used yet, which is what the script gives
+them. Do not "fix" them by wiping the dev database: it holds demo data, and
+other worktrees point at the same Postgres instance.
+
+The script sets `RAG_TEST_DATABASE_URL` and `POSTGRES_TEST_URL` alongside
+`DATABASE_URL`. Exporting only `DATABASE_URL` by hand is not enough, because
+conftest's `pg_session`/`seeded_chunks` fixtures and `test_audit_hash_chain.py`
+read those other two and fall back to the shared dev database.
+
+One more trap: if another branch has migrated the dev database to a revision
+your branch does not have (`Can't locate revision identified by ...`), every
+Postgres test errors at fixture setup rather than failing. The scratch database
+is immune, since it is migrated from scratch by your own tree.
+
+### What still needs real infrastructure
+
 Most of the suite runs against SQLite and needs no setup. Some tests need real
 infrastructure and are not skipped automatically if it's missing: anything
 touching `app.rag.retrieval`/the `chunks` table needs real Postgres+pgvector
@@ -299,3 +338,18 @@ Every state-changing operation writes to the audit log with the authenticated ac
 `.env` is gitignored and must never be committed. `.env.example` should only ever
 contain placeholder values. If you generate a real secret, it goes in `.env` and
 nowhere else.
+## Twilio voicemail line
+
+Off by default (`TWILIO_ENABLED=false`); the `/api/v1/voice/*` routes are not mounted then.
+The simulated path (Log call, Simulate voicemail) runs the same pipeline without Twilio.
+
+1. Buy an Australian number in the Twilio console.
+2. Voice settings: turn on **Enforce HTTP Auth on Media URLs**, so a recording cannot be
+   fetched by anyone holding its link before we delete it.
+3. Expose the API: `ngrok http 8000`, and set `TWILIO_WEBHOOK_BASE_URL` to the https origin.
+4. On the number: "A call comes in" -> Webhook, POST, `<base>/api/v1/voice/incoming`;
+   "Call status changes" -> POST, `<base>/api/v1/voice/status`.
+5. `.env`: `TWILIO_ENABLED=true`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WEBHOOK_BASE_URL`.
+
+Recordings are downloaded, stored in MinIO, then deleted from Twilio. Twilio's own
+request logs still hold the keypad digits and caller number for its log retention period.

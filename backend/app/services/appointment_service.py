@@ -3,8 +3,11 @@ import secrets
 import uuid
 from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
+from functools import cache
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
+import holidays
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.scoping import assigned_patient_ids_subquery, is_assigned
 from app.config import settings
 from app.models.appointment import Appointment, AppointmentStatus, AppointmentType
+from app.models.assignment import DoctorPatientAssignment
 from app.models.case import IntakeCase
 from app.models.patient import Patient
 from app.models.user import User, UserRole
@@ -32,6 +36,7 @@ from app.schemas.appointment import (
     DayViewOut,
     ProviderDayLoad,
 )
+from app.services import patient_service
 from app.services.audit_service import get_events_for_case, record_event
 from app.services.consent_service import get_consent_for_case
 
@@ -54,6 +59,51 @@ class SlotTakenError(Exception):
 
 class AppointmentStateError(Exception):
     """Raised when rescheduling/cancelling an appointment in an illegal state."""
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+@cache
+def _holidays(region: str, year: int) -> holidays.HolidayBase:
+    return holidays.country_holidays("AU", subdiv=region, years=year)
+
+
+def is_clinic_day(day: date) -> bool:
+    """A weekday that is not a public holiday in the clinic's state. The
+    clinic is closed on those, and email booking offered Labour Day slots."""
+    return day.weekday() < 5 and day not in _holidays(settings.clinic_holiday_region, day.year)
+
+
+class OutsideClinicHoursError(Exception):
+    """Raised when an appointment would start before opening or end after closing."""
+
+
+def assert_within_clinic_hours(start: datetime, duration_minutes: int) -> None:
+    """Refuse a time the clinic is closed, read in the clinic's timezone.
+
+    The calendar UI once sent 11:00 UTC for an "11:00" booking, which is 10pm
+    in Sydney, and nothing here stopped it. A naive value is UTC, as SQLite
+    hands stored times back.
+    """
+    tz = ZoneInfo(settings.clinic_timezone)
+    start = start if start.tzinfo else start.replace(tzinfo=UTC)
+    local = start.astimezone(tz)
+    # The UI booked three days in the past and on a Saturday, both confirmed.
+    if start < _now():
+        raise OutsideClinicHoursError(f"{local:%a %d %b %H:%M} is in the past")
+    if not is_clinic_day(local.date()):
+        raise OutsideClinicHoursError(
+            f"The clinic is closed on {local:%a %d %b} (weekend or public holiday)"
+        )
+    opens = local.replace(hour=settings.clinic_open_hour, minute=0, second=0, microsecond=0)
+    closes = local.replace(hour=settings.clinic_close_hour, minute=0, second=0, microsecond=0)
+    if local < opens or local + timedelta(minutes=duration_minutes) > closes:
+        raise OutsideClinicHoursError(
+            f"{local:%a %d %b %H:%M} ({settings.clinic_timezone}) is outside clinic hours "
+            f"{settings.clinic_open_hour:02d}:00-{settings.clinic_close_hour:02d}:00"
+        )
 
 
 class DoctorPatientAccessError(Exception):
@@ -93,6 +143,8 @@ async def book_appointment(
     notify_provider: bool = True,
     series_id: UUID | None = None,
     commit: bool = True,
+    allow_provisional: bool = False,
+    enforce_hours: bool = False,
 ) -> Appointment:
     # Validated up front so a bogus doctor_id/case_id can't slip through as a
     # "successful" booking, and so the later IntegrityError catch can only
@@ -105,12 +157,21 @@ async def book_appointment(
     case = await db.get(IntakeCase, case_id)
     if case is None:
         raise CaseNotFoundError(f"No case with id {case_id}")
+    # allow_provisional is passed only by the email booking flow, and only
+    # after patient_service.assert_bookable passed. Every other caller keeps
+    # the refusal.
+    if not allow_provisional:
+        await patient_service.assert_not_provisional(db, case.patient_id)
 
     if actor.role == UserRole.DOCTOR:
         if case.patient_id is None or not await is_assigned(db, actor.id, case.patient_id):
             raise DoctorPatientAccessError(
                 f"Patient for case {case_id} is not assigned to doctor {actor.id}"
             )
+    # Routes pass enforce_hours: people type times there. Internal callers
+    # (the agent books offered in-hours slots) and fixtures do not need it.
+    if enforce_hours:
+        assert_within_clinic_hours(time_slot, duration_minutes)
 
     appointment = Appointment(
         doctor_id=doctor_id,
@@ -136,6 +197,7 @@ async def book_appointment(
             f"Doctor {doctor_id} already has an appointment at {time_slot}"
         ) from exc
 
+    await _assign_if_unassigned(db, doctor_id, case.patient_id, case_id, actor)
     await record_event(
         db,
         case_id=case_id,
@@ -153,8 +215,37 @@ async def book_appointment(
     return appointment
 
 
+async def _assign_if_unassigned(
+    db: AsyncSession, doctor_id: UUID, patient_id: UUID | None, case_id: UUID, actor: User
+) -> None:
+    """A patient nobody looks after becomes the booked doctor's. Doctors see
+    appointments and records through assignment, so an unassigned patient's
+    booking (every new patient the email agent books) was invisible to the
+    doctor holding it. Not committed here: the series books in one transaction."""
+    if patient_id is None:
+        return
+    taken = await db.execute(
+        select(DoctorPatientAssignment.doctor_id)
+        .where(DoctorPatientAssignment.patient_id == patient_id)
+        .limit(1)
+    )
+    if taken.first() is not None:
+        return
+    db.add(
+        DoctorPatientAssignment(doctor_id=doctor_id, patient_id=patient_id, assigned_by=actor.id)
+    )
+    await db.flush()
+    await record_event(
+        db,
+        case_id=case_id,
+        actor=actor,
+        action="assignment.created",
+        details={"doctor_id": str(doctor_id), "patient_id": str(patient_id), "reason": "booking"},
+    )
+
+
 async def book_appointment_series(
-    db: AsyncSession, payload: AppointmentCreate, actor: User
+    db: AsyncSession, payload: AppointmentCreate, actor: User, enforce_hours: bool = False
 ) -> list[Appointment]:
     """Book one appointment, or a linked series when payload.repeat is set.
 
@@ -187,6 +278,7 @@ async def book_appointment_series(
                 notify_provider=payload.notify_provider,
                 series_id=series_id,
                 commit=False,
+                enforce_hours=enforce_hours,
             )
         )
 
@@ -278,6 +370,7 @@ async def reschedule_appointment(
     new_time_slot: datetime,
     actor: User,
     scoped_doctor_id: UUID | None,
+    enforce_hours: bool = False,
 ) -> Appointment | None:
     appointment = await _get_scoped(db, appointment_id, actor, scoped_doctor_id)
     if appointment is None:
@@ -286,7 +379,11 @@ async def reschedule_appointment(
         raise AppointmentStateError("Cannot reschedule a cancelled appointment")
 
     doctor_id = appointment.doctor_id
+    if enforce_hours:
+        assert_within_clinic_hours(new_time_slot, appointment.duration_minutes)
     appointment.time_slot = new_time_slot
+    # The reminder that went out described the old time (spec §16.2).
+    appointment.reminder_sent_at = None
     try:
         await db.flush()
     except IntegrityError as exc:
@@ -316,6 +413,7 @@ async def update_appointment(
     payload: AppointmentUpdate,
     actor: User,
     scoped_doctor_id: UUID | None,
+    enforce_hours: bool = False,
 ) -> Appointment | None:
     appointment = await _get_scoped(db, appointment_id, actor, scoped_doctor_id)
     if appointment is None:
@@ -355,8 +453,23 @@ async def update_appointment(
     # The doctor who'd actually hold the colliding slot: the new one if this
     # PATCH is reassigning, otherwise the appointment's existing doctor.
     doctor_id = new_doctor_id if new_doctor_id is not None else appointment.doctor_id
+    if enforce_hours and ("time_slot" in changes or "duration_minutes" in changes):
+        assert_within_clinic_hours(
+            changes.get("time_slot", appointment.time_slot),
+            changes.get("duration_minutes", appointment.duration_minutes),
+        )
     for field, value in changes.items():
         setattr(appointment, field, value)
+    # A PATCH moves the appointment just as much as /reschedule does, and the
+    # reminder already sent named the old time (spec §16.2).
+    #
+    # Placed after the setattr loop defensively, not because it has to be:
+    # AppointmentUpdate has no reminder_sent_at field, so `changes` cannot
+    # carry one and the loop cannot overwrite what is set here. Putting it
+    # after keeps that true if the field is ever added to the schema. Verified
+    # by mutation: moving this above the loop does not fail any test today.
+    if "time_slot" in changes:
+        appointment.reminder_sent_at = None
 
     try:
         await db.flush()
@@ -498,15 +611,39 @@ async def serialize_many(db: AsyncSession, appointments: list[Appointment]) -> l
     return out
 
 
+def clinic_date(instant: datetime) -> date:
+    """The clinic-local calendar day an instant falls on.
+
+    Bucketing by the UTC date files an early-morning appointment on the day
+    before. Naive values out of the SQLite test backend are UTC, the same
+    guard get_availability applies.
+    """
+    if instant.tzinfo is None:
+        instant = instant.replace(tzinfo=UTC)
+    return instant.astimezone(ZoneInfo(settings.clinic_timezone)).date()
+
+
+def clinic_day_window(day: date, days: int = 1) -> tuple[datetime, datetime]:
+    """The [start, end) instants covering `days` clinic-local days from `day`.
+
+    Built from both local midnights rather than start + 24h, so a window
+    spanning a DST change is the 23 or 25 hours that day actually has.
+    """
+    tz = ZoneInfo(settings.clinic_timezone)
+    return (
+        datetime.combine(day, time.min, tzinfo=tz),
+        datetime.combine(day + timedelta(days=days), time.min, tzinfo=tz),
+    )
+
+
 def _month_bounds(year: int, month: int) -> tuple[datetime, datetime]:
-    first = datetime(year, month, 1, tzinfo=UTC)
-    last_day = _calendar.monthrange(year, month)[1]
-    end = datetime(year, month, last_day, tzinfo=UTC) + timedelta(days=1)
-    return first, end
+    # Must agree with clinic_date's bucketing, or an appointment on the 1st
+    # before 10am Sydney is fetched by the wrong month and filed in none.
+    return clinic_day_window(date(year, month, 1), days=_calendar.monthrange(year, month)[1])
 
 
 def _stats(appointments: list[Appointment]) -> CalendarStats:
-    today = datetime.now(UTC).date()
+    today = clinic_date(datetime.now(UTC))
     return CalendarStats(
         scheduled=sum(
             1
@@ -517,7 +654,7 @@ def _stats(appointments: list[Appointment]) -> CalendarStats:
         confirmed_today=sum(
             1
             for a in appointments
-            if a.status == AppointmentStatus.CONFIRMED and a.time_slot.date() == today
+            if a.status == AppointmentStatus.CONFIRMED and clinic_date(a.time_slot) == today
         ),
         cancellations=sum(1 for a in appointments if a.status == AppointmentStatus.CANCELLED),
     )
@@ -554,10 +691,7 @@ async def get_calendar_month(
     serialized = await serialize_many(db, appointments)
     by_day: dict[date, list] = defaultdict(list)
     for item in serialized:
-        ts = item.time_slot
-        if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=UTC)
-        by_day[ts.astimezone(UTC).date()].append(item)
+        by_day[clinic_date(item.time_slot)].append(item)
 
     days: list[CalendarDayCell] = []
     for day_number in range(1, _calendar.monthrange(year, month)[1] + 1):
@@ -582,10 +716,7 @@ async def get_calendar_markers(
 
     counts: dict[date, int] = defaultdict(int)
     for a in appointments:
-        ts = a.time_slot
-        if ts.tzinfo is None:
-            ts = ts.replace(tzinfo=UTC)
-        counts[ts.astimezone(UTC).date()] += 1
+        counts[clinic_date(a.time_slot)] += 1
     return [
         CalendarMarkerOut(date=day.isoformat(), count=count)
         for day, count in sorted(counts.items())
@@ -595,8 +726,7 @@ async def get_calendar_markers(
 async def get_day_view(
     db: AsyncSession, actor: User, day: date, doctor_id: UUID | None = None
 ) -> DayViewOut:
-    start = datetime.combine(day, time.min, tzinfo=UTC)
-    end = start + timedelta(days=1)
+    start, end = clinic_day_window(day)
     appointments = await _appointments_in_range(db, actor, start, end, doctor_id)
 
     counted = [a for a in appointments if a.status != AppointmentStatus.CANCELLED]
@@ -666,8 +796,7 @@ async def get_availability(
     day: date,
     slot_minutes: int = 30,
 ) -> AvailabilityOut:
-    start = datetime.combine(day, time.min, tzinfo=UTC)
-    end = start + timedelta(days=1)
+    start, end = clinic_day_window(day)
     blocking = await _doctor_busy_slots(db, doctor_id, start, end)
 
     # Guard against SQLite's naive datetime round-trip (known issue in test
@@ -683,8 +812,12 @@ async def get_availability(
         busy_ranges.append((slot_start, slot_end))
 
     slots: list[AvailabilitySlotOut] = []
-    cursor = datetime.combine(day, time(hour=settings.clinic_open_hour), tzinfo=UTC)
-    closing = datetime.combine(day, time(hour=settings.clinic_close_hour), tzinfo=UTC)
+    # Clinic local, not UTC: these hours are what the Settings page calls
+    # "Clinic opens"/"Clinic closes", and the frontend renders each slot with
+    # toLocaleTimeString, so a UTC reading showed the clinic open overnight.
+    tz = ZoneInfo(settings.clinic_timezone)
+    cursor = datetime.combine(day, time(hour=settings.clinic_open_hour), tzinfo=tz)
+    closing = datetime.combine(day, time(hour=settings.clinic_close_hour), tzinfo=tz)
     step = timedelta(minutes=slot_minutes)
 
     while cursor + step <= closing:

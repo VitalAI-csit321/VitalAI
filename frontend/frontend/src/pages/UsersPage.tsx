@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { listUsers, registerUser, elevateUser, updateUserDepartment, setUserActive, getUserGrants } from "../api/auth";
 import type { ManagedUser, Role } from "../api/types";
@@ -52,7 +52,7 @@ function InviteModal({onClose,onDone}:{onClose:()=>void;onDone:()=>void}) {
         <div className="flex items-center justify-between mb-5"><h2 className="text-lg font-bold text-slate-900">Invite new user</h2><button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">×</button></div>
         <div className="space-y-4">
           <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Full name</label><input value={form.fullName} onChange={e=>setForm(f=>({...f,fullName:e.target.value}))} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand"/></div>
-          <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Email address</label><input value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} placeholder="email@royalmelb.health" className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand"/></div>
+          <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Email address</label><input value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} placeholder="name@example.com" className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand"/></div>
           <div><label className="block text-sm font-semibold text-slate-700 mb-1.5">Department (optional)</label><input value={form.department} onChange={e=>setForm(f=>({...f,department:e.target.value}))} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand"/></div>
           <p className="text-xs text-slate-500">New users start with the Front Desk role. MFA enforcement isn't implemented yet.</p>
           {error&&<p className="text-sm text-red-600">{error}</p>}
@@ -66,6 +66,8 @@ function InviteModal({onClose,onDone}:{onClose:()=>void;onDone:()=>void}) {
   );
 }
 
+const PAGE_SIZE = 20;
+
 export function UsersPage() {
   const [users,setUsers]=useState<ManagedUser[]>([]);
   const [search,setSearch]=useState("");
@@ -77,9 +79,26 @@ export function UsersPage() {
   const [loadingGrants,setLoadingGrants]=useState<string|null>(null);
   const [roleFilter,setRoleFilter]=useState<Role|"">("");
   const [deptFilter,setDeptFilter]=useState<string>("");
+  const [page,setPage]=useState(0);
+  const [total,setTotal]=useState(0);
+  const [departments,setDepartments]=useState<string[]>([]);
 
-  function load(){setLoading(true);listUsers({limit:20}).then(r=>setUsers(r.items)).catch(()=>{}).finally(()=>setLoading(false));}
-  useEffect(()=>{load();},[]);
+  // The server filters, pages and counts. Doing any of it here would only ever
+  // see the rows this page happens to hold, so a search would miss the other
+  // 270 users and "N active" would describe one page while reading as the
+  // whole directory.
+  const load=useCallback(()=>{
+    setLoading(true);
+    listUsers({limit:PAGE_SIZE,offset:page*PAGE_SIZE,
+      ...(search?{search}:{}),...(roleFilter?{role:roleFilter}:{}),...(deptFilter?{department:deptFilter}:{})})
+      .then(r=>{setUsers(r.items);setTotal(r.total);setDepartments(r.departments);})
+      .catch(()=>{})
+      .finally(()=>setLoading(false));
+  },[page,search,roleFilter,deptFilter]);
+  // Debounced: every keystroke would otherwise be a request.
+  useEffect(()=>{const t=setTimeout(load,250);return()=>clearTimeout(t);},[load]);
+  // Any filter change puts you back on the first page, or you land past the end.
+  useEffect(()=>{setPage(0);},[search,roleFilter,deptFilter]);
 
   async function changeRole(id:string,role:Role){setChanging(id);try{await elevateUser(id,role);load();}catch{/* leave the row as-is on failure, no optimistic change to undo */}finally{setChanging(null);}}
 
@@ -97,16 +116,11 @@ export function UsersPage() {
     finally { setLoadingGrants(null); }
   }
 
-  const filtered=users.filter(u=>
-    (!search||u.fullName.toLowerCase().includes(search.toLowerCase())||u.email.includes(search))
-    && (!roleFilter||u.role===roleFilter)
-    && (!deptFilter||u.department===deptFilter)
-  );
 
   return (
     <div className="p-6">
       <div className="flex items-start justify-between">
-        <div><h1 className="text-2xl font-bold text-slate-900">User management • RBAC</h1><p className="mt-1 text-sm text-slate-500">{users.filter(u=>u.isActive).length} active • {users.filter(u=>!u.isActive).length} pending <span className="ml-2 text-brand font-medium">MFA enforced</span></p></div>
+        <div><h1 className="text-2xl font-bold text-slate-900">User management • RBAC</h1><p className="mt-1 text-sm text-slate-500">{total} {total===1?"user":"users"}{search||roleFilter||deptFilter?" matching":""} • showing {users.length} <span className="ml-2 text-brand font-medium">MFA enforced</span></p></div>
         <button onClick={()=>setShowInvite(true)} className="flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover"><UserPlus className="h-4 w-4"/>Invite user</button>
       </div>
       <div className="mt-6 flex gap-3">
@@ -117,7 +131,7 @@ export function UsersPage() {
         </select>
         <select value={deptFilter} onChange={e=>setDeptFilter(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700">
           <option value="">All departments</option>
-          {Array.from(new Set(users.map(u=>u.department).filter((d): d is string => !!d))).sort().map(d=><option key={d} value={d}>{d}</option>)}
+          {departments.map(d=><option key={d} value={d}>{d}</option>)}
         </select>
       </div>
       <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -125,7 +139,7 @@ export function UsersPage() {
           <table className="w-full text-sm">
             <thead><tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{["User","Role","Department","Extra permissions","Last Active","Status"].map(h=><th key={h} className="px-6 py-3">{h}</th>)}</tr></thead>
             <tbody>
-              {filtered.map((u,i)=>(
+              {users.map((u,i)=>(
                 <tr key={u.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                   <td className="px-6 py-4"><div className="flex items-center gap-3"><Avatar initials={(u.fullName[0]+(u.fullName.split(" ").pop()?.[0]??"")).toUpperCase()} color={COLORS[i%COLORS.length]} size={36}/><div><div className="font-semibold text-slate-900">{u.fullName}</div><div className="text-xs text-slate-500">{u.email}</div></div></div></td>
                   <td className="px-6 py-4">
@@ -151,6 +165,29 @@ export function UsersPage() {
               ? <p className="text-sm text-slate-500">No per-user grants beyond the role's base permissions.</p>
               : <ul className="space-y-2 text-sm">{grantsFor.permissions.map(p=><li key={p} className="rounded bg-slate-50 px-3 py-1.5 font-mono">{p}</li>)}</ul>}
             <button onClick={()=>setGrantsFor(null)} className="mt-4 w-full rounded-lg border border-slate-200 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Close</button>
+          </div>
+        </div>
+      )}
+      {total>PAGE_SIZE&&(
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <span className="text-slate-500">
+            {page*PAGE_SIZE+1} to {Math.min((page+1)*PAGE_SIZE,total)} of {total}
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={()=>setPage(p=>Math.max(0,p-1))}
+              disabled={page===0||loading}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <button
+              onClick={()=>setPage(p=>p+1)}
+              disabled={(page+1)*PAGE_SIZE>=total||loading}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+            >
+              Next
+            </button>
           </div>
         </div>
       )}

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit import AuditEvent
 from app.models.permission_grant import UserPermissionGrant
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.services.audit_service import record_event
 
 
@@ -29,16 +29,47 @@ async def set_department(
     return target
 
 
+async def list_departments(db: AsyncSession) -> list[str]:
+    """Every department in use, for the directory's filter. Taken from the
+    whole table, not from the page being returned, or a department belonging
+    only to users further down the list is never offered."""
+    rows = (
+        (
+            await db.execute(
+                select(User.department)
+                .where(User.department.is_not(None))
+                .distinct()
+                .order_by(User.department)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return [d for d in rows if d]
+
+
 async def list_users(
     db: AsyncSession,
     search: str | None = None,
     limit: int = 20,
     offset: int = 0,
+    role: UserRole | None = None,
+    department: str | None = None,
 ) -> tuple[list[tuple[User, datetime | None]], int]:
+    """A page of users and the total number matching the filters.
+
+    Role and department filter here rather than in the browser: the caller
+    receives one page, so filtering after the fact searches only that page and
+    reports counts for it, which reads as the whole directory but is not.
+    """
     filters = []
     if search:
         term = f"%{search}%"
         filters.append(or_(User.full_name.ilike(term), User.email.ilike(term)))
+    if role is not None:
+        filters.append(User.role == role)
+    if department:
+        filters.append(User.department == department)
 
     last_active_subq = (
         select(func.max(AuditEvent.timestamp))

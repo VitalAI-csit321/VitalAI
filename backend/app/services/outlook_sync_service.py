@@ -14,7 +14,9 @@ directly testable without running a timer.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -38,6 +40,51 @@ logger = logging.getLogger(__name__)
 # cap, and a restart granting a few extra attempts is harmless.
 MAX_INGEST_ATTEMPTS = 3
 _failed_attempts: dict[str, int] = {}
+
+# Drafting is detached here with plain asyncio, not FastAPI BackgroundTasks:
+# the poller is an asyncio.Task started in lifespan, not a request, so there
+# is no BackgroundTasks to attach to.
+#
+# The set is not bookkeeping. asyncio holds only a weak reference to a task,
+# so a bare create_task can be garbage-collected mid-flight.
+_drafting: set[asyncio.Task] = set()
+
+# ponytail: one slot, because gemma2:9b is CPU-bound on this box and
+# serialises anyway. Raise it if drafting stops being the bottleneck.
+# outlook_max_messages_per_poll is 25 on a 60s interval, so unbounded
+# create_task would put 25 concurrent model runs on one CPU. With the
+# semaphore the poll loop returns at once and drafts drain across cycles;
+# Email.external_id dedupe already makes an overrun cycle safe.
+_draft_slots = asyncio.Semaphore(1)
+
+
+async def _when_free(fn: Callable[..., Awaitable[None]], *args: Any) -> None:
+    async with _draft_slots:
+        await fn(*args)
+
+
+def schedule(fn: Callable[..., Awaitable[None]], *args: Any) -> None:
+    """Run fn(*args) behind the semaphore, holding a strong reference to it,
+    and return immediately.
+
+    Also the scheduler for work that must outlive a request whose handler
+    raises: FastAPI BackgroundTasks never run when an HTTPException replaces
+    the response (the approvals route's failed-send resume).
+    """
+    task = asyncio.create_task(_when_free(fn, *args))
+    _drafting.add(task)
+    task.add_done_callback(_drafting.discard)
+
+
+async def _draft(*args: Any) -> None:
+    await email_service.draft_runner()(*args)
+
+
+def schedule_draft(
+    task_id: Any, email_id: Any, actor_id: Any, gate: Any, confidence: float
+) -> None:
+    """Queue a draft to run behind the semaphore and return immediately."""
+    schedule(_draft, task_id, email_id, actor_id, gate, confidence)
 
 
 @dataclass
@@ -69,7 +116,11 @@ async def _process_one(
     db: AsyncSession, request: EmailIngestRequest, actor: User, access_token: str
 ) -> None:
     email, task, gate, confidence = await email_service.ingest_email(db, request, actor)
-    await email_service.draft_reply(db, task, email, actor, gate, confidence)
+    # Scheduled, not awaited: one 90s model run would otherwise stall the
+    # remaining messages in this batch. A drafting failure no longer counts
+    # as an ingest failure either, which is right -- the email is in the
+    # system, and draft_reply_detached handles its own errors.
+    schedule_draft(task.id, email.id, actor.id, gate, confidence)
 
     # Matthew's original guard, kept: a failed mark-as-read must not undo an
     # ingest that already committed. The dedupe check above means the message

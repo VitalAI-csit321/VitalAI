@@ -1,7 +1,7 @@
 import enum
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import Date, Enum, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Enum, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -52,10 +52,13 @@ class Patient(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     mrn: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    dob: Mapped[date] = mapped_column(Date, nullable=False)
-    gender: Mapped[Gender] = mapped_column(
+    # Nullable since 0031: a patient identified from an inbound message has
+    # a name and a contact address and nothing else. Registration fills these
+    # in, which is what is_profile_complete then measures.
+    dob: Mapped[date | None] = mapped_column(Date, nullable=True)
+    gender: Mapped[Gender | None] = mapped_column(
         Enum(Gender, name="gender", values_callable=lambda x: [e.value for e in x]),
-        nullable=False,
+        nullable=True,
     )
     status: Mapped[PatientStatus] = mapped_column(
         Enum(PatientStatus, name="patient_status", values_callable=lambda x: [e.value for e in x]),
@@ -86,3 +89,16 @@ class Patient(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     insurance_expiry: Mapped[date | None] = mapped_column(Date, nullable=True)
     medicare_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     concession_card: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Deliberately not a PatientStatus value: update_patient recomputes
+    # status from profile completeness on every edit, so a PROVISIONAL there
+    # would be overwritten by the next field change. See the note on status
+    # above, which already says to split rather than extend that field.
+    is_provisional: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false", index=True
+    )
+    # Set when an unclaimed provisional row is anonymised in place after
+    # settings.provisional_patient_ttl_days. Never a hard DELETE: nothing
+    # referencing patients.id declares an ondelete, and the audit hash chain
+    # has to stay verifiable.
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

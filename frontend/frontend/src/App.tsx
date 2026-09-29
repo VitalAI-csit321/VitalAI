@@ -6,6 +6,8 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 // Auth
 import { LoginPage } from "./pages/LoginPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
+import { PatientRegistrationPage } from "./pages/PatientRegistrationPage";
 
 // Core pages (first 10 designs)
 import { DashboardPage } from "./pages/DashboardPage";
@@ -21,7 +23,6 @@ import { ConsentViewPage } from "./pages/ConsentViewPage";
 import { ConsentSuccessPage } from "./pages/ConsentSuccessPage";
 import { RecordsPage } from "./pages/RecordsPage";
 import { InboxPage } from "./pages/InboxPage";
-import { ComposePage } from "./pages/ComposePage";
 import { LogCallPage } from "./pages/LogCallPage";
 
 // New pages (15 new designs)
@@ -53,6 +54,8 @@ export default function App() {
           {/* Public */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/register/:token" element={<PatientRegistrationPage />} />
 
           {/* Platform Operations — separate shell. Its endpoints require
               READ_AUDIT (admin only), so the whole shell is admin-gated. */}
@@ -97,9 +100,8 @@ export default function App() {
             {/* Records */}
             <Route path="/records" element={<RecordsPage />} />
 
-            {/* Inbox + Compose */}
+            {/* Inbox */}
             <Route path="/inbox" element={<InboxPage />} />
-            <Route path="/inbox/compose" element={<ComposePage />} />
             <Route path="/inbox/log-call" element={<LogCallPage />} />
 
             {/* Review Queue */}
@@ -107,7 +109,14 @@ export default function App() {
             <Route path="/review-queue/add" element={<AddCasePage />} />
 
             {/* Escalations */}
-            <Route path="/escalations" element={<EscalationsPage />} />
+            <Route
+              path="/escalations"
+              element={
+                <ProtectedRoute roles={["front_desk", "operator", "admin"]}>
+                  <EscalationsPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Audit — admin only */}
             <Route

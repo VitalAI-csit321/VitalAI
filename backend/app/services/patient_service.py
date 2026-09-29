@@ -7,12 +7,80 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.scoping import assigned_patient_ids_subquery
+from app.models.case import IntakeCase
+from app.models.consent import ConsentStatus
 from app.models.patient import PROFILE_FIELDS, Patient, PatientStatus
 from app.models.user import User
 from app.schemas.patient import PatientCreate, PatientUpdate
+from app.services import consent_service
 from app.services.audit_service import record_event
 
 _MRN_GENERATION_ATTEMPTS = 5
+
+
+class ProvisionalPatientError(Exception):
+    """The patient is provisional: created from an inbound message, not yet
+    verified by staff. Not bookable, and no clinical records (spec §9.0a)."""
+
+
+class PromotionRefusedError(Exception):
+    """promote_patient's preconditions do not hold."""
+
+
+async def assert_not_provisional(db: AsyncSession, patient_id: UUID | None) -> None:
+    patient = await db.get(Patient, patient_id) if patient_id is not None else None
+    if patient is not None and patient.is_provisional:
+        raise ProvisionalPatientError(
+            f"Patient {patient_id} is provisional; staff must complete their registration first"
+        )
+
+
+# What a provisional patient needs on file before the email booking flow may
+# book them. The email address is the one they wrote from.
+BOOKING_FIELDS = ("name", "dob", "phone", "email")
+
+
+def assert_bookable(patient: Patient, *, confirmed_email_id: UUID | None) -> None:
+    """The exception to assert_not_provisional, and its only one.
+
+    A registered patient is always bookable. A provisional one only with every
+    BOOKING_FIELDS value on file and their own written confirmation of a time
+    the clinic offered (the email id that said so). Deliberately not a
+    CAPTURED consent record: promote_patient and the records branch both read
+    any CAPTURED non-implied record as real consent, so a booking reply would
+    unlock promotion and records as a side effect.
+    """
+    if not patient.is_provisional:
+        return
+    missing = [f for f in BOOKING_FIELDS if not getattr(patient, f)]
+    if missing or confirmed_email_id is None:
+        raise ProvisionalPatientError(
+            f"Provisional patient {patient.id} is not bookable yet: "
+            f"missing {missing or 'written confirmation'}"
+        )
+
+
+async def fill_provisional_fields(
+    db: AsyncSession, patient: Patient, *, actor: User, **values: object
+) -> list[str]:
+    """Fill the gaps in a provisional record from what the patient wrote.
+    Never overwrites: a value already on file is the one staff and earlier
+    turns relied on, and a contradicting one is for a human to settle.
+    Returns the names of the fields it set. Does not commit."""
+    filled = []
+    for field, value in values.items():
+        if value and not getattr(patient, field):
+            setattr(patient, field, value)
+            filled.append(field)
+    if filled:
+        await record_event(
+            db,
+            actor=actor,
+            action="patient.provisional_updated",
+            # Field names only: audit rows outlive the provisional purge.
+            details={"patient_id": str(patient.id), "fields": filled},
+        )
+    return filled
 
 
 async def _generate_unique_mrn(db: AsyncSession) -> str:
@@ -92,6 +160,10 @@ async def update_patient(
         patient.status = (
             PatientStatus.ACTIVE if is_profile_complete(patient) else PatientStatus.PENDING
         )
+    # Only promote_patient (a human, with explicit consent on file) makes a
+    # provisional patient ACTIVE, however complete the profile or the edit.
+    if patient.is_provisional and patient.status == PatientStatus.ACTIVE:
+        patient.status = PatientStatus.PENDING
 
     await db.flush()
 
@@ -106,10 +178,99 @@ async def update_patient(
     return patient
 
 
+async def create_provisional_patient(
+    db: AsyncSession,
+    *,
+    case_id: UUID,
+    name: str,
+    email: str | None,
+    phone: str | None,
+    dob,
+    actor: User,
+    commit: bool = True,
+) -> Patient:
+    """A patient known only from an inbound message (spec §9.0), linked to its
+    case. PENDING and provisional until a human promotes them."""
+    patient = Patient(
+        mrn=await _generate_unique_mrn(db),
+        name=name,
+        dob=dob,
+        email=email,
+        phone=phone,
+        status=PatientStatus.PENDING,
+        is_provisional=True,
+    )
+    db.add(patient)
+    await db.flush()
+    case = await db.get(IntakeCase, case_id)
+    if case is not None:
+        case.patient_id = patient.id
+        case.patient_name = patient.name
+    await record_event(
+        db,
+        actor=actor,
+        case_id=case_id,
+        action="patient.provisional_created",
+        details={"patient_id": str(patient.id), "mrn": patient.mrn},
+    )
+    # commit=False lets the registration form create the record inside its own
+    # transaction, with the conversation row still locked.
+    if commit:
+        await db.commit()
+        await db.refresh(patient)
+    return patient
+
+
+async def promote_patient(db: AsyncSession, patient_id: UUID, actor: User) -> Patient | None:
+    """Provisional -> registered. Human-only (the route needs REGISTER_PATIENT),
+    and only with explicit consent: a CAPTURED record that is not the implied
+    consent onboarding recorded. None if there is no such patient."""
+    patient = await db.get(Patient, patient_id)
+    if patient is None:
+        return None
+    if patient.purged_at is not None:
+        raise PromotionRefusedError(f"Patient {patient_id} was purged")
+    if not patient.is_provisional:
+        raise PromotionRefusedError(f"Patient {patient_id} is not provisional")
+    consents = await consent_service.list_consents_for_patient(db, patient.id)
+    if not any(
+        c.status == ConsentStatus.CAPTURED
+        and c.consent_type != consent_service.IMPLIED_INBOUND_CONTACT
+        for c in consents
+    ):
+        raise PromotionRefusedError(
+            f"Patient {patient_id} has no explicit captured consent; capture it first"
+        )
+    before = {"is_provisional": True, "status": patient.status.value}
+    patient.is_provisional = False
+    if patient.status != PatientStatus.INACTIVE:
+        patient.status = (
+            PatientStatus.ACTIVE if is_profile_complete(patient) else PatientStatus.PENDING
+        )
+    await record_event(
+        db,
+        actor=actor,
+        action="patient.promoted",
+        details={
+            "patient_id": str(patient.id),
+            "before": before,
+            "after": {"is_provisional": False, "status": patient.status.value},
+        },
+    )
+    await db.commit()
+    await db.refresh(patient)
+    return patient
+
+
 async def get_patient_by_id(
-    db: AsyncSession, patient_id: UUID, doctor_id: UUID | None = None
+    db: AsyncSession,
+    patient_id: UUID,
+    doctor_id: UUID | None = None,
+    include_provisional: bool = False,
 ) -> Patient | None:
     query = select(Patient).where(Patient.id == patient_id)
+    if not include_provisional:
+        query = query.where(Patient.is_provisional.is_(False))
     if doctor_id is not None:
         query = query.where(Patient.id.in_(assigned_patient_ids_subquery(doctor_id)))
     return (await db.execute(query)).scalar_one_or_none()
@@ -123,7 +284,10 @@ async def list_patients(
     limit: int = 20,
     offset: int = 0,
     doctor_id: UUID | None = None,
+    include_provisional: bool = False,
 ) -> tuple[list[Patient], int, dict[str, int]]:
+    """include_provisional: only for callers holding REGISTER_PATIENT, so staff
+    can find and promote them. Takes no actor, so the route decides."""
     filters = []
     if search:
         term = f"%{search}%"
@@ -139,12 +303,18 @@ async def list_patients(
     )
     if scope_filter is not None:
         filters.append(scope_filter)
+    # Like doctor scoping, hidden from the counts too.
+    visible = None if include_provisional else Patient.is_provisional.is_(False)
+    if visible is not None:
+        filters.append(visible)
 
     items_query = select(Patient)
     count_query = select(func.count()).select_from(Patient)
     counts_query = select(Patient.status, func.count()).group_by(Patient.status)
     if scope_filter is not None:
         counts_query = counts_query.where(scope_filter)
+    if visible is not None:
+        counts_query = counts_query.where(visible)
     for condition in filters:
         items_query = items_query.where(condition)
         count_query = count_query.where(condition)

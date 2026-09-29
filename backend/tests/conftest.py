@@ -15,6 +15,7 @@ from datetime import date
 from pathlib import Path
 from uuid import uuid4
 
+import pytest
 import pytest_asyncio
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
@@ -25,6 +26,16 @@ from alembic import command
 
 _DB_URL = os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key")
+
+# Pinned, not setdefault: a developer's .env (OUTLOOK_ENABLED=true) or an
+# exported shell variable must never change what the suite tests. Both are set
+# before app.config is imported below, which is the only moment that counts --
+# Settings() reads the environment once, at module import. These are the code
+# defaults, so this is exactly what CI sees, CI having no .env at all.
+# AGENTIC_PIPELINE_ENABLED is deliberately NOT pinned: the suite script sets it
+# on purpose to run the whole suite under both flags.
+os.environ["OUTLOOK_ENABLED"] = "false"
+os.environ["EMAIL_AUTO_SEND_ENABLED"] = "true"
 
 from app.auth.security import create_access_token, hash_password  # noqa: E402
 from app.database import get_db  # noqa: E402
@@ -113,6 +124,53 @@ async def db_session(test_engine):
 
 
 @pytest_asyncio.fixture
+def detached_sessionmaker(db_session):
+    """Stands in for app.database.AsyncSessionLocal in tests.
+
+    Work detached from a request (email_service.draft_reply_detached) opens
+    its own session, which in production means the app engine. In tests that
+    engine is a different in-memory database on SQLite, and on Postgres a
+    connection outside this test's transaction, so a detached session would
+    see none of the rows the test just wrote. Binding to db_session's own
+    bind keeps detached work inside the same transaction while still
+    exercising the real fresh-session code path.
+    """
+    return async_sessionmaker(
+        bind=db_session.bind,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        join_transaction_mode="create_savepoint",
+    )
+
+
+@pytest_asyncio.fixture
+def agent_saver(detached_sessionmaker, monkeypatch):
+    """Keeps real agent graph runs (graph.start / graph.resume) inside the test.
+
+    graph.run opens the Postgres checkpointer and the app engine. In tests the
+    checkpoint goes to an InMemorySaver shared by every run in the test, so a
+    resume finds its paused thread, and node sessions come from
+    detached_sessionmaker, so they see this test's rows. Returns the saver so
+    a test can read a thread's final state.
+    """
+    from contextlib import asynccontextmanager
+
+    from langgraph.checkpoint.memory import InMemorySaver
+
+    from app.agents import graph as agent_graph
+
+    saver = InMemorySaver()
+
+    @asynccontextmanager
+    async def in_memory():
+        yield saver
+
+    monkeypatch.setattr(agent_graph, "open_checkpointer", in_memory)
+    monkeypatch.setattr(agent_graph, "AsyncSessionLocal", detached_sessionmaker)
+    return saver
+
+
+@pytest_asyncio.fixture
 async def patient(db_session: AsyncSession) -> Patient:
     p = Patient(
         mrn="MRN-TESTFIX01",
@@ -128,7 +186,7 @@ async def patient(db_session: AsyncSession) -> Patient:
 
 
 @pytest_asyncio.fixture
-async def client(db_session):
+async def client(db_session, detached_sessionmaker, agent_saver, monkeypatch):
     # Reuses db_session's own connection/transaction for every request
     # instead of opening a fresh session per call. Required so data written
     # via db_session (or an earlier request) is visible to routes that query
@@ -137,6 +195,15 @@ async def client(db_session):
     # and see none of it.
     async def override_get_db():
         yield db_session
+
+    # Same reason, for work a route hands to BackgroundTasks: POST
+    # /email/ingest schedules draft_reply_detached, which opens its own
+    # session off the app engine. Left alone that session is a different
+    # in-memory database on SQLite, and outside this test's transaction on
+    # Postgres, so the draft would silently find no rows.
+    monkeypatch.setattr("app.services.email_service.AsyncSessionLocal", detached_sessionmaker)
+    # With AGENTIC_PIPELINE_ENABLED the same ingest schedules the agent graph
+    # instead, which agent_saver keeps in this test's transaction too.
 
     app.dependency_overrides[get_db] = override_get_db
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
@@ -425,7 +492,7 @@ async def booked_appointment(client, admin_headers, doctor_user, patient):
         json={
             "doctor_id": str(doctor_user.id),
             "case_id": case_id,
-            "time_slot": "2026-09-01T09:00:00Z",
+            "time_slot": "2026-09-01T01:00:00Z",
             "duration_minutes": 30,
         },
     )
@@ -451,8 +518,10 @@ async def assigned_doctor_headers(client, admin_headers, doctor_user, patient):
 
 
 @pytest_asyncio.fixture
-def unassigned_doctor_headers(doctor_headers: dict[str, str]) -> dict[str, str]:
-    """doctor_user with NO assignment row -- conftest never creates one by default.
+async def unassigned_doctor_headers(
+    doctor_headers: dict[str, str], db_session: AsyncSession, patient: Patient, admin_user: User
+) -> dict[str, str]:
+    """doctor_user, whose booked patient is assigned to ANOTHER doctor.
 
     Deliberately the SAME doctor booked_appointment belongs to, so the
     doctor_id filter in _own_calendar_scope cannot mask a missing
@@ -460,5 +529,65 @@ def unassigned_doctor_headers(doctor_headers: dict[str, str]) -> dict[str, str]:
     it must be excluded purely by the patient-assignment check, not by
     doctor identity. This is what makes these tests a real confidentiality
     gate rather than a vacuous pass.
+
+    The patient belongs to someone else because booking now assigns a patient
+    nobody looks after to the booked doctor
+    (appointment_service._assign_if_unassigned); an unassigned patient would
+    become this doctor's the moment it was booked.
     """
+    from app.models.assignment import DoctorPatientAssignment
+
+    other = User(
+        email="other-doctor@example.com",
+        hashed_password=hash_password("password123"),
+        full_name="Other Doctor",
+        role=UserRole.DOCTOR,
+    )
+    db_session.add(other)
+    await db_session.flush()
+    db_session.add(
+        DoctorPatientAssignment(
+            doctor_id=other.id, patient_id=patient.id, assigned_by=admin_user.id
+        )
+    )
+    await db_session.commit()
     return doctor_headers
+
+
+# --- no test may reach a real model (spec G.3) --------------------------------
+# Five modules import get_llm under their own name, so patching any one of them
+# leaves four doors open. Block the shared client's own network door instead.
+# Verified by introspecting the installed langchain-community 0.4.2: every route
+# into Ollama (_generate, _agenerate, _stream, _astream) funnels through
+# _OllamaCommon._create_stream (requests.post) or _acreate_stream (aiohttp).
+# Building a client stays legal -- test_llm.py builds one and never calls it,
+# and inbox_service evaluates get_llm() even when summarize_call is mocked.
+# ponytail: add the same two lines for ChatBedrock if tests ever run with
+# LLM_PROVIDER=bedrock; today every test path resolves to Ollama.
+_REAL_LLM_CALLED = (
+    "A test called the real LLM. Mock it instead: patch the get_llm that the "
+    "module under test imported (for example app.services.email_service.get_llm), "
+    "or pass a fake model in."
+)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_llm_calls(monkeypatch):
+    from langchain_community.llms.ollama import _OllamaCommon
+
+    def blocked(*_args, **_kwargs):
+        raise RuntimeError(_REAL_LLM_CALLED)
+
+    monkeypatch.setattr(_OllamaCommon, "_create_stream", blocked)
+    monkeypatch.setattr(_OllamaCommon, "_acreate_stream", blocked)
+
+
+@pytest.fixture(autouse=True)
+def _booking_clock_before_fixture_dates(monkeypatch):
+    # Routes refuse bookings in the past. Tests book fixed 2026 dates, so pin
+    # "now" before all of them rather than let each go stale on its date.
+    from datetime import UTC, datetime
+
+    from app.services import appointment_service
+
+    monkeypatch.setattr(appointment_service, "_now", lambda: datetime(2026, 1, 1, tzinfo=UTC))

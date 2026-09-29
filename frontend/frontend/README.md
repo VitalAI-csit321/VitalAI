@@ -36,23 +36,7 @@ and are hidden from the sidebar for other roles.
 
 Components import domain types from `src/api/types.ts` only: never raw API
 shapes. Each `src/api/*.ts` file is an adapter that maps today's backend to those
-types. Anything the backend doesn't serve yet is fed from ONE file,
-`src/api/_placeholder.ts`, behind clearly marked seams:
-
-| Screen / field | Today | To make real |
-| --- | --- | --- |
-| Dashboard weekly chart | placeholder bars (`placeholderWorkflowByDay`); count tiles and the Pending Reviews list are live | replace the `workflowByDay` source in `getDashboard` (`src/api/misc.ts`) |
-| Consent queue form label | placeholder rotation (`placeholderConsentForms`); the queue itself is built from real cases + consent records | replace once a forms backend exists, in `listConsentQueue` (`src/api/consent.ts`) |
-| Forgot-password submit | confirmation only, no request sent | point at a reset endpoint when one exists, in `ForgotPasswordPage.tsx` |
-| Platform Ops login | accepts any input, no real auth check | wire to a real operator-auth endpoint |
-
-`_placeholder.ts` also still exports `placeholderPatientFields` and
-`placeholderMessages`, but neither is imported anywhere anymore: Patients
-(MRN/DOB/gender/status) and Inbox now read real fields from `/patients` and
-`/inbox`. Both exports are dead code kept for reference and can be deleted.
-
-Wiring a real database later means changing adapter bodies and deleting the
-matching placeholder export. No component changes.
+types, so changing the backend means changing adapter bodies, not components.
 
 ## Wired to real endpoints
 
@@ -78,7 +62,6 @@ src/
   api/*.ts             adapters: backend shapes -> domain types
                         (auth, cases, consent, records, misc, tasks,
                          reviewTasks, audit)
-  api/_placeholder.ts  the one file to replace when real backends land
   components/          Sidebar, Layout, ProtectedRoute, shared UI (ui.tsx)
   pages/               one file per screen, plus PlatformOps.tsx which
                         exports the whole Platform Operations shell

@@ -1,10 +1,11 @@
+import asyncio
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_permission
-from app.auth.permissions import MANAGE_CASES, VIEW_QUEUE
+from app.auth.permissions import MANAGE_CASES, PLAY_VOICEMAIL, VIEW_QUEUE
 from app.database import get_db
 from app.models.user import User
 from app.schemas.call import (
@@ -18,9 +19,11 @@ from app.schemas.call import (
     CallRoutingOverride,
     CallTranscribeOut,
 )
-from app.services import call_service
+from app.services import call_service, voicemail_service
+from app.services.audit_service import record_event
 from app.services.transcription_service import EmptyTranscriptError, transcribe_audio
 from app.services.triage_service import ConsentGatingError
+from app.storage import object_storage
 
 router = APIRouter(prefix="/calls", tags=["calls"])
 
@@ -147,6 +150,35 @@ async def transcribe_call_endpoint(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
         ) from exc
     return CallTranscribeOut(transcript=transcript)
+
+
+@router.get("/{call_id}/audio")
+async def call_audio_endpoint(
+    call_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_permission(PLAY_VOICEMAIL)),
+):
+    call = await call_service.get_call(db, call_id)
+    if call is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Call not found")
+    if call.audio_key is None:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE, detail="This recording is no longer kept"
+        )
+    data = await asyncio.to_thread(object_storage.get_object, call.audio_key)
+    await record_event(
+        db,
+        case_id=call.case_id,
+        actor=actor,
+        action="call.audio_played",
+        details={"call_id": str(call.id)},
+    )
+    await db.commit()
+    return Response(
+        content=data,
+        media_type=voicemail_service.audio_media_type(call.audio_key),
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @router.get("/{call_id}", response_model=CallOut)

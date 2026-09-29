@@ -33,10 +33,12 @@ from app.routes import (
     intake,
     llm,
     patients,
+    public_registration,
     rag,
     routing,
     tasks,
     triage,
+    voicemails,
 )
 from app.routes import settings as settings_routes
 from app.services.outlook_poller import run_poller
@@ -74,6 +76,14 @@ async def lifespan(application: FastAPI):
     async with AsyncSessionLocal() as db:
         await settings_service.hydrate(db)
 
+    # The checkpointer owns its own tables (not Alembic's, see
+    # app/agents/checkpointer.py). setup() is idempotent.
+    if settings.agentic_pipeline_enabled:
+        from app.agents import checkpointer
+
+        async with checkpointer.open_checkpointer() as saver:
+            await saver.setup()
+
     # Inbound Outlook polling, off unless explicitly enabled for this
     # environment. Held as a task so shutdown can cancel it rather than
     # leaving the loop running against a closing event loop.
@@ -81,12 +91,36 @@ async def lifespan(application: FastAPI):
     if settings.outlook_enabled:
         poller_task = asyncio.create_task(run_poller())
 
+    # Daily anonymisation of unclaimed provisional patients. Only the agent
+    # creates those, so it runs behind the same flag.
+    purge_task: asyncio.Task | None = None
+    if settings.agentic_pipeline_enabled:
+        from app.services.provisional_purge import run_purge
+
+        purge_task = asyncio.create_task(run_purge())
+
+    # Appointment reminders (spec §16). Its own flag, not the agent one: this
+    # is the one background job that emails patients with nobody approving
+    # it, so pulling the branch must not be enough to start it.
+    reminder_task: asyncio.Task | None = None
+    if settings.appointment_reminders_enabled:
+        from app.services.appointment_reminders import run_reminders
+
+        reminder_task = asyncio.create_task(run_reminders())
+
+    # Voicemail retention and recovery. Always on: deleting audio after the
+    # retention period is a privacy duty, not a feature.
+    from app.services.voicemail_sweep import run_voicemail_sweep
+
+    voicemail_task: asyncio.Task | None = asyncio.create_task(run_voicemail_sweep())
+
     yield
 
-    if poller_task is not None:
-        poller_task.cancel()
-        with suppress(asyncio.CancelledError):
-            await poller_task
+    for task in (poller_task, purge_task, reminder_task, voicemail_task):
+        if task is not None:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
 
 
 async def _rate_limit_handler(request: Request, exc: Exception) -> Response:
@@ -166,6 +200,7 @@ API_PREFIX = "/api/v1"
 app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(intake.router, prefix=API_PREFIX)
 app.include_router(calls.router, prefix=API_PREFIX)
+app.include_router(voicemails.router, prefix=API_PREFIX)
 app.include_router(tasks.router, prefix=API_PREFIX)
 app.include_router(consent.router, prefix=API_PREFIX)
 app.include_router(email.router, prefix=API_PREFIX)
@@ -181,9 +216,17 @@ app.include_router(appointments.router, prefix=API_PREFIX)
 app.include_router(clinical_documents.router, prefix=API_PREFIX)
 app.include_router(doctors.router, prefix=API_PREFIX)
 app.include_router(approvals.router, prefix=API_PREFIX)
+app.include_router(public_registration.router, prefix=API_PREFIX)
 app.include_router(human_review.router, prefix=API_PREFIX)
 app.include_router(settings_routes.router, prefix=API_PREFIX)
 app.include_router(health.detailed_router, prefix=API_PREFIX)
+
+# The Twilio voicemail line: public, signature-checked webhooks. Not mounted
+# unless enabled, so no environment exposes them by accident.
+if settings.twilio_enabled:
+    from app.routes import voice
+
+    app.include_router(voice.router, prefix=API_PREFIX)
 
 
 @app.get("/")

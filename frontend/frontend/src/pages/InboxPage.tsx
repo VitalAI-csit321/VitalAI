@@ -10,7 +10,9 @@ import {
 } from "../api/misc";
 import type { Message, MessagePriority } from "../api/types";
 import { useAuth } from "../lib/auth";
+import { listTasks } from "../api/tasks";
 import { Avatar, Spinner } from "../components/ui";
+import { VoicemailPlayer } from "../components/VoicemailPlayer";
 
 type Tab = "all" | "urgent" | "archived";
 
@@ -46,6 +48,25 @@ export function InboxPage() {
   const [editedDraft, setEditedDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [urgentCalls, setUrgentCalls] = useState(0);
+
+  // GET /tasks, never the inbox list: every inbox load summarises each call
+  // with a model call, which must not run every 30 seconds. Doctors lack
+  // view_queue, so for them each check would only log a refused request.
+  useEffect(() => {
+    if (user?.role === "doctor") return;
+    const check = () =>
+      listTasks()
+        .then((tasks) =>
+          setUrgentCalls(
+            tasks.filter((t) => t.source === "call" && t.priority === "urgent" && t.status === "pending").length,
+          ),
+        )
+        .catch(() => {});
+    check();
+    const id = window.setInterval(check, 30_000);
+    return () => window.clearInterval(id);
+  }, [user?.role]);
 
   function refresh(preferId?: string | null) {
     return listMessages(tab === "archived").then((m) => {
@@ -174,11 +195,19 @@ export function InboxPage() {
           <button onClick={() => navigate("/inbox/log-call")} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
             Log call
           </button>
-          <button onClick={() => navigate("/inbox/compose")} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover">
-            Compose
-          </button>
         </div>
       </div>
+
+      {urgentCalls > 0 && (
+        <div role="alert" className="mt-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          <span>
+            <span className="font-semibold">{urgentCalls} urgent call{urgentCalls === 1 ? "" : "s"}</span> waiting for a callback.
+          </span>
+          <button onClick={() => { setTab("urgent"); refresh(null); }} className="font-semibold underline">
+            Show
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="mt-8">
@@ -276,6 +305,17 @@ export function InboxPage() {
                 <div className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
                   {selected.body}
                 </div>
+
+                {selected.handoverContext && !selected.draftSent && (
+                  <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    <span className="font-semibold">Note for staff: </span>
+                    {selected.handoverContext}
+                  </div>
+                )}
+
+                {selected.callId && selected.hasAudio && (
+                  <VoicemailPlayer key={selected.callId} callId={selected.callId} />
+                )}
 
                 {showReply && (
                   <div className="mt-5 rounded-lg border border-brand/30 bg-emerald-50/40 p-4">

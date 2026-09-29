@@ -1,5 +1,4 @@
-import { apiGet, apiPost, type ApiPage } from "../lib/apiClient";
-import { placeholderConsentForms } from "./_placeholder";
+import { apiGet, apiPost } from "../lib/apiClient";
 import type { Consent, ConsentFormSnapshot, ConsentQueueRow, ConsentQueueStatus } from "./types";
 
 interface RawConsent {
@@ -28,9 +27,12 @@ function toConsent(raw: RawConsent): Consent {
   };
 }
 
-export async function getConsentForCase(caseId: string): Promise<Consent | null> {
+// consentId names one record; without it, the case's latest.
+export async function getConsentForCase(caseId: string, consentId?: string): Promise<Consent | null> {
   try {
-    return toConsent(await apiGet<RawConsent>(`/api/v1/consent/by-case/${caseId}`));
+    return toConsent(
+      await apiGet<RawConsent>(`/api/v1/consent/by-case/${caseId}`, { consent_id: consentId }),
+    );
   } catch {
     return null;
   }
@@ -66,6 +68,15 @@ export async function resolveConsentReview(
   );
 }
 
+// checks answers the statements already on the record, in order; signature
+// only when the patient did not sign online.
+export async function verifyConsent(
+  consentId: string,
+  finish?: { checks: boolean[]; signature?: string },
+): Promise<Consent> {
+  return toConsent(await apiPost<RawConsent>(`/api/v1/consent/${consentId}/verify`, finish));
+}
+
 export const CONSENT_TYPES: { value: string; label: string }[] = [
   { value: "general_treatment", label: "General Treatment" },
   { value: "surgical_procedure", label: "Surgical Procedure" },
@@ -73,8 +84,11 @@ export const CONSENT_TYPES: { value: string; label: string }[] = [
   { value: "research_study", label: "Research Study" },
 ];
 
+// Types staff never create by hand, so not offered in CONSENT_TYPES.
+const OTHER_TYPE_LABELS: Record<string, string> = { online_registration: "Online registration" };
+
 export function consentTypeLabel(value: string): string {
-  return CONSENT_TYPES.find((t) => t.value === value)?.label ?? value;
+  return CONSENT_TYPES.find((t) => t.value === value)?.label ?? OTHER_TYPE_LABELS[value] ?? value;
 }
 
 export async function listConsentsForPatient(patientId: string): Promise<Consent[]> {
@@ -92,35 +106,41 @@ export async function withdrawConsent(consentId: string): Promise<Consent> {
 // we build the queue from recent cases and their consent record, projecting the
 // real ConsentStatus onto the queue's pending/review/complete display states.
 // The form label is placeholder until a forms backend exists.
-function toQueueStatus(consent: Consent): ConsentQueueStatus {
-  if (consent.status === "captured") {
-    const allChecked = consent.formSnapshot?.checks.every((c) => c.checked) ?? true;
-    return allChecked ? "complete" : "review";
-  }
-  if (consent.status === "withdrawn") return "review";
+// The queue row has no form snapshot, so it cannot ask whether every check
+// was ticked; "captured" is complete here and the detail view still reviews
+// the snapshot.
+function queueStatusFor(status: Consent["status"], capturedAt: string | null): ConsentQueueStatus {
+  if (status === "captured") return capturedAt ? "complete" : "review";
+  if (status === "withdrawn") return "review";
   return "pending";
 }
 
-interface RawCaseLite {
+interface RawConsentQueueRow {
   id: string;
+  case_id: string;
   patient_name: string | null;
+  consent_type: string;
+  status: Consent["status"];
   created_at: string;
+  captured_at: string | null;
 }
 
-export async function listConsentQueue(): Promise<ConsentQueueRow[]> {
-  const cases = await apiGet<ApiPage<RawCaseLite>>("/api/v1/intake", { limit: 12 });
-  const rows = await Promise.all(
-    cases.items.map(async (c, i): Promise<ConsentQueueRow> => {
-      const consent = await getConsentForCase(c.id);
-      return {
-        id: consent?.id ?? c.id,
-        caseId: c.id,
-        patientName: c.patient_name ?? "Unknown patient",
-        form: placeholderConsentForms[i % placeholderConsentForms.length],
-        submitted: c.created_at,
-        status: consent ? toQueueStatus(consent) : "pending",
-      };
-    }),
+// Real consent records. This used to list the 12 most recent intake cases
+// instead, label each with a placeholder form name cycled by row index, and
+// show every case without a record as "pending", which told staff consent was
+// awaited from people who had never been asked.
+export async function listConsentQueue(limit = 50, offset = 0): Promise<ConsentQueueRow[]> {
+  const page = await apiGet<{ items: RawConsentQueueRow[]; total: number }>(
+    "/api/v1/consent/queue",
+    { limit, offset },
   );
-  return rows;
+  return page.items.map((r) => ({
+    id: r.id,
+    caseId: r.case_id,
+    patientName: r.patient_name ?? "Unknown patient",
+    form: consentTypeLabel(r.consent_type),
+    consentType: r.consent_type,
+    submitted: r.created_at,
+    status: queueStatusFor(r.status, r.captured_at),
+  }));
 }
