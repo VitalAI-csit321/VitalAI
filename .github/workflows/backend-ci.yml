@@ -69,7 +69,6 @@ jobs:
 
       - name: Mypy type check
         run: mypy app
-        continue-on-error: true  # tighten once codebase is fully typed
 
       - name: Start MinIO
         # Run as a plain container rather than a services: entry: the minio/minio
