@@ -1,5 +1,5 @@
 import { useState } from "react";
-interface QueueCase { id:string; caseRef:string; submitted:string; type:string; priority:string; owner:string; reviewed:boolean; status:string; }
+interface QueueCase { id:string; caseRef:string; submitted:string; type:string; priority:string; owner:string; reviewed:boolean; status:string; notes:string|null; reason:string|null; patient:string|null; from:string; }
 
 export function ReviewQueueDetailModal({ case_, onClose, onAction, actionError }:{ case_:QueueCase; onClose:()=>void; onAction:(id:string,action:"approve"|"reject"|"escalate",notes:string)=>Promise<void>; actionError:string|null; }) {
   const [notes,setNotes]=useState("");
@@ -40,10 +40,13 @@ export function ReviewQueueDetailModal({ case_, onClose, onAction, actionError }
                 <div className="rounded-xl border border-slate-200 p-5">
                   <h2 className="font-semibold text-slate-900 mb-4">Case information</h2>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    {[["Case ID",case_.caseRef],["Type",case_.type],["Owner",case_.owner],["Submitted",case_.submitted]].map(([l,v])=>(
-                      <div key={l}><div className="text-xs text-slate-500 uppercase tracking-wide">{l}</div><div className="font-medium text-slate-900 mt-0.5 capitalize">{v}</div></div>
+                    {[["Case ID",case_.caseRef],["Type",case_.type],["Patient",case_.patient ?? "—"],["From",case_.from],["Owner",case_.owner],["Submitted",case_.submitted]].map(([l,v])=>(
+                      <div key={l}><div className="text-xs text-slate-500 uppercase tracking-wide">{l}</div><div className="font-medium text-slate-900 mt-0.5">{v}</div></div>
                     ))}
                   </div>
+                  {[["Reason",case_.reason],["Notes",case_.notes]].filter(([,v])=>v).map(([l,v])=>(
+                    <div key={l} className="mt-4 text-sm"><div className="text-xs text-slate-500 uppercase tracking-wide">{l}</div><p className="mt-0.5 whitespace-pre-wrap text-slate-900">{v}</p></div>
+                  ))}
                 </div>
                 {actionError && <p className="text-sm text-red-600">{actionError}</p>}
               </div>

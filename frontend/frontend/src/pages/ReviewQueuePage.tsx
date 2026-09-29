@@ -7,11 +7,11 @@ import { listReviewTasks, claimReviewTask, completeReviewTask, rejectReviewTask,
 import { useAuth } from "../lib/auth";
 
 type Tab = "all" | "mine" | "high" | "sla";
-interface QueueCase { id: string; caseRef: string; submitted: string; type: string; priority: RawReviewTask["priority"]; owner: string; reviewed: boolean; status: "open"|"review"|"done"; assignedTo: string | null; rawStatus: RawReviewTask["status"]; notes: string | null; }
+interface QueueCase { id: string; caseRef: string; submitted: string; type: string; priority: RawReviewTask["priority"]; owner: string; reviewed: boolean; status: "open"|"review"|"done"; assignedTo: string | null; rawStatus: RawReviewTask["status"]; notes: string | null; reason: string | null; patient: string | null; from: string; }
 
 const PRIORITY_DOT: Record<string,string> = { high:"bg-slate-900", medium:"bg-slate-400", low:"bg-slate-300" };
 const STATUS_TONE = { open:"gray" as const, review:"amber" as const, done:"green" as const };
-const TYPE_LABEL: Record<string,string> = { triage_review:"Triage review", consent_review:"Consent review", escalation_review:"Escalation review" };
+const TYPE_LABEL: Record<string,string> = { triage_review:"Triage review", consent_review:"Consent review", escalation_review:"Escalation review", routing_review:"Routing review" };
 
 function toCase(t: RawReviewTask): QueueCase {
   const statusMap: Record<string,QueueCase["status"]> = { pending:"open", in_progress:"review", completed:"done", cancelled:"done", escalated:"review" };
@@ -20,12 +20,15 @@ function toCase(t: RawReviewTask): QueueCase {
     submitted: new Date(t.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}),
     type: TYPE_LABEL[t.task_type] ?? t.task_type,
     priority: t.priority,
-    owner: t.assigned_to ? `user-${t.assigned_to.slice(0,8)}` : "Unassigned",
+    owner: t.assigned_to_name ?? (t.assigned_to ? `user-${t.assigned_to.slice(0,8)}` : "Unassigned"),
     reviewed: t.status==="completed",
     status: statusMap[t.status] ?? "open",
     assignedTo: t.assigned_to,
     rawStatus: t.status,
     notes: t.notes,
+    reason: t.contact_reason ?? null,
+    patient: t.patient_name ?? null,
+    from: t.created_by ?? "—",
   };
 }
 
@@ -91,14 +94,18 @@ export function ReviewQueuePage() {
         </div>
         {loading?<div className="p-8"><Spinner/></div>:(
           <table className="w-full text-sm">
-            <thead><tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{["Case","Submitted","Type","Priority","Owner","Reviewed","Status"].map(h=><th key={h} className="px-6 py-3">{h}</th>)}</tr></thead>
+            <thead><tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{["Case","Submitted","Type","From","Priority","Owner","Reviewed","Status"].map(h=><th key={h} className="px-6 py-3">{h}</th>)}</tr></thead>
             <tbody>
-              {filtered.length===0?<tr><td colSpan={7} className="px-6 py-8 text-sm text-slate-500">No cases in this queue.</td></tr>
+              {filtered.length===0?<tr><td colSpan={8} className="px-6 py-8 text-sm text-slate-500">No cases in this queue.</td></tr>
               :filtered.map(c=>(
                 <tr key={c.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                  <td className="px-6 py-4"><button onClick={()=>setSelected(c)} className="font-medium text-brand hover:underline">{c.caseRef}</button></td>
+                  <td className="px-6 py-4 max-w-xs">
+                    <button onClick={()=>setSelected(c)} className="font-medium text-brand hover:underline">{c.caseRef}</button>
+                    {c.reason && <div className="mt-0.5 truncate text-xs text-slate-500" title={c.reason}>{c.reason}</div>}
+                  </td>
                   <td className="px-6 py-4 text-slate-600">{c.submitted}</td>
                   <td className="px-6 py-4 text-slate-700">{c.type}</td>
+                  <td className="px-6 py-4 text-slate-700">{c.from}</td>
                   <td className="px-6 py-4"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${PRIORITY_DOT[c.priority]}`}/><span className="capitalize text-slate-700">{c.priority}</span></div></td>
                   <td className="px-6 py-4 text-slate-700">{c.owner}</td>
                   <td className="px-6 py-4 text-slate-600">{c.reviewed?"Yes":"No"}</td>

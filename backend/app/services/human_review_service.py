@@ -7,10 +7,10 @@ not a claim/work queue; see
 docs/superpowers/specs/2026-07-24-fr-gov-01-approval-gate-design.md section 3.
 
 A DOCTOR-targeted task is only claimable by a doctor actually assigned to the
-task's case's patient (app/auth/scoping.py's is_assigned()/
-assigned_patient_ids_subquery(), the same row-level scoping Phase 3 built for
-/patients, /consent, /rag/query), see
-docs/superpowers/specs/2026-07-25-governance-follow-ups-design.md section 1.
+task's case's patient (app/auth/scoping.py's assigned_patient_ids_subquery(),
+the same row-level scoping Phase 3 built for /patients, /consent, /rag/query),
+see docs/superpowers/specs/2026-07-25-governance-follow-ups-design.md section 1,
+or by the doctor who logged that case (_doctor_case_filter()).
 
 Visibility and action authority are otherwise scoped to `target_role ==
 actor.role` (own queue only), except for actors holding VIEW_ALL_QUEUES
@@ -21,11 +21,12 @@ currently ADMIN only. See _check_target_role().
 from datetime import date, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.permissions import VIEW_ALL_QUEUES, effective_permissions
-from app.auth.scoping import assigned_patient_ids_subquery, is_assigned
+from app.auth.scoping import assigned_patient_ids_subquery
+from app.models.audit import AuditEvent
 from app.models.case import IntakeCase, IntakeStatus
 from app.models.human_review import HumanReviewTask, TaskPriority, TaskStatus, TaskType
 from app.models.user import User, UserRole
@@ -45,6 +46,19 @@ class HumanReviewTaskWrongRoleError(Exception):
     doctor) when actor isn't assigned to the task's case's patient."""
 
 
+def _doctor_case_filter(doctor_id: UUID):
+    """Cases a doctor may see and act on: their assigned patients' cases, plus
+    the patient-less cases they logged themselves via create_task(). The
+    creator comes from the case's intake.created audit event (append-only)."""
+    created_by_doctor = select(AuditEvent.case_id).where(
+        AuditEvent.action == "intake.created", AuditEvent.actor_id == doctor_id
+    )
+    return or_(
+        IntakeCase.patient_id.in_(assigned_patient_ids_subquery(doctor_id)),
+        IntakeCase.id.in_(created_by_doctor),
+    )
+
+
 async def list_tasks(
     db: AsyncSession,
     actor: User,
@@ -60,10 +74,10 @@ async def list_tasks(
         count_query = count_query.where(HumanReviewTask.target_role == actor.role)
     if actor.role == UserRole.DOCTOR:
         query = query.join(IntakeCase, HumanReviewTask.case_id == IntakeCase.id).where(
-            IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id))
+            _doctor_case_filter(actor.id)
         )
         count_query = count_query.join(IntakeCase, HumanReviewTask.case_id == IntakeCase.id).where(
-            IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id))
+            _doctor_case_filter(actor.id)
         )
     if status is not None:
         query = query.where(HumanReviewTask.status == status)
@@ -76,6 +90,46 @@ async def list_tasks(
     query = query.order_by(HumanReviewTask.created_at).limit(limit).offset(offset)
     items = (await db.execute(query)).scalars().all()
     return list(items), total
+
+
+async def describe_tasks(db: AsyncSession, tasks: list[HumanReviewTask]) -> dict[UUID, dict]:
+    """What the queue shows beside each task, keyed by task id: the case's
+    reason and patient, who logged it (its intake.created audit event, which
+    the case row itself doesn't record) and the owner's name."""
+    case_ids = {t.case_id for t in tasks}
+    cases = {
+        c.id: c
+        for c in (await db.scalars(select(IntakeCase).where(IntakeCase.id.in_(case_ids)))).all()
+    }
+    created = {
+        e.case_id: e
+        for e in (
+            await db.scalars(
+                select(AuditEvent).where(
+                    AuditEvent.case_id.in_(case_ids), AuditEvent.action == "intake.created"
+                )
+            )
+        ).all()
+    }
+    user_ids = {e.actor_id for e in created.values() if e.actor_id} | {
+        t.assigned_to for t in tasks if t.assigned_to
+    }
+    names: dict[UUID | None, str] = dict(
+        (await db.execute(select(User.id, User.full_name).where(User.id.in_(user_ids))))
+        .tuples()
+        .all()
+    )
+
+    details = {}
+    for t in tasks:
+        case, event = cases.get(t.case_id), created.get(t.case_id)
+        details[t.id] = {
+            "contact_reason": case.contact_reason if case else None,
+            "patient_name": case.patient_name if case else None,
+            "created_by": (names.get(event.actor_id) or event.actor_label) if event else None,
+            "assigned_to_name": names.get(t.assigned_to),
+        }
+    return details
 
 
 async def count_tasks_by_day(
@@ -98,7 +152,7 @@ async def count_tasks_by_day(
         query = query.where(HumanReviewTask.target_role == actor.role)
     if actor.role == UserRole.DOCTOR:
         query = query.join(IntakeCase, HumanReviewTask.case_id == IntakeCase.id).where(
-            IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id))
+            _doctor_case_filter(actor.id)
         )
 
     timestamps = (await db.execute(query)).scalars().all()
@@ -161,12 +215,10 @@ async def create_task(
 
 
 async def _check_doctor_assigned(db: AsyncSession, task: HumanReviewTask, actor: User) -> None:
-    case = await db.get(IntakeCase, task.case_id)
-    if (
-        case is None
-        or case.patient_id is None
-        or not await is_assigned(db, actor.id, case.patient_id)
-    ):
+    visible = await db.scalar(
+        select(IntakeCase.id).where(IntakeCase.id == task.case_id, _doctor_case_filter(actor.id))
+    )
+    if visible is None:
         raise HumanReviewTaskWrongRoleError(f"Task {task.id} is not assigned to doctor {actor.id}")
 
 

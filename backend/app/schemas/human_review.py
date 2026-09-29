@@ -17,6 +17,11 @@ class HumanReviewTaskOut(BaseModel):
     target_role: UserRole | None
     assigned_to: UUID | None
     notes: str | None
+    # Filled by the list endpoint only (human_review_service.describe_tasks).
+    contact_reason: str | None = None
+    patient_name: str | None = None
+    created_by: str | None = None
+    assigned_to_name: str | None = None
 
     model_config = {"from_attributes": True}
 
