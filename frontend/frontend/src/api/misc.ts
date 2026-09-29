@@ -1,7 +1,7 @@
 import { apiDelete, apiGet, apiPost } from "../lib/apiClient";
 import { listAppointments } from "./appointments";
 import { getTaskBoard } from "./tasks";
-import type { DashboardSummary, Message } from "./types";
+import type { CurrentUser, DashboardSummary, Message } from "./types";
 import { toDateInputValue } from "../components/calendarHelpers";
 
 const TASK_TYPE_LABEL: Record<string, string> = {
@@ -40,20 +40,23 @@ async function getWeeklyAppointmentCounts(): Promise<DashboardSummary["workflowB
   });
 }
 
-export async function getDashboard(): Promise<DashboardSummary> {
-  // Fetch real data in parallel, fall back gracefully
+export async function getDashboard(user: CurrentUser | null): Promise<DashboardSummary> {
+  // Skip what this user may not read: the backend logs every refused call as a
+  // BLOCKED audit event. Doctors lack view_queue; read_audit is admin or a grant.
+  const canViewQueue = user?.role !== "doctor";
+  const canReadAudit = user?.role === "admin" || (user?.grantedPermissions.includes("read_audit") ?? false);
   const [intakeRes, auditRes, pendingRes, inProgressRes, escalatedRes, reviewListRes, weeklyRes] =
     await Promise.allSettled([
-      apiGet<{items:unknown[];total:number}>("/api/v1/intake?limit=1"),
-      apiGet<{total:number}>("/api/v1/audit?limit=1"),
+      canViewQueue ? apiGet<{items:unknown[];total:number}>("/api/v1/intake?limit=1") : Promise.reject(),
+      canReadAudit ? apiGet<{total:number}>("/api/v1/audit?limit=1") : Promise.reject(),
       apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"pending"}),
       apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"in_progress"}),
       // Same source as EscalationsPage's own count (getTaskBoard) -- the
       // /escalations page is built on task routing (/api/v1/tasks), a
       // different model from human-review approvals, which has its own
       // unrelated "escalated" status.
-      getTaskBoard(),
-      apiGet<{items:{id:string;case_id:string;task_type:string;status:string}[];total:number}>(
+      canViewQueue ? getTaskBoard() : Promise.reject(),
+      apiGet<{items:{id:string;task_type:string;status:string;patient_name:string|null}[];total:number}>(
         "/api/v1/human-review", {limit:20}
       ),
       getWeeklyAppointmentCounts(),
@@ -66,32 +69,19 @@ export async function getDashboard(): Promise<DashboardSummary> {
   const escalated = escalatedRes.status==="fulfilled" ? escalatedRes.value.counts.escalated : null;
   const workflowByDay = weeklyRes.status==="fulfilled" ? weeklyRes.value : [];
 
-  // Pending Reviews list: real human-review tasks, enriched with the real
-  // patient name from each task's linked case (the task itself only carries
-  // case_id, not a display name).
+  // Pending Reviews list: real human-review tasks; the list response carries
+  // each task's patient name from its linked case.
   let pendingReviews: DashboardSummary["pendingReviews"] = [];
   if (reviewListRes.status === "fulfilled") {
-    const openTasks = reviewListRes.value.items
+    pendingReviews = reviewListRes.value.items
       .filter(t => t.status === "pending" || t.status === "in_progress")
-      .slice(0, 4);
-
-    pendingReviews = await Promise.all(
-      openTasks.map(async (task) => {
-        let name = "Unknown patient";
-        try {
-          const caseData = await apiGet<{ patient_name: string | null }>(
-            `/api/v1/intake/${task.case_id}`
-          );
-          name = caseData.patient_name ?? "Unknown patient";
-        } catch { /* keep fallback */ }
-        return {
-          id: task.id,
-          name,
-          kind: TASK_TYPE_LABEL[task.task_type] ?? task.task_type,
-          isNew: task.status === "pending",
-        };
-      })
-    );
+      .slice(0, 4)
+      .map(task => ({
+        id: task.id,
+        name: task.patient_name ?? "Unknown patient",
+        kind: TASK_TYPE_LABEL[task.task_type] ?? task.task_type,
+        isNew: task.status === "pending",
+      }));
   }
 
   return {

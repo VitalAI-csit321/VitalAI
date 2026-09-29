@@ -22,6 +22,9 @@ export function PatientDetailPage() {
   // backend's can_read_clinical. Everyone who can see the list at all (also
   // gated on the backend, separately, via can_list_clinical) sees the names.
   const canOpenDocuments = user?.role === "doctor" || (user?.grantedPermissions.includes("view_clinical") ?? false);
+  // Doctors hold neither view_queue (intake cases) nor capture_consent, so they
+  // skip the Onboarding history rather than log two refused requests per visit.
+  const isDoctor = user?.role === "doctor";
   const [patient, setPatient] = useState<Patient | null>(null);
   const [cases, setCases] = useState<Case[]>([]);
   const [casesError, setCasesError] = useState<string | null>(null);
@@ -44,13 +47,15 @@ export function PatientDetailPage() {
       .finally(() => setLoading(false));
 
     setCasesError(null);
-    listCasesForPatient(id)
-      .then(setCases)
-      .catch(() => setCasesError("Could not load onboarding cases for this patient."));
+    if (!isDoctor) {
+      listCasesForPatient(id)
+        .then(setCases)
+        .catch(() => setCasesError("Could not load onboarding cases for this patient."));
 
-    listConsentsForPatient(id)
-      .then(setConsents)
-      .catch(() => setConsents([]));
+      listConsentsForPatient(id)
+        .then(setConsents)
+        .catch(() => setConsents([]));
+    }
 
     setAppointmentsError(null);
     listAppointments({ patientId: id, limit: 100 })
@@ -61,7 +66,7 @@ export function PatientDetailPage() {
     listClinicalDocuments(id)
       .then(setDocuments)
       .catch(() => setDocumentsError("Not permitted to view clinical documents for this patient."));
-  }, [id]);
+  }, [id, isDoctor]);
 
   async function handleOpenDocument(documentId: string) {
     setOpeningDocumentId(documentId);
@@ -250,35 +255,37 @@ export function PatientDetailPage() {
         )}
       </div>
 
-      <div className="mt-6">
-        <h2 className="text-sm font-semibold text-slate-900 mb-3">Onboarding</h2>
-        {casesError ? (
-          <p className="text-sm text-red-600">{casesError}</p>
-        ) : historyRows.length === 0 ? (
-          <p className="text-sm text-slate-500">No intake cases yet for this patient.</p>
-        ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {["Reason", "Channel", "Status", "Created", ""].map(h => <th key={h} className="px-6 py-3">{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {historyRows.map(r => (
-                  <tr key={r.key} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                    <td className="px-6 py-4 text-slate-900">{r.reason}</td>
-                    <td className="px-6 py-4 text-slate-600 capitalize">{r.channel}</td>
-                    <td className="px-6 py-4"><StatusBadge tone="gray">{r.status}</StatusBadge></td>
-                    <td className="px-6 py-4 text-slate-600">{new Date(r.created).toLocaleDateString("en-GB")}</td>
-                    <td className="px-6 py-4">{r.action}</td>
+      {!isDoctor && (
+        <div className="mt-6">
+          <h2 className="text-sm font-semibold text-slate-900 mb-3">Onboarding</h2>
+          {casesError ? (
+            <p className="text-sm text-red-600">{casesError}</p>
+          ) : historyRows.length === 0 ? (
+            <p className="text-sm text-slate-500">No intake cases yet for this patient.</p>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {["Reason", "Channel", "Status", "Created", ""].map(h => <th key={h} className="px-6 py-3">{h}</th>)}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                </thead>
+                <tbody>
+                  {historyRows.map(r => (
+                    <tr key={r.key} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                      <td className="px-6 py-4 text-slate-900">{r.reason}</td>
+                      <td className="px-6 py-4 text-slate-600 capitalize">{r.channel}</td>
+                      <td className="px-6 py-4"><StatusBadge tone="gray">{r.status}</StatusBadge></td>
+                      <td className="px-6 py-4 text-slate-600">{new Date(r.created).toLocaleDateString("en-GB")}</td>
+                      <td className="px-6 py-4">{r.action}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
