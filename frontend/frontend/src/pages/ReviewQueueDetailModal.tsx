@@ -1,84 +1,175 @@
-import { useState } from "react";
-interface QueueCase { id:string; caseRef:string; submitted:string; type:string; priority:string; owner:string; reviewed:boolean; status:string; notes:string|null; reason:string|null; patient:string|null; from:string; }
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { approveDraft, getInboxMessage, rejectDraft, sendManualReply } from "../api/misc";
+import { listDoctors } from "../api/doctors";
+import {
+  KIND_LABEL, claimReviewTask, completeReviewTask, dismissReviewTask, escalateReviewTask,
+  isOpen, linkReviewPatient, reassignReviewTask, rerouteReviewTask, type RawReviewTask,
+} from "../api/reviewTasks";
+import { TASK_CATEGORIES } from "../api/tasks";
+import type { Doctor, Message } from "../api/types";
+import { describeApiError } from "../lib/apiClient";
+import { useAuth } from "../lib/auth";
 
-export function ReviewQueueDetailModal({ case_, onClose, onAction, actionError }:{ case_:QueueCase; onClose:()=>void; onAction:(id:string,action:"approve"|"reject"|"escalate",notes:string)=>Promise<void>; actionError:string|null; }) {
-  const [notes,setNotes]=useState("");
-  const [showConfirm,setShowConfirm]=useState<"approve"|"reject"|"escalate"|null>(null);
-  const [confirmChecked,setConfirmChecked]=useState(false);
-  const [done,setDone]=useState(false);
-  const [busy,setBusy]=useState(false);
+const btn = "w-full rounded-lg py-2.5 text-sm font-semibold disabled:opacity-50";
 
-  async function act(action:"approve"|"reject"|"escalate") {
-    setBusy(true);
-    try { await onAction(case_.id,action,notes); setDone(true); } catch { /* actionError is shown by the parent */ }
-    setBusy(false);
+export function ReviewQueueDetailModal({ item, onClose, onDone }: { item: RawReviewTask; onClose: () => void; onDone: () => void }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [message, setMessage] = useState<Message | null>(null);
+  const [draft, setDraft] = useState("");
+  const [reply, setReply] = useState("");
+  const [note, setNote] = useState("");
+  const [category, setCategory] = useState(item.details?.category ?? "");
+  const [patientId, setPatientId] = useState("");
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [doctorId, setDoctorId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const kind = item.task_type;
+  const open = isOpen(item);
+  const canReassign = kind === "draft_approval" && (user?.role === "operator" || user?.role === "admin");
+  // Re-route acts on the message, so a manual routing case (no message) is closed with Done.
+  const rerouting = (kind === "routing_review" || kind === "intent_review") && !!item.inbox_task_id;
+  // Write reply (D14): server-decided, and never alongside a draft awaiting approval.
+  const writing = message?.canWriteReply ?? false;
+
+  // A closed item just shows its stored reason and status below -- no
+  // source message fetch, and so no fetch error either.
+  useEffect(() => {
+    if (!item.inbox_task_id || !open) return;
+    getInboxMessage(item.inbox_task_id)
+      .then(m => { setMessage(m); setDraft(m.draftText ?? ""); })
+      .catch(() => setError("Could not load the message."));
+  }, [item.inbox_task_id, open]);
+
+  useEffect(() => {
+    if (canReassign) listDoctors().then(setDoctors).catch(() => {});
+  }, [canReassign]);
+
+  async function run(fn: () => Promise<unknown>) {
+    setBusy(true); setError(null);
+    try {
+      if (item.status === "pending") await claimReviewTask(item.id);
+      await fn();
+      onDone();
+    } catch (e) {
+      setError(describeApiError(e, "Could not record the decision."));
+    } finally {
+      setBusy(false);
+    }
   }
 
-  if(done) return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-      <div className="bg-white rounded-2xl p-8 max-w-sm text-center shadow-2xl">
-        <div className="text-5xl mb-4">✓</div>
-        <h2 className="text-lg font-bold text-slate-900">Decision recorded</h2>
-        <p className="mt-2 text-sm text-slate-500">The case has been updated and the audit trail recorded.</p>
-        <button onClick={onClose} className="mt-6 w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white">Close</button>
-      </div>
-    </div>
-  );
+  const noteMissing = note.trim().length === 0;
+  const approve = () => run(() => approveDraft(item.approval_id!, draft.trim() !== (message?.draftText ?? "").trim() && message?.emailId
+    ? { draft, emailId: message.emailId, taskId: item.inbox_task_id! } : undefined));
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/50" onClick={onClose}/>
+      <div className="fixed inset-0 z-40 bg-black/50" onClick={onClose} />
       <div className="fixed inset-0 z-40 flex items-center justify-center p-6 pointer-events-none">
-        <div className="pointer-events-auto w-full max-w-5xl rounded-2xl bg-white shadow-2xl max-h-[90vh] overflow-y-auto">
-          <div className="p-6">
-            <div className="flex items-start justify-between">
-              <div><h1 className="text-2xl font-bold text-slate-900">Case {case_.caseRef}</h1><p className="text-sm text-slate-500">Human review</p></div>
-              <button onClick={onClose} className="ml-4 text-slate-400 hover:text-slate-600 text-xl">×</button>
+        <div className="pointer-events-auto w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">{KIND_LABEL[kind] ?? kind}</h1>
+              <p className="text-sm text-slate-500">Case C-{item.case_id.slice(0, 8)}</p>
             </div>
-            <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-              <div className="space-y-5">
-                <div className="rounded-xl border border-slate-200 p-5">
-                  <h2 className="font-semibold text-slate-900 mb-4">Case information</h2>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    {[["Case ID",case_.caseRef],["Type",case_.type],["Patient",case_.patient ?? "—"],["From",case_.from],["Owner",case_.owner],["Submitted",case_.submitted]].map(([l,v])=>(
-                      <div key={l}><div className="text-xs text-slate-500 uppercase tracking-wide">{l}</div><div className="font-medium text-slate-900 mt-0.5">{v}</div></div>
+            <button onClick={onClose} aria-label="Close" className="text-xl text-slate-400 hover:text-slate-600">×</button>
+          </div>
+          <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 p-5 text-sm">
+                {[["Patient", item.patient_name ?? "Unidentified"], ["Channel", item.channel ?? "-"],
+                  ["Owner", item.owner_label ?? "-"], ["Priority", item.priority],
+                  ["Submitted", new Date(item.created_at).toLocaleString("en-AU")],
+                  ["Due", item.due_at ? new Date(item.due_at).toLocaleString("en-AU") : "-"]].map(([l, v]) => (
+                  <div key={l}><div className="text-xs uppercase tracking-wide text-slate-500">{l}</div><div className="mt-0.5 font-medium capitalize text-slate-900">{v}</div></div>
+                ))}
+                <div className="col-span-2"><div className="text-xs uppercase tracking-wide text-slate-500">Reason</div><p className="mt-0.5 whitespace-pre-wrap text-slate-900">{item.notes ?? "-"}</p></div>
+                {item.details?.escalation && (
+                  <div className="col-span-2 rounded-lg bg-red-50 p-3 text-red-900">Escalated by {item.details.escalation.by}: {item.details.escalation.note}</div>
+                )}
+              </div>
+              {message && (
+                <div className="rounded-xl border border-slate-200 p-5 text-sm">
+                  <div className="text-xs text-slate-500">From {message.fromName}</div>
+                  <h2 className="mt-1 font-semibold text-slate-900">{message.subject}</h2>
+                  <p className="mt-3 whitespace-pre-line text-slate-700">{message.body}</p>
+                  {kind === "draft_approval" && message.draftText && !writing && (
+                    message.draftSent
+                      ? <p className="mt-4 text-sm font-medium text-emerald-700">Already sent ✓</p>
+                      : <textarea aria-label="Draft reply" value={draft} onChange={e => setDraft(e.target.value)} disabled={busy || !open}
+                          rows={6} className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                  )}
+                  {writing && (
+                    <>
+                      <label htmlFor="rq-reply" className="mt-4 block text-xs font-medium text-slate-600">Write reply</label>
+                      <textarea id="rq-reply" value={reply} onChange={e => setReply(e.target.value)} disabled={busy} maxLength={10000}
+                        rows={6} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                    </>
+                  )}
+                </div>
+              )}
+              {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+            </div>
+            {open && (
+              <div className="space-y-2 rounded-xl border border-slate-200 p-5">
+                <h2 className="mb-2 font-semibold text-slate-900">Decision</h2>
+                {kind === "draft_approval" && message?.canApprove && !message.draftSent && (
+                  <button onClick={approve} disabled={busy || !draft.trim()} className={`${btn} bg-brand text-white`}>Approve & send</button>
+                )}
+                {writing && (
+                  <button onClick={() => run(() => sendManualReply(item.inbox_task_id!, reply))} disabled={busy || !reply.trim()} className={`${btn} bg-brand text-white`}>Send</button>
+                )}
+                {rerouting && (
+                  <>
+                    <label className="block text-xs font-medium text-slate-600" htmlFor="rq-category">Category</label>
+                    <select id="rq-category" value={category} onChange={e => setCategory(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                      {TASK_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    </select>
+                    <button onClick={() => run(() => rerouteReviewTask(item.id, category))} disabled={busy || !category} className={`${btn} bg-brand text-white`}>Re-route</button>
+                    <button onClick={() => run(() => completeReviewTask(item.id, "Category confirmed"))} disabled={busy} className={`${btn} border border-slate-200 text-slate-700`}>Confirm category</button>
+                  </>
+                )}
+                {kind === "identity_review" && (
+                  <>
+                    {(item.candidates ?? []).map(c => (
+                      <label key={c.id} className="flex items-center gap-2 text-sm"><input type="radio" name="rq-patient" value={c.id} checked={patientId === c.id} onChange={() => setPatientId(c.id)} />{c.name} ({c.dob})</label>
                     ))}
+                    <button onClick={() => run(() => linkReviewPatient(item.id, patientId))} disabled={busy || !patientId} className={`${btn} bg-brand text-white`}>Link patient</button>
+                    <button onClick={() => run(() => linkReviewPatient(item.id, null))} disabled={busy} className={`${btn} border border-slate-200 text-slate-700`}>None of these</button>
+                  </>
+                )}
+                {kind !== "draft_approval" && !rerouting && kind !== "identity_review" && (
+                  <button onClick={() => run(() => completeReviewTask(item.id, note.trim() || null))} disabled={busy} className={`${btn} bg-brand text-white`}>Done</button>
+                )}
+                {item.inbox_task_id && (
+                  <button onClick={() => navigate(`/inbox?task=${item.inbox_task_id}`)} className={`${btn} border border-slate-200 text-slate-700`}>Open conversation</button>
+                )}
+                {canReassign && (
+                  <div className="flex gap-2">
+                    <select aria-label="Doctor" value={doctorId} onChange={e => setDoctorId(e.target.value)} className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                      <option value="">Choose a doctor…</option>
+                      {doctors.map(d => <option key={d.id} value={d.id}>{d.fullName}</option>)}
+                    </select>
+                    <button onClick={() => run(() => reassignReviewTask(item.id, doctorId))} disabled={busy || !doctorId} className="rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-700 disabled:opacity-50">Reassign</button>
                   </div>
-                  {[["Reason",case_.reason],["Notes",case_.notes]].filter(([,v])=>v).map(([l,v])=>(
-                    <div key={l} className="mt-4 text-sm"><div className="text-xs text-slate-500 uppercase tracking-wide">{l}</div><p className="mt-0.5 whitespace-pre-wrap text-slate-900">{v}</p></div>
-                  ))}
-                </div>
-                {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+                )}
+                <label htmlFor="rq-note" className="mt-3 block text-xs font-medium text-slate-600">Note (required to reject, dismiss or escalate)</label>
+                <textarea id="rq-note" value={note} onChange={e => setNote(e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                {kind === "draft_approval" ? (
+                  !writing && <button onClick={() => run(() => rejectDraft(item.approval_id!, note.trim()))} disabled={busy || noteMissing} className={`${btn} bg-red-500 text-white`}>Reject</button>
+                ) : (
+                  <button onClick={() => run(() => dismissReviewTask(item.id, note.trim()))} disabled={busy || noteMissing} className={`${btn} bg-red-500 text-white`}>Dismiss</button>
+                )}
+                {user?.role !== "admin" && (
+                  <button onClick={() => run(() => escalateReviewTask(item.id, note.trim()))} disabled={busy || noteMissing} className={`${btn} bg-amber-500 text-white`}>Escalate</button>
+                )}
               </div>
-              <div className="space-y-4">
-                <div className="rounded-xl border border-slate-200 p-5">
-                  <h2 className="font-semibold text-slate-900 mb-3">Decision</h2>
-                  <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Add decision notes..." className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-brand resize-none h-20 mb-3"/>
-                  <button onClick={()=>setShowConfirm("approve")} disabled={busy} className="w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white hover:bg-brand-hover mb-2 disabled:opacity-50">Approve</button>
-                  <button onClick={()=>setShowConfirm("reject")} disabled={busy} className="w-full rounded-lg bg-red-500 py-2.5 text-sm font-semibold text-white hover:bg-red-600 mb-2 disabled:opacity-50">Reject</button>
-                  <button onClick={()=>setShowConfirm("escalate")} disabled={busy} className="w-full rounded-lg border border-slate-200 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">Escalate</button>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
-
-      {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold text-slate-900">Confirm decision</h2><button onClick={()=>setShowConfirm(null)} className="text-slate-400 hover:text-slate-600 text-xl">×</button></div>
-            <div className="rounded-lg bg-slate-50 p-4 space-y-2 text-sm mb-4">
-              {[["Case ID",case_.caseRef],["Type",case_.type],["Decision",showConfirm.toUpperCase()]].map(([l,v])=><div key={l} className="flex justify-between"><span className="text-slate-500">{l}</span><span className="font-medium text-slate-900">{v}</span></div>)}
-            </div>
-            <label className="flex items-start gap-3 text-sm text-slate-700 cursor-pointer mb-4"><input type="checkbox" checked={confirmChecked} onChange={e=>setConfirmChecked(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-slate-300"/>I have reviewed the case details and understand the implications of my decision</label>
-            <div className="flex gap-3">
-              <button onClick={()=>setShowConfirm(null)} className="flex-1 rounded-lg border border-slate-200 py-2.5 text-sm font-medium text-slate-700">Cancel</button>
-              <button onClick={()=>{ if(confirmChecked){ setShowConfirm(null); act(showConfirm); } }} disabled={!confirmChecked||busy} className={`flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50 ${showConfirm==="reject"?"bg-red-500":showConfirm==="escalate"?"bg-amber-500 hover:bg-amber-600":"bg-brand"}`}>Confirm {showConfirm}</button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

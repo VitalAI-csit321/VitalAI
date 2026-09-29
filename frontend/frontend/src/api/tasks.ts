@@ -1,6 +1,20 @@
 import { apiGet, apiPatch, apiPost } from "../lib/apiClient";
 import type { Task, TaskBoard, TaskComment } from "./types";
 
+// The ten-category taxonomy, mirroring backend/app/models/task.py::TaskCategory.
+export const TASK_CATEGORIES: { value: string; label: string }[] = [
+  { value: "appointment_request", label: "Appointment request" },
+  { value: "new_patient_onboarding", label: "New patient onboarding" },
+  { value: "prescription_renewal", label: "Prescription renewal" },
+  { value: "results_enquiry", label: "Results enquiry" },
+  { value: "referral_request", label: "Referral request" },
+  { value: "medical_records_request", label: "Medical records request" },
+  { value: "billing_insurance_enquiry", label: "Billing / insurance enquiry" },
+  { value: "complaint_escalation", label: "Complaint escalation" },
+  { value: "general_administrative", label: "General administrative" },
+  { value: "urgent_emergency", label: "Urgent / emergency" },
+];
+
 interface RawTask {
   id: string; case_id: string; assigned_to: string | null;
   source: string; priority: string; status: string;

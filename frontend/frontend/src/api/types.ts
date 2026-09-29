@@ -131,6 +131,10 @@ export interface Message {
   draftText: string | null; draftApprovalId: string | null; draftSent: boolean;
   taskStatus: TaskStatus; emailId: string | null; handoverContext: string | null;
   callId?: string | null; hasAudio?: boolean;
+  // Server-decided (review queue spec section 7): the UI never infers approve rights.
+  canApprove?: boolean; reviewItemId?: string | null;
+  // Write reply (D14): no AI draft awaits approval and nothing was sent yet.
+  canWriteReply?: boolean;
 }
 
 export interface DashboardSummary {
