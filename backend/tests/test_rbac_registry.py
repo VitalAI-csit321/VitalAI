@@ -1,5 +1,6 @@
 from app.auth.permissions import MANAGE_APPOINTMENTS_ALL, MANAGE_CASES, MANAGE_OWN_CALENDAR
 from app.auth.rbac_registry import get_rbac_registry
+from app.config import settings
 from app.main import app
 from app.models.user import UserRole
 
@@ -85,4 +86,7 @@ def test_total_route_count():
     # 101 as of the registration form link: +2 for GET and POST
     # /public/registration/{token} (public, allowlisted) and +1 for
     # POST /consent/{consent_id}/verify (CAPTURE_CONSENT).
-    assert len({(e.method, e.path) for e in registry}) == 101
+    # The five Twilio webhooks under /voice are mounted only with
+    # TWILIO_ENABLED, so a dev .env that turns the line on adds them.
+    voice = 5 if settings.twilio_enabled else 0
+    assert len({(e.method, e.path) for e in registry}) == 101 + voice

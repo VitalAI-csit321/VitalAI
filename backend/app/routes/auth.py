@@ -17,7 +17,7 @@ from app.auth.security import (
     verify_password,
 )
 from app.config import settings
-from app.database import get_db
+from app.database import AsyncSessionLocal, get_db
 from app.limiter import limiter
 from app.models.permission_grant import UserPermissionGrant
 from app.models.user import User, UserRole
@@ -38,8 +38,7 @@ from app.schemas.auth import (
 from app.schemas.permission import PermissionGrantCreate, PermissionGrantOut
 from app.services import (
     audit_service,
-    outlook_auth,
-    outlook_client,
+    email_service,
     permission_service,
     user_service,
 )
@@ -273,15 +272,23 @@ async def _send_reset_link(email: str, link: str) -> None:
         logger.warning("Outlook disabled; password reset link for %s: %s", email, link)
         return
     try:
-        token = await outlook_auth.get_access_token()
-        await outlook_client.send_mail(
-            token,
-            email,
-            "Reset your VitalAI password",
-            "We received a request to reset your VitalAI password.\n\n"
-            f"Open this link within 30 minutes to choose a new one:\n{link}\n\n"
-            "If you did not ask for this, ignore this email; your password is unchanged.",
-        )
+        # A background task: the request's session is closed by now.
+        async with AsyncSessionLocal() as db:
+            user = (await db.execute(select(User).where(User.email == email))).scalar_one()
+            # The one send path for new messages, which audits the send. The
+            # details stay empty: the link is a live credential.
+            await email_service.deliver_new_message(
+                db,
+                to_address=email,
+                subject="Reset your VitalAI password",
+                body="We received a request to reset your VitalAI password.\n\n"
+                f"Open this link within 30 minutes to choose a new one:\n{link}\n\n"
+                "If you did not ask for this, ignore this email; your password is unchanged.",
+                actor=user,
+                case_id=None,
+                action="auth.password_reset_sent",
+                details={},
+            )
     except Exception:
         logger.exception("Failed to send password reset email to %s", email)
 
