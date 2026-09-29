@@ -112,11 +112,6 @@ export function PatientRegistrationPage() {
         <div className="mx-auto w-full max-w-xl">
           <p className="text-sm font-semibold tracking-wide text-brand-light">VitalAI</p>
           <h1 className="mt-2 text-balance text-2xl font-bold text-white">Register with the clinic</h1>
-          {state === "form" && (
-            <p className="mt-2 text-sm text-slate-300">
-              It takes about three minutes. Everything is required unless it says optional.
-            </p>
-          )}
         </div>
       </header>
 
@@ -207,7 +202,6 @@ export function PatientRegistrationPage() {
             </Section>
 
             <Section title="Clinic consent" optional>
-              <p className="text-sm text-slate-600">You can complete this now, or leave any part of it and complete it at the clinic.</p>
               {/* The clinic's consent document, set apart from the questions about it. */}
               <ol className="list-decimal space-y-2 rounded-lg bg-slate-50 py-3 pl-9 pr-4 text-sm leading-relaxed text-slate-700">
                 {link.clauses.map((clause, i) => (
@@ -228,7 +222,7 @@ export function PatientRegistrationPage() {
               <div>
                 <span className="mb-1.5 block text-sm font-medium text-slate-700">Signature</span>
                 <SignaturePad onChange={setSigned} canvasRef={canvasRef} />
-                <p className="mt-1.5 text-xs text-slate-500">Sign with your finger or mouse, or sign at the clinic.</p>
+                <p className="mt-1.5 text-xs text-slate-500">Sign with your finger or mouse.</p>
               </div>
             </Section>
 
