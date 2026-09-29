@@ -88,5 +88,9 @@ def test_total_route_count():
     # POST /consent/{consent_id}/verify (CAPTURE_CONSENT).
     # The five Twilio webhooks under /voice are mounted only with
     # TWILIO_ENABLED, so a dev .env that turns the line on adds them.
+    # 104 as of the review queue: +3 for POST /human-review/{task_id}/reroute,
+    # /link-patient and /reassign.
+    # 105: +1 for GET /inbox/{task_id}.
+    # 106: +1 for POST /inbox/{task_id}/reply (Write reply, D14).
     voice = 5 if settings.twilio_enabled else 0
-    assert len({(e.method, e.path) for e in registry}) == 101 + voice
+    assert len({(e.method, e.path) for e in registry}) == 106 + voice

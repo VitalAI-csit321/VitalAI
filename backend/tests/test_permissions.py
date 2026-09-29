@@ -1,8 +1,10 @@
 from app.auth.permissions import (
+    APPROVE_ACTION,
     CAPTURE_CONSENT,
     MANAGE_USERS,
     READ_AUDIT,
     REGISTER_PATIENT,
+    ROLE_PERMISSIONS,
     VIEW_ALL_QUEUES,
     VIEW_CLINICAL,
     effective_permissions,
@@ -102,3 +104,8 @@ def test_doctor_lacks_delete_messages():
     from app.auth.permissions import DELETE_MESSAGES
 
     assert DELETE_MESSAGES not in effective_permissions(_user(UserRole.DOCTOR))
+
+
+def test_front_desk_and_doctor_may_approve_their_own_items():
+    for role in (UserRole.FRONT_DESK, UserRole.DOCTOR):
+        assert APPROVE_ACTION in ROLE_PERMISSIONS[role]

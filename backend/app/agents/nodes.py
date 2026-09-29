@@ -23,7 +23,7 @@ from app.models.email import Email
 from app.models.email_conversation import OPEN_STAGES, ConversationStage
 from app.models.patient import Patient
 from app.models.task import Task, TaskCategory
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.services import (
     booking_service,
     consent_service,
@@ -165,6 +165,7 @@ async def identity(state: CaseState, runtime: Runtime[Context]) -> dict:
             "dob": fields.dob.isoformat() if fields.dob else None,
             "phone": fields.phone,
         },
+        "identity_candidates": list(result.candidates),
     }
     if result.patient is not None:
         update |= {
@@ -222,8 +223,9 @@ async def booking(state: CaseState, runtime: Runtime[Context]) -> dict:
         actor = await _actor(db, runtime)
         assigned = await booking_service.doctor_for_patient(db, UUID(state["patient_id"]))
         if assigned is None:
+            # Assigning a doctor is the operator's job (ASSIGN_PATIENTS); spec section 10.
             await task_service.hold_for_staff(
-                db, state["task_id"], booking_service.NO_DOCTOR_REASON
+                db, state["task_id"], booking_service.NO_DOCTOR_REASON, owner=UserRole.OPERATOR
             )
             return {"dispatch_result": "booking_hold"}
         doctor_id, doctor_name = assigned
@@ -312,7 +314,9 @@ async def conversation(state: CaseState, runtime: Runtime[Context]) -> dict:
                 action="agent.booking_decision",
                 details={"decision": "staff", "reason": "automatic_message"},
             )
-            await task_service.hold_for_staff(db, state["task_id"], _AUTOMATIC_REASON)
+            await task_service.hold_for_staff(
+                db, state["task_id"], _AUTOMATIC_REASON, review_kind=None
+            )
             return {"dispatch_result": "conversation_hold"}
         row, created = await email_conversation_service.get_or_create(
             db,
@@ -430,7 +434,10 @@ async def request_verification(state: CaseState, runtime: Runtime[Context]) -> d
     async with runtime.context.session_factory() as db:
         _, email, actor = await _rows(db, state, runtime)
         await identity_service.hold_for_staff(
-            db, state["task_id"], identity_service.IdentityOutcome(state["identity_outcome"])
+            db,
+            state["task_id"],
+            identity_service.IdentityOutcome(state["identity_outcome"]),
+            candidates=state.get("identity_candidates") or (),
         )
         row, _ = await email_conversation_service.get_or_create(
             db,
@@ -490,7 +497,9 @@ async def form_link(state: CaseState, runtime: Runtime[Context]) -> dict:
                 action="agent.booking_decision",
                 details={"decision": "staff", "reason": "automatic_message"},
             )
-            await task_service.hold_for_staff(db, state["task_id"], _AUTOMATIC_REASON)
+            await task_service.hold_for_staff(
+                db, state["task_id"], _AUTOMATIC_REASON, review_kind=None
+            )
             return {"dispatch_result": "conversation_hold"}
         row, created = await email_conversation_service.get_or_create(
             db,
@@ -540,7 +549,10 @@ async def form_link(state: CaseState, runtime: Runtime[Context]) -> dict:
 async def identity_hold(state: CaseState, runtime: Runtime[Context]) -> dict:
     async with runtime.context.session_factory() as db:
         await identity_service.hold_for_staff(
-            db, state["task_id"], identity_service.IdentityOutcome(state["identity_outcome"])
+            db,
+            state["task_id"],
+            identity_service.IdentityOutcome(state["identity_outcome"]),
+            candidates=state.get("identity_candidates") or (),
         )
     return {"dispatch_result": "identity_hold"}
 
@@ -656,6 +668,8 @@ async def guardrail(state: CaseState, runtime: Runtime[Context]) -> dict:
             assert draft is not None  # the draft node always sets it
             await check_output(db, draft, actor=actor, case_id=_case_id(state))
         except OutputBlockedError:
+            task, _, _ = await _rows(db, state, runtime)
+            await email_service.hold_undrafted(db, task, actor, email_service.BLOCKED_REASON)
             await email_service.persist_draft(db, state["task_id"], None)
             return {"dispatch_result": "blocked"}
     return {}
@@ -680,7 +694,7 @@ async def auto_send(state: CaseState, runtime: Runtime[Context]) -> dict:
     async with runtime.context.session_factory() as db:
         actor = await _actor(db, runtime)
         try:
-            await email_service.deliver_reply(
+            sent = await email_service.deliver_reply(
                 db,
                 email_id=state["source_id"],
                 task_id=state["task_id"],
@@ -691,6 +705,10 @@ async def auto_send(state: CaseState, runtime: Runtime[Context]) -> dict:
             )
         except (EmailSendError, OutlookAuthRequiredError) as exc:
             return {"delivery_error": str(exc)}
+        if not sent:
+            # Answered by hand meanwhile: nothing went out, so the
+            # conversation does not move on either.
+            return {"dispatch_result": "already_answered", "delivery_error": None}
         await _record_conversation_send(db, state)
     return {"dispatch_result": "sent", "delivery_error": None}
 
@@ -724,7 +742,9 @@ async def dispatch(state: CaseState, runtime: Runtime[Context]) -> dict:
         )
         if sent:
             await _record_conversation_send(db, state)
-    return {"dispatch_result": "sent" if sent else "send_failed"}
+            return {"dispatch_result": "sent"}
+    answered = state.get("delivery_error") == email_service.ALREADY_ANSWERED
+    return {"dispatch_result": "already_answered" if answered else "send_failed"}
 
 
 async def voicemail_identity(state: CaseState, runtime: Runtime[Context]) -> dict:

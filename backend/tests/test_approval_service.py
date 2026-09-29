@@ -333,3 +333,71 @@ async def test_approve_blocks_concurrent_decision_until_first_releases_lock():
             )
             await cleanup_session.commit()
         await engine.dispose()
+
+
+async def test_approve_detects_already_decided_despite_stale_pre_read():
+    """Regression, Task 4 fix round 1 CRITICAL 1.
+
+    app/routes/approvals.py's _check_may_decide does a plain db.get() to see
+    whether the approval exists, before the row-level ownership check runs -
+    populating the session's identity map. With with_for_update set,
+    SQLAlchemy 2.0's Session.get() still runs the FOR UPDATE query and takes
+    the row lock, but it does not copy the fresh row onto an object already
+    loaded in the session unless populate_existing=True. Without that, a
+    session that pre-read PENDING kept seeing PENDING even after a different
+    session decided and committed the same row: two decisions could both
+    pass the guard, and the second commit silently overwrote the first (e.g.
+    an approve overwriting a reject, sending an already-rejected draft).
+    populate_existing=True on both approve()'s and reject()'s locked get
+    refreshes the loaded object, so the second call correctly raises
+    ApprovalAlreadyDecidedError.
+
+    Real cross-connection test, same technique as
+    test_approve_blocks_concurrent_decision_until_first_releases_lock above:
+    db_session's savepoint isolation can't prove this either, since the
+    second session's writes would never actually commit to the base
+    transaction.
+    """
+    engine = create_async_engine(_PG_TEST_URL, echo=False)
+    async_session = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
+    async with async_session() as setup_session:
+        admin = User(
+            email=f"stale-admin-{uuid4().hex[:8]}@example.com",
+            hashed_password="h",
+            full_name="Stale Admin",
+            role=UserRole.ADMIN,
+        )
+        setup_session.add(admin)
+        await setup_session.commit()
+        await setup_session.refresh(admin)
+
+        request = await approval_service.create_approval_request(
+            setup_session, action_type="email.reply.send", payload={"draft": "hello"}
+        )
+        request_id = request.id
+
+    first_session = async_session()
+    second_session = async_session()
+    try:
+        # Pre-read in the first session: the same plain db.get() shape as
+        # _check_may_decide's existence check.
+        pre_read = await first_session.get(ApprovalRequest, request_id)
+        assert pre_read.status == ApprovalStatus.PENDING
+
+        # A second session decides and commits first.
+        await approval_service.reject(second_session, request_id, admin)
+
+        # The first session's approve() must see the committed REJECTED
+        # status, not the stale PENDING object still in its identity map.
+        with pytest.raises(ApprovalAlreadyDecidedError):
+            await approval_service.approve(first_session, request_id, admin)
+    finally:
+        await first_session.close()
+        await second_session.close()
+        async with async_session() as cleanup_session:
+            await cleanup_session.execute(
+                delete(ApprovalRequest).where(ApprovalRequest.id == request_id)
+            )
+            await cleanup_session.commit()
+        await engine.dispose()

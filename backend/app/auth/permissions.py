@@ -32,6 +32,8 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
     UserRole.FRONT_DESK: {
         PLAY_VOICEMAIL,
         VIEW_QUEUE,
+        # Own items only: the approve route checks the review item (review queue spec D5).
+        APPROVE_ACTION,
         CAPTURE_CONSENT,
         VIEW_RECORDS_GENERAL,
         UPLOAD_GENERAL,
@@ -73,6 +75,8 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
     UserRole.DOCTOR: {
         PLAY_VOICEMAIL,
         VIEW_CLINICAL,
+        # Own items only: the approve route checks the review item (review queue spec D5).
+        APPROVE_ACTION,
         VIEW_RECORDS_GENERAL,
         MANAGE_OWN_CALENDAR,
     },

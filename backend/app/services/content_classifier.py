@@ -48,6 +48,16 @@ CONTENT:
 JSON:"""
 
 
+# The reasons the intent check (not the model) gives for forcing review.
+# task_service.apply_gate reads them to tell a disputed intent from low confidence.
+_SECOND_OPINION = "Held for a person: the second-opinion classifier"
+_DISAGREED = "Held for a person: the two classifiers disagreed"
+
+
+def from_intent_check(reason: str) -> bool:
+    return reason.startswith((_SECOND_OPINION, _DISAGREED))
+
+
 class ClassificationParseError(Exception):
     """Raised internally when the LLM's response isn't a valid classification."""
 
@@ -127,7 +137,7 @@ async def classify_content(
             second_opinion, margin = await regression_view(text)
         except Exception:
             logger.exception("classify_content: intent check failed, routing to human review")
-            reasons.append("Held for a person: the second-opinion classifier failed.")
+            reasons.append(f"{_SECOND_OPINION} failed.")
             return category, 0.0
         if second_opinion != category.value:
             logger.info(
@@ -136,8 +146,7 @@ async def classify_content(
                 category.value,
             )
             reasons.append(
-                "Held for a person: the two classifiers disagreed "
-                f"(model: {category.value}, second opinion: {second_opinion})."
+                f"{_DISAGREED} (model: {category.value}, second opinion: {second_opinion})."
             )
             return category, 0.0
         if margin < settings.intent_check_margin_threshold:
@@ -146,8 +155,6 @@ async def classify_content(
                 margin,
                 settings.intent_check_margin_threshold,
             )
-            reasons.append(
-                f"Held for a person: the second-opinion classifier was unsure ({category.value})."
-            )
+            reasons.append(f"{_SECOND_OPINION} was unsure ({category.value}).")
             return category, 0.0
     return category, confidence

@@ -13,6 +13,7 @@ import enum
 import json
 import logging
 import re
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, replace
 from datetime import date
 from uuid import UUID
@@ -23,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm.guardrail import InputBlockedError, guarded_invoke
 from app.models.case import IntakeCase
+from app.models.human_review import TaskType
 from app.models.patient import Patient
 from app.models.task import TaskCategory
 from app.models.user import User
@@ -72,6 +74,8 @@ class IdentityFields:
 class IdentityResult:
     outcome: IdentityOutcome
     patient: Patient | None = None
+    # AMBIGUOUS only: the patients staff may choose between (patient ids).
+    candidates: tuple[str, ...] = ()
 
 
 _PROMPT = """Extract the IDENTITY DETAILS the sender gives about themselves in the \
@@ -223,18 +227,23 @@ async def resolve_patient(
     patients = (
         (await db.execute(select(Patient).where(Patient.purged_at.is_(None)))).scalars().all()
     )
-    full, partial = [], False
+    full: list[Patient] = []
+    partial: list[Patient] = []
     for p in patients:
         name_hit = name is not None and _name(p.name) == name
         email_hit = email is not None and _email(p.email) == email
         phone_hit = phone is not None and _phone(p.phone) == phone
         if name_hit and fields.dob is not None and p.dob == fields.dob and (email_hit or phone_hit):
             full.append(p)
-        partial = partial or name_hit or email_hit or phone_hit
+        elif name_hit or email_hit or phone_hit:
+            partial.append(p)
     if len(full) == 1:
         return IdentityResult(IdentityOutcome.MATCHED, full[0])
     if full or partial:
-        return IdentityResult(IdentityOutcome.AMBIGUOUS)
+        # ponytail: the first ten; staff pick "None of these" past that.
+        return IdentityResult(
+            IdentityOutcome.AMBIGUOUS, candidates=tuple(str(p.id) for p in (full + partial)[:10])
+        )
     return IdentityResult(IdentityOutcome.NO_MATCH)
 
 
@@ -312,8 +321,16 @@ _HOLD_REASONS = {
 }
 
 
-async def hold_for_staff(db: AsyncSession, task_id: str | UUID, outcome: IdentityOutcome) -> None:
-    await task_service.hold_for_staff(db, task_id, _HOLD_REASONS[outcome])
+async def hold_for_staff(
+    db: AsyncSession, task_id: str | UUID, outcome: IdentityOutcome, candidates: Sequence[str] = ()
+) -> None:
+    await task_service.hold_for_staff(
+        db,
+        task_id,
+        _HOLD_REASONS[outcome],
+        review_kind=TaskType.IDENTITY_REVIEW,
+        details={"outcome": outcome.value, "candidates": list(candidates)},
+    )
 
 
 async def match_phone_dob(db: AsyncSession, phone: str | None, dob: date | None) -> Patient | None:

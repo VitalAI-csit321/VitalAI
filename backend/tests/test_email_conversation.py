@@ -24,6 +24,7 @@ from app.models.call import Call
 from app.models.case import IntakeCase
 from app.models.email import Email
 from app.models.email_conversation import ConversationStage, EmailConversation
+from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.patient import Patient, PatientStatus
 from app.models.task import Task
 from app.schemas.call import CallRouteRequest
@@ -927,6 +928,71 @@ async def test_an_unidentified_records_request_gets_the_verification_email_and_c
     (approval,) = await _approvals(db_session, task2)
     assert "records" in approval.payload["draft"].lower()
     assert len(sends) == 1
+
+
+async def test_a_verified_sender_closes_the_identity_item(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    known = Patient(
+        mrn="MRN-KNOWN002",
+        name="Sam Known",
+        dob=date(1985, 6, 7),
+        email="sam@example.com",
+        phone="0400000001",
+        status=PatientStatus.ACTIVE,
+    )
+    db_session.add(known)
+    await db_session.commit()
+    llm.category = "medical_records_request"
+    llm.identity = {"name": None}
+    email1, task1 = await _mail(
+        db_session,
+        admin_user,
+        "Please send me my records.",
+        message_id="<v1@example.com>",
+        sender="sam@example.com",
+    )
+    (item,) = (
+        await db_session.scalars(
+            select(HumanReviewTask).where(
+                HumanReviewTask.inbox_task_id == task1.id,
+                HumanReviewTask.task_type == TaskType.IDENTITY_REVIEW,
+            )
+        )
+    ).all()
+    assert item.status == TaskStatus.PENDING
+
+    llm.booking = [
+        {
+            "name": "Sam Known",
+            "dob": "1985-06-07",
+            "phone": "0400 000 001",
+            "intent": "unclear",
+            "confidence": 0.9,
+        }
+    ]
+    await _mail(
+        db_session,
+        admin_user,
+        "Sam Known, 7/6/1985, 0400 000 001",
+        message_id="<v2@example.com>",
+        references="<v1@example.com>",
+        sender="sam@example.com",
+    )
+
+    assert (await db_session.get(IntakeCase, email1.case_id)).patient_id == known.id
+    await db_session.refresh(item)
+    assert item.status == TaskStatus.COMPLETED
+    (done,) = [
+        e
+        for e in (
+            await db_session.scalars(
+                select(AuditEvent).where(AuditEvent.action == "review.completed")
+            )
+        ).all()
+        if e.details["review_id"] == str(item.id)
+    ]
+    assert done.details["note"] == "Sender verified"
 
 
 async def test_the_verification_email_goes_once_per_case_and_never_to_a_machine(

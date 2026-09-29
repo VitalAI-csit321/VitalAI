@@ -1,15 +1,9 @@
 import { apiDelete, apiGet, apiPost } from "../lib/apiClient";
 import { listAppointments } from "./appointments";
+import { KIND_LABEL } from "./reviewTasks";
 import { getTaskBoard } from "./tasks";
 import type { CurrentUser, DashboardSummary, Message } from "./types";
 import { toDateInputValue } from "../components/calendarHelpers";
-
-const TASK_TYPE_LABEL: Record<string, string> = {
-  triage_review: "HITL Approval",
-  consent_review: "Consent Review",
-  escalation_review: "Escalation Review",
-  routing_review: "Routing Review",
-};
 
 // Appointment counts for the current Monday-based week, for the dashboard's
 // Workflow Status chart. Same week definition and list-and-bucket approach
@@ -45,12 +39,13 @@ export async function getDashboard(user: CurrentUser | null): Promise<DashboardS
   // BLOCKED audit event. Doctors lack view_queue; read_audit is admin or a grant.
   const canViewQueue = user?.role !== "doctor";
   const canReadAudit = user?.role === "admin" || (user?.grantedPermissions.includes("read_audit") ?? false);
-  const [intakeRes, auditRes, pendingRes, inProgressRes, escalatedRes, reviewListRes, weeklyRes] =
+  const [intakeRes, auditRes, pendingRes, inProgressRes, reviewEscalatedRes, escalatedRes, reviewListRes, weeklyRes] =
     await Promise.allSettled([
       canViewQueue ? apiGet<{items:unknown[];total:number}>("/api/v1/intake?limit=1") : Promise.reject(),
       canReadAudit ? apiGet<{total:number}>("/api/v1/audit?limit=1") : Promise.reject(),
       apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"pending"}),
       apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"in_progress"}),
+      apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"escalated"}),
       // Same source as EscalationsPage's own count (getTaskBoard) -- the
       // /escalations page is built on task routing (/api/v1/tasks), a
       // different model from human-review approvals, which has its own
@@ -66,6 +61,7 @@ export async function getDashboard(user: CurrentUser | null): Promise<DashboardS
   const auditEvents = auditRes.status==="fulfilled" ? auditRes.value.total : null;
   const pending = pendingRes.status==="fulfilled" ? pendingRes.value.total : 0;
   const inProgress = inProgressRes.status==="fulfilled" ? inProgressRes.value.total : 0;
+  const reviewEscalated = reviewEscalatedRes.status==="fulfilled" ? reviewEscalatedRes.value.total : 0;
   const escalated = escalatedRes.status==="fulfilled" ? escalatedRes.value.counts.escalated : null;
   const workflowByDay = weeklyRes.status==="fulfilled" ? weeklyRes.value : [];
 
@@ -74,12 +70,12 @@ export async function getDashboard(user: CurrentUser | null): Promise<DashboardS
   let pendingReviews: DashboardSummary["pendingReviews"] = [];
   if (reviewListRes.status === "fulfilled") {
     pendingReviews = reviewListRes.value.items
-      .filter(t => t.status === "pending" || t.status === "in_progress")
+      .filter(t => t.status !== "completed" && t.status !== "cancelled")
       .slice(0, 4)
       .map(task => ({
         id: task.id,
         name: task.patient_name ?? "Unknown patient",
-        kind: TASK_TYPE_LABEL[task.task_type] ?? task.task_type,
+        kind: KIND_LABEL[task.task_type] ?? task.task_type,
         isNew: task.status === "pending",
       }));
   }
@@ -87,7 +83,9 @@ export async function getDashboard(user: CurrentUser | null): Promise<DashboardS
   return {
     openCases,
     awaitingApproval:
-      pendingRes.status === "fulfilled" || inProgressRes.status === "fulfilled" ? pending + inProgress : null,
+      pendingRes.status === "fulfilled" || inProgressRes.status === "fulfilled" || reviewEscalatedRes.status === "fulfilled"
+        ? pending + inProgress + reviewEscalated
+        : null,
     escalations: escalated,
     auditEvents,
     workflowByDay,
@@ -98,6 +96,20 @@ export async function getDashboard(user: CurrentUser | null): Promise<DashboardS
 export async function listMessages(archived = false): Promise<Message[]> {
   const res = await apiGet<{ items: Message[]; total: number }>("/api/v1/inbox", { archived });
   return res.items;
+}
+
+// GET /inbox/{task_id} 404s unless the viewer sees it in their own inbox or
+// can act on an open review item linked to it -- used both for the deep
+// link from a review-queue item and the Inbox's own ?task= deep link.
+export async function getInboxMessage(taskId: string): Promise<Message> {
+  return apiGet<Message>(`/api/v1/inbox/${taskId}`);
+}
+
+// Rejects a held draft reply. Gated server-side by can_act on the linked
+// review item, which is broader than can_approve (an operator may reject a
+// clinical draft they may not approve) -- see human_review_service.can_act.
+export async function rejectDraft(approvalId: string, notes: string): Promise<void> {
+  await apiPost(`/api/v1/approvals/${approvalId}/reject`, { notes });
 }
 
 // Approves a pending draft reply (email.draft_reply approval), marking it sent.
@@ -114,6 +126,11 @@ export async function approveDraft(
       ? { draft: edited.draft, email_id: edited.emailId, task_id: edited.taskId }
       : undefined,
   });
+}
+
+// Write reply (D14): sends the person's own text; answers with the updated message.
+export async function sendManualReply(taskId: string, text: string): Promise<Message> {
+  return apiPost<Message>(`/api/v1/inbox/${taskId}/reply`, { text });
 }
 
 export async function escalateMessage(taskId: string, reason?: string): Promise<void> {

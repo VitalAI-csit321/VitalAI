@@ -2,6 +2,10 @@ import json
 
 from httpx import AsyncClient
 
+from app.models.task import TaskCategory
+from app.services import approval_service
+from tests.review_helpers import inbox_task
+
 
 class _FakeLLM:
     """Answers the classifier's canned response, and answers WORTHY to the
@@ -322,3 +326,93 @@ def test_received_label_is_clinic_local_time():
     assert _received_label(datetime(2026, 9, 28, 5, 27, tzinfo=UTC)) == "28 Sep 2026, 15:27"
     # Naive values out of the SQLite backend are UTC.
     assert _received_label(datetime(2026, 9, 28, 5, 27)) == "28 Sep 2026, 15:27"
+
+
+async def _held(db, category):
+    task = await inbox_task(db, category=category)
+    from sqlalchemy import select
+
+    from app.models.email import Email
+
+    email = (await db.execute(select(Email).where(Email.case_id == task.case_id))).scalar_one()
+    approval = await approval_service.create_approval_request(
+        db,
+        action_type="email.draft_reply",
+        payload={"task_id": str(task.id), "email_id": str(email.id), "draft": "Hi"},
+        case_id=task.case_id,
+    )
+    task.draft_text, task.draft_approval_id = "Hi", approval.id
+    await db.commit()
+    return task
+
+
+async def test_front_desk_can_approve_its_held_draft_in_the_inbox(
+    db_session, client, front_desk_headers
+):
+    task = await _held(db_session, TaskCategory.GENERAL_ADMINISTRATIVE)
+    (message,) = [
+        m
+        for m in (await client.get("/api/v1/inbox", headers=front_desk_headers)).json()["items"]
+        if m["id"] == str(task.id)
+    ]
+    assert message["canApprove"] is True
+    assert message["reviewItemId"] is not None
+
+
+async def test_operator_opens_a_front_desk_message_from_its_review_item(
+    db_session, client, operator_headers
+):
+    task = await _held(db_session, TaskCategory.GENERAL_ADMINISTRATIVE)
+    listed = (await client.get("/api/v1/inbox", headers=operator_headers)).json()["items"]
+    assert str(task.id) not in {m["id"] for m in listed}  # lists unchanged
+    response = await client.get(f"/api/v1/inbox/{task.id}", headers=operator_headers)
+    assert response.status_code == 200
+    assert response.json()["canApprove"] is True
+
+
+async def test_unrelated_message_is_not_found(db_session, client, doctor_headers):
+    task = await _held(db_session, TaskCategory.GENERAL_ADMINISTRATIVE)
+    assert (await client.get(f"/api/v1/inbox/{task.id}", headers=doctor_headers)).status_code == 404
+
+
+async def test_canapprove_is_false_after_the_draft_is_rejected(
+    db_session, client, front_desk_headers
+):
+    task = await _held(db_session, TaskCategory.GENERAL_ADMINISTRATIVE)
+    approval_id = task.draft_approval_id
+    reject = await client.post(
+        f"/api/v1/approvals/{approval_id}/reject", json={}, headers=front_desk_headers
+    )
+    assert reject.status_code == 200
+
+    (message,) = [
+        m
+        for m in (await client.get("/api/v1/inbox", headers=front_desk_headers)).json()["items"]
+        if m["id"] == str(task.id)
+    ]
+    assert message["canApprove"] is False
+
+
+async def test_completed_review_item_no_longer_opens_the_message(
+    db_session, client, front_desk_headers, operator_headers
+):
+    task = await _held(db_session, TaskCategory.GENERAL_ADMINISTRATIVE)
+    approval_id = task.draft_approval_id
+    await client.post(
+        f"/api/v1/approvals/{approval_id}/reject", json={}, headers=front_desk_headers
+    )
+
+    response = await client.get(f"/api/v1/inbox/{task.id}", headers=operator_headers)
+    assert response.status_code == 404
+
+
+async def test_clinical_held_draft_cannot_be_approved_by_the_operator(
+    db_session, client, operator_headers
+):
+    task = await _held(db_session, TaskCategory.REFERRAL_REQUEST)
+    (message,) = [
+        m
+        for m in (await client.get("/api/v1/inbox", headers=operator_headers)).json()["items"]
+        if m["id"] == str(task.id)
+    ]
+    assert message["canApprove"] is False

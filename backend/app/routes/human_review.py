@@ -1,3 +1,4 @@
+from collections.abc import Awaitable
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
@@ -7,10 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import require_any_permission
 from app.auth.permissions import VIEW_CLINICAL, VIEW_QUEUE
 from app.database import get_db
-from app.models.human_review import TaskStatus, TaskType
+from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.user import User
 from app.schemas.human_review import (
     HumanReviewCompleteBody,
+    HumanReviewLinkPatientBody,
+    HumanReviewNoteBody,
+    HumanReviewReassignBody,
+    HumanReviewRerouteBody,
     HumanReviewTaskCreate,
     HumanReviewTaskListResponse,
     HumanReviewTaskOut,
@@ -18,12 +23,28 @@ from app.schemas.human_review import (
 )
 from app.services import human_review_service
 from app.services.human_review_service import (
+    HumanReviewInvalidChoiceError,
     HumanReviewTaskNotFoundError,
     HumanReviewTaskWrongRoleError,
     HumanReviewTaskWrongStateError,
 )
 
 router = APIRouter(prefix="/human-review", tags=["human-review"])
+
+
+async def _run(action: Awaitable[HumanReviewTask]) -> HumanReviewTask:
+    try:
+        return await action
+    except HumanReviewTaskNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except HumanReviewTaskWrongRoleError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except HumanReviewTaskWrongStateError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except HumanReviewInvalidChoiceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
+        ) from exc
 
 
 @router.get("", response_model=HumanReviewTaskListResponse)
@@ -96,14 +117,7 @@ async def claim_task_endpoint(
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
 ):
-    try:
-        return await human_review_service.claim_task(db, task_id, actor)
-    except HumanReviewTaskNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except HumanReviewTaskWrongRoleError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-    except HumanReviewTaskWrongStateError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return await _run(human_review_service.claim_task(db, task_id, actor))
 
 
 @router.post("/{task_id}/complete", response_model=HumanReviewTaskOut)
@@ -113,45 +127,54 @@ async def complete_task_endpoint(
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
 ):
-    try:
-        return await human_review_service.complete_task(db, task_id, actor, notes=payload.notes)
-    except HumanReviewTaskNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except HumanReviewTaskWrongRoleError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-    except HumanReviewTaskWrongStateError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return await _run(human_review_service.complete_task(db, task_id, actor, notes=payload.notes))
 
 
 @router.post("/{task_id}/reject", response_model=HumanReviewTaskOut)
 async def reject_task_endpoint(
     task_id: UUID,
-    payload: HumanReviewCompleteBody,
+    payload: HumanReviewNoteBody,
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
 ):
-    try:
-        return await human_review_service.reject_task(db, task_id, actor, notes=payload.notes)
-    except HumanReviewTaskNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except HumanReviewTaskWrongRoleError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-    except HumanReviewTaskWrongStateError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return await _run(human_review_service.reject_task(db, task_id, actor, notes=payload.notes))
 
 
 @router.post("/{task_id}/escalate", response_model=HumanReviewTaskOut)
 async def escalate_task_endpoint(
     task_id: UUID,
-    payload: HumanReviewCompleteBody,
+    payload: HumanReviewNoteBody,
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
 ):
-    try:
-        return await human_review_service.escalate_task(db, task_id, actor, notes=payload.notes)
-    except HumanReviewTaskNotFoundError as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    except HumanReviewTaskWrongRoleError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-    except HumanReviewTaskWrongStateError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return await _run(human_review_service.escalate_task(db, task_id, actor, notes=payload.notes))
+
+
+@router.post("/{task_id}/reroute", response_model=HumanReviewTaskOut)
+async def reroute_endpoint(
+    task_id: UUID,
+    payload: HumanReviewRerouteBody,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
+):
+    return await _run(human_review_service.reroute(db, task_id, actor, payload.category))
+
+
+@router.post("/{task_id}/link-patient", response_model=HumanReviewTaskOut)
+async def link_patient_endpoint(
+    task_id: UUID,
+    payload: HumanReviewLinkPatientBody,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
+):
+    return await _run(human_review_service.link_patient(db, task_id, actor, payload.patient_id))
+
+
+@router.post("/{task_id}/reassign", response_model=HumanReviewTaskOut)
+async def reassign_endpoint(
+    task_id: UUID,
+    payload: HumanReviewReassignBody,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
+):
+    return await _run(human_review_service.reassign(db, task_id, actor, payload.doctor_id))

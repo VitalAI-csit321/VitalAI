@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 import httpx
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -20,10 +21,17 @@ from app.llm.guardrail import InputBlockedError, guarded_invoke
 from app.llm.output_guardrail import OutputBlockedError, check_output
 from app.models.case import IntakeCase, IntakeStatus
 from app.models.email import Email
+from app.models.human_review import TaskType
 from app.models.task import Task, TaskCategory, TaskItemStatus, TaskPriority, TaskSource
 from app.models.user import User
 from app.schemas.email import EmailIngestRequest
-from app.services import approval_service, outlook_auth, outlook_client
+from app.services import (
+    approval_service,
+    outlook_auth,
+    outlook_client,
+    review_routing,
+    task_service,
+)
 from app.services.audit_service import record_event
 from app.services.content_classifier import classify_content
 from app.services.draft_critic import critique
@@ -68,12 +76,39 @@ class EmailSendError(Exception):
     so the failure is visible rather than recorded as a delivered message."""
 
 
+BLOCKED_REASON = (
+    "No reply drafted: the message was blocked by the safety check. Read it and reply by hand."
+)
+DRAFT_FAILED_REASON = "Automated drafting failed. Needs a manual reply."
+# What an approval's resume carries when deliver_reply found the message
+# already answered: this approval's reply was not the one that went out.
+ALREADY_ANSWERED = "The message was already answered; this reply was not sent."
+
+
+async def hold_undrafted(
+    db: AsyncSession, task: Task, actor: User, reason: str, *, handover: str | None = None
+) -> None:
+    """No draft to approve, so a person answers: the reason on the message and
+    an agent_failure item for the operator (review queue spec section 6).
+    Flushes, never commits."""
+    task.handover_context = handover or reason
+    await review_routing.open_item(
+        db, kind=TaskType.AGENT_FAILURE, inbox_task=task, reason=reason, actor=actor
+    )
+
+
 def _priority_for_gate(gate: TaskRoutingGateResult) -> TaskPriority:
     if gate.outcome == TaskRoutingOutcome.HUMAN_REVIEW:
         return TaskPriority.URGENT if gate.override_reason else TaskPriority.HIGH
     if gate.outcome == TaskRoutingOutcome.AUTO_ROUTED_FLAGGED:
         return TaskPriority.MEDIUM
     return TaskPriority.LOW
+
+
+async def _open_conversation(db: AsyncSession, case_id: UUID) -> bool:
+    from app.services import email_conversation_service
+
+    return await email_conversation_service.open_for_case(db, case_id) is not None
 
 
 async def ingest_email(
@@ -158,6 +193,15 @@ async def ingest_email(
     )
     db.add(task)
     await db.flush()
+    in_conversation = (
+        gate.override_reason is None
+        and settings.agentic_pipeline_enabled
+        and settings.email_booking_conversation_enabled
+        and await _open_conversation(db, case.id)
+    )
+    await task_service.apply_gate(
+        db, task, gate, actor=actor, reasons=review_reasons, in_conversation=in_conversation
+    )
 
     await record_event(
         db,
@@ -275,9 +319,19 @@ def approval_payload(
 
 
 async def _persist_draft(db: AsyncSession, task: Task, outcome: EmailDraftOutcome) -> None:
-    task.draft_text = outcome.draft_text
-    task.draft_approval_id = UUID(outcome.approval_id) if outcome.approval_id else None
-    task.draft_sent = outcome.sent
+    # Drafting runs detached after ingest, so a reply can already have gone
+    # out (Write reply, or deliver_reply just now). Then the draft columns stay
+    # as they are: a late draft must not re-open the message for a second
+    # send. Read from the row under its lock, not off `task`, which the caller
+    # may have loaded before that send. A column read, not populate_existing,
+    # which would also discard the caller's unflushed handover_context/priority.
+    already_sent = await db.scalar(
+        select(Task.draft_sent).where(Task.id == task.id).with_for_update()
+    )
+    if not already_sent:
+        task.draft_text = outcome.draft_text
+        task.draft_approval_id = UUID(outcome.approval_id) if outcome.approval_id else None
+        task.draft_sent = outcome.sent
     await db.commit()
     await db.refresh(task)
 
@@ -375,12 +429,20 @@ async def deliver_reply(
     case_id: UUID | None,
     approval_id: str | UUID | None = None,
     automated: bool = False,
-) -> None:
+    manual: bool = False,
+) -> bool:
     """Send a reply. The only caller of outlook_client.send_reply in the app.
+
+    Returns True when it sent (or recorded a simulated send), False when the
+    task was already answered (draft_sent) and nothing was sent: the caller
+    must not record a send then. The task is re-read with populate_existing,
+    so a caller must not leave unflushed edits on it; they would be lost.
 
     `automated` means nobody read this before it left: the model's sign-off
     placeholder is dropped (see draft_critic.drop_placeholder_lines). On the approval path
     it stays in, because the human editing the draft is the one who fills it.
+    `manual` marks a reply a person wrote themselves (Write reply, review
+    queue spec D14) in the audit event.
 
     With the Outlook connector disabled "sent" is DB-level state and no message
     leaves the system. With it enabled the draft is delivered through Graph
@@ -394,10 +456,16 @@ async def deliver_reply(
 
     # Read the delivery record before acting. A retried executor or a resumed
     # graph can land here twice on one approval, and draft_sent is the only
-    # thing that knows the patient already got this reply.
-    task = await db.get(Task, UUID(str(task_id))) if task_id is not None else None
+    # thing that knows the patient already got this reply. Read fresh and under
+    # the row lock: the caller's Task may predate a send (a background draft
+    # loaded before a Write reply), and a concurrent send waits here.
+    task = (
+        await db.get(Task, UUID(str(task_id)), populate_existing=True, with_for_update=True)
+        if task_id is not None
+        else None
+    )
     if task is not None and task.draft_sent:
-        return
+        return False
 
     if automated and draft:
         draft = _drop_placeholder_lines(draft)
@@ -431,9 +499,11 @@ async def deliver_reply(
             # Distinguishes a real Graph delivery from the simulated path, so
             # the audit log does not claim more than actually happened.
             "delivered": delivered,
+            **({"manual": True} if manual else {}),
         },
     )
     await db.commit()
+    return True
 
 
 async def deliver_new_message(
@@ -585,8 +655,11 @@ async def record_reply_dispatch(
     sending it by hand. Returns whether the reply was sent.
     """
     task = await db.get(Task, UUID(str(task_id))) if task_id is not None else None
-    sent = bool(task is not None and task.draft_sent)
-    if task is not None and not sent:
+    answered = bool(task is not None and task.draft_sent)
+    # A delivery error means this approval's reply did not go out, even when
+    # another reply did (ALREADY_ANSWERED).
+    sent = answered and delivery_error is None
+    if task is not None and not answered:
         task.handover_context = (
             f"Approved reply was not delivered: {delivery_error or 'unknown error'}. "
             "Send it by hand; re-approving is not possible."
@@ -617,11 +690,14 @@ async def record_critic_escalation(
     drafts: int,
 ) -> None:
     """Every draft failed the critic: no approval, no send. The Task stays
-    pending for a human to answer, with the critic's reason on it."""
+    pending for a human to answer, with the critic's reason on it and in an
+    agent_handover item for the message's owner."""
     task = await db.get(Task, UUID(str(task_id)))
     if task is not None:
-        task.handover_context = (
-            f"No reply drafted: {drafts} drafts were rejected by the policy check. {reason}"
+        handover = f"No reply drafted: {drafts} drafts were rejected by the policy check. {reason}"
+        task.handover_context = handover
+        await review_routing.open_item(
+            db, kind=TaskType.AGENT_HANDOVER, inbox_task=task, reason=handover, actor=actor
         )
     await record_event(
         db,
@@ -665,9 +741,13 @@ async def draft_reply(
         # Held, not crashed: the Task ingest_email created is the human review
         # item, and it says why. No draft, because the model was never called.
         logger.warning("draft generation blocked by the input guardrail, holding for staff")
-        task.handover_context = (
-            "No reply drafted: the message was blocked by the prompt injection check. "
-            "Read it and reply by hand."
+        await hold_undrafted(
+            db,
+            task,
+            actor,
+            BLOCKED_REASON,
+            handover="No reply drafted: the message was blocked by the prompt injection check. "
+            "Read it and reply by hand.",
         )
         outcome = EmailDraftOutcome(draft_text=None, approval_id=None, sent=False, blocked=True)
         await _persist_draft(db, task, outcome)
@@ -679,6 +759,7 @@ async def draft_reply(
         # exception here previously orphaned the task with no draft, no
         # approval, and no visible reason.
         logger.exception("draft generation failed, falling back to manual reply")
+        await hold_undrafted(db, task, actor, DRAFT_FAILED_REASON)
         outcome = EmailDraftOutcome(draft_text=None, approval_id=None, sent=False, blocked=False)
         await _persist_draft(db, task, outcome)
         return outcome
@@ -686,6 +767,7 @@ async def draft_reply(
     try:
         await check_output(db, draft_text, actor=actor, case_id=email.case_id)
     except OutputBlockedError:
+        await hold_undrafted(db, task, actor, BLOCKED_REASON)
         outcome = EmailDraftOutcome(draft_text=None, approval_id=None, sent=False, blocked=True)
         await _persist_draft(db, task, outcome)
         return outcome
@@ -703,7 +785,7 @@ async def draft_reply(
         category=task.category,
     ):
         try:
-            await deliver_reply(
+            sent = await deliver_reply(
                 db,
                 email_id=email.id,
                 task_id=task.id,
@@ -717,8 +799,10 @@ async def draft_reply(
             # queue with the reason, and draft_sent stays False.
             delivery_error = str(exc)
         else:
+            # sent False: answered by hand meanwhile, and _persist_draft leaves
+            # that reply's columns alone.
             outcome = EmailDraftOutcome(
-                draft_text=draft_text, approval_id=None, sent=True, blocked=False
+                draft_text=draft_text, approval_id=None, sent=sent, blocked=False
             )
             await _persist_draft(db, task, outcome)
             return outcome

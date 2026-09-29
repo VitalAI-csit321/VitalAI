@@ -1,14 +1,18 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   approveDraft,
   archiveMessage,
   deleteMessage,
   escalateMessage,
+  getInboxMessage,
   listMessages,
   markMessageRead,
+  rejectDraft,
+  sendManualReply,
 } from "../api/misc";
 import type { Message, MessagePriority } from "../api/types";
+import { ApiError, describeApiError } from "../lib/apiClient";
 import { useAuth } from "../lib/auth";
 import { listTasks } from "../api/tasks";
 import { Avatar, Spinner } from "../components/ui";
@@ -39,6 +43,7 @@ function categoryBadge(category: string) {
 
 export function InboxPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -46,9 +51,18 @@ export function InboxPage() {
   const [loading, setLoading] = useState(true);
   const [showReply, setShowReply] = useState(false);
   const [editedDraft, setEditedDraft] = useState("");
+  const [replyText, setReplyText] = useState("");
+  const [showRejectNote, setShowRejectNote] = useState(false);
+  const [rejectNote, setRejectNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [urgentCalls, setUrgentCalls] = useState(0);
+  const [deepLinkError, setDeepLinkError] = useState<string | null>(null);
+  const deepLinkHandled = useRef(false);
+  // A message opened through ?task= that is not in the viewer's own list.
+  // Mark-read, Escalate, Archive and Delete check the viewer's queue, so the
+  // server would refuse them: they are not offered on it.
+  const [foreignId, setForeignId] = useState<string | null>(null);
 
   // GET /tasks, never the inbox list: every inbox load summarises each call
   // with a model call, which must not run every 30 seconds. Doctors lack
@@ -87,11 +101,37 @@ export function InboxPage() {
 
   useEffect(() => {
     setEditedDraft(selected?.draftText ?? "");
+    setReplyText("");
+    setShowRejectNote(false);
+    setRejectNote("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
+  // Deep link from a review-queue item's "Open conversation" (?task=<id>):
+  // tried once, after the first list load. The message may not be in this
+  // viewer's own inbox (it is held for someone else) but they can still open
+  // it if they can act on an open review item linked to it -- the server
+  // decides that, not the UI (GET /inbox/{task_id}).
   useEffect(() => {
-    if (selected?.unread) {
+    const taskId = searchParams.get("task");
+    if (!taskId || deepLinkHandled.current || loading) return;
+    deepLinkHandled.current = true;
+    if (messages.some((m) => m.id === taskId)) {
+      setSelectedId(taskId);
+      return;
+    }
+    getInboxMessage(taskId)
+      .then((m) => {
+        setForeignId(m.id);
+        setMessages((prev) => [m, ...prev]);
+        setSelectedId(m.id);
+      })
+      .catch(() => setDeepLinkError("You cannot open this message."));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, messages]);
+
+  useEffect(() => {
+    if (selected?.unread && selected.id !== foreignId) {
       setMessages((prev) =>
         prev.map((m) => (m.id === selected.id ? { ...m, unread: false } : m)),
       );
@@ -109,8 +149,12 @@ export function InboxPage() {
   const filtered = tab === "urgent" ? messages.filter((m) => m.priority === "urgent") : messages;
   const unread = messages.filter((m) => m.unread).length;
   const urgent = messages.filter((m) => m.priority === "urgent").length;
-  const canApprove = user?.role === "operator" || user?.role === "admin";
-  const canDelete = user?.role === "operator" || user?.role === "admin";
+  // Server-decided, per message (review queue spec section 7): a doctor may
+  // approve their own clinical drafts, an operator may not, and the UI never
+  // infers this from role alone.
+  const canApprove = selected?.canApprove ?? false;
+  const own = selected !== null && selected.id !== foreignId;
+  const canDelete = own && (user?.role === "operator" || user?.role === "admin");
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "all", label: "All" },
@@ -133,6 +177,46 @@ export function InboxPage() {
       await refresh(selected.id);
     } catch {
       setActionError("Could not send the reply. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleReject() {
+    if (!selected?.draftApprovalId) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await rejectDraft(selected.draftApprovalId, rejectNote.trim());
+      setShowRejectNote(false);
+      setRejectNote("");
+      await refresh(selected.id);
+    } catch {
+      setActionError("Could not reject the draft.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Write reply (D14). Updated from the response rather than a list refresh,
+  // so a message opened through its review item stays on screen, now sent.
+  async function handleWriteReply() {
+    if (!selected) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      const sent = await sendManualReply(selected.id, replyText);
+      setMessages((prev) => prev.map((m) => (m.id === sent.id ? sent : m)));
+      setReplyText("");
+    } catch (e) {
+      setActionError(describeApiError(e, "Could not send the reply. Try again."));
+      // 409: answered meanwhile, or a draft now awaits approval. Show it as it is now.
+      if (e instanceof ApiError && e.status === 409) {
+        const id = selected.id;
+        getInboxMessage(id)
+          .then((m) => setMessages((prev) => prev.map((x) => (x.id === id ? m : x))))
+          .catch(() => {});
+      }
     } finally {
       setBusy(false);
     }
@@ -197,6 +281,12 @@ export function InboxPage() {
           </button>
         </div>
       </div>
+
+      {deepLinkError && (
+        <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          {deepLinkError}
+        </div>
+      )}
 
       {urgentCalls > 0 && (
         <div role="alert" className="mt-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
@@ -267,6 +357,11 @@ export function InboxPage() {
                             NEW
                           </span>
                         )}
+                        {m.reviewItemId && (
+                          <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-700">
+                            IN REVIEW QUEUE
+                          </span>
+                        )}
                       </div>
                       <div className="truncate text-sm text-slate-600">{m.subject}</div>
                       <div className="mt-1 flex items-center gap-2">
@@ -300,6 +395,15 @@ export function InboxPage() {
                   </div>
                 </div>
 
+                {selected.reviewItemId && (
+                  <button
+                    onClick={() => navigate(`/review-queue?item=${selected.reviewItemId}`)}
+                    className="mt-3 text-xs font-semibold text-brand underline"
+                  >
+                    Open in Review Queue
+                  </button>
+                )}
+
                 <h2 className="mt-5 text-base font-semibold text-slate-900">{selected.subject}</h2>
                 <div className="my-4 h-px bg-slate-100" />
                 <div className="whitespace-pre-line text-sm leading-relaxed text-slate-700">
@@ -317,10 +421,39 @@ export function InboxPage() {
                   <VoicemailPlayer key={selected.callId} callId={selected.callId} />
                 )}
 
-                {showReply && (
+                {showReply && selected.canWriteReply && (
+                  <div className="mt-5 rounded-lg border border-brand/30 bg-emerald-50/40 p-4">
+                    <label
+                      htmlFor="inbox-write-reply"
+                      className="block text-xs font-semibold uppercase tracking-wide text-slate-500"
+                    >
+                      Write reply
+                    </label>
+                    <textarea
+                      id="inbox-write-reply"
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      disabled={busy}
+                      maxLength={10000}
+                      rows={6}
+                      className="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-700 outline-none focus:border-brand disabled:opacity-60"
+                    />
+                    <div className="mt-3">
+                      <button
+                        onClick={handleWriteReply}
+                        disabled={busy || replyText.trim().length === 0}
+                        className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-50"
+                      >
+                        {busy ? "Sending…" : "Send"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {showReply && !selected.canWriteReply && (
                   <div className="mt-5 rounded-lg border border-brand/30 bg-emerald-50/40 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      AI-suggested reply
+                      {selected.draftSent ? "Sent reply" : "AI-suggested reply"}
                     </p>
                     {selected.draftText ? (
                       <>
@@ -341,17 +474,57 @@ export function InboxPage() {
                           {selected.draftSent ? (
                             <span className="text-sm font-medium text-emerald-700">Already sent ✓</span>
                           ) : selected.draftApprovalId && canApprove ? (
-                            <button
-                              onClick={handleSend}
-                              disabled={busy || editedDraft.trim().length === 0}
-                              className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-50"
-                            >
-                              {busy ? "Sending…" : "Approve & send"}
-                            </button>
+                            <>
+                              <button
+                                onClick={handleSend}
+                                disabled={busy || editedDraft.trim().length === 0}
+                                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-50"
+                              >
+                                {busy ? "Sending…" : "Approve & send"}
+                              </button>
+                              <button
+                                onClick={() => setShowRejectNote((v) => !v)}
+                                disabled={busy}
+                                className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                              >
+                                Reject
+                              </button>
+                            </>
                           ) : selected.draftApprovalId ? (
-                            <span className="text-sm text-slate-500">Awaiting approval from an operator.</span>
+                            <span className="text-sm text-slate-500">Awaiting approval by its owner.</span>
                           ) : null}
                         </div>
+                        {showRejectNote && selected.draftApprovalId && canApprove && !selected.draftSent && (
+                          <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
+                            <label htmlFor="inbox-reject-note" className="block text-xs font-medium text-red-900">
+                              Reason for rejecting (required)
+                            </label>
+                            <textarea
+                              id="inbox-reject-note"
+                              value={rejectNote}
+                              onChange={(e) => setRejectNote(e.target.value)}
+                              disabled={busy}
+                              rows={2}
+                              className="mt-1 w-full rounded-lg border border-red-200 px-3 py-2 text-sm"
+                            />
+                            <div className="mt-2 flex gap-2">
+                              <button
+                                onClick={handleReject}
+                                disabled={busy || rejectNote.trim().length === 0}
+                                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50"
+                              >
+                                Confirm reject
+                              </button>
+                              <button
+                                onClick={() => { setShowRejectNote(false); setRejectNote(""); }}
+                                disabled={busy}
+                                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </>
                     ) : (
                       <p className="mt-2 text-sm text-slate-500">
@@ -374,20 +547,24 @@ export function InboxPage() {
                   >
                     Reply
                   </button>
-                  <button
-                    onClick={handleEscalate}
-                    disabled={busy || selected.taskStatus === "escalated"}
-                    className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                  >
-                    {selected.taskStatus === "escalated" ? "Escalated" : "Escalate"}
-                  </button>
-                  <button
-                    onClick={handleArchive}
-                    disabled={busy}
-                    className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                  >
-                    Archive
-                  </button>
+                  {own && (
+                    <>
+                      <button
+                        onClick={handleEscalate}
+                        disabled={busy || selected.taskStatus === "escalated"}
+                        className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        {selected.taskStatus === "escalated" ? "Escalated" : "Escalate"}
+                      </button>
+                      <button
+                        onClick={handleArchive}
+                        disabled={busy}
+                        className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                      >
+                        Archive
+                      </button>
+                    </>
+                  )}
                   {selected.category === "appointment_request" && (
                     <button
                       onClick={() =>

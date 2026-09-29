@@ -5,8 +5,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.approval import ApprovalRequest, ApprovalStatus
 from app.models.base import utcnow
+from app.models.human_review import TaskType
+from app.models.task import Task
 from app.models.user import User
+from app.services import review_routing
 from app.services.audit_service import record_event
+
+DRAFT_REPLY = "email.draft_reply"
+
+
+def _draft_reason(payload: dict) -> str:
+    if payload.get("delivery_error"):
+        return f"The reply could not be sent automatically: {payload['delivery_error']}"
+    if payload.get("critic_reason"):
+        return f"The policy check held this reply: {payload['critic_reason']}"
+    return "A drafted reply is waiting for approval before it is sent."
 
 
 class ApprovalNotFoundError(Exception):
@@ -40,6 +53,27 @@ async def create_approval_request(
     db.add(request)
     await db.flush()  # populate request.id before referencing it below
 
+    # The item before the audit event: the item's insert locks the Task row
+    # (its foreign key) and record_event takes the audit chain lock, and
+    # write_reply takes them in that order too. The other order deadlocks.
+    task_id = payload.get("task_id") if action_type == DRAFT_REPLY else None
+    task = await db.get(Task, UUID(str(task_id)), populate_existing=True) if task_id else None
+    # Already answered (a Write reply while this was drafting): nothing to
+    # approve, so no item. The request itself stays, a paused thread waits on it.
+    if task is not None and not task.draft_sent:
+        await review_routing.open_item(
+            db,
+            kind=TaskType.DRAFT_APPROVAL,
+            inbox_task=task,
+            reason=_draft_reason(payload),
+            actor=requested_by,
+            approval_id=request.id,
+            # The category at draft time, so a later category override
+            # (task_service.override_task) can't launder a clinical reply
+            # through a relabel; see human_review_service.is_clinical.
+            details={"category": task.category.value if task.category else None},
+        )
+
     await record_event(
         db,
         actor=requested_by,
@@ -64,7 +98,17 @@ async def approve(
     # a blocked commit() unblocks after the first commit and Postgres
     # silently re-applies it (WHERE id = :id still matches), overwriting the
     # already-decided row instead of raising ApprovalAlreadyDecidedError.
-    request = await db.get(ApprovalRequest, approval_id, with_for_update=True)
+    # populate_existing=True: a caller that already ran a plain db.get() on
+    # this id earlier in the same session (e.g. the row-level ownership
+    # check in app/routes/approvals.py) has it in the identity map. The FOR
+    # UPDATE query still runs and takes the lock (SQLAlchemy 2.0 skips the
+    # identity-map shortcut when with_for_update is set), but the row it
+    # returns is not copied onto the already-loaded object unless forced to.
+    # Without this, the stale status (still PENDING) passes the check below
+    # even though another session already decided and committed.
+    request = await db.get(
+        ApprovalRequest, approval_id, with_for_update=True, populate_existing=True
+    )
     if request is None:
         raise ApprovalNotFoundError(f"No approval request with id {approval_id}")
     if request.status != ApprovalStatus.PENDING:
@@ -85,6 +129,9 @@ async def approve(
         action="governance.approval_approved",
         details={"approval_id": str(request.id), "action_type": request.action_type},
     )
+    await review_routing.close_for_approval(
+        db, request.id, actor=decided_by, approved=True, notes=notes
+    )
     await db.commit()
     await db.refresh(request)
     return request
@@ -96,8 +143,11 @@ async def reject(
     decided_by: User,
     notes: str | None = None,
 ) -> ApprovalRequest:
-    # with_for_update: see the matching comment in approve() above.
-    request = await db.get(ApprovalRequest, approval_id, with_for_update=True)
+    # with_for_update + populate_existing: see the matching comment in
+    # approve() above.
+    request = await db.get(
+        ApprovalRequest, approval_id, with_for_update=True, populate_existing=True
+    )
     if request is None:
         raise ApprovalNotFoundError(f"No approval request with id {approval_id}")
     if request.status != ApprovalStatus.PENDING:
@@ -116,6 +166,9 @@ async def reject(
         case_id=request.case_id,
         action="governance.approval_rejected",
         details={"approval_id": str(request.id), "action_type": request.action_type},
+    )
+    await review_routing.close_for_approval(
+        db, request.id, actor=decided_by, approved=False, notes=notes
     )
     await db.commit()
     await db.refresh(request)

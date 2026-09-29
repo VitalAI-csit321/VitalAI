@@ -40,6 +40,7 @@ from app.models.appointment import AppointmentType
 from app.models.case import IntakeCase
 from app.models.email import Email
 from app.models.email_conversation import OPEN_STAGES, ConversationStage, EmailConversation
+from app.models.human_review import TaskType
 from app.models.patient import Patient
 from app.models.task import TaskCategory
 from app.models.user import User
@@ -50,6 +51,7 @@ from app.services import (
     onboarding_service,
     patient_service,
     reply_parsing,
+    review_routing,
 )
 from app.services.audit_service import record_event
 from app.services.identity_service import IdentityFields, IdentityOutcome
@@ -642,12 +644,23 @@ def _offered(conversation: EmailConversation, chosen: datetime) -> dict | None:
     return None
 
 
-async def _link(db: AsyncSession, conversation: EmailConversation, patient: Patient) -> None:
+async def _link(
+    db: AsyncSession, conversation: EmailConversation, patient: Patient, *, actor: User
+) -> None:
     conversation.patient_id = patient.id
     case = await db.get(IntakeCase, conversation.case_id)
     if case is not None and case.patient_id is None:
         case.patient_id = patient.id
         case.patient_name = patient.name
+    if case is not None and case.patient_id == patient.id:
+        # Nothing left to confirm: the sender answered the verification.
+        await review_routing.complete_open(
+            db,
+            case_id=case.id,
+            kind=TaskType.IDENTITY_REVIEW,
+            actor=actor,
+            note="Sender verified",
+        )
 
 
 def _staff(conversation: EmailConversation, reason: str) -> Turn:
@@ -682,7 +695,7 @@ async def _identify(
     Nothing else creates a patient: a stranger asking for records is not one."""
     result = await identity_service.resolve_patient(db, sender=email.sender, fields=fields)
     if result.outcome == IdentityOutcome.MATCHED and result.patient is not None:
-        await _link(db, conversation, result.patient)
+        await _link(db, conversation, result.patient, actor=actor)
         return result.patient, result.outcome
     if onboard and result.outcome == IdentityOutcome.NO_MATCH and fields.name:
         patient = await onboarding_service.start_onboarding(

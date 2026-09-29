@@ -91,6 +91,10 @@ class Settings(BaseSettings):
     intent_check_enabled: bool = False
     intent_check_margin_threshold: float = 0.0427
 
+    # Review Queue "Over SLA": open longer than this many hours (review queue spec D7).
+    review_sla_hours_high: int = 4
+    review_sla_hours_default: int = 24
+
     # Clinic hours. The calendar UI renders an 8am-6pm grid; these are the
     # single source of truth so a clinic that opens at 7 needs no code change.
     clinic_open_hour: int = 8

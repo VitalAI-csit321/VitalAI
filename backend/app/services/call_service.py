@@ -17,7 +17,7 @@ from app.schemas.call import (
     CallRouteRequest,
     CallRoutingOverride,
 )
-from app.services import identity_service, onboarding_service
+from app.services import identity_service, onboarding_service, task_service
 from app.services.audit_service import record_event
 from app.services.content_classifier import classify_content
 from app.services.identity_service import ONBOARDING_INTENTS
@@ -137,6 +137,7 @@ async def route_call(
     task.target_role = target_role
     task.priority = priority
     await db.flush()
+    await task_service.apply_gate(db, task, gate, actor=actor)
 
     await record_event(
         db,
