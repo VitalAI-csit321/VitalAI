@@ -80,6 +80,7 @@ async def _notify(db: AsyncSession, actor: User, patient: Patient, upcoming: lis
     """Before anything is blanked: the address goes with the purge. A failed
     send does not stop the purge; retention wins, and afterwards there is no
     address to retry with."""
+    assert patient.email  # the purge only notifies patients with an address
     ids = [str(a.id) for a in upcoming]
     try:
         await email_service.deliver_new_message(

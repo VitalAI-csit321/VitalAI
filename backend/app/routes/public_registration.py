@@ -41,6 +41,7 @@ async def open_registration_link(
     if conversation is None:
         raise _not_valid()
     origin = await db.get(Email, conversation.origin_email_id)
+    assert origin is not None  # find_open refuses a conversation whose origin email is gone
     return RegistrationLinkOut(
         email=origin.sender.strip(),
         needs_preferred_day=patient_form_service.needs_preferred_day(conversation),

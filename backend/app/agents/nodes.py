@@ -478,6 +478,8 @@ async def form_link(state: CaseState, runtime: Runtime[Context]) -> dict:
     registration form instead of a request to email their details
     (patient_form_service). No patient is created here; the form creates
     one on submit, so an ignored link leaves no record behind."""
+    intent = state.get("intent")
+    assert intent is not None  # route_identity only sends booking and sign-up intents here
     async with runtime.context.session_factory() as db:
         task, email, actor = await _rows(db, state, runtime)
         if not email_conversation_service.can_auto_reply(email):
@@ -492,8 +494,8 @@ async def form_link(state: CaseState, runtime: Runtime[Context]) -> dict:
             return {"dispatch_result": "conversation_hold"}
         row, created = await email_conversation_service.get_or_create(
             db,
-            case_id=_case_id(state),
-            intent=state["intent"],
+            case_id=UUID(state["case_id"]),
+            intent=intent,
             origin_email_id=email.id,
             patient_id=None,
             stage=ConversationStage.AWAITING_DETAILS,

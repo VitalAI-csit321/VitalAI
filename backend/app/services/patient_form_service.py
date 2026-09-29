@@ -255,6 +255,7 @@ async def submit(
     now = datetime.now(UTC)
     conversation.form_submitted_at = now
     origin = await db.get(Email, conversation.origin_email_id)
+    assert origin is not None  # find_open refuses a conversation whose origin email is gone
     address = origin.sender.strip()
     task = await task_for(db, conversation.case_id)
     given = _given(payload)
@@ -407,13 +408,17 @@ async def _followup_failed(
 async def _followup(db: AsyncSession, conversation_id: UUID, part_of_day: str | None) -> None:
     actor = await get_or_create_agent_actor(db)
     conversation = await db.get(EmailConversation, conversation_id)
-    patient = await db.get(Patient, conversation.patient_id)
-    origin = await db.get(Email, conversation.origin_email_id)
+    patient = await db.get(Patient, conversation.patient_id) if conversation else None
+    origin = await db.get(Email, conversation.origin_email_id) if conversation else None
+    if conversation is None or patient is None or origin is None:
+        # Runs after the request that checked them; send_followup tells staff.
+        raise LookupError(f"registration follow-up rows missing for {conversation_id}")
     task = await task_for(db, conversation.case_id)
 
     days: list = []
     if conversation.preferred_day is not None:
         pool = await booking_service.doctor_pool(db, patient.id)
+        assert pool is not None  # None only when a doctor or specialisation was asked for
         days = await booking_service.offer_times(
             db, actor, pool, conversation.preferred_day, part_of_day=part_of_day
         )
