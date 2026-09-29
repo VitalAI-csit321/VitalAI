@@ -33,6 +33,19 @@ _NO_PERMISSION_GATE: frozenset[tuple[str, str]] = frozenset(
         ("POST", "/api/v1/auth/login"),
         ("GET", "/api/v1/auth/me"),
         ("POST", "/api/v1/auth/me/password"),
+        # Forgot password: the caller cannot log in, which is the point.
+        # Rate limited, and the request answers the same whether or not the
+        # account exists.
+        ("POST", "/api/v1/auth/password-reset/request"),
+        ("POST", "/api/v1/auth/password-reset/confirm"),
+        # Twilio's webhooks, mounted only with TWILIO_ENABLED. Twilio has no
+        # user to hold a permission; every request's signature is checked
+        # against twilio_webhook_base_url instead.
+        ("POST", "/api/v1/voice/incoming"),
+        ("POST", "/api/v1/voice/gather/{step}"),
+        ("POST", "/api/v1/voice/done"),
+        ("POST", "/api/v1/voice/recording"),
+        ("POST", "/api/v1/voice/status"),
     }
 )
 

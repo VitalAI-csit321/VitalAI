@@ -1,5 +1,6 @@
 from app.auth.permissions import MANAGE_APPOINTMENTS_ALL, MANAGE_CASES, MANAGE_OWN_CALENDAR
 from app.auth.rbac_registry import get_rbac_registry
+from app.config import settings
 from app.main import app
 from app.models.user import UserRole
 
@@ -82,4 +83,7 @@ def test_total_route_count():
     # routes without bumping this (96 real), +1 for POST /voicemails/simulate
     # (MANAGE_CASES).
     # 98: +1 for GET /calls/{call_id}/audio (PLAY_VOICEMAIL).
-    assert len({(e.method, e.path) for e in registry}) == 98
+    # The five Twilio webhooks under /voice are mounted only with
+    # TWILIO_ENABLED, so a dev .env that turns the line on adds them.
+    voice = 5 if settings.twilio_enabled else 0
+    assert len({(e.method, e.path) for e in registry}) == 98 + voice
