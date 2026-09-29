@@ -136,6 +136,21 @@ SETTINGS_REGISTRY: dict[str, SettingSpec] = {
         "Fixed by the search model.",
         editable=False,
     ),
+    "review_sla_hours_high": SettingSpec(
+        int,
+        "Approval tiers",
+        "Review SLA, high priority (hours)",
+        "A high-priority Review Queue item is over SLA after this long.",
+        minimum=1,
+        maximum=168,
+    ),
+    "review_sla_hours_default": SettingSpec(
+        int,
+        "Approval tiers",
+        "Review SLA, other items (hours)",
+        minimum=1,
+        maximum=168,
+    ),
     # Routing rules
     "task_routing_category_roles": SettingSpec(
         dict,

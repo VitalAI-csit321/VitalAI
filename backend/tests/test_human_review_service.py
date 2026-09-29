@@ -84,6 +84,31 @@ async def test_list_tasks_filters_by_status(
     assert items[0].status == TaskStatus.PENDING
 
 
+async def test_list_tasks_puts_open_items_first_in_sla_order(
+    db_session: AsyncSession, patient: Patient, front_desk_user: User
+):
+    # The page loads a fixed number of rows, so closed history must never push
+    # new open work off it: open oldest first, then closed newest first.
+    case = await _make_case(db_session, patient)
+    month_ago = datetime.now(UTC) - timedelta(days=30)
+    closed = []
+    for hours in range(3):
+        item = await _make_task(db_session, case, UserRole.FRONT_DESK, TaskStatus.COMPLETED)
+        item.created_at = month_ago + timedelta(hours=hours)
+        closed.append(item)
+    older_open = await _make_task(db_session, case, UserRole.FRONT_DESK)
+    older_open.created_at = month_ago - timedelta(days=1)
+    await db_session.commit()
+    new_open = await _make_task(db_session, case, UserRole.FRONT_DESK)
+
+    items, total = await human_review_service.list_tasks(db_session, front_desk_user, limit=2)
+    assert total == 5
+    assert [t.id for t in items] == [older_open.id, new_open.id]
+
+    items, _ = await human_review_service.list_tasks(db_session, front_desk_user, limit=3)
+    assert items[2].id == closed[2].id
+
+
 async def test_list_tasks_doctor_sees_only_assigned_patients(
     db_session: AsyncSession, patient: Patient, doctor_user: User
 ):
@@ -153,13 +178,22 @@ async def test_claim_task_success(
 
 
 async def test_claim_task_wrong_role_raises(
+    db_session: AsyncSession, patient: Patient, front_desk_user: User
+):
+    case = await _make_case(db_session, patient)
+    task = await _make_task(db_session, case, UserRole.OPERATOR)
+
+    with pytest.raises(HumanReviewTaskWrongRoleError):
+        await human_review_service.claim_task(db_session, task.id, front_desk_user)
+
+
+async def test_operator_may_claim_a_front_desk_item(
     db_session: AsyncSession, patient: Patient, operator_user: User
 ):
     case = await _make_case(db_session, patient)
     task = await _make_task(db_session, case, UserRole.FRONT_DESK)
-
-    with pytest.raises(HumanReviewTaskWrongRoleError):
-        await human_review_service.claim_task(db_session, task.id, operator_user)
+    claimed = await human_review_service.claim_task(db_session, task.id, operator_user)
+    assert claimed.status == TaskStatus.IN_PROGRESS
 
 
 async def test_claim_task_doctor_allowed_when_assigned(
@@ -313,7 +347,7 @@ async def test_escalate_task_sets_escalated_and_notes(
     )
 
     assert result.status == TaskStatus.ESCALATED
-    assert result.notes == "Needs senior review"
+    assert result.details["escalation"]["note"] == "Needs senior review"
 
 
 async def test_escalate_task_requires_in_progress(

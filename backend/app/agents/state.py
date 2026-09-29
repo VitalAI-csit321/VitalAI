@@ -46,6 +46,8 @@ class CaseState(TypedDict, total=False):
     # What the sender said about themselves (§8.3), for onboarding. JSON-safe:
     # dob as an ISO string.
     identity_fields: dict | None
+    # AMBIGUOUS only: the patients staff may choose between (patient ids).
+    identity_candidates: list[str]
 
     consent_status: str | None
 

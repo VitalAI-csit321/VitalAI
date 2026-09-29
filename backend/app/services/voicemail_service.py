@@ -194,6 +194,8 @@ async def ensure_task(db: AsyncSession, call: Call) -> Task:
     result = await db.execute(select(Task).where(Task.call_id == call.id))
     task = result.scalars().first()
     if task is None:
+        # Before the add: creating the intake actor commits, or rolls back on a race.
+        actor = await intake_actor(db) if call.urgent_pressed else None
         task = Task(
             case_id=call.case_id,
             call_id=call.id,
@@ -205,6 +207,13 @@ async def ensure_task(db: AsyncSession, call: Call) -> Task:
             handover_context=urgent_script(call, [PRESSED_NINE]) if call.urgent_pressed else None,
         )
         db.add(task)
+        if call.urgent_pressed:
+            # D9: escalated from the moment the caller pressed 9, so a hang-up
+            # or a failed transcription cannot leave it in "Submitted".
+            await db.flush()
+            await task_service.mark_escalated(
+                db, task, actor=actor, reason="auto: voicemail_urgent"
+            )
         await db.commit()
         await db.refresh(task)
     return task
@@ -279,6 +288,7 @@ async def _process(db: AsyncSession, call_id: UUID, actor: User) -> tuple[Task |
     task.priority = TaskPriority.URGENT if reasons else _priority_for_gate(gate)
     if reasons:
         task.handover_context = urgent_script(call, reasons)
+    await task_service.apply_gate(db, task, gate, actor=actor)
 
     await record_event(
         db,

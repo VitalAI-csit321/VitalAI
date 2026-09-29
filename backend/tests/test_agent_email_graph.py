@@ -9,7 +9,7 @@ the same input.
 import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
@@ -22,8 +22,9 @@ from app.config import settings
 from app.models.approval import ApprovalRequest, ApprovalStatus
 from app.models.audit import AuditEvent
 from app.models.email import Email
+from app.models.human_review import HumanReviewTask, TaskType
 from app.models.task import Task, TaskCategory, TaskItemStatus, TaskPriority
-from app.services import outlook_sync_service
+from app.services import email_service, outlook_sync_service
 from app.services.outlook_auth import OutlookAuthRequiredError
 from tests.agent_fakes import DRAFT, FakeLLM, graph_input, seed_email
 
@@ -165,6 +166,22 @@ async def test_guardrail_blocks_a_restricted_draft(detached_sessionmaker, db_ses
     assert update == {"dispatch_result": "blocked"}
 
 
+async def test_a_blocked_draft_opens_an_agent_failure_item(detached_sessionmaker, db_session):
+    email, task = await seed_email(db_session)
+    state = {**graph_input(email, task), "draft_text": "This is an emergency, go to hospital."}
+
+    await nodes.guardrail(state, await _runtime(detached_sessionmaker))
+
+    await db_session.refresh(task)
+    assert task.handover_context == email_service.BLOCKED_REASON
+    (item,) = (
+        await db_session.scalars(
+            select(HumanReviewTask).where(HumanReviewTask.inbox_task_id == task.id)
+        )
+    ).all()
+    assert (item.task_type, item.notes) == (TaskType.AGENT_FAILURE, email_service.BLOCKED_REASON)
+
+
 async def test_risk_tier_is_high_once_the_critic_corrected_the_draft():
     assert await nodes.risk({"revision_count": 0}) == {"risk_tier": "low"}
     assert await nodes.risk({"revision_count": 1}) == {"risk_tier": "high"}
@@ -196,6 +213,60 @@ async def test_auto_send_failure_returns_the_reason_and_leaves_task_unsent(
     assert "graph down" in update["delivery_error"]
     await db_session.refresh(task)
     assert task.draft_sent is False
+
+
+async def test_auto_send_after_a_manual_reply_is_not_a_send(
+    detached_sessionmaker, db_session, outlook, monkeypatch
+):
+    email, task = await seed_email(db_session, external_id="AAMk-node")
+    task.draft_sent, task.draft_text = True, "Answered by hand."
+    await db_session.commit()
+    record_sent = AsyncMock()
+    monkeypatch.setattr("app.services.email_conversation_service.record_sent", record_sent)
+    state = {
+        **graph_input(email, task),
+        "draft_text": DRAFT,
+        "conversation_id": str(uuid4()),
+        "branch": "verification",
+    }
+
+    update = await nodes.auto_send(state, await _runtime(detached_sessionmaker))
+
+    assert update == {"dispatch_result": "already_answered", "delivery_error": None}
+    outlook.assert_not_awaited()
+    record_sent.assert_not_awaited()  # the conversation does not advance
+    sent = await db_session.scalars(select(AuditEvent).where(AuditEvent.action == "email.sent"))
+    assert sent.all() == []
+
+
+async def test_approving_a_draft_for_an_answered_message_records_no_send(
+    client, front_desk_headers, admin_headers, db_session, agent_saver, llm, outlook, monkeypatch
+):
+    monkeypatch.setattr(settings, "agentic_pipeline_enabled", True)
+    task_id, email_id = await _ingest(
+        client, front_desk_headers, external_id="AAMk-late", external_source="outlook"
+    )
+    task = await db_session.get(Task, task_id)
+    (approval,) = await _approvals(db_session, task)
+    task.draft_sent = True  # answered by hand while the draft waited
+    await db_session.commit()
+
+    response = await client.post(
+        f"/api/v1/approvals/{approval.id}/approve", json={}, headers=admin_headers
+    )
+
+    assert response.status_code == 200, response.text
+    outlook.assert_not_awaited()
+    done = await _thread(agent_saver, email_id)
+    assert done["values"]["dispatch_result"] == "already_answered"
+    (recorded,) = (
+        await db_session.scalars(
+            select(AuditEvent).where(AuditEvent.action == "email.dispatch_recorded")
+        )
+    ).all()
+    assert recorded.details["sent"] is False
+    await db_session.refresh(task)
+    assert "not delivered" not in (task.handover_context or "")
 
 
 async def test_dispatch_reads_draft_sent_and_never_sends(

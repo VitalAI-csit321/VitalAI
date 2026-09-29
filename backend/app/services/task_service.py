@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -9,11 +10,15 @@ from app.auth.scoping import assigned_patient_ids_subquery
 from app.models.call import Call
 from app.models.case import IntakeCase
 from app.models.email import Email
+from app.models.human_review import TaskPriority as ReviewPriority
+from app.models.human_review import TaskType
 from app.models.task import Task, TaskCategory, TaskItemStatus, TaskPriority, TaskSource
 from app.models.task_comment import TaskComment
 from app.models.user import User, UserRole
 from app.schemas.task import TaskCommentCreate, TaskCreate, TaskOut, TaskUpdate
+from app.services import content_classifier, review_routing
 from app.services.audit_service import record_event
+from app.services.task_routing_gate import TaskRoutingGateResult, TaskRoutingOutcome
 from app.services.task_routing_rules import resolve_target_role
 
 
@@ -198,6 +203,28 @@ async def list_comments(db: AsyncSession, task_id: UUID) -> list[TaskComment]:
     return list(result.scalars().all())
 
 
+async def mark_escalated(
+    db: AsyncSession, task: Task, *, actor: User | None, reason: str | None
+) -> bool:
+    """ESCALATED + URGENT, audited, never committed. False (and no event) when
+    it already is. Shared by escalate_task and the ingest paths, which must not
+    commit mid-ingest or check the ingesting actor's queue (review queue spec D9).
+    """
+    if task.status == TaskItemStatus.ESCALATED:
+        return False
+    task.status = TaskItemStatus.ESCALATED
+    task.priority = TaskPriority.URGENT
+    await db.flush()
+    await record_event(
+        db,
+        case_id=task.case_id,
+        actor=actor,
+        action="task.escalated",
+        details={"task_id": str(task.id), "reason": reason},
+    )
+    return True
+
+
 async def escalate_task(db: AsyncSession, task_id: UUID, reason: str | None, actor: User) -> Task:
     """Mark a task ESCALATED and bump it to URGENT priority. Works for any
     task regardless of source; the same lifecycle action call_service's
@@ -208,23 +235,62 @@ async def escalate_task(db: AsyncSession, task_id: UUID, reason: str | None, act
     if task is None:
         raise TaskNotFoundError(f"Task {task_id} not found")
     await _check_task_access(db, task, actor)
-    if task.status == TaskItemStatus.ESCALATED:
+    if not await mark_escalated(db, task, actor=actor, reason=reason):
         raise TaskAlreadyEscalatedError(f"Task {task_id} is already escalated")
 
-    task.status = TaskItemStatus.ESCALATED
-    task.priority = TaskPriority.URGENT
-    await db.flush()
-
-    await record_event(
-        db,
-        case_id=task.case_id,
-        actor=actor,
-        action="task.escalated",
-        details={"task_id": str(task.id), "reason": reason},
-    )
     await db.commit()
     await db.refresh(task)
     return task
+
+
+URGENT_OVERRIDES = frozenset({"urgent_keyword", "urgent_category", "voicemail_urgent"})
+COMPLAINT_REASON = "Complaint needs a response."
+_LOW_CONFIDENCE = "The classifier was not confident: check the category and queue."
+
+
+async def apply_gate(
+    db: AsyncSession,
+    task: Task,
+    gate: TaskRoutingGateResult,
+    *,
+    actor: User | None,
+    reasons: Sequence[str] = (),
+    in_conversation: bool = False,
+) -> None:
+    """What a HUMAN_REVIEW routing outcome opens, the same for email, logged
+    calls and voicemail (review queue spec section 6). Flushes, never commits.
+
+    Urgent: escalated now, as operator work whatever the category (D9), no
+    review item. Complaint: an operator item (D10). Low confidence, or the
+    intent check disputing the model: an item to check the category, except
+    for a reply the open conversation handles (graph.route_intent lets those
+    through too).
+    """
+    if gate.outcome != TaskRoutingOutcome.HUMAN_REVIEW:
+        return
+    override = gate.override_reason
+    if override in URGENT_OVERRIDES:
+        task.target_role = UserRole.OPERATOR
+        await mark_escalated(db, task, actor=actor, reason=f"auto: {override}")
+    elif override == "complaint_category":
+        await review_routing.open_item(
+            db,
+            kind=TaskType.COMPLAINT_REVIEW,
+            inbox_task=task,
+            reason=COMPLAINT_REASON,
+            actor=actor,
+            priority=ReviewPriority.HIGH,
+        )
+    elif override is None and not in_conversation:
+        disputed = any(content_classifier.from_intent_check(r) for r in reasons)
+        await review_routing.open_item(
+            db,
+            kind=TaskType.INTENT_REVIEW if disputed else TaskType.ROUTING_REVIEW,
+            inbox_task=task,
+            reason=reasons[0] if reasons else _LOW_CONFIDENCE,
+            actor=actor,
+            details={"category": task.category.value if task.category else None},
+        )
 
 
 async def archive_task(db: AsyncSession, task_id: UUID, actor: User) -> Task:
@@ -323,11 +389,31 @@ async def override_task(
     return task
 
 
-async def hold_for_staff(db: AsyncSession, task_id: str | UUID, reason: str) -> None:
-    """No draft: the Task ingest_email created is the human-review item. Say why."""
+async def hold_for_staff(
+    db: AsyncSession,
+    task_id: str | UUID,
+    reason: str,
+    *,
+    review_kind: TaskType | None = TaskType.AGENT_HANDOVER,
+    details: dict | None = None,
+    owner: UserRole | None = None,
+) -> None:
+    """No draft: say why on the message, and put it in its owner's Review Queue
+    (review queue spec F1). review_kind None for an automatic message, which
+    only the inbox shows. One hold, one item: identity holds pass their own kind."""
     task = await db.get(Task, UUID(str(task_id)))
     if task is not None:
         task.handover_context = reason
+        if review_kind is not None:
+            await review_routing.open_item(
+                db,
+                kind=review_kind,
+                inbox_task=task,
+                reason=reason,
+                actor=None,
+                details=details,
+                owner=owner,
+            )
         await db.commit()
 
 
@@ -367,6 +453,14 @@ async def record_agent_failure(
     if task is not None:
         task.handover_context = reason
         case_id = case_id or task.case_id
+        await review_routing.open_item(
+            db,
+            kind=TaskType.AGENT_FAILURE,
+            inbox_task=task,
+            reason=reason,
+            actor=actor,
+            details={"stage": stage},
+        )
     await record_event(
         db,
         actor=actor,

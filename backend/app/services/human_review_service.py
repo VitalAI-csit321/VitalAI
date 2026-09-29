@@ -6,31 +6,64 @@ escalated tier's work queue. Distinct from ApprovalRequest
 not a claim/work queue; see
 docs/superpowers/specs/2026-07-24-fr-gov-01-approval-gate-design.md section 3.
 
-A DOCTOR-targeted task is only claimable by a doctor actually assigned to the
-task's case's patient (app/auth/scoping.py's assigned_patient_ids_subquery(),
-the same row-level scoping Phase 3 built for /patients, /consent, /rag/query),
-see docs/superpowers/specs/2026-07-25-governance-follow-ups-design.md section 1,
+A DOCTOR-targeted task is actionable by the doctor it is already assigned_to
+(e.g. one they previously claimed), or otherwise only by a doctor actually
+assigned to the task's case's patient (app/auth/scoping.py's
+assigned_patient_ids_subquery(), the same row-level scoping Phase 3 built for
+/patients, /consent, /rag/query), see
+docs/superpowers/specs/2026-07-25-governance-follow-ups-design.md section 1,
 or by the doctor who logged that case (_doctor_case_filter()).
 
-Visibility and action authority are otherwise scoped to `target_role ==
-actor.role` (own queue only), except for actors holding VIEW_ALL_QUEUES
-(app/auth/permissions.py), who see and can act on every role's queue -
-currently ADMIN only. See _check_target_role().
+Visibility and action authority are otherwise scoped by can_act(): own role
+only, except an operator also works the front desk's items (D6), a doctor
+only for items assigned to them or about their patients, and actors holding
+VIEW_ALL_QUEUES (app/auth/permissions.py) who see and can act on every role's
+queue - currently ADMIN only. See can_act().
 """
 
 from datetime import date, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.permissions import VIEW_ALL_QUEUES, effective_permissions
 from app.auth.scoping import assigned_patient_ids_subquery
+from app.config import settings
 from app.models.audit import AuditEvent
 from app.models.case import IntakeCase, IntakeStatus
 from app.models.human_review import HumanReviewTask, TaskPriority, TaskStatus, TaskType
+from app.models.patient import Patient
+from app.models.task import Task, TaskCategory
 from app.models.user import User, UserRole
+from app.services import email_service, review_routing, task_service
 from app.services.audit_service import record_event
+from app.services.task_routing_rules import resolve_target_role
+
+_ACTIONABLE = (TaskStatus.IN_PROGRESS, TaskStatus.ESCALATED)
+# D11: one level up. The admin is the top.
+_NEXT_LEVEL = {
+    UserRole.FRONT_DESK: UserRole.OPERATOR,
+    UserRole.DOCTOR: UserRole.OPERATOR,
+    UserRole.OPERATOR: UserRole.ADMIN,
+}
+# D7: what the queue shows when an item has no named owner yet.
+_QUEUE_LABEL: dict[UserRole | None, str] = {
+    UserRole.FRONT_DESK: "Front desk queue",
+    UserRole.OPERATOR: "Operator queue",
+    UserRole.ADMIN: "Admin queue",
+    UserRole.DOCTOR: "Doctor queue",
+}
+
+
+def due_at(item: HumanReviewTask) -> datetime:
+    """D7: over SLA past this. High priority gets the shorter, editable window."""
+    hours = (
+        settings.review_sla_hours_high
+        if item.priority == TaskPriority.HIGH
+        else settings.review_sla_hours_default
+    )
+    return item.created_at + timedelta(hours=hours)
 
 
 class HumanReviewTaskNotFoundError(Exception):
@@ -44,6 +77,10 @@ class HumanReviewTaskWrongStateError(Exception):
 class HumanReviewTaskWrongRoleError(Exception):
     """Raised when actor.role doesn't match the task's target_role, or (for a
     doctor) when actor isn't assigned to the task's case's patient."""
+
+
+class HumanReviewInvalidChoiceError(Exception):
+    """A choice the item did not offer (a patient, a doctor)."""
 
 
 def _doctor_case_filter(doctor_id: UUID):
@@ -69,16 +106,8 @@ async def list_tasks(
 ) -> tuple[list[HumanReviewTask], int]:
     query = select(HumanReviewTask)
     count_query = select(func.count()).select_from(HumanReviewTask)
-    if VIEW_ALL_QUEUES not in effective_permissions(actor):
-        query = query.where(HumanReviewTask.target_role == actor.role)
-        count_query = count_query.where(HumanReviewTask.target_role == actor.role)
-    if actor.role == UserRole.DOCTOR:
-        query = query.join(IntakeCase, HumanReviewTask.case_id == IntakeCase.id).where(
-            _doctor_case_filter(actor.id)
-        )
-        count_query = count_query.join(IntakeCase, HumanReviewTask.case_id == IntakeCase.id).where(
-            _doctor_case_filter(actor.id)
-        )
+    query = _scope(query, actor)
+    count_query = _scope(count_query, actor)
     if status is not None:
         query = query.where(HumanReviewTask.status == status)
         count_query = count_query.where(HumanReviewTask.status == status)
@@ -87,7 +116,17 @@ async def list_tasks(
         count_query = count_query.where(HumanReviewTask.task_type == task_type)
 
     total = (await db.execute(count_query)).scalar_one()
-    query = query.order_by(HumanReviewTask.created_at).limit(limit).offset(offset)
+    # Open items first, oldest first (SLA order), then closed ones newest
+    # first, so closed history never pushes new work off a limited page.
+    is_open = HumanReviewTask.status.in_(review_routing.OPEN_STATUSES)
+    query = (
+        query.order_by(
+            case((is_open, HumanReviewTask.created_at)).asc().nulls_last(),
+            HumanReviewTask.created_at.desc(),
+        )
+        .limit(limit)
+        .offset(offset)
+    )
     items = (await db.execute(query)).scalars().all()
     return list(items), total
 
@@ -120,6 +159,21 @@ async def describe_tasks(db: AsyncSession, tasks: list[HumanReviewTask]) -> dict
         .all()
     )
 
+    candidate_ids = {
+        UUID(c)
+        for t in tasks
+        if t.task_type == TaskType.IDENTITY_REVIEW
+        for c in (t.details or {}).get("candidates", [])
+    }
+    patients = {
+        str(p_id): {"id": str(p_id), "name": name, "dob": dob.isoformat() if dob else None}
+        for p_id, name, dob in (
+            await db.execute(
+                select(Patient.id, Patient.name, Patient.dob).where(Patient.id.in_(candidate_ids))
+            )
+        ).tuples()
+    }
+
     details = {}
     for t in tasks:
         case, event = cases.get(t.case_id), created.get(t.case_id)
@@ -128,6 +182,15 @@ async def describe_tasks(db: AsyncSession, tasks: list[HumanReviewTask]) -> dict
             "patient_name": case.patient_name if case else None,
             "created_by": (names.get(event.actor_id) or event.actor_label) if event else None,
             "assigned_to_name": names.get(t.assigned_to),
+            "owner_label": names.get(t.assigned_to)
+            or _QUEUE_LABEL.get(t.target_role, "Unassigned"),
+            "channel": case.contact_channel if case else None,
+            "due_at": due_at(t),
+            "candidates": [
+                patients[c] for c in (t.details or {}).get("candidates", []) if c in patients
+            ]
+            if t.task_type == TaskType.IDENTITY_REVIEW
+            else None,
         }
     return details
 
@@ -148,12 +211,7 @@ async def count_tasks_by_day(
         HumanReviewTask.created_at >= week_start,
         HumanReviewTask.created_at < week_end,
     )
-    if VIEW_ALL_QUEUES not in effective_permissions(actor):
-        query = query.where(HumanReviewTask.target_role == actor.role)
-    if actor.role == UserRole.DOCTOR:
-        query = query.join(IntakeCase, HumanReviewTask.case_id == IntakeCase.id).where(
-            _doctor_case_filter(actor.id)
-        )
+    query = _scope(query, actor)
 
     timestamps = (await db.execute(query)).scalars().all()
     counts: dict[date, int] = {}
@@ -214,32 +272,114 @@ async def create_task(
     return task
 
 
-async def _check_doctor_assigned(db: AsyncSession, task: HumanReviewTask, actor: User) -> None:
-    visible = await db.scalar(
-        select(IntakeCase.id).where(IntakeCase.id == task.case_id, _doctor_case_filter(actor.id))
-    )
-    if visible is None:
-        raise HumanReviewTaskWrongRoleError(f"Task {task.id} is not assigned to doctor {actor.id}")
+async def _doctor_sees_case(db: AsyncSession, case_id: UUID, doctor_id: UUID) -> bool:
+    return (
+        await db.scalar(
+            select(IntakeCase.id).where(IntakeCase.id == case_id, _doctor_case_filter(doctor_id))
+        )
+    ) is not None
 
 
-def _check_target_role(task: HumanReviewTask, actor: User) -> None:
-    """Gate claim/complete/reject/escalate by target_role, unless the actor
-    holds VIEW_ALL_QUEUES (admin oversight across every role's queue)."""
-    if task.target_role == actor.role or VIEW_ALL_QUEUES in effective_permissions(actor):
-        return
-    raise HumanReviewTaskWrongRoleError(
-        f"Task {task.id} is targeted at role '{task.target_role}', "
-        f"actor holds role '{actor.role.value}'"
+async def can_act(db: AsyncSession, actor: User, item: HumanReviewTask) -> bool:
+    """Spec section 7. Admin: everything. Own role: yes, and a doctor only for
+    items assigned to them or about their patients. The operator also works
+    the front desk's items (D6)."""
+    if VIEW_ALL_QUEUES in effective_permissions(actor):
+        return True
+    if item.target_role == actor.role:
+        if actor.role != UserRole.DOCTOR:
+            return True
+        return item.assigned_to == actor.id or await _doctor_sees_case(db, item.case_id, actor.id)
+    return actor.role == UserRole.OPERATOR and item.target_role == UserRole.FRONT_DESK
+
+
+async def is_clinical(db: AsyncSession, item: HumanReviewTask) -> bool:
+    """Clinical if either the category recorded at draft time (item.details,
+    set by approval_service.create_approval_request) or the inbox task's
+    current category is clinical. An operator can retarget a task's category
+    after the draft is drawn up (POST /tasks/{id}/override); the drafted
+    category still counts so that can't launder a clinical reply through a
+    relabel. No inbox task to check at all fails closed (clinical)."""
+    task = await db.get(Task, item.inbox_task_id) if item.inbox_task_id else None
+    if task is None:
+        return True
+    clinical = {c.value for c in email_service._clinical_categories()}
+    current = task.category.value if task.category else None
+    drafted = (item.details or {}).get("category")
+    return current in clinical or drafted in clinical
+
+
+async def can_approve(db: AsyncSession, actor: User, item: HumanReviewTask) -> bool:
+    """can_act, except that clinical text is approved only by a doctor or the admin."""
+    if not await can_act(db, actor, item):
+        return False
+    if actor.role == UserRole.DOCTOR or VIEW_ALL_QUEUES in effective_permissions(actor):
+        return True
+    return not await is_clinical(db, item)
+
+
+async def item_for_approval(db: AsyncSession, approval_id: UUID) -> HumanReviewTask | None:
+    return (
+        await db.execute(
+            select(HumanReviewTask)
+            .where(HumanReviewTask.approval_id == approval_id)
+            .order_by(HumanReviewTask.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+
+async def _require_can_act(db: AsyncSession, task: HumanReviewTask, actor: User) -> None:
+    if not await can_act(db, actor, task):
+        raise HumanReviewTaskWrongRoleError(f"Task {task.id} is not yours to act on")
+
+
+async def _audit(
+    db: AsyncSession, actor: User, task: HumanReviewTask, action: str, **extra
+) -> None:
+    await record_event(
+        db,
+        actor=actor,
+        case_id=task.case_id,
+        action=action,
+        details={"review_id": str(task.id), "kind": task.task_type.value, **extra},
     )
+
+
+async def _actionable(db: AsyncSession, task_id: UUID, actor: User) -> HumanReviewTask:
+    task = await db.get(HumanReviewTask, task_id)
+    if task is None:
+        raise HumanReviewTaskNotFoundError(f"No human review task with id {task_id}")
+    await _require_can_act(db, task, actor)
+    if task.status not in _ACTIONABLE:
+        raise HumanReviewTaskWrongStateError(f"Task {task_id} is '{task.status.value}', not open")
+    return task
+
+
+def _not_a_draft(task: HumanReviewTask) -> None:
+    # Only approve/reject resume the paused agent thread and settle the approval.
+    if task.task_type == TaskType.DRAFT_APPROVAL:
+        raise HumanReviewTaskWrongStateError("Approve or reject the draft instead")
+
+
+def _scope(query, actor: User):
+    """Same rules as can_act, as a query filter."""
+    if VIEW_ALL_QUEUES in effective_permissions(actor):
+        return query
+    roles = [actor.role, UserRole.FRONT_DESK] if actor.role == UserRole.OPERATOR else [actor.role]
+    query = query.where(HumanReviewTask.target_role.in_(roles))
+    if actor.role == UserRole.DOCTOR:
+        query = query.join(IntakeCase, HumanReviewTask.case_id == IntakeCase.id).where(
+            or_(HumanReviewTask.assigned_to == actor.id, _doctor_case_filter(actor.id))
+        )
+    return query
 
 
 async def claim_task(db: AsyncSession, task_id: UUID, actor: User) -> HumanReviewTask:
     task = await db.get(HumanReviewTask, task_id)
     if task is None:
         raise HumanReviewTaskNotFoundError(f"No human review task with id {task_id}")
-    _check_target_role(task, actor)
-    if actor.role == UserRole.DOCTOR:
-        await _check_doctor_assigned(db, task, actor)
+    await _require_can_act(db, task, actor)
     if task.status != TaskStatus.PENDING:
         raise HumanReviewTaskWrongStateError(
             f"Task {task_id} is '{task.status.value}', not pending"
@@ -247,6 +387,7 @@ async def claim_task(db: AsyncSession, task_id: UUID, actor: User) -> HumanRevie
 
     task.status = TaskStatus.IN_PROGRESS
     task.assigned_to = actor.id
+    await _audit(db, actor, task, "review.claimed")
     await db.commit()
     await db.refresh(task)
     return task
@@ -255,19 +396,12 @@ async def claim_task(db: AsyncSession, task_id: UUID, actor: User) -> HumanRevie
 async def complete_task(
     db: AsyncSession, task_id: UUID, actor: User, notes: str | None = None
 ) -> HumanReviewTask:
-    task = await db.get(HumanReviewTask, task_id)
-    if task is None:
-        raise HumanReviewTaskNotFoundError(f"No human review task with id {task_id}")
-    _check_target_role(task, actor)
-    if actor.role == UserRole.DOCTOR:
-        await _check_doctor_assigned(db, task, actor)
-    if task.status != TaskStatus.IN_PROGRESS:
-        raise HumanReviewTaskWrongStateError(
-            f"Task {task_id} is '{task.status.value}', not in progress"
-        )
+    task = await _actionable(db, task_id, actor)
+    _not_a_draft(task)
 
     task.status = TaskStatus.COMPLETED
     task.notes = notes
+    await _audit(db, actor, task, "review.completed", note=notes)
     await db.commit()
     await db.refresh(task)
     return task
@@ -276,19 +410,12 @@ async def complete_task(
 async def reject_task(
     db: AsyncSession, task_id: UUID, actor: User, notes: str | None = None
 ) -> HumanReviewTask:
-    task = await db.get(HumanReviewTask, task_id)
-    if task is None:
-        raise HumanReviewTaskNotFoundError(f"No human review task with id {task_id}")
-    _check_target_role(task, actor)
-    if actor.role == UserRole.DOCTOR:
-        await _check_doctor_assigned(db, task, actor)
-    if task.status != TaskStatus.IN_PROGRESS:
-        raise HumanReviewTaskWrongStateError(
-            f"Task {task_id} is '{task.status.value}', not in progress"
-        )
+    task = await _actionable(db, task_id, actor)
+    _not_a_draft(task)
 
     task.status = TaskStatus.CANCELLED
     task.notes = notes
+    await _audit(db, actor, task, "review.dismissed", note=notes)
     await db.commit()
     await db.refresh(task)
     return task
@@ -297,19 +424,128 @@ async def reject_task(
 async def escalate_task(
     db: AsyncSession, task_id: UUID, actor: User, notes: str | None = None
 ) -> HumanReviewTask:
+    task = await _actionable(db, task_id, actor)
+    to_role = _NEXT_LEVEL.get(actor.role)
+    if to_role is None:
+        raise HumanReviewTaskWrongRoleError("The admin is the top level: nothing to escalate to")
+
+    from_role = task.target_role
+    task.status = TaskStatus.ESCALATED
+    task.priority = TaskPriority.HIGH
+    task.target_role = to_role
+    task.assigned_to = None  # it leaves the previous owner's queue
+    task.details = {
+        **(task.details or {}),
+        "escalation": {"by": actor.full_name, "by_role": actor.role.value, "note": notes},
+    }
+
+    inbox = await db.get(Task, task.inbox_task_id) if task.inbox_task_id else None
+    if inbox is not None:
+        await task_service.mark_escalated(db, inbox, actor=actor, reason=notes)
+
+    await _audit(
+        db,
+        actor,
+        task,
+        "review.escalated",
+        note=notes,
+        from_role=from_role.value if from_role else None,
+        to_role=to_role.value,
+    )
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+
+async def _open_item(
+    db: AsyncSession, task_id: UUID, actor: User, kinds: set[TaskType]
+) -> HumanReviewTask:
     task = await db.get(HumanReviewTask, task_id)
     if task is None:
         raise HumanReviewTaskNotFoundError(f"No human review task with id {task_id}")
-    _check_target_role(task, actor)
-    if actor.role == UserRole.DOCTOR:
-        await _check_doctor_assigned(db, task, actor)
-    if task.status != TaskStatus.IN_PROGRESS:
-        raise HumanReviewTaskWrongStateError(
-            f"Task {task_id} is '{task.status.value}', not in progress"
-        )
+    await _require_can_act(db, task, actor)
+    if task.status not in review_routing.OPEN_STATUSES:
+        raise HumanReviewTaskWrongStateError(f"Task {task_id} is '{task.status.value}', not open")
+    if task.task_type not in kinds:
+        raise HumanReviewTaskWrongStateError(f"Not offered on a {task.task_type.value} item")
+    return task
 
-    task.status = TaskStatus.ESCALATED
-    task.notes = notes
+
+async def reroute(
+    db: AsyncSession, task_id: UUID, actor: User, category: TaskCategory
+) -> HumanReviewTask:
+    task = await _open_item(db, task_id, actor, {TaskType.ROUTING_REVIEW, TaskType.INTENT_REVIEW})
+    inbox = await db.get(Task, task.inbox_task_id) if task.inbox_task_id else None
+    if inbox is None:
+        raise HumanReviewTaskWrongStateError("The message is gone")
+    previous = inbox.category.value if inbox.category else None
+    inbox.category = category
+    inbox.target_role = resolve_target_role(category)
+    # What intake does for these categories (D9, D10).
+    if category == TaskCategory.URGENT_EMERGENCY:
+        await task_service.mark_escalated(
+            db, inbox, actor=actor, reason="rerouted: urgent_category"
+        )
+    elif category == TaskCategory.COMPLAINT_ESCALATION:
+        await review_routing.open_item(
+            db,
+            kind=TaskType.COMPLAINT_REVIEW,
+            inbox_task=inbox,
+            reason=task_service.COMPLAINT_REASON,
+            actor=actor,
+            priority=TaskPriority.HIGH,
+        )
+    task.status = TaskStatus.COMPLETED
+    await _audit(
+        db,
+        actor,
+        task,
+        "review.rerouted",
+        previous_category=previous,
+        new_category=category.value,
+        new_target_role=inbox.target_role.value,
+    )
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+
+async def link_patient(
+    db: AsyncSession, task_id: UUID, actor: User, patient_id: UUID | None
+) -> HumanReviewTask:
+    """F2: links the case and closes the item. The agent is not re-run."""
+    task = await _open_item(db, task_id, actor, {TaskType.IDENTITY_REVIEW})
+    if patient_id is None:
+        await _audit(db, actor, task, "review.completed", note="None of these")
+    else:
+        if str(patient_id) not in (task.details or {}).get("candidates", []):
+            raise HumanReviewInvalidChoiceError("Choose one of the offered patients")
+        patient = await db.get(Patient, patient_id)
+        intake = await db.get(IntakeCase, task.case_id)
+        if patient is None or intake is None:
+            raise HumanReviewInvalidChoiceError("That patient no longer exists")
+        if intake.patient_id not in (None, patient.id):
+            raise HumanReviewTaskWrongStateError("The case is already linked to another patient")
+        intake.patient_id, intake.patient_name = patient.id, patient.name
+        await _audit(db, actor, task, "review.patient_linked", patient_id=str(patient.id))
+    task.status = TaskStatus.COMPLETED
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+
+async def reassign(
+    db: AsyncSession, task_id: UUID, actor: User, doctor_id: UUID
+) -> HumanReviewTask:
+    """A held draft to a doctor: how the operator moves clinical text it may not approve."""
+    if actor.role not in (UserRole.OPERATOR, UserRole.ADMIN):
+        raise HumanReviewTaskWrongRoleError("Only the operator or the admin reassigns")
+    task = await _open_item(db, task_id, actor, {TaskType.DRAFT_APPROVAL})
+    doctor = await db.get(User, doctor_id)
+    if doctor is None or doctor.role != UserRole.DOCTOR or not doctor.is_active:
+        raise HumanReviewInvalidChoiceError("Choose an active doctor")
+    task.target_role, task.assigned_to, task.status = UserRole.DOCTOR, doctor.id, TaskStatus.PENDING
+    await _audit(db, actor, task, "review.reassigned", doctor_id=str(doctor.id))
     await db.commit()
     await db.refresh(task)
     return task

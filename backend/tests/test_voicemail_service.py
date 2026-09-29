@@ -6,7 +6,8 @@ from sqlalchemy import select
 from app.config import settings
 from app.models.audit import AuditEvent
 from app.models.call import Call, CallKind, CallStatus
-from app.models.task import Task, TaskCategory, TaskPriority, TaskSource
+from app.models.human_review import HumanReviewTask, TaskType
+from app.models.task import Task, TaskCategory, TaskItemStatus, TaskPriority, TaskSource
 from app.services import voicemail_service
 from app.services.voicemail_service import (
     create_voicemail,
@@ -15,6 +16,7 @@ from app.services.voicemail_service import (
     process,
     store_audio,
 )
+from tests.review_helpers import events
 from tests.voicemail_fakes import FakeClassifier, FakeStorage, fake_transcript
 
 
@@ -284,3 +286,87 @@ async def test_a_second_run_during_processing_does_not_process_again(
     monkeypatch.setattr(voicemail_service, "get_llm", lambda: ReentrantClassifier())
     await process(call.id)
     assert len(calls) == 1
+
+
+async def test_pressed_nine_voicemail_is_escalated_on_arrival(
+    db_session, storage, classifier, monkeypatch
+):
+    fake_transcript(monkeypatch, "Please call me back.")
+    call = await _received(db_session, urgent_pressed=True)
+    await process(call.id)
+    task = await _task(db_session, call)
+    assert task.status == TaskItemStatus.ESCALATED
+    escalations = (
+        (await db_session.execute(select(AuditEvent).where(AuditEvent.action == "task.escalated")))
+        .scalars()
+        .all()
+    )
+    assert len(escalations) == 1  # once, at arrival; processing does not repeat it
+
+
+async def test_red_flag_voicemail_is_escalated_with_no_review_item(
+    db_session, storage, classifier, monkeypatch
+):
+    fake_transcript(monkeypatch, "I have crushing chest pain.")
+    call = await _received(db_session)
+    await process(call.id)
+    task = await _task(db_session, call)
+    assert task.status == TaskItemStatus.ESCALATED
+    items = (
+        (
+            await db_session.execute(
+                select(HumanReviewTask).where(HumanReviewTask.inbox_task_id == task.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert items == []
+
+
+async def test_low_confidence_voicemail_opens_a_routing_item(db_session, storage, monkeypatch):
+    monkeypatch.setattr(
+        voicemail_service, "get_llm", lambda: FakeClassifier("billing_insurance_enquiry", 0.3)
+    )
+    fake_transcript(monkeypatch, "Something about my account maybe.")
+    call = await _received(db_session)
+    await process(call.id)
+    task = await _task(db_session, call)
+    (item,) = (
+        (
+            await db_session.execute(
+                select(HumanReviewTask).where(HumanReviewTask.inbox_task_id == task.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert item.task_type == TaskType.ROUTING_REVIEW
+
+
+async def test_pressed_nine_hang_up_is_escalated_at_task_creation(db_session):
+    """No recording ever comes, so process() never runs: only ensure_task can
+    put this in the Escalated column (D9)."""
+    actor = await voicemail_service.intake_actor(db_session)
+    call = await create_voicemail(
+        db_session, from_number="+61412345678", actor=actor, urgent_pressed=True
+    )
+    task = await voicemail_service.handle_call_ended(db_session, call, actor)
+    assert task is not None
+    assert (task.status, task.priority) == (TaskItemStatus.ESCALATED, TaskPriority.URGENT)
+    (event,) = await events(db_session, "task.escalated")
+    assert event.details["reason"] == "auto: voicemail_urgent"
+
+
+async def test_pressed_nine_stays_escalated_when_processing_fails(
+    db_session, storage, classifier, monkeypatch
+):
+    def boom(data):
+        raise RuntimeError("whisper crashed")
+
+    monkeypatch.setattr(voicemail_service, "transcribe_audio_with_quality", boom)
+    call = await _received(db_session, urgent_pressed=True)
+    await process(call.id)
+    task = await _task(db_session, call)
+    assert task.status == TaskItemStatus.ESCALATED
+    assert len(await events(db_session, "task.escalated")) == 1

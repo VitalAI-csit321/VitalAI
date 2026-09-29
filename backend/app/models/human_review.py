@@ -1,7 +1,8 @@
 import enum
 from uuid import UUID
 
-from sqlalchemy import Enum, ForeignKey, Text
+from sqlalchemy import JSON, Enum, ForeignKey, Index, Text, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -13,6 +14,13 @@ class TaskType(enum.StrEnum):
     CONSENT_REVIEW = "consent_review"
     ESCALATION_REVIEW = "escalation_review"
     ROUTING_REVIEW = "routing_review"
+    # Opened by the system (app/services/review_routing.py), one per message and kind.
+    DRAFT_APPROVAL = "draft_approval"
+    INTENT_REVIEW = "intent_review"
+    IDENTITY_REVIEW = "identity_review"
+    AGENT_FAILURE = "agent_failure"
+    AGENT_HANDOVER = "agent_handover"
+    COMPLAINT_REVIEW = "complaint_review"
 
 
 class TaskStatus(enum.StrEnum):
@@ -29,8 +37,28 @@ class TaskPriority(enum.StrEnum):
     HIGH = "high"
 
 
+_jsonb = JSONB().with_variant(JSON(), "sqlite")
+# One open item per message and kind. review_routing.open_item checks first;
+# this is the backstop for a LangGraph node re-run on resume. Consent and
+# manual items have no message and are not limited.
+_OPEN_PER_MESSAGE = (
+    "inbox_task_id IS NOT NULL AND status IN ('pending', 'in_progress', 'escalated')"
+)
+
+
 class HumanReviewTask(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "human_review_tasks"
+
+    __table_args__ = (
+        Index(
+            "uq_human_review_open_per_message",
+            "inbox_task_id",
+            "task_type",
+            unique=True,
+            postgresql_where=text(_OPEN_PER_MESSAGE),
+            sqlite_where=text(_OPEN_PER_MESSAGE),
+        ),
+    )
 
     case_id: Mapped[UUID] = mapped_column(
         ForeignKey("intake_cases.id", ondelete="CASCADE"), nullable=False
@@ -81,3 +109,15 @@ class HumanReviewTask(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         nullable=False,
         default=TaskPriority.MEDIUM,
     )
+    # The held draft's approval (DRAFT_APPROVAL only): approving or rejecting
+    # it, from either screen, closes this item (approval_service).
+    approval_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("approval_requests.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    # The inbox message the item is about, so the two screens find each other.
+    inbox_task_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True
+    )
+    # Kind-specific: identity candidates, the classifier's category, the failed
+    # stage, who escalated it and why.
+    details: Mapped[dict | None] = mapped_column(_jsonb, nullable=True)
