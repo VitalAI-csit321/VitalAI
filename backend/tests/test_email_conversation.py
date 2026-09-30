@@ -80,7 +80,7 @@ def sends(monkeypatch):
 
 def _weekday_ahead(days: int = 3) -> date:
     day = datetime.now(SYDNEY).date() + timedelta(days=days)
-    while day.weekday() >= 5:
+    while not appointment_service.is_clinic_day(day):
         day += timedelta(days=1)
     return day
 
