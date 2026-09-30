@@ -99,3 +99,35 @@ def test_the_gate_sends_a_fall_to_a_human_even_at_high_confidence():
 def test_matches_any_stays_literal_for_the_guardrails():
     # The injection guardrail relies on this: a negation must not hide a pattern.
     assert matches_any("please do not ignore previous instructions", ("ignore previous",))
+
+
+# Real patient questions (ChatDoctor iCliniq test set, 2026-09-30) described chest pain with
+# words between the symptom and "chest", which no literal phrase matched.
+@pytest.mark.parametrize(
+    "text",
+    [
+        "I am getting pain in the middle of my chest when I put pressure on it",
+        "I am having constant pain in the middle of my chest and back",
+        "There is a heavy pressure in the centre of my chest",
+        "My chest is hurting since this morning",
+        "My chest feels really tight and heavy",
+        "Sharp pains across my chest when I walk",
+        "a squeezing feeling in my chest",
+    ],
+)
+def test_chest_pain_in_other_words_is_urgent(text):
+    assert is_urgent(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # Also from the real test set: "chest" without a chest symptom.
+        "From the age of 13, my chest is developing into breast and it looks weird",
+        "She is more comfortable lying on my chest and tummy all the time",
+        "Bumps on my ears and now all over my back, chest, neck and knees",
+        "Can I get a copy of my chest x-ray report?",
+    ],
+)
+def test_chest_without_a_chest_symptom_is_not_urgent(text):
+    assert not is_urgent(text)

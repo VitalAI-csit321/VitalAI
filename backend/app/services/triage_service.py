@@ -157,6 +157,18 @@ RED_FLAG_PHRASES: tuple[str, ...] = (
     "bulging fontanelle",
 )
 
+# Chest symptoms written with words in between, which no literal phrase above matches:
+# "pain in the middle of my chest", "my chest is hurting", "pressure in my chest".
+# Symptom up to six words before "chest", or up to three words after it.
+_CHEST_SYMPTOM = (
+    r"(?:pains?|painful|hurts?|hurting|ache|aching|pressure|tight|tightness|heavy|heaviness"
+    r"|squeez\w*|crushing|discomfort)"
+)
+_CHEST_RED_FLAG = re.compile(
+    rf"\b{_CHEST_SYMPTOM}\b(?:\W+\w+){{0,6}}?\W+chest\b"
+    rf"|\bchest\b(?:\W+\w+){{0,3}}?\W+{_CHEST_SYMPTOM}\b"
+)
+
 # A negation up to two words before a generic urgency word: "not urgent",
 # "not an emergency", "nothing really urgent", "non-urgent".
 _NEGATED = re.compile(
@@ -195,7 +207,7 @@ def is_urgent(text: str) -> bool:
     not negated. Red flags are never negated away: missing an emergency costs far
     more than a human reading one routine email."""
     text = text.lower().replace("’", "'")
-    if matches_any(text, RED_FLAG_PHRASES):
+    if matches_any(text, RED_FLAG_PHRASES) or _CHEST_RED_FLAG.search(text):
         return True
     for kw in URGENT_KEYWORDS:
         start = text.find(kw)

@@ -65,3 +65,6 @@ htmlcov/
 
 # Local database dumps (regenerate with pg_dump, too large for git)
 backend/vitalai_snapshot.sql
+
+# Real iCliniq questions (M7 test set): source text is unlicensed, never commit it
+backend/scripts/intent_classifier/icliniq_testset.jsonl
