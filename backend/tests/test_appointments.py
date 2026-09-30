@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.security import create_access_token, hash_password
 from app.models import Patient, User
 from app.models.user import UserRole
+from app.services import appointment_service
 
 
 async def _create_case(client: AsyncClient, headers: dict, patient: Patient) -> str:
@@ -23,9 +24,15 @@ async def _create_case(client: AsyncClient, headers: dict, patient: Patient) -> 
 
 
 def _slot(offset_days: int = 1) -> str:
-    # 01:00 UTC is 11am or noon in Sydney: inside clinic hours, which the
-    # routes now enforce, whatever time of day the suite runs.
-    day = (datetime.now(UTC) + timedelta(days=offset_days)).date()
+    # The offset_days-th clinic day from today: weekends and NSW public
+    # holidays are skipped, as the routes refuse them (a plain "+3 days" was
+    # a Saturday on a Wednesday run). 01:00 UTC is 11am or noon in Sydney,
+    # inside clinic hours whatever time of day the suite runs.
+    day = datetime.now(UTC).date()
+    for _ in range(offset_days):
+        day += timedelta(days=1)
+        while not appointment_service.is_clinic_day(day):
+            day += timedelta(days=1)
     return datetime(day.year, day.month, day.day, 1, 0, tzinfo=UTC).isoformat()
 
 
