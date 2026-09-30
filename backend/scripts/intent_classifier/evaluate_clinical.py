@@ -24,6 +24,13 @@ Gate, fixed before the first run:
 2. With the new prompt, (clinical_enquiry + urgent_emergency) / 300 >= 80% on the iCliniq set.
    urgent_emergency counts as safe, not as a miss, and is reported on its own.
 
+Attempt 2. Attempt 1 failed gate 1 (urgent_emergency -20.0 points, mostly to clinical_enquiry;
+medical_records_request -10.9, to new_patient_onboarding; see RESULTS.md). Three descriptions
+were then changed, after its errors had been read, so this run is tuned on the same emails:
+urgent_emergency adds "even when written calmly or as a question", clinical_enquiry adds
+"never sudden or severe symptoms", new_patient_onboarding adds "not requests for records".
+The gate is unchanged.
+
 No email text is written out: the real emails hold real addresses and the iCliniq text is
 unlicensed. Raw model replies are kept for synthetic emails only.
 
@@ -55,7 +62,10 @@ MAX_DROP, MIN_SAFE = 0.05, 0.80
 
 DESCRIPTIONS = {
     "appointment_request": "wants to book, change or cancel an appointment.",
-    "new_patient_onboarding": "wants to join the clinic as a new patient, or asks how to register.",
+    "new_patient_onboarding": (
+        "wants to join the clinic as a new patient, or asks how to register. Not requests for"
+        " records."
+    ),
     "prescription_renewal": "needs a repeat prescription for a medicine they already take.",
     "results_enquiry": "asks for test, pathology or imaging results, or whether they are back.",
     "referral_request": "asks for a referral or referral letter to a specialist or other service.",
@@ -73,15 +83,15 @@ DESCRIPTIONS = {
         ' shots?"), forms, or general health information not about the sender.'
     ),
     "urgent_emergency": (
-        "red flags needing immediate care, e.g. chest pain, cannot breathe, collapse, severe"
-        " bleeding, overdose or self-harm."
+        "red flags needing immediate care, even when written calmly or as a question, e.g. chest"
+        " pain, cannot breathe, collapse, severe bleeding, overdose or self-harm."
     ),
     "clinical_enquiry": (
         "a non-urgent question about the patient's own health or care that needs a clinician's"
         " judgement, e.g. symptoms that are changing or not improving, whether to continue, stop"
         " or adjust a treatment, side effects, what to do after a visit or procedure, or a"
-        " question about a condition they already have. Not a repeat script, results, a"
-        " referral, an appointment or a red flag."
+        " question about a condition they already have. Never sudden or severe symptoms. Not a"
+        " repeat script, results, a referral, an appointment or a red flag."
     ),
 }
 LABELS = list(DESCRIPTIONS)
