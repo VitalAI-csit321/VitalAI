@@ -1,0 +1,810 @@
+{
+  "run_id": "2115f944123a",
+  "model": {
+    "provider": "ollama",
+    "llm_model": "gemma2:2b",
+    "bedrock_model_id": "anthropic.claude-3-haiku-20240307-v1:0",
+    "temperature": 0.3
+  },
+  "prompt_categories": {
+    "old": "appointment_request, new_patient_onboarding, prescription_renewal, results_enquiry, referral_request, medical_records_request, billing_insurance_enquiry, complaint_escalation, general_administrative, urgent_emergency",
+    "new": "appointment_request: wants to book, change or cancel an appointment.\nnew_patient_onboarding: wants to join the clinic as a new patient, or asks how to register.\nprescription_renewal: needs a repeat prescription for a medicine they already take.\nresults_enquiry: asks for test, pathology or imaging results, or whether they are back.\nreferral_request: asks for a referral or referral letter to a specialist or other service.\nmedical_records_request: asks for a copy of their medical records, or for them to be transferred or corrected.\nbilling_insurance_enquiry: a question about fees, a bill, a payment, Medicare, bulk billing or insurance.\ncomplaint_escalation: a complaint about the clinic, its staff or the care received, or a demand to escalate.\ngeneral_administrative: any other administrative matter, e.g. opening hours, services offered (\"do you do flu shots?\"), forms, or general health information not about the sender.\nurgent_emergency: red flags needing immediate care, e.g. chest pain, cannot breathe, collapse, severe bleeding, overdose or self-harm.\nclinical_enquiry: a non-urgent question about the patient's own health or care that needs a clinician's judgement, e.g. symptoms that are changing or not improving, whether to continue, stop or adjust a treatment, side effects, what to do after a visit or procedure, or a question about a condition they already have. Not a repeat script, results, a referral, an appointment or a red flag."
+  },
+  "counts": {
+    "synthetic": 630,
+    "real": 58,
+    "icliniq": 300
+  },
+  "scored_existing_categories": 683,
+  "parse_failures": {
+    "old": {},
+    "new": {}
+  },
+  "pooled": {
+    "old": {
+      "accuracy": 0.787701317715959,
+      "per_category": {
+        "appointment_request": {
+          "n": 82,
+          "accuracy": 0.9390243902439024
+        },
+        "new_patient_onboarding": {
+          "n": 64,
+          "accuracy": 0.703125
+        },
+        "prescription_renewal": {
+          "n": 74,
+          "accuracy": 0.9459459459459459
+        },
+        "results_enquiry": {
+          "n": 63,
+          "accuracy": 0.873015873015873
+        },
+        "referral_request": {
+          "n": 63,
+          "accuracy": 0.746031746031746
+        },
+        "medical_records_request": {
+          "n": 64,
+          "accuracy": 0.8125
+        },
+        "billing_insurance_enquiry": {
+          "n": 64,
+          "accuracy": 0.78125
+        },
+        "complaint_escalation": {
+          "n": 64,
+          "accuracy": 0.640625
+        },
+        "general_administrative": {
+          "n": 80,
+          "accuracy": 0.7
+        },
+        "urgent_emergency": {
+          "n": 65,
+          "accuracy": 0.6923076923076923
+        }
+      },
+      "confusion": {
+        "appointment_request": {
+          "complaint_escalation": 2,
+          "general_administrative": 3,
+          "appointment_request": 77
+        },
+        "new_patient_onboarding": {
+          "complaint_escalation": 2,
+          "new_patient_onboarding": 45,
+          "referral_request": 2,
+          "general_administrative": 6,
+          "appointment_request": 8,
+          "urgent_emergency": 1
+        },
+        "prescription_renewal": {
+          "prescription_renewal": 70,
+          "appointment_request": 2,
+          "complaint_escalation": 2
+        },
+        "results_enquiry": {
+          "complaint_escalation": 4,
+          "results_enquiry": 55,
+          "appointment_request": 2,
+          "prescription_renewal": 1,
+          "new_patient_onboarding": 1
+        },
+        "referral_request": {
+          "referral_request": 47,
+          "complaint_escalation": 3,
+          "urgent_emergency": 1,
+          "appointment_request": 7,
+          "new_patient_onboarding": 1,
+          "results_enquiry": 1,
+          "general_administrative": 2,
+          "medical_records_request": 1
+        },
+        "medical_records_request": {
+          "new_patient_onboarding": 3,
+          "medical_records_request": 52,
+          "complaint_escalation": 6,
+          "general_administrative": 2,
+          "prescription_renewal": 1
+        },
+        "billing_insurance_enquiry": {
+          "billing_insurance_enquiry": 50,
+          "general_administrative": 7,
+          "complaint_escalation": 4,
+          "medical_records_request": 2,
+          "prescription_renewal": 1
+        },
+        "complaint_escalation": {
+          "appointment_request": 4,
+          "complaint_escalation": 41,
+          "general_administrative": 11,
+          "prescription_renewal": 3,
+          "billing_insurance_enquiry": 2,
+          "results_enquiry": 3
+        },
+        "general_administrative": {
+          "appointment_request": 14,
+          "general_administrative": 56,
+          "new_patient_onboarding": 6,
+          "complaint_escalation": 1,
+          "referral_request": 1,
+          "billing_insurance_enquiry": 1,
+          "prescription_renewal": 1
+        },
+        "urgent_emergency": {
+          "urgent_emergency": 45,
+          "complaint_escalation": 8,
+          "results_enquiry": 1,
+          "appointment_request": 8,
+          "new_patient_onboarding": 1,
+          "prescription_renewal": 1,
+          "medical_records_request": 1
+        }
+      },
+      "labelled_clinical_enquiry": 0
+    },
+    "new": {
+      "accuracy": 0.8023426061493412,
+      "per_category": {
+        "appointment_request": {
+          "n": 82,
+          "accuracy": 0.9024390243902439
+        },
+        "new_patient_onboarding": {
+          "n": 64,
+          "accuracy": 0.890625
+        },
+        "prescription_renewal": {
+          "n": 74,
+          "accuracy": 0.9324324324324325
+        },
+        "results_enquiry": {
+          "n": 63,
+          "accuracy": 0.9206349206349206
+        },
+        "referral_request": {
+          "n": 63,
+          "accuracy": 0.746031746031746
+        },
+        "medical_records_request": {
+          "n": 64,
+          "accuracy": 0.703125
+        },
+        "billing_insurance_enquiry": {
+          "n": 64,
+          "accuracy": 0.984375
+        },
+        "complaint_escalation": {
+          "n": 64,
+          "accuracy": 0.59375
+        },
+        "general_administrative": {
+          "n": 80,
+          "accuracy": 0.8125
+        },
+        "urgent_emergency": {
+          "n": 65,
+          "accuracy": 0.49230769230769234
+        }
+      },
+      "confusion": {
+        "appointment_request": {
+          "complaint_escalation": 3,
+          "general_administrative": 2,
+          "appointment_request": 74,
+          "new_patient_onboarding": 1,
+          "clinical_enquiry": 2
+        },
+        "new_patient_onboarding": {
+          "new_patient_onboarding": 57,
+          "appointment_request": 6,
+          "urgent_emergency": 1
+        },
+        "prescription_renewal": {
+          "prescription_renewal": 69,
+          "appointment_request": 2,
+          "billing_insurance_enquiry": 1,
+          "complaint_escalation": 1,
+          "clinical_enquiry": 1
+        },
+        "results_enquiry": {
+          "results_enquiry": 58,
+          "complaint_escalation": 2,
+          "prescription_renewal": 1,
+          "appointment_request": 1,
+          "general_administrative": 1
+        },
+        "referral_request": {
+          "referral_request": 47,
+          "complaint_escalation": 2,
+          "clinical_enquiry": 7,
+          "new_patient_onboarding": 2,
+          "results_enquiry": 2,
+          "general_administrative": 2,
+          "appointment_request": 1
+        },
+        "medical_records_request": {
+          "new_patient_onboarding": 10,
+          "medical_records_request": 45,
+          "complaint_escalation": 5,
+          "general_administrative": 4
+        },
+        "billing_insurance_enquiry": {
+          "billing_insurance_enquiry": 63,
+          "general_administrative": 1
+        },
+        "complaint_escalation": {
+          "appointment_request": 5,
+          "complaint_escalation": 38,
+          "general_administrative": 7,
+          "prescription_renewal": 3,
+          "new_patient_onboarding": 1,
+          "billing_insurance_enquiry": 6,
+          "results_enquiry": 3,
+          "clinical_enquiry": 1
+        },
+        "general_administrative": {
+          "general_administrative": 65,
+          "new_patient_onboarding": 9,
+          "appointment_request": 4,
+          "billing_insurance_enquiry": 1,
+          "prescription_renewal": 1
+        },
+        "urgent_emergency": {
+          "general_administrative": 1,
+          "urgent_emergency": 32,
+          "clinical_enquiry": 23,
+          "results_enquiry": 1,
+          "complaint_escalation": 2,
+          "new_patient_onboarding": 1,
+          "prescription_renewal": 2,
+          "appointment_request": 3
+        }
+      },
+      "labelled_clinical_enquiry": 34
+    },
+    "flips": {
+      "old_right_new_wrong": 37,
+      "old_wrong_new_right": 47,
+      "mcnemar_exact_p": 0.3261341711919829,
+      "lost_went_to": {
+        "clinical_enquiry": 17,
+        "general_administrative": 6,
+        "results_enquiry": 1,
+        "new_patient_onboarding": 10,
+        "appointment_request": 1,
+        "billing_insurance_enquiry": 2
+      }
+    }
+  },
+  "synthetic": {
+    "old": {
+      "accuracy": 0.773015873015873,
+      "per_category": {
+        "appointment_request": {
+          "n": 63,
+          "accuracy": 0.9206349206349206
+        },
+        "new_patient_onboarding": {
+          "n": 63,
+          "accuracy": 0.6984126984126984
+        },
+        "prescription_renewal": {
+          "n": 63,
+          "accuracy": 0.9365079365079365
+        },
+        "results_enquiry": {
+          "n": 63,
+          "accuracy": 0.873015873015873
+        },
+        "referral_request": {
+          "n": 63,
+          "accuracy": 0.746031746031746
+        },
+        "medical_records_request": {
+          "n": 63,
+          "accuracy": 0.8095238095238095
+        },
+        "billing_insurance_enquiry": {
+          "n": 63,
+          "accuracy": 0.7777777777777778
+        },
+        "complaint_escalation": {
+          "n": 63,
+          "accuracy": 0.6349206349206349
+        },
+        "general_administrative": {
+          "n": 63,
+          "accuracy": 0.6507936507936508
+        },
+        "urgent_emergency": {
+          "n": 63,
+          "accuracy": 0.6825396825396826
+        }
+      },
+      "confusion": {
+        "appointment_request": {
+          "complaint_escalation": 2,
+          "general_administrative": 3,
+          "appointment_request": 58
+        },
+        "new_patient_onboarding": {
+          "complaint_escalation": 2,
+          "new_patient_onboarding": 44,
+          "referral_request": 2,
+          "general_administrative": 6,
+          "appointment_request": 8,
+          "urgent_emergency": 1
+        },
+        "prescription_renewal": {
+          "prescription_renewal": 59,
+          "appointment_request": 2,
+          "complaint_escalation": 2
+        },
+        "results_enquiry": {
+          "complaint_escalation": 4,
+          "results_enquiry": 55,
+          "appointment_request": 2,
+          "prescription_renewal": 1,
+          "new_patient_onboarding": 1
+        },
+        "referral_request": {
+          "referral_request": 47,
+          "complaint_escalation": 3,
+          "urgent_emergency": 1,
+          "appointment_request": 7,
+          "new_patient_onboarding": 1,
+          "results_enquiry": 1,
+          "general_administrative": 2,
+          "medical_records_request": 1
+        },
+        "medical_records_request": {
+          "new_patient_onboarding": 3,
+          "medical_records_request": 51,
+          "complaint_escalation": 6,
+          "general_administrative": 2,
+          "prescription_renewal": 1
+        },
+        "billing_insurance_enquiry": {
+          "billing_insurance_enquiry": 49,
+          "general_administrative": 7,
+          "complaint_escalation": 4,
+          "medical_records_request": 2,
+          "prescription_renewal": 1
+        },
+        "complaint_escalation": {
+          "appointment_request": 4,
+          "complaint_escalation": 40,
+          "general_administrative": 11,
+          "prescription_renewal": 3,
+          "billing_insurance_enquiry": 2,
+          "results_enquiry": 3
+        },
+        "general_administrative": {
+          "appointment_request": 12,
+          "general_administrative": 41,
+          "new_patient_onboarding": 6,
+          "complaint_escalation": 1,
+          "referral_request": 1,
+          "billing_insurance_enquiry": 1,
+          "prescription_renewal": 1
+        },
+        "urgent_emergency": {
+          "urgent_emergency": 43,
+          "complaint_escalation": 8,
+          "results_enquiry": 1,
+          "appointment_request": 8,
+          "new_patient_onboarding": 1,
+          "prescription_renewal": 1,
+          "medical_records_request": 1
+        }
+      },
+      "labelled_clinical_enquiry": 0
+    },
+    "new": {
+      "accuracy": 0.7873015873015873,
+      "per_category": {
+        "appointment_request": {
+          "n": 63,
+          "accuracy": 0.8888888888888888
+        },
+        "new_patient_onboarding": {
+          "n": 63,
+          "accuracy": 0.8888888888888888
+        },
+        "prescription_renewal": {
+          "n": 63,
+          "accuracy": 0.9206349206349206
+        },
+        "results_enquiry": {
+          "n": 63,
+          "accuracy": 0.9206349206349206
+        },
+        "referral_request": {
+          "n": 63,
+          "accuracy": 0.746031746031746
+        },
+        "medical_records_request": {
+          "n": 63,
+          "accuracy": 0.6984126984126984
+        },
+        "billing_insurance_enquiry": {
+          "n": 63,
+          "accuracy": 0.9841269841269841
+        },
+        "complaint_escalation": {
+          "n": 63,
+          "accuracy": 0.5873015873015873
+        },
+        "general_administrative": {
+          "n": 63,
+          "accuracy": 0.7619047619047619
+        },
+        "urgent_emergency": {
+          "n": 63,
+          "accuracy": 0.47619047619047616
+        }
+      },
+      "confusion": {
+        "appointment_request": {
+          "complaint_escalation": 3,
+          "general_administrative": 1,
+          "appointment_request": 56,
+          "new_patient_onboarding": 1,
+          "clinical_enquiry": 2
+        },
+        "new_patient_onboarding": {
+          "new_patient_onboarding": 56,
+          "appointment_request": 6,
+          "urgent_emergency": 1
+        },
+        "prescription_renewal": {
+          "prescription_renewal": 58,
+          "appointment_request": 2,
+          "billing_insurance_enquiry": 1,
+          "complaint_escalation": 1,
+          "clinical_enquiry": 1
+        },
+        "results_enquiry": {
+          "results_enquiry": 58,
+          "complaint_escalation": 2,
+          "prescription_renewal": 1,
+          "appointment_request": 1,
+          "general_administrative": 1
+        },
+        "referral_request": {
+          "referral_request": 47,
+          "complaint_escalation": 2,
+          "clinical_enquiry": 7,
+          "new_patient_onboarding": 2,
+          "results_enquiry": 2,
+          "general_administrative": 2,
+          "appointment_request": 1
+        },
+        "medical_records_request": {
+          "new_patient_onboarding": 10,
+          "medical_records_request": 44,
+          "complaint_escalation": 5,
+          "general_administrative": 4
+        },
+        "billing_insurance_enquiry": {
+          "billing_insurance_enquiry": 62,
+          "general_administrative": 1
+        },
+        "complaint_escalation": {
+          "appointment_request": 5,
+          "complaint_escalation": 37,
+          "general_administrative": 7,
+          "prescription_renewal": 3,
+          "new_patient_onboarding": 1,
+          "billing_insurance_enquiry": 6,
+          "results_enquiry": 3,
+          "clinical_enquiry": 1
+        },
+        "general_administrative": {
+          "general_administrative": 48,
+          "new_patient_onboarding": 9,
+          "appointment_request": 4,
+          "billing_insurance_enquiry": 1,
+          "prescription_renewal": 1
+        },
+        "urgent_emergency": {
+          "general_administrative": 1,
+          "urgent_emergency": 30,
+          "clinical_enquiry": 23,
+          "results_enquiry": 1,
+          "complaint_escalation": 2,
+          "new_patient_onboarding": 1,
+          "prescription_renewal": 2,
+          "appointment_request": 3
+        }
+      },
+      "labelled_clinical_enquiry": 34
+    },
+    "flips": {
+      "old_right_new_wrong": 36,
+      "old_wrong_new_right": 45,
+      "mcnemar_exact_p": 0.37417441760470777,
+      "lost_went_to": {
+        "clinical_enquiry": 17,
+        "general_administrative": 5,
+        "results_enquiry": 1,
+        "new_patient_onboarding": 10,
+        "appointment_request": 1,
+        "billing_insurance_enquiry": 2
+      }
+    }
+  },
+  "real": {
+    "old": {
+      "accuracy": 0.9622641509433962,
+      "per_category": {
+        "appointment_request": {
+          "n": 19,
+          "accuracy": 1.0
+        },
+        "new_patient_onboarding": {
+          "n": 1,
+          "accuracy": 1.0
+        },
+        "prescription_renewal": {
+          "n": 11,
+          "accuracy": 1.0
+        },
+        "medical_records_request": {
+          "n": 1,
+          "accuracy": 1.0
+        },
+        "billing_insurance_enquiry": {
+          "n": 1,
+          "accuracy": 1.0
+        },
+        "complaint_escalation": {
+          "n": 1,
+          "accuracy": 1.0
+        },
+        "general_administrative": {
+          "n": 17,
+          "accuracy": 0.8823529411764706
+        },
+        "urgent_emergency": {
+          "n": 2,
+          "accuracy": 1.0
+        }
+      },
+      "confusion": {
+        "appointment_request": {
+          "appointment_request": 19
+        },
+        "new_patient_onboarding": {
+          "new_patient_onboarding": 1
+        },
+        "prescription_renewal": {
+          "prescription_renewal": 11
+        },
+        "medical_records_request": {
+          "medical_records_request": 1
+        },
+        "billing_insurance_enquiry": {
+          "billing_insurance_enquiry": 1
+        },
+        "complaint_escalation": {
+          "complaint_escalation": 1
+        },
+        "general_administrative": {
+          "general_administrative": 15,
+          "appointment_request": 2
+        },
+        "urgent_emergency": {
+          "urgent_emergency": 2
+        }
+      },
+      "labelled_clinical_enquiry": 0
+    },
+    "new": {
+      "accuracy": 0.9811320754716981,
+      "per_category": {
+        "appointment_request": {
+          "n": 19,
+          "accuracy": 0.9473684210526315
+        },
+        "new_patient_onboarding": {
+          "n": 1,
+          "accuracy": 1.0
+        },
+        "prescription_renewal": {
+          "n": 11,
+          "accuracy": 1.0
+        },
+        "medical_records_request": {
+          "n": 1,
+          "accuracy": 1.0
+        },
+        "billing_insurance_enquiry": {
+          "n": 1,
+          "accuracy": 1.0
+        },
+        "complaint_escalation": {
+          "n": 1,
+          "accuracy": 1.0
+        },
+        "general_administrative": {
+          "n": 17,
+          "accuracy": 1.0
+        },
+        "urgent_emergency": {
+          "n": 2,
+          "accuracy": 1.0
+        }
+      },
+      "confusion": {
+        "appointment_request": {
+          "appointment_request": 18,
+          "general_administrative": 1
+        },
+        "new_patient_onboarding": {
+          "new_patient_onboarding": 1
+        },
+        "prescription_renewal": {
+          "prescription_renewal": 11
+        },
+        "medical_records_request": {
+          "medical_records_request": 1
+        },
+        "billing_insurance_enquiry": {
+          "billing_insurance_enquiry": 1
+        },
+        "complaint_escalation": {
+          "complaint_escalation": 1
+        },
+        "general_administrative": {
+          "general_administrative": 17
+        },
+        "urgent_emergency": {
+          "urgent_emergency": 2
+        }
+      },
+      "labelled_clinical_enquiry": 0
+    },
+    "flips": {
+      "old_right_new_wrong": 1,
+      "old_wrong_new_right": 2,
+      "mcnemar_exact_p": 1.0,
+      "lost_went_to": {
+        "general_administrative": 1
+      }
+    }
+  },
+  "icliniq": {
+    "n": 300,
+    "distribution": {
+      "old": {
+        "medical_records_request": 74,
+        "complaint_escalation": 63,
+        "general_administrative": 49,
+        "appointment_request": 40,
+        "prescription_renewal": 33,
+        "results_enquiry": 19,
+        "new_patient_onboarding": 15,
+        "urgent_emergency": 6,
+        "referral_request": 1
+      },
+      "new": {
+        "clinical_enquiry": 273,
+        "general_administrative": 16,
+        "prescription_renewal": 6,
+        "results_enquiry": 4,
+        "medical_records_request": 1
+      }
+    },
+    "new_clinical_share": 0.91,
+    "new_urgent_share": 0.0,
+    "new_safe_share": 0.91
+  },
+  "out_of_scope_real": [
+    {
+      "key": "real:01eb505f-99c9-476c-a2de-e3d74237d99f",
+      "old": "general_administrative",
+      "new": "general_administrative"
+    },
+    {
+      "key": "real:717a79e7-011b-455f-94bd-975dafb2b799",
+      "old": "general_administrative",
+      "new": "general_administrative"
+    },
+    {
+      "key": "real:009ce4cb-0b98-4e4e-9359-9c274a9af346",
+      "old": "general_administrative",
+      "new": "general_administrative"
+    },
+    {
+      "key": "real:87bbb9da-7404-4acb-aad5-cd34afe87f77",
+      "old": "general_administrative",
+      "new": "general_administrative"
+    },
+    {
+      "key": "real:745d9d34-adad-448f-9790-0ed8d538be44",
+      "old": "general_administrative",
+      "new": "general_administrative"
+    }
+  ],
+  "gate": {
+    "existing_categories": {
+      "appointment_request": {
+        "n": 82,
+        "old": 0.9390243902439024,
+        "new": 0.9024390243902439,
+        "change_points": -3.7,
+        "pass": true
+      },
+      "new_patient_onboarding": {
+        "n": 64,
+        "old": 0.703125,
+        "new": 0.890625,
+        "change_points": 18.8,
+        "pass": true
+      },
+      "prescription_renewal": {
+        "n": 74,
+        "old": 0.9459459459459459,
+        "new": 0.9324324324324325,
+        "change_points": -1.4,
+        "pass": true
+      },
+      "results_enquiry": {
+        "n": 63,
+        "old": 0.873015873015873,
+        "new": 0.9206349206349206,
+        "change_points": 4.8,
+        "pass": true
+      },
+      "referral_request": {
+        "n": 63,
+        "old": 0.746031746031746,
+        "new": 0.746031746031746,
+        "change_points": 0.0,
+        "pass": true
+      },
+      "medical_records_request": {
+        "n": 64,
+        "old": 0.8125,
+        "new": 0.703125,
+        "change_points": -10.9,
+        "pass": false
+      },
+      "billing_insurance_enquiry": {
+        "n": 64,
+        "old": 0.78125,
+        "new": 0.984375,
+        "change_points": 20.3,
+        "pass": true
+      },
+      "complaint_escalation": {
+        "n": 64,
+        "old": 0.640625,
+        "new": 0.59375,
+        "change_points": -4.7,
+        "pass": true
+      },
+      "general_administrative": {
+        "n": 80,
+        "old": 0.7,
+        "new": 0.8125,
+        "change_points": 11.3,
+        "pass": true
+      },
+      "urgent_emergency": {
+        "n": 65,
+        "old": 0.6923076923076923,
+        "new": 0.49230769230769234,
+        "change_points": -20.0,
+        "pass": false
+      }
+    },
+    "existing_categories_pass": false,
+    "icliniq_safe_share": 0.91,
+    "icliniq_pass": true,
+    "pass": false
+  }
+}

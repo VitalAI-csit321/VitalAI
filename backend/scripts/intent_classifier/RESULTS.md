@@ -445,3 +445,173 @@ The AUROC, McNemar and gate-replay figures were computed afterwards from
 `test_predictions.jsonl`, with no refit. Recompute them with `sklearn.metrics.roc_auc_score`
 (is-correct vs score), `scipy.stats.binomtest(9, 33)`, and `evaluate_task_routing_gate`
 applied to each row.
+
+## Clinical enquiry category (M7), 2026-09-30
+
+**Verdict: the ship gate FAILS, twice.** The new category itself works: the new prompt labelled
+90 to 91% of the real patient questions `clinical_enquiry` (gate: 80%). But existing categories
+lost more than the 5 points allowed. **urgent_emergency fell 20 points in both attempts**, almost
+all of it to `clinical_enquiry`, and medical_records_request fell 10.9 and then 14.1 points.
+Rewording three descriptions (attempt 2) changed nothing that matters. Phase B does not start on
+either prompt. Attempt 1 is described first; [attempt 2](#attempt-2-reworded-descriptions) follows.
+
+### What was run (attempt 1)
+
+- `evaluate_clinical.py`, committed (`ac21bd5`) before its first run, with the gate written into
+  its docstring.
+- Old prompt: the production prompt, ten category names. New prompt: the same template with one
+  `name: description` line for each of eleven categories (spec C6), `clinical_enquiry` last.
+  Both wordings are stored in `clinical_results_attempt1.json` under `prompt_categories`.
+- Production model and settings: Ollama `gemma2:2b`, temperature 0.3. Every email was asked the
+  old prompt, then the new one, in the same run: 988 emails, 1976 calls, 74 minutes, no errors,
+  **no parse failures** with either prompt. Replies were parsed against the eleven labels, not
+  the production `TaskCategory` parser.
+- Sets: all 630 synthetic emails (`dataset.jsonl` + `dataset_v2.jsonl`), the 58 real
+  `vitalai_qa` emails (53 in scope) and the 300 real patient questions in
+  `icliniq_testset.jsonl`.
+- The iCliniq file was rebuilt with `fetch_icliniq.py` at the branch tip. The copy that existed
+  was built before `0a4aa08` widened `is_urgent()`, which the fetch uses as a filter, so the tip
+  could not reproduce it. The rebuild downloaded 7321 questions, dropped 835 as urgent, 371 on
+  length and 67 as another category, and sampled 300. It shares 37 questions with the old copy.
+
+### Gate 1: existing categories, pooled 630 synthetic + 53 real in scope
+
+| Category | n | Old prompt | New prompt | Change (points) | |
+|---|---|---|---|---|---|
+| appointment_request | 82 | 93.9% | 90.2% | -3.7 | pass |
+| new_patient_onboarding | 64 | 70.3% | 89.1% | +18.8 | pass |
+| prescription_renewal | 74 | 94.6% | 93.2% | -1.4 | pass |
+| results_enquiry | 63 | 87.3% | 92.1% | +4.8 | pass |
+| referral_request | 63 | 74.6% | 74.6% | 0.0 | pass |
+| **medical_records_request** | 64 | 81.2% | 70.3% | **-10.9** | **FAIL** |
+| billing_insurance_enquiry | 64 | 78.1% | 98.4% | +20.3 | pass |
+| complaint_escalation | 64 | 64.1% | 59.4% | -4.7 | pass |
+| general_administrative | 80 | 70.0% | 81.2% | +11.3 | pass |
+| **urgent_emergency** | 65 | 69.2% | 49.2% | **-20.0** | **FAIL** |
+| **All** | 683 | 78.8% | 80.2% | +1.4 | |
+
+Overall the new prompt is slightly better (37 emails right only with the old prompt, 47 only with
+the new, McNemar p = 0.33). The real emails alone went from 96.2% to 98.1%. They contain two
+emergencies, and both stayed urgent. No real email was labelled `clinical_enquiry`.
+
+### Gate 2: the 300 real patient questions
+
+| Label | Old prompt | New prompt |
+|---|---|---|
+| clinical_enquiry | n/a | **273 (91.0%)** |
+| urgent_emergency | 6 | 0 |
+| general_administrative | 49 | 16 |
+| prescription_renewal | 33 | 6 |
+| results_enquiry | 19 | 4 |
+| medical_records_request | 74 | 1 |
+| complaint_escalation | 63 | 0 |
+| appointment_request | 40 | 0 |
+| new_patient_onboarding | 15 | 0 |
+| referral_request | 1 | 0 |
+
+Safe share (clinical + urgent) 91.0%: **passes**. Today these questions are scattered across
+nine categories; 63 of them are called complaints.
+
+### Why urgent_emergency failed: it is not noise
+
+- On the 63 synthetic emergencies, 13 emails were right with the old prompt and wrong with the
+  new one, and none the other way (exact binomial p = 0.0002). 12 of the 13 went to
+  `clinical_enquiry`. In all, the new prompt called 23 of the 63 emergencies a clinical enquiry.
+- They are emergencies written calmly: "sudden weakness on one side of his face and slurred
+  speech", "taken too many tablets today and am feeling unwell", "heavy bleeding that just won't
+  stop", "had a seizure this afternoon and is still very sleepy", "high fever and is hard to
+  wake". The description "a non-urgent question about the patient's own health" does not stop
+  a 2B model from taking the calm tone at face value.
+- **What reaches production is less bad, but still worse.** The routing gate's keyword override
+  (`is_urgent()`, as widened in `0a4aa08`) forces urgent whatever the category. Counting that:
+
+  | | Old prompt | New prompt |
+  |---|---|---|
+  | Synthetic emergencies the classifier missed | 20 | 33 |
+  | ...of which `is_urgent()` still catches | 13 | 23 |
+  | **Emergencies that reach nobody as urgent** | **7** | **10** |
+
+  The 3 extra: "high fever all day and won't really wake up", "very high fevre and is extremely
+  difficult to awke" (typos) and "Dad had a bit of a fit earlier and he's still pretty groggy".
+  Under M7 all three would go to a doctor with an acknowledgement promising a reply within 2
+  business days. That acknowledgement does say to call 000 if urgent.
+
+### Why medical_records_request failed
+
+9 lost, 2 gained (p = 0.07). 7 of the 9 went to `new_patient_onboarding`, and none to
+`clinical_enquiry`. Nearly all are "my child's immunisation record for school enrolment" or
+"vaccination history for a new job". The onboarding line ("join the clinic as a new patient, or
+asks how to register") seems to pull "enrolment" towards onboarding. This comes from the C6
+descriptions, not from the new category, and the same change lifted onboarding by 18.8 points.
+
+### Limits
+
+- Temperature 0.3, one run. The urgent result is far outside noise; the records one is not.
+- The synthetic labels carry about 10% noise (see above), and 63 emails per category puts one
+  email at about 1.6 points.
+- This measures `gemma2:2b`. **The gate must be re-run on Haiku 4.5 after the switch** (set
+  `LLM_PROVIDER=bedrock` and the model id, then run `evaluate_clinical.py` again; it refuses to
+  resume a predictions file from another model or prompt, so move the old one aside).
+- Changing the descriptions now and re-running on these same emails would tune the prompt to
+  the test. Any second attempt has to be reported as such.
+
+### Attempt 2: reworded descriptions
+
+**Tuned on the same emails.** These three changes were written after reading attempt 1's
+errors. They were committed (`b89061e`) before the run, and the gate was not changed:
+
+- urgent_emergency: "red flags needing immediate care, **even when written calmly or as a
+  question**, e.g. ..."
+- clinical_enquiry: adds "**Never sudden or severe symptoms.**" ("new" was left out on purpose:
+  many ordinary questions are about a new, mild symptom).
+- new_patient_onboarding: adds "**Not requests for records.**"
+
+Same model, settings and emails, old and new prompt in one run again (run id `692adebc7618`, no
+parse failures). The run was paused at 217 of 988 emails when the Mac went into a thermal
+emergency sleep, and resumed from its saved predictions about five hours later.
+
+| Category | n | Attempt 1 old → new | Attempt 2 old → new | Attempt 2 change | |
+|---|---|---|---|---|---|
+| appointment_request | 82 | 93.9 → 90.2 | 93.9 → 91.5 | -2.4 | pass |
+| new_patient_onboarding | 64 | 70.3 → 89.1 | 73.4 → 89.1 | +15.6 | pass |
+| prescription_renewal | 74 | 94.6 → 93.2 | 94.6 → 94.6 | 0.0 | pass |
+| results_enquiry | 63 | 87.3 → 92.1 | 87.3 → 90.5 | +3.2 | pass |
+| **referral_request** | 63 | 74.6 → 74.6 | 76.2 → 69.8 | **-6.3** | **FAIL** |
+| **medical_records_request** | 64 | 81.2 → 70.3 | 84.4 → 70.3 | **-14.1** | **FAIL** |
+| billing_insurance_enquiry | 64 | 78.1 → 98.4 | 79.7 → 96.9 | +17.2 | pass |
+| **complaint_escalation** | 64 | 64.1 → 59.4 | 65.6 → 56.2 | **-9.4** | **FAIL** |
+| general_administrative | 80 | 70.0 → 81.2 | 68.8 → 78.7 | +10.0 | pass |
+| **urgent_emergency** | 65 | 69.2 → 49.2 | 67.7 → 47.7 | **-20.0** | **FAIL** |
+| All (683) | | 78.8 → 80.2 | 79.5 → 79.1 | -0.4 | |
+
+iCliniq, new prompt: 270 of 300 `clinical_enquiry` (90.0%), 0 urgent: **passes**, 3 fewer than
+attempt 1.
+
+What attempt 2 shows:
+
+- **The rewording did not move the emergencies at all.** 23 of the 65 emergencies were still
+  called `clinical_enquiry`, the same count as attempt 1. On the first 45, both attempts scored
+  exactly 20. `gemma2:2b` does not act on "even when written calmly" or "never sudden or severe".
+- **"Not requests for records" made records slightly worse**: 12 now go to onboarding (10 before).
+  A small model reads the words in a negation, not the "not".
+- **How much of this is noise.** The old prompt was asked the same 683 emails in both runs and
+  gave the same answer 97.1% of the time. Per category, its accuracy moved by up to 3.1 points
+  between runs with nothing changed. So the new complaint (-9.4, was -4.7) and referral (-6.3,
+  was 0.0) failures sit near that noise. urgent (-20.0 twice) and records (-10.9, -14.1) are well
+  outside it.
+
+**Conclusion:** on `gemma2:2b`, one prompt with a `clinical_enquiry` category costs about a third
+of the emergencies the old prompt caught, and wording does not fix it. Two ways forward that do not
+depend on prompt tuning are: measure on Haiku 4.5, which this gate is ultimately for, and change
+the design so that the emergency decision does not depend on the category list, for example by
+keeping the urgent keyword override and adding a separate urgent check before the category.
+
+### Files
+
+| File | What |
+|---|---|
+| `fetch_icliniq.py` | Builds the iCliniq test set (committed) |
+| `icliniq_testset.jsonl` | The 300 questions. Local only, gitignored: the source text is unlicensed |
+| `evaluate_clinical.py` | This measurement and its gate, with attempt 2's descriptions |
+| `clinical_results_attempt1.json`, `clinical_results.json` | Every number above for attempts 1 and 2, per set, with both prompts' category text |
+| `clinical_predictions_attempt1.jsonl`, `clinical_predictions.jsonl` | Per email and prompt: set, key, label, category, confidence, time. Raw replies for synthetic emails only; no email text |
