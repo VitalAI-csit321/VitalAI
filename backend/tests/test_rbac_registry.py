@@ -96,5 +96,7 @@ def test_total_route_count():
     # GET and PATCH /{episode_id}, POST /{episode_id}/close, /reopen and
     # /contact, POST /move), +2 for POST /human-review/{task_id}/choose-case and
     # /case-close, +1 for PUT /patients/{patient_id}/doctor (ASSIGN_PATIENTS).
+    # 120: +3 for the clinic mailbox in Settings, GET /integrations/outlook,
+    # POST /integrations/outlook/connect and GET /integrations/outlook/callback.
     voice = 5 if settings.twilio_enabled else 0
-    assert len({(e.method, e.path) for e in registry}) == 117 + voice
+    assert len({(e.method, e.path) for e in registry}) == 120 + voice

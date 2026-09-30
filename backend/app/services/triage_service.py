@@ -240,19 +240,22 @@ async def classify(db: AsyncSession, request: TriageRequest, actor: User) -> Tri
     if has_urgent or (has_patient_flags and has_time_sensitive):
         category = TriageCategory.IMMEDIATE
         confidence = 0.9
-        rationale = "Urgent keyword or flagged-patient + time-sensitive — immediate escalation"
+        rationale = (
+            "Immediate escalation: urgent keyword, "
+            "or a flagged patient with a time-sensitive request"
+        )
     elif has_time_sensitive or has_patient_flags:
         category = TriageCategory.TIME_SENSITIVE
         confidence = 0.7
-        rationale = "Time-sensitive keyword or patient priority flag — human review"
+        rationale = "Human review: time-sensitive keyword or patient priority flag"
     elif insufficient_info:
         category = TriageCategory.LOW_CONFIDENCE
         confidence = 0.4
-        rationale = "Insufficient information — manual review required"
+        rationale = "Manual review: not enough information to route"
     else:
         category = TriageCategory.ROUTINE
         confidence = 0.8
-        rationale = "Routine administrative matter — normal workflow"
+        rationale = "Normal workflow: routine administrative matter"
 
     routing_action, target_queue, escalated = decide(category)
 

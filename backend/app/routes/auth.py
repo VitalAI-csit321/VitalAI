@@ -207,7 +207,7 @@ async def revoke_permission_endpoint(
 
 
 @router.post("/login", response_model=Token)
-@limiter.limit(settings.login_rate_limit)
+@limiter.limit(lambda: settings.login_rate_limit)
 async def login(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -294,7 +294,7 @@ async def _send_reset_link(email: str, link: str) -> None:
 
 
 @router.post("/password-reset/request", status_code=status.HTTP_202_ACCEPTED)
-@limiter.limit(settings.login_rate_limit)
+@limiter.limit(lambda: settings.login_rate_limit)
 async def request_password_reset(
     request: Request,
     payload: PasswordResetRequest,
@@ -320,7 +320,7 @@ async def request_password_reset(
 
 
 @router.post("/password-reset/confirm", status_code=status.HTTP_204_NO_CONTENT)
-@limiter.limit(settings.login_rate_limit)
+@limiter.limit(lambda: settings.login_rate_limit)
 async def confirm_password_reset(
     request: Request,
     payload: PasswordResetConfirm,

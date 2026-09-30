@@ -32,6 +32,7 @@ from app.routes import (
     human_review,
     inbox,
     intake,
+    integrations,
     llm,
     patients,
     public_registration,
@@ -137,7 +138,7 @@ async def _rate_limit_handler(request: Request, exc: Exception) -> Response:
 
 
 app = FastAPI(
-    title=f"{settings.app_name} — Phase One API",
+    title=f"{settings.app_name} API",
     description="Backend for administrative intake, consent, triage, and routing.",
     version=settings.app_version,
     lifespan=lifespan,
@@ -227,6 +228,7 @@ app.include_router(public_registration.router, prefix=API_PREFIX)
 app.include_router(human_review.router, prefix=API_PREFIX)
 app.include_router(episodes.router, prefix=API_PREFIX)
 app.include_router(settings_routes.router, prefix=API_PREFIX)
+app.include_router(integrations.router, prefix=API_PREFIX)
 app.include_router(health.detailed_router, prefix=API_PREFIX)
 
 # The Twilio voicemail line: public, signature-checked webhooks. Not mounted

@@ -13,6 +13,7 @@ appointment_service, email_service) byte-for-byte unchanged.
 # worker's write until restart. Add pub/sub invalidation if we ever run >1.
 """
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -46,7 +47,7 @@ SETTINGS_REGISTRY: dict[str, SettingSpec] = {
         int,
         "General",
         "Clinic opens",
-        "Clinic local time, read in the clinic timezone below.",
+        "Clinic local time, 24-hour clock.",
         minimum=0,
         maximum=23,
     ),
@@ -54,24 +55,9 @@ SETTINGS_REGISTRY: dict[str, SettingSpec] = {
         int,
         "General",
         "Clinic closes",
-        "Clinic local time, read in the clinic timezone below.",
+        "Clinic local time, 24-hour clock.",
         minimum=0,
         maximum=23,
-    ),
-    "clinic_timezone": SettingSpec(
-        str,
-        "General",
-        "Clinic timezone",
-        "Set via environment configuration. The clinic hours are read in this zone.",
-        editable=False,
-    ),
-    "clinic_holiday_region": SettingSpec(
-        str,
-        "General",
-        "Public holiday region",
-        "Set via environment configuration. The voicemail line is closed on this "
-        "state's public holidays.",
-        editable=False,
     ),
     "default_appointment_duration_minutes": SettingSpec(
         int,
@@ -79,13 +65,6 @@ SETTINGS_REGISTRY: dict[str, SettingSpec] = {
         "Default appointment length",
         minimum=5,
         maximum=240,
-    ),
-    "synthetic_only": SettingSpec(
-        bool,
-        "General",
-        "Synthetic data only",
-        "Set via environment configuration.",
-        editable=False,
     ),
     # Security
     "jwt_access_token_expire_minutes": SettingSpec(
@@ -98,9 +77,8 @@ SETTINGS_REGISTRY: dict[str, SettingSpec] = {
     "login_rate_limit": SettingSpec(
         str,
         "Security",
-        "Login rate limit",
-        "Set via environment configuration.",
-        editable=False,
+        "Sign-in attempts",
+        "Sign-in and password-reset attempts allowed from one IP address.",
     ),
     # Approval tiers
     "task_routing_auto_threshold": SettingSpec(
@@ -156,7 +134,7 @@ SETTINGS_REGISTRY: dict[str, SettingSpec] = {
         "Approval tiers",
         "Quiet case before a close check (days)",
         "An open case with no activity and no upcoming appointment for this long is put "
-        "to its doctor to close. Keep open waits this long again.",
+        "to its doctor to close.",
         minimum=1,
         maximum=365,
     ),
@@ -166,33 +144,6 @@ SETTINGS_REGISTRY: dict[str, SettingSpec] = {
         "Routing rules",
         "Category to role overrides",
         "Unset categories use default routing.",
-    ),
-    # Integrations
-    "outlook_poll_interval_seconds": SettingSpec(
-        int,
-        "Integrations",
-        "Mailbox poll interval (seconds)",
-        minimum=15,
-        maximum=3600,
-    ),
-    "outlook_max_messages_per_poll": SettingSpec(
-        int,
-        "Integrations",
-        "Messages per poll",
-        minimum=1,
-        maximum=100,
-    ),
-    "outlook_enabled": SettingSpec(
-        bool,
-        "Integrations",
-        "Outlook connector",
-        editable=False,
-    ),
-    "outlook_mailbox_address": SettingSpec(
-        str,
-        "Integrations",
-        "Mailbox",
-        editable=False,
     ),
     # Model configuration
     "llm_model": SettingSpec(str, "Model", "LLM model"),
@@ -265,6 +216,19 @@ def _check_cross_field(pending: dict[str, Any]) -> None:
         )
 
 
+_RATE_LIMIT = re.compile(r"(\d+)/(minute|hour)")
+
+
+def _check_live_requirements(cleaned: dict[str, Any]) -> None:
+    """Rules about what the running system can actually do with a value."""
+    if "login_rate_limit" in cleaned:
+        m = _RATE_LIMIT.fullmatch(cleaned["login_rate_limit"])
+        if not m or not 1 <= int(m.group(1)) <= 1000:
+            raise SettingsValidationError(
+                "login_rate_limit must be 1 to 1000 attempts per minute or per hour"
+            )
+
+
 def validate(values: dict[str, Any]) -> dict[str, Any]:
     """Validate a whole batch. Raises before anything is written."""
     cleaned: dict[str, Any] = {}
@@ -276,6 +240,7 @@ def validate(values: dict[str, Any]) -> dict[str, Any]:
             raise SettingsValidationError(f"'{key}' is read-only")
         cleaned[key] = _coerce(key, spec, value)
     _check_cross_field(cleaned)
+    _check_live_requirements(cleaned)
     return cleaned
 
 
