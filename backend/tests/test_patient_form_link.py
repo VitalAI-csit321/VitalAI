@@ -30,6 +30,7 @@ from app.models.task import TaskItemStatus
 from app.routes.public_registration import NOT_VALID
 from app.schemas.email import EmailIngestRequest
 from app.services import (
+    appointment_service,
     consent_service,
     email_conversation_service,
     email_service,
@@ -84,7 +85,7 @@ def sends(monkeypatch):
 
 def _weekday_ahead(days: int = 3) -> date:
     day = datetime.now(SYDNEY).date() + timedelta(days=days)
-    while day.weekday() >= 5:
+    while not appointment_service.is_clinic_day(day):
         day += timedelta(days=1)
     return day
 
@@ -370,8 +371,8 @@ async def test_a_link_works_once(client, db_session, admin_user, doctor_user, ll
         {"preferred_day": ""},  # a booking needs a day
         # Days from today as callables: parametrize runs at collection, and a
         # run that crosses midnight would turn "today" into yesterday.
-        {"dob": lambda: date.today().isoformat()},
-        {"dob": lambda: (date.today() + timedelta(days=30)).isoformat()},
+        {"dob": lambda: datetime.now(SYDNEY).date().isoformat()},
+        {"dob": lambda: (datetime.now(SYDNEY).date() + timedelta(days=30)).isoformat()},
         {"agree_contact": False},
         {"signature": "data:text/html;base64,PHNjcmlwdD4="},
         {"signature": "data:image/png;base64," + "A" * 200_001},
@@ -382,7 +383,7 @@ async def test_a_link_works_once(client, db_session, admin_user, doctor_user, ll
         {"clinic_checks": [True]},  # one answer per clinic statement, or none
         {"name": "Jane\x00Citizen"},
         {"address": "1 Test Street\x07"},
-        {"preferred_day": lambda: (date.today() + timedelta(days=90)).isoformat()},
+        {"preferred_day": lambda: (datetime.now(SYDNEY).date() + timedelta(days=90)).isoformat()},
     ],
 )
 async def test_a_bad_form_is_refused_and_the_link_stays_open(
