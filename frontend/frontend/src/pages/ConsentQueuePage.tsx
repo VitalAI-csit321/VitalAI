@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatDate } from "../lib/format";
 import { useNavigate } from "react-router-dom";
 import { Download } from "lucide-react";
 import { listConsentQueue } from "../api/consent";
@@ -12,9 +13,9 @@ const STATUS_TONE: Record<ConsentQueueStatus, "green" | "amber" | "red"> = {
 };
 
 const STATUS_LABEL: Record<ConsentQueueStatus, string> = {
-  complete: "COMPLETE",
-  pending: "PENDING",
-  review: "REVIEW",
+  complete: "Complete",
+  pending: "Pending",
+  review: "Needs review",
 };
 
 const AVATAR_COLORS = ["#0d9488", "#eab308", "#7c3aed", "#db2777", "#0891b2", "#f97316"];
@@ -27,7 +28,7 @@ function initials(name: string) {
 function fmtDate(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return formatDate(d);
 }
 
 export function ConsentQueuePage() {
@@ -53,7 +54,7 @@ export function ConsentQueuePage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Consent queue</h1>
           <p className="mt-1 text-sm text-slate-500">
-            {rows.length} records • {pending} awaiting
+            {rows.length} records, {pending} awaiting
           </p>
         </div>
         <div className="flex gap-3">
@@ -72,15 +73,15 @@ export function ConsentQueuePage() {
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-slate-200 border-l-4 border-l-amber-400 bg-white p-5">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pending</div>
+          <div className="text-xs font-semibold text-slate-500">Pending</div>
           <div className="mt-2 text-3xl font-bold text-slate-900">{pending}</div>
         </div>
         <div className="rounded-xl border border-slate-200 border-l-4 border-l-brand bg-white p-5">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Completed</div>
+          <div className="text-xs font-semibold text-slate-500">Completed</div>
           <div className="mt-2 text-3xl font-bold text-slate-900">{complete}</div>
         </div>
         <div className="rounded-xl border border-slate-200 border-l-4 border-l-red-400 bg-white p-5">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="text-xs font-semibold text-slate-500">
             Requires review
           </div>
           <div className="mt-2 text-3xl font-bold text-slate-900">{review}</div>
@@ -90,7 +91,7 @@ export function ConsentQueuePage() {
       <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <tr className="border-b border-slate-200 text-left text-xs font-semibold text-slate-500">
               <th className="px-6 py-3">Patient</th>
               <th className="px-6 py-3">Form</th>
               <th className="px-6 py-3">Submitted</th>

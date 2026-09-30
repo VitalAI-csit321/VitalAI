@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { Check } from "lucide-react";
+import { humanize } from "../lib/format";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   approveDraft,
@@ -23,20 +25,15 @@ type Tab = "all" | "urgent" | "archived";
 
 function priorityBadge(p: MessagePriority) {
   if (p === "urgent")
-    return <span className="rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">URG</span>;
+    return <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs font-semibold text-white">Urgent</span>;
   return null;
 }
 
-function formatCategory(category: string): string {
-  return category
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
+const formatCategory = humanize;
 
 function categoryBadge(category: string) {
   return (
-    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">
       {formatCategory(category)}
     </span>
   );
@@ -83,8 +80,9 @@ export function InboxPage() {
     return () => window.clearInterval(id);
   }, [user?.role]);
 
-  function refresh(preferId?: string | null) {
+  function refresh(preferId?: string | null, isCurrent: () => boolean = () => true) {
     return listMessages(tab === "archived").then((m) => {
+      if (!isCurrent()) return;
       setMessages(m);
       const keep = preferId ?? selectedId;
       const stillThere = keep ? m.find((x) => x.id === keep) : undefined;
@@ -92,9 +90,18 @@ export function InboxPage() {
     });
   }
 
+  // A superseded load (StrictMode's second mount, a quick tab switch) is
+  // dropped: landing late, it would reselect the newest message over a
+  // ?task= deep link and drop a deep-linked message from outside the list.
   useEffect(() => {
+    let current = true;
     setLoading(true);
-    refresh(null).finally(() => setLoading(false));
+    refresh(null, () => current).finally(() => {
+      if (current) setLoading(false);
+    });
+    return () => {
+      current = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -283,13 +290,8 @@ export function InboxPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Messages and email</h1>
           <p className="mt-1 text-sm text-slate-500">
-            {messages.length} conversations • {unread} unread • {urgent} urgent
+            {messages.length} conversations, {unread} unread, {urgent} urgent
           </p>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={() => navigate("/inbox/log-call")} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            Log call
-          </button>
         </div>
       </div>
 
@@ -359,18 +361,18 @@ export function InboxPage() {
                         </span>
                         {priorityBadge(m.priority)}
                         {m.taskStatus === "escalated" && (
-                          <span className="rounded bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                            ESCALATED
+                          <span className="rounded bg-orange-500 px-1.5 py-0.5 text-xs font-bold text-white">
+                            Escalated
                           </span>
                         )}
                         {m.unread && m.priority !== "urgent" && m.taskStatus !== "escalated" && (
-                          <span className="rounded bg-brand px-1.5 py-0.5 text-[10px] font-bold text-white">
-                            NEW
+                          <span className="rounded bg-brand px-1.5 py-0.5 text-xs font-bold text-white">
+                            New
                           </span>
                         )}
                         {m.reviewItemId && (
-                          <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-700">
-                            IN REVIEW QUEUE
+                          <span className="rounded bg-purple-100 px-1.5 py-0.5 text-xs font-bold text-purple-700">
+                            In review queue
                           </span>
                         )}
                       </div>
@@ -438,7 +440,7 @@ export function InboxPage() {
                   <div className="mt-5 rounded-lg border border-brand/30 bg-emerald-50/40 p-4">
                     <label
                       htmlFor="inbox-write-reply"
-                      className="block text-xs font-semibold uppercase tracking-wide text-slate-500"
+                      className="block text-xs font-semibold text-slate-500"
                     >
                       Write reply
                     </label>
@@ -465,7 +467,7 @@ export function InboxPage() {
 
                 {showReply && !selected.canWriteReply && (
                   <div className="mt-5 rounded-lg border border-brand/30 bg-emerald-50/40 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <p className="text-xs font-semibold text-slate-500">
                       {selected.draftSent ? "Sent reply" : "AI-suggested reply"}
                     </p>
                     {selected.draftText ? (
@@ -485,7 +487,7 @@ export function InboxPage() {
                         )}
                         <div className="mt-3 flex items-center gap-3">
                           {selected.draftSent ? (
-                            <span className="text-sm font-medium text-emerald-700">Already sent ✓</span>
+                            <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-700"><Check className="h-4 w-4" aria-hidden />Already sent</span>
                           ) : selected.draftApprovalId && canApprove ? (
                             <>
                               <button

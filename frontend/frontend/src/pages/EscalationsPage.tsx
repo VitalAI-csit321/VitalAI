@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { humanize } from "../lib/format";
 import { getTaskBoard } from "../api/tasks";
 import type { Task, TaskBoard } from "../api/types";
 import { Avatar, Spinner } from "../components/ui";
@@ -22,15 +24,8 @@ function relativeAge(iso: string): string {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
-function formatCategory(category: string): string {
-  return category
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
 
 function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
-  const ref = `T-${task.id.slice(0, 6)}`;
   const fallbackTitle = `${task.source === "call" ? "Call" : "Email"} escalation`;
   const title = task.subject ?? fallbackTitle;
   const subtitle = task.fromName
@@ -40,24 +35,25 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
     : task.assignedTo
       ? task.assignedTo.slice(0, 2).toUpperCase()
       : "?";
-  const color = AVATAR_COLORS[task.id.charCodeAt(0) % AVATAR_COLORS.length];
+  // One colour per sender, so the same person looks the same on every card.
+  const who = task.fromName ?? task.assignedTo ?? task.id;
+  const color = AVATAR_COLORS[[...who].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % AVATAR_COLORS.length];
   const highPriority = task.priority === "urgent" || task.priority === "high";
 
   return (
     <button onClick={onClick} className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-2">
-        <span className="text-xs font-semibold text-slate-500">{ref}</span>
-        <span className={`h-2 w-2 rounded-full mt-1 ${highPriority ? "bg-slate-900" : "bg-slate-300"}`} />
-      </div>
+      {highPriority && (
+        <p className="mb-1 text-xs font-semibold text-red-700">{task.priority === "urgent" ? "Urgent" : "High priority"}</p>
+      )}
       <p className="truncate text-sm font-semibold text-slate-900">{title}</p>
       <p className="mt-0.5 truncate text-xs text-slate-500">{subtitle}</p>
       {task.category && (
-        <span className="mt-1.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
-          {formatCategory(task.category)}
+        <span className="mt-1.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">
+          {humanize(task.category)}
         </span>
       )}
       <div className="mt-3 flex items-center justify-between">
-        <Avatar initials={initials} color={color} size={28} />
+        <Avatar initials={initials} color={color} size={32} />
         <span className="text-xs text-slate-400">{relativeAge(task.createdAt)}</span>
       </div>
     </button>
@@ -70,12 +66,20 @@ export function EscalationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Task | null>(null);
 
+  // ?task=<id> (the dashboard's Needs attention list) opens that card once loaded.
+  const [searchParams] = useSearchParams();
+  const wantTask = searchParams.get("task");
+
   useEffect(() => {
     getTaskBoard()
-      .then(setBoard)
+      .then(b => {
+        setBoard(b);
+        const found = wantTask ? Object.values(b.columns).flat().find(t => t.id === wantTask) : undefined;
+        if (found) setSelected(found);
+      })
       .catch(() => setError("Could not load escalations."))
       .finally(() => setLoading(false));
-  }, []);
+  }, [wantTask]);
 
   if (loading) return <div className="p-8"><Spinner /></div>;
   if (error || !board) return <div className="p-6"><p className="text-sm text-red-600">{error ?? "No data."}</p></div>;
@@ -87,7 +91,7 @@ export function EscalationsPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Escalation routing</h1>
-          <p className="mt-1 text-sm text-slate-500">{totalActive} active • {board.counts.escalated} escalated</p>
+          <p className="mt-1 text-sm text-slate-500">{totalActive} active, {board.counts.escalated} escalated</p>
         </div>
       </div>
 

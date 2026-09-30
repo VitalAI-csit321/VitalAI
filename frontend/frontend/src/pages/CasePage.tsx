@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { formatDateTime } from "../lib/format";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   closeEpisode, getEpisode, listEpisodes, moveToEpisode, NEW_CASE, reopenEpisode, updateEpisode,
@@ -9,13 +10,11 @@ import { DoctorSelect } from "../components/CaseFields";
 import { Spinner, StatusBadge } from "../components/ui";
 
 const KIND_LABEL: Record<TimelineEntry["kind"], string> = {
-  contact: "Contact", appointment: "Appointment", consent: "Consent", review: "Review Queue",
+  contact: "Contact", appointment: "Appointment", consent: "Consent", review: "Review queue",
 };
 const btn = "rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50";
 
-function when(iso: string): string {
-  return new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
-}
+const when = formatDateTime;
 
 function openLink(e: TimelineEntry): string | null {
   if (e.kind === "contact") return e.inboxTaskId ? `/inbox?task=${e.inboxTaskId}` : `/contacts/${e.id}`;
@@ -86,10 +85,10 @@ export function CasePage() {
       </div>
 
       <div className="mt-6 grid max-w-3xl grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-white p-5 text-sm">
-        <div><div className="text-xs uppercase tracking-wide text-slate-500">Doctor</div><div className="mt-0.5 font-medium text-slate-900">{episode.doctorName ?? "No doctor"}</div></div>
-        <div><div className="text-xs uppercase tracking-wide text-slate-500">Opened</div><div className="mt-0.5 font-medium text-slate-900">{when(episode.openedAt)}</div></div>
-        {episode.closedAt && <div><div className="text-xs uppercase tracking-wide text-slate-500">Closed</div><div className="mt-0.5 font-medium text-slate-900">{when(episode.closedAt)}</div></div>}
-        {episode.outcomeNote && <div className="col-span-2"><div className="text-xs uppercase tracking-wide text-slate-500">Outcome</div><p className="mt-0.5 whitespace-pre-wrap text-slate-900">{episode.outcomeNote}</p></div>}
+        <div><div className="text-xs text-slate-500">Doctor</div><div className="mt-0.5 font-medium text-slate-900">{episode.doctorName ?? "No doctor"}</div></div>
+        <div><div className="text-xs text-slate-500">Opened</div><div className="mt-0.5 font-medium text-slate-900">{when(episode.openedAt)}</div></div>
+        {episode.closedAt && <div><div className="text-xs text-slate-500">Closed</div><div className="mt-0.5 font-medium text-slate-900">{when(episode.closedAt)}</div></div>}
+        {episode.outcomeNote && <div className="col-span-2"><div className="text-xs text-slate-500">Outcome</div><p className="mt-0.5 whitespace-pre-wrap text-slate-900">{episode.outcomeNote}</p></div>}
         <div className="col-span-2 flex items-end gap-2">
           <div className="flex-1"><DoctorSelect label="Change doctor" value={doctorChoice} onChange={setDoctorChoice} emptyLabel="Choose a doctor" /></div>
           <button disabled={busy || !doctorChoice || doctorChoice === episode.doctorId}
@@ -113,7 +112,7 @@ export function CasePage() {
       {closeNote !== null && (
         <form className="mt-4 max-w-3xl rounded-xl border border-slate-200 bg-white p-4"
           onSubmit={ev => { ev.preventDefault(); void act(() => closeEpisode(episode.id, closeNote)).then(() => setCloseNote(null)); }}>
-          <label htmlFor="outcome-note" className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Outcome note</label>
+          <label htmlFor="outcome-note" className="block text-xs font-semibold text-slate-500">Outcome note</label>
           <textarea id="outcome-note" value={closeNote} onChange={e => setCloseNote(e.target.value)} placeholder="How was this resolved?"
             className="mt-1.5 h-24 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
           <div className="mt-2 flex gap-2">
@@ -135,7 +134,7 @@ export function CasePage() {
           return (
             <div key={`${entry.kind}-${entry.id}`} className="border-b border-slate-100 px-5 py-3 text-sm last:border-0">
               <div className="flex items-center gap-4">
-                <span className="w-28 shrink-0 text-xs font-semibold uppercase tracking-wide text-slate-500">{KIND_LABEL[entry.kind]}</span>
+                <span className="w-28 shrink-0 text-xs font-semibold text-slate-500">{KIND_LABEL[entry.kind]}</span>
                 <span className="flex-1 text-slate-900">{entry.label}</span>
                 <span className="w-24 shrink-0 text-xs capitalize text-slate-500">{entry.status?.replace(/_/g, " ")}</span>
                 <span className="w-40 shrink-0 text-right text-xs text-slate-500">{when(entry.at)}</span>

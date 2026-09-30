@@ -1,4 +1,6 @@
 import { useParams } from "react-router-dom";
+import { Check } from "lucide-react";
+import { formatDateTime, humanize } from "../lib/format";
 import { useEffect, useState } from "react";
 import { getAuditEvent, getAuditForCase, verifyAuditChain } from "../api/audit";
 import type { AuditEvent } from "../api/types";
@@ -34,7 +36,6 @@ export function AuditEventDetailPage() {
       .finally(() => setVerifying(false));
   };
 
-  const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString("en-AU", { hour12: false });
 
   if (!event) {
     return <div className="p-6"><Spinner /></div>;
@@ -44,8 +45,8 @@ export function AuditEventDetailPage() {
     <div className="p-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Audit event: {fmtTime(event.timestamp)}</h1>
-          <p className="mt-1 text-sm text-slate-500">{event.action} • Ref: {event.caseId ?? "—"}</p>
+          <h1 className="text-2xl font-bold text-slate-900">{humanize(event.action)}</h1>
+          <p className="mt-1 text-sm text-slate-500">{formatDateTime(event.timestamp)}</p>
         </div>
         <div className="flex gap-2">
           <span
@@ -53,14 +54,14 @@ export function AuditEventDetailPage() {
               event.riskLevel === "High" ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-600"
             }`}
           >
-            {event.riskLevel.toUpperCase()} RISK
+            {event.riskLevel} risk
           </span>
           <span
             className={`rounded px-2.5 py-1 text-xs font-bold ${
               event.outcome === "BLOCKED" ? "bg-red-100 text-red-600" : "bg-slate-100 text-slate-600"
             }`}
           >
-            {event.outcome ?? "—"}
+            {event.outcome === "BLOCKED" ? "Blocked" : event.outcome ? "Allowed" : "Not recorded"}
           </span>
         </div>
       </div>
@@ -70,24 +71,24 @@ export function AuditEventDetailPage() {
           <h2 className="text-base font-semibold text-slate-900 mb-5">Event summary</h2>
           <div className="grid grid-cols-2 gap-4 text-sm mb-5">
             {[
-              ["Time", fmtTime(event.timestamp)],
+              ["Time", formatDateTime(event.timestamp)],
               ["User", event.actorLabel ?? "system"],
-              ["Action", event.action],
-              ["Resource", event.caseId ?? "—"],
-              ["IP Address", event.ipAddress ?? "—"],
-              ["Session", event.sessionId ?? "—"],
-              ["Outcome", event.outcome ?? "—"],
-              ["Risk Level", event.riskLevel],
+              ["Action", humanize(event.action)],
+              ["Record", event.caseId ? `Contact ${event.caseId.slice(0, 8)}` : "None"],
+              ["IP Address", event.ipAddress ?? "Not recorded"],
+              ["Session", event.sessionId ?? "Not recorded"],
+              ["Outcome", event.outcome === "BLOCKED" ? "Blocked" : event.outcome ? "Allowed" : "Not recorded"],
+              ["Risk level", event.riskLevel],
             ].map(([l, v]) => (
               <div key={l}>
-                <div className="text-xs text-slate-500 uppercase tracking-wide">{l}</div>
+                <div className="text-xs text-slate-500">{l}</div>
                 <div className="font-medium text-slate-900 mt-0.5">{v}</div>
               </div>
             ))}
           </div>
 
           <div>
-            <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Event payload</p>
+            <p className="text-xs text-slate-500 mb-2">Event payload</p>
             <div className="rounded-lg bg-slate-900 p-4 font-mono text-xs overflow-auto max-h-60">
               <pre className="text-slate-300">{JSON.stringify(event.details, null, 2)}</pre>
             </div>
@@ -97,7 +98,7 @@ export function AuditEventDetailPage() {
         <div className="space-y-4">
           <div className="rounded-xl border border-slate-200 bg-white p-5">
             <div className="flex items-center gap-2 mb-4">
-              <span className="text-brand text-lg">✓</span>
+              <Check className="h-5 w-5 text-brand" aria-hidden />
               <h2 className="text-base font-semibold text-brand">Tamper-evident chain</h2>
             </div>
             {event.eventHash ? (
@@ -110,14 +111,14 @@ export function AuditEventDetailPage() {
               </div>
             )}
 
-            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Event hash</p>
+            <p className="text-xs text-slate-500 mb-1">Event hash</p>
             <div className="rounded-lg bg-slate-900 px-3 py-2 font-mono text-xs text-slate-300 mb-3 break-all">
-              {event.eventHash ?? "—"}
+              {event.eventHash ?? "Not recorded"}
             </div>
 
-            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Predecessor hash</p>
+            <p className="text-xs text-slate-500 mb-1">Predecessor hash</p>
             <div className="rounded-lg bg-slate-900 px-3 py-2 font-mono text-xs text-slate-300 mb-4 break-all">
-              {event.predecessorHash ?? "—"}
+              {event.predecessorHash ?? "Not recorded"}
             </div>
 
             <button
@@ -130,7 +131,7 @@ export function AuditEventDetailPage() {
             {verifyResult && (
               <p className={`mt-2 text-xs text-center ${verifyResult.valid ? "text-emerald-700" : "text-red-600"}`}>
                 {verifyResult.valid
-                  ? `Verified • ${verifyResult.checkedCount} events checked, integrity intact`
+                  ? `Verified: ${verifyResult.checkedCount} events checked, integrity intact`
                   : "Integrity check failed - chain break detected"}
               </p>
             )}
@@ -145,7 +146,7 @@ export function AuditEventDetailPage() {
                 related.map((e) => (
                   <div key={e.id} className="cursor-pointer hover:bg-slate-50 rounded-lg px-2 py-1 -mx-2">
                     <div className="text-sm font-semibold text-slate-900">{e.action}</div>
-                    <div className="text-xs text-slate-500">{fmtTime(e.timestamp)} • {e.actorLabel ?? "system"}</div>
+                    <div className="text-xs text-slate-500">{formatDateTime(e.timestamp)}, {e.actorLabel ?? "system"}</div>
                   </div>
                 ))
               )}

@@ -6,18 +6,16 @@ import { listDoctors } from "../api/doctors";
 import type { Appointment, AppointmentStatus, AppointmentType, CalendarMonth, DayView, Doctor } from "../api/types";
 import { useAuth } from "../lib/auth";
 import { Spinner, StatusBadge } from "../components/ui";
-import {
-  MONTH_NAMES, STATUS_LABEL, STATUS_TONE, TYPE_COLOR, TYPE_LABEL,
-  clinicHour, formatDateLong, formatDateShort, formatTime, patientDisplayName, toDateInputValue, toDateInputValueClinic,
-} from "../components/calendarHelpers";
+import { MONTH_NAMES, STATUS_LABEL, STATUS_TONE, TYPE_COLOR, TYPE_LABEL, clinicHour, patientDisplayName, toDateInputValue, toDateInputValueClinic } from "../components/calendarHelpers";
+import { formatDate, formatDateLong, formatTime } from "../lib/format";
 
 type ViewMode = "month" | "week" | "day" | "list";
 
 function StatCards({ stats }: { stats: { scheduled: number; pendingConfirmation: number; confirmedToday: number; cancellations: number } }) {
   const cards = [
     { label: "Scheduled", value: stats.scheduled, color: "border-emerald-500" },
-    { label: "Pending Confirmation", value: stats.pendingConfirmation, color: "border-amber-500" },
-    { label: "Confirmed Today", value: stats.confirmedToday, color: "border-emerald-500" },
+    { label: "Pending confirmation", value: stats.pendingConfirmation, color: "border-amber-500" },
+    { label: "Confirmed today", value: stats.confirmedToday, color: "border-emerald-500" },
     { label: "Cancellations", value: stats.cancellations, color: "border-red-500" },
   ];
   return (
@@ -58,7 +56,7 @@ function MonthView({ data, anchorDate, onSelectDay, selectedDay, onOpen }: {
   const navigate = useNavigate();
   const byDate = useMemo(() => new Map(data.days.map(d => [d.date, d])), [data]);
   const firstOfMonth = new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1);
-  const startWeekday = firstOfMonth.getDay(); // 0=Sun
+  const startWeekday = (firstOfMonth.getDay() + 6) % 7; // weeks start on Monday
   const daysInMonth = new Date(anchorDate.getFullYear(), anchorDate.getMonth() + 1, 0).getDate();
   const cells: (number | null)[] = [...Array(startWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   while (cells.length % 7 !== 0) cells.push(null);
@@ -69,8 +67,8 @@ function MonthView({ data, anchorDate, onSelectDay, selectedDay, onOpen }: {
   return (
     <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(d => <div key={d} className="px-3 py-2 text-center">{d}</div>)}
+        <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">
+          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(d => <div key={d} className="px-3 py-2 text-center">{d}</div>)}
         </div>
         <div className="grid grid-cols-7">
           {cells.map((day, i) => {
@@ -88,11 +86,11 @@ function MonthView({ data, anchorDate, onSelectDay, selectedDay, onOpen }: {
                 <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-sm ${isToday ? "bg-brand font-semibold text-white" : "text-slate-700"}`}>{day}</span>
                 <div className="mt-1 space-y-1">
                   {shown.map(a => (
-                    <div key={a.id} className={`truncate rounded px-1.5 py-0.5 text-[11px] font-medium ${a.status === "cancelled" ? "bg-slate-100 text-slate-400 line-through" : `${TYPE_COLOR[a.appointmentType].bg} ${TYPE_COLOR[a.appointmentType].text}`}`}>
+                    <div key={a.id} className={`truncate rounded px-1.5 py-0.5 text-xs font-medium ${a.status === "cancelled" ? "bg-slate-100 text-slate-400 line-through" : `${TYPE_COLOR[a.appointmentType].bg} ${TYPE_COLOR[a.appointmentType].text}`}`}>
                       {formatTime(a.timeSlot)} {patientDisplayName(a)}
                     </div>
                   ))}
-                  {extra > 0 && <div className="px-1.5 text-[11px] text-slate-400">+{extra} more</div>}
+                  {extra > 0 && <div className="px-1.5 text-xs text-slate-400">+{extra} more</div>}
                 </div>
               </button>
             );
@@ -120,15 +118,17 @@ function MonthView({ data, anchorDate, onSelectDay, selectedDay, onOpen }: {
                     <StatusBadge tone={STATUS_TONE[a.status]}>{STATUS_LABEL[a.status]}</StatusBadge>
                   </div>
                   <div className={`mt-0.5 text-sm ${a.status === "cancelled" ? "text-slate-400 line-through" : "text-slate-700"}`}>{patientDisplayName(a)}</div>
-                  <div className="mt-0.5 text-xs text-slate-500">{TYPE_LABEL[a.appointmentType]} · {a.doctorName ?? "Unassigned"}</div>
+                  <div className="mt-0.5 text-xs text-slate-500">{TYPE_LABEL[a.appointmentType]}, {a.doctorName ?? "Unassigned"}</div>
                 </button>
               ))}
             </div>
+            <button onClick={() => navigate(`/calendar/new?date=${selectedCell.date}`)} className="mt-4 w-full rounded-lg border border-slate-200 py-2 text-sm font-medium text-brand hover:bg-slate-50">
+              Add appointment on {formatDate(selectedCell.date)}
+            </button>
           </>
         ) : (
-          <p className="text-sm text-slate-400">Select a day to see its appointments.</p>
+          <p className="text-sm text-slate-500">Select a day to see its appointments.</p>
         )}
-        <button onClick={() => navigate("/calendar/new")} className="mt-4 w-full rounded-lg border border-slate-200 py-2 text-sm font-medium text-brand hover:bg-slate-50">+ Add Appointment</button>
       </div>
     </div>
   );
@@ -159,7 +159,7 @@ function WeekView({ appointments, weekStart, onOpen }: { appointments: Appointme
           <div />
           {days.map(d => (
             <div key={d.toISOString()} className="border-l border-slate-100 py-2 text-center">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">{d.toLocaleDateString("en-US", { weekday: "short" })}</div>
+              <div className="text-xs font-semibold text-slate-400">{d.toLocaleDateString("en-US", { weekday: "short" })}</div>
               <div className="text-sm font-bold text-slate-900">{d.getDate()}</div>
             </div>
           ))}
@@ -167,7 +167,7 @@ function WeekView({ appointments, weekStart, onOpen }: { appointments: Appointme
         <div className="grid grid-cols-[56px_repeat(7,1fr)]">
           <div>
             {hours.map(h => (
-              <div key={h} className="relative border-t border-slate-100 pr-2 text-right text-[11px] text-slate-400" style={{ height: HOUR_PX }}>
+              <div key={h} className="relative border-t border-slate-100 pr-2 text-right text-xs text-slate-400" style={{ height: HOUR_PX }}>
                 <span className="absolute -top-2 right-2">{h % 12 === 0 ? 12 : h % 12}{h < 12 ? "am" : "pm"}</span>
               </div>
             ))}
@@ -193,7 +193,7 @@ function WeekView({ appointments, weekStart, onOpen }: { appointments: Appointme
                   const cancelled = a.status === "cancelled";
                   return (
                     <button key={a.id} onClick={() => onOpen(a.id)}
-                      className={`absolute left-0.5 right-0.5 overflow-hidden rounded border-l-2 px-1.5 py-0.5 text-left text-[11px] ${cancelled ? "border-slate-300 bg-slate-50 text-slate-400 line-through" : `${TYPE_COLOR[a.appointmentType].border} ${TYPE_COLOR[a.appointmentType].bg} ${TYPE_COLOR[a.appointmentType].text}`}`}
+                      className={`absolute left-0.5 right-0.5 overflow-hidden rounded border-l-2 px-1.5 py-0.5 text-left text-xs ${cancelled ? "border-slate-300 bg-slate-50 text-slate-400 line-through" : `${TYPE_COLOR[a.appointmentType].border} ${TYPE_COLOR[a.appointmentType].bg} ${TYPE_COLOR[a.appointmentType].text}`}`}
                       style={{ top, height }}>
                       <div className="font-semibold">{patientDisplayName(a)}</div>
                       <div>{formatTime(a.timeSlot)}</div>
@@ -227,7 +227,7 @@ function DayViewPanel({ data, onOpen, onNew }: { data: DayView; onOpen: (id: str
                 {h % 12 === 0 ? 12 : h % 12}{h < 12 ? " AM" : " PM"}
               </div>
               <div className={`flex-1 p-1.5 ${isLunch ? "bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,#f1f5f9_6px,#f1f5f9_12px)]" : ""}`}>
-                {isLunch && items.length === 0 && <div className="flex h-full items-center justify-center text-xs italic text-slate-400">LUNCH BREAK</div>}
+                {isLunch && items.length === 0 && <div className="flex h-full items-center justify-center text-xs italic text-slate-400">Lunch break</div>}
                 {items.map(a => {
                   const cancelled = a.status === "cancelled";
                   return (
@@ -235,7 +235,7 @@ function DayViewPanel({ data, onOpen, onNew }: { data: DayView; onOpen: (id: str
                       className={`mb-1 flex w-full items-center justify-between rounded-lg border-l-4 px-3 py-2 text-left ${cancelled ? "border-slate-300 bg-slate-50" : `${TYPE_COLOR[a.appointmentType].border} ${TYPE_COLOR[a.appointmentType].bg}`}`}>
                       <div>
                         <div className={`text-sm font-semibold ${cancelled ? "text-slate-400 line-through" : "text-slate-900"}`}>{patientDisplayName(a)}</div>
-                        <div className="text-xs text-slate-500">{TYPE_LABEL[a.appointmentType]} · {a.doctorName ?? "Unassigned"}{a.location ? ` · ${a.location}` : ""}</div>
+                        <div className="text-xs text-slate-500">{TYPE_LABEL[a.appointmentType]}, {a.doctorName ?? "Unassigned"}{a.location ? `, ${a.location}` : ""}</div>
                       </div>
                       <StatusBadge tone={STATUS_TONE[a.status]}>{STATUS_LABEL[a.status]}</StatusBadge>
                     </button>
@@ -249,7 +249,7 @@ function DayViewPanel({ data, onOpen, onNew }: { data: DayView; onOpen: (id: str
 
       <div className="space-y-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <div className="text-sm font-semibold text-slate-900">Day Overview</div>
+          <div className="text-sm font-semibold text-slate-900">Day overview</div>
           <dl className="mt-3 space-y-2 text-sm">
             <div className="flex justify-between"><dt className="text-slate-500">{data.appointments.length} appointments</dt></div>
             {Object.entries(data.statusBreakdown).map(([status, count]) => (
@@ -265,7 +265,7 @@ function DayViewPanel({ data, onOpen, onNew }: { data: DayView; onOpen: (id: str
         </div>
         {data.providers.length > 0 && (
           <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Providers</div>
+            <div className="text-xs font-semibold text-slate-400">Providers</div>
             <div className="mt-2 space-y-2">
               {data.providers.map(p => (
                 <div key={p.doctorId} className="flex items-center justify-between text-sm">
@@ -318,7 +318,7 @@ function ListViewPanel({ month, onOpen, doctors }: { month: CalendarMonth | null
 
   function exportCsv() {
     const rows = [
-      ["Date", "Time", "Patient", "Type", "Provider", "Status"],
+      ["Date", "Time", "Patient", "Type", "Doctor", "Status"],
       ...items.map(a => [toDateInputValueClinic(new Date(a.timeSlot)), formatTime(a.timeSlot), patientDisplayName(a), TYPE_LABEL[a.appointmentType], a.doctorName ?? "", STATUS_LABEL[a.status]]),
     ];
     const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -340,15 +340,15 @@ function ListViewPanel({ month, onOpen, doctors }: { month: CalendarMonth | null
         <div className="mt-2 text-xs text-slate-400">{total} result{total === 1 ? "" : "s"}</div>
         <div className="mt-3 flex flex-wrap gap-2">
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value as AppointmentType | "")} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm">
-            <option value="">All Types</option>
+            <option value="">All types</option>
             {(Object.keys(TYPE_LABEL) as AppointmentType[]).map(t => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
           </select>
           <select value={providerFilter} onChange={e => setProviderFilter(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm">
-            <option value="">All Providers</option>
+            <option value="">All doctors</option>
             {doctors.map(d => <option key={d.id} value={d.id}>{d.fullName}</option>)}
           </select>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as AppointmentStatus | "")} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm">
-            <option value="">All Statuses</option>
+            <option value="">All statuses</option>
             {(Object.keys(STATUS_LABEL) as AppointmentStatus[]).map(s => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
           </select>
         </div>
@@ -358,9 +358,9 @@ function ListViewPanel({ month, onOpen, doctors }: { month: CalendarMonth | null
             <p className="text-sm text-slate-400">No appointments found.</p>
           ) : grouped.map(([date, dayItems]) => (
             <div key={date}>
-              <div className="mb-1.5 flex items-center gap-2 border-l-2 border-brand pl-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <div className="mb-1.5 flex items-center gap-2 border-l-2 border-brand pl-2 text-xs font-semibold text-slate-500">
                 {formatDateLong(date + "T00:00:00")}
-                {date === todayIso && <span className="rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold text-white">TODAY</span>}
+                {date === todayIso && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-white">Today</span>}
               </div>
               <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
                 {dayItems.map((a, i) => {
@@ -372,7 +372,7 @@ function ListViewPanel({ month, onOpen, doctors }: { month: CalendarMonth | null
                         <span className={`w-16 shrink-0 text-sm font-semibold ${cancelled ? "text-slate-400" : TYPE_COLOR[a.appointmentType].text}`}>{formatTime(a.timeSlot)}</span>
                         <div className="min-w-0">
                           <div className={`truncate text-sm font-medium ${cancelled ? "text-slate-400 line-through" : "text-slate-900"}`}>{patientDisplayName(a)}</div>
-                          <div className="truncate text-xs text-slate-500">{TYPE_LABEL[a.appointmentType]} · {a.durationMinutes}min · {a.doctorName ?? "Unassigned"}{a.location ? ` · ${a.location}` : ""}</div>
+                          <div className="truncate text-xs text-slate-500">{TYPE_LABEL[a.appointmentType]}, {a.durationMinutes} min, {a.doctorName ?? "Unassigned"}{a.location ? `, ${a.location}` : ""}</div>
                         </div>
                       </div>
                       <StatusBadge tone={STATUS_TONE[a.status]}>{STATUS_LABEL[a.status]}</StatusBadge>
@@ -388,7 +388,7 @@ function ListViewPanel({ month, onOpen, doctors }: { month: CalendarMonth | null
       <div className="space-y-4">
         {month && (
           <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="text-sm font-semibold text-slate-900">This Month</div>
+            <div className="text-sm font-semibold text-slate-900">This month</div>
             <dl className="mt-3 space-y-2 text-sm">
               <div className="flex justify-between"><dt className="text-slate-500">Total appointments</dt><dd className="font-medium text-slate-900">{month.days.reduce((sum, d) => sum + d.total, 0)}</dd></div>
               <div className="flex justify-between"><dt className="text-slate-500">Scheduled</dt><dd className="font-medium text-emerald-600">{month.stats.scheduled}</dd></div>
@@ -457,9 +457,9 @@ export function CalendarPage() {
   }
 
   const headerLabel = view === "week"
-    ? `${weekStart.toLocaleDateString("en-US", { day: "numeric", month: "short" })} - ${new Date(weekStart.getTime() + 6 * 86400000).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}`
+    ? `${weekStart.toLocaleDateString("en-AU", { day: "numeric", month: "short" })} – ${new Date(weekStart.getTime() + 6 * 86400000).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}`
     : view === "day"
-    ? anchorDate.toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    ? formatDateLong(anchorDate)
     : `${MONTH_NAMES[anchorDate.getMonth()]} ${anchorDate.getFullYear()}`;
 
   const totalThisMonth = monthData ? monthData.days.reduce((sum, d) => sum + d.total, 0) : null;
@@ -469,21 +469,21 @@ export function CalendarPage() {
     <div className="p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Appointment Calendar</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Appointment calendar</h1>
           {totalThisMonth !== null && (view === "month" || view === "list") && (
-            <p className="mt-1 text-sm text-slate-500">{formatDateShort(anchorDate.toISOString())} · {totalThisMonth} appointments this month</p>
+            <p className="mt-1 text-sm text-slate-500">{totalThisMonth} {totalThisMonth === 1 ? "appointment" : "appointments"} this month</p>
           )}
         </div>
         <div className="flex items-center gap-3">
           <ViewSwitch view={view} onChange={v => { setView(v); setSelectedDay(null); }} />
-          <button onClick={() => navigate("/calendar/new")} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover">+ New Appointment</button>
+          <button onClick={() => navigate("/calendar/new")} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover">New appointment</button>
         </div>
       </div>
 
       <div className="mt-4 flex items-center gap-2">
-        <button onClick={() => step(-1)} className="rounded-lg border border-slate-200 bg-white p-1.5 hover:bg-slate-50"><ChevronLeft className="h-4 w-4" /></button>
+        <button onClick={() => step(-1)} aria-label={`Previous ${view === "list" ? "month" : view}`} className="rounded-lg border border-slate-200 bg-white p-1.5 hover:bg-slate-50"><ChevronLeft className="h-4 w-4" /></button>
         <span className="text-sm font-semibold text-slate-900">{headerLabel}</span>
-        <button onClick={() => step(1)} className="rounded-lg border border-slate-200 bg-white p-1.5 hover:bg-slate-50"><ChevronRight className="h-4 w-4" /></button>
+        <button onClick={() => step(1)} aria-label={`Next ${view === "list" ? "month" : view}`} className="rounded-lg border border-slate-200 bg-white p-1.5 hover:bg-slate-50"><ChevronRight className="h-4 w-4" /></button>
       </div>
 
       {stats && (view === "month" || view === "day") && <div className="mt-4"><StatCards stats={stats} /></div>}

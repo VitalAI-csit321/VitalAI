@@ -1,15 +1,18 @@
 import { Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useAuth } from "../lib/auth";
+import { hasPermission } from "../lib/roles";
 import { Spinner } from "./ui";
 import type { Role } from "../api/types";
 
 export function ProtectedRoute({
   children,
   roles,
+  permission,
 }: {
   children: ReactNode;
   roles?: Role[];
+  permission?: string;
 }) {
   const { user, loading } = useAuth();
   if (loading) {
@@ -24,6 +27,7 @@ export function ProtectedRoute({
   // are enforced server-side too (verified: non-admins get 403 on audit/users);
   // this just avoids showing a page that could only ever fail to load.
   if (roles && !roles.includes(user.role)) return <Navigate to="/dashboard" replace />;
+  if (permission && !hasPermission(user, permission)) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 

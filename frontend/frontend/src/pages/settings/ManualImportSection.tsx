@@ -137,7 +137,7 @@ export function ManualImportSection() {
 
       <form onSubmit={onUpload} className="mt-5 space-y-4 rounded-xl border border-slate-200 p-5">
         <div>
-          <label className="block text-xs font-bold text-brand uppercase tracking-wide mb-1.5">Patient</label>
+          <label className="block text-xs font-bold text-brand mb-1.5">Patient</label>
           <input type="search" value={patientSearch} onChange={e => setPatientSearch(e.target.value)}
             placeholder="Search by name to narrow the list"
             className="mb-2 w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand" />
@@ -154,7 +154,7 @@ export function ManualImportSection() {
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-brand uppercase tracking-wide mb-1.5">Document type</label>
+          <label className="block text-xs font-bold text-brand mb-1.5">Document type</label>
           <select value={docType} onChange={e => setDocType(e.target.value as ClinicalDocType)}
             className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand">
             {DOC_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
@@ -162,7 +162,7 @@ export function ManualImportSection() {
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-brand uppercase tracking-wide mb-1.5">File</label>
+          <label className="block text-xs font-bold text-brand mb-1.5">File</label>
           <input ref={fileInputRef} type="file" accept="application/pdf" onChange={onFileChange}
             className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200" />
           <p className="mt-1 text-xs text-slate-500">PDF only, up to 20 MB.</p>
@@ -184,7 +184,7 @@ export function ManualImportSection() {
           </div>
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr className="text-left text-xs font-semibold text-slate-500">
                 {["File", "Type", "Status", ""].map(h => <th key={h} className="px-5 py-2.5">{h}</th>)}
               </tr>
             </thead>

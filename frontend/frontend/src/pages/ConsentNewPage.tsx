@@ -61,7 +61,7 @@ export function ConsentNewPage() {
       <p className="mt-1 text-sm text-slate-500">Search for a patient by name or MRN to record a consent under their record.</p>
 
       <form onSubmit={search} className="mt-6 flex max-w-lg gap-3">
-        <input
+        <input aria-label="Patient" 
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name or MRN..."
@@ -98,9 +98,9 @@ export function ConsentNewPage() {
             <CasePicker patientId={selected.id} value={caseChoice} onChange={setCaseChoice}
               newTitle={newCaseTitle} onNewTitle={setNewCaseTitle} />
           </div>
-          <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <label className="mt-4 block text-xs font-semibold text-slate-500">
             Consent type
-            <select
+            <select aria-label="Consent type" 
               value={consentType}
               onChange={(e) => setConsentType(e.target.value)}
               className="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal normal-case text-slate-900 focus:border-brand focus:outline-none"

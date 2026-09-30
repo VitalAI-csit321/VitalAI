@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatDateTime } from "../lib/format";
 import { listUsers } from "../api/auth";
 import { addComment, listComments, updateTask } from "../api/tasks";
 import type { ManagedUser, Task, TaskComment, TaskItemStatus } from "../api/types";
@@ -61,7 +62,7 @@ export function EscalationTaskDetail({ task: initialTask, onClose, onUpdated }: 
   const ref = `T-${task.id.slice(0, 6)}`;
   const isEscalated = task.status === "escalated";
   const isHighPriority = task.priority === "urgent" || task.priority === "high";
-  const fmt = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const fmt = formatDateTime;
 
   let handover: Record<string, unknown> | null = null;
   if (task.handoverContext) {
@@ -82,7 +83,7 @@ export function EscalationTaskDetail({ task: initialTask, onClose, onUpdated }: 
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {isEscalated && <span className="rounded bg-red-100 px-2.5 py-1 text-xs font-bold uppercase text-red-600">Escalated</span>}
+                {isEscalated && <span className="rounded bg-red-100 px-2.5 py-1 text-xs font-bold text-red-600">Escalated</span>}
                 {isHighPriority && <span className="rounded bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-600">High priority</span>}
                 <button onClick={onClose} className="ml-4 text-slate-400 hover:text-slate-600 text-xl">×</button>
               </div>
@@ -94,11 +95,11 @@ export function EscalationTaskDetail({ task: initialTask, onClose, onUpdated }: 
                   <h2 className="text-base font-semibold text-slate-900 mb-4">Task information</h2>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     {[["Task ID", ref], ["Source", task.source], ["Priority", task.priority.charAt(0).toUpperCase()+task.priority.slice(1)], ["Status", task.status.replace("_", " ").replace(/\b\w/g, c => c.toUpperCase())], ["Created", fmt(task.createdAt)], ["Assigned to", task.assignedTo ? `user-${task.assignedTo.slice(0,8)}` : "Unassigned"]].map(([l, v]) => (
-                      <div key={l}><div className="text-xs text-slate-500 uppercase tracking-wide">{l}</div><div className="font-medium text-slate-900 mt-0.5">{v}</div></div>
+                      <div key={l}><div className="text-xs text-slate-500">{l}</div><div className="font-medium text-slate-900 mt-0.5">{v}</div></div>
                     ))}
                   </div>
                   <div className="mt-4">
-                    <div className="text-xs text-slate-500 uppercase tracking-wide mb-1">Handover context</div>
+                    <div className="text-xs text-slate-500 mb-1">Handover context</div>
                     {handover ? (
                       <div className="space-y-1.5 text-sm text-slate-700">
                         {handover.transcript ? <p><span className="text-slate-500">Transcript: </span>{String(handover.transcript)}</p> : null}

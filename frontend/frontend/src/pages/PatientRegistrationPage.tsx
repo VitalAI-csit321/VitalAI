@@ -110,7 +110,7 @@ export function PatientRegistrationPage() {
           opened from an email looks like it belongs to someone. */}
       <header className="bg-sidebar px-4 pb-7 pt-6">
         <div className="mx-auto w-full max-w-xl">
-          <p className="text-sm font-semibold tracking-wide text-brand-light">VitalAI</p>
+          <p className="text-sm font-semibold text-brand-light">VitalAI</p>
           <h1 className="mt-2 text-balance text-2xl font-bold text-white">Register with the clinic</h1>
         </div>
       </header>

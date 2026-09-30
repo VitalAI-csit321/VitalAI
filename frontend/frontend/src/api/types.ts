@@ -143,11 +143,18 @@ export interface Message {
   patientId?: string | null; episodeId?: string | null; episodeTitle?: string | null;
 }
 
+export interface AttentionItem {
+  id: string; href: string; title: string; kind: string;
+  urgency: "urgent" | "high" | null; createdAt: string;
+}
+
 export interface DashboardSummary {
-  // null: this role may not read that count (a doctor has no /intake, /audit or /tasks).
-  openCases: number | null; awaitingApproval: number | null; escalations: number | null; auditEvents: number | null;
+  // null: this role may not read that count (a doctor has no /tasks).
+  openCases: number | null; awaitingApproval: number | null; escalations: number | null;
+  oldestAwaiting: string | null; oldestEscalated: string | null;
   workflowByDay: { day: string; date: string; value: number }[];
-  pendingReviews: { id: string; name: string; kind: string; isNew: boolean }[];
+  today: Appointment[];
+  attention: AttentionItem[];
 }
 
 export type AppointmentStatus = "pending" | "confirmed" | "cancelled" | "completed";

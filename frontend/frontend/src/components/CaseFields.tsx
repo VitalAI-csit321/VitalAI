@@ -7,7 +7,7 @@ import { listPatients } from "../api/cases";
 import type { Doctor, Message, Patient } from "../api/types";
 
 const FIELD = "w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand";
-const LABEL = "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500";
+const LABEL = "mb-1.5 block text-sm font-medium text-slate-700";
 
 // A patient's open cases plus "New case…" (M4). The value is a case id,
 // NEW_CASE (with newTitle), or "" when optional and nothing is chosen.

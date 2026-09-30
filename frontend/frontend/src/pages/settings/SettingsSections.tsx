@@ -86,12 +86,14 @@ export function SettingsSection({ group }: { group: string }) {
 
   return (
     <div>
-      <h2 className="text-base font-semibold text-slate-900 mb-5">{group}</h2>
       <div className="space-y-4">
         {groupItems.map(item => (
           <div key={item.key} className="rounded-xl border border-slate-200 p-4">
             {item.key === "task_routing_category_roles" ? (
               <CategoryRoleEditor item={item} value={effectiveValue(item) as Record<string, string>}
+                onChange={v => setPending(item.key, v, item.value)} />
+            ) : item.key === "login_rate_limit" ? (
+              <RateLimitEditor item={item} value={String(effectiveValue(item))}
                 onChange={v => setPending(item.key, v, item.value)} />
             ) : item.key === "email_no_autosend_categories" ? (
               <CategoryListEditor item={item} value={effectiveValue(item) as string[]}
@@ -122,12 +124,14 @@ export function SettingsSection({ group }: { group: string }) {
   );
 }
 
+const fieldId = (item: AppSettingItem) => `setting-${item.key}`;
+
 function FieldChrome({ item, children }: { item: AppSettingItem; children: React.ReactNode }) {
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <label className="text-sm font-semibold text-slate-900">{item.label}</label>
-        {!item.editable && <span className="text-xs font-medium text-slate-400">Read-only</span>}
+        <label htmlFor={fieldId(item)} className="text-sm font-semibold text-slate-900">{item.label}</label>
+        {!item.editable && <span className="text-xs font-medium text-slate-500">Read-only</span>}
       </div>
       <div className="mt-1.5">{children}</div>
       {item.help && <p className="mt-1.5 text-xs text-slate-500">{item.help}</p>}
@@ -141,14 +145,17 @@ function ScalarField({
   const disabled = !item.editable;
 
   if (item.type === "bool") {
+    const on = Boolean(value);
     return (
       <FieldChrome item={item}>
-        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" checked={Boolean(value)} disabled={disabled}
-            onChange={e => onChange(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
-          {value ? "Enabled" : "Disabled"}
-        </label>
+        <div className="flex items-center gap-3">
+          <button type="button" role="switch" id={fieldId(item)} aria-checked={on} disabled={disabled}
+            onClick={() => onChange(!on)}
+            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${on ? "bg-brand" : "bg-slate-300"}`}>
+            <span className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${on ? "translate-x-5" : "translate-x-0.5"}`} />
+          </button>
+          <span className="text-sm text-slate-700">{on ? "On" : "Off"}</span>
+        </div>
       </FieldChrome>
     );
   }
@@ -159,7 +166,7 @@ function ScalarField({
       return (
         <FieldChrome item={item}>
           <div className="flex items-center gap-3">
-            <input type="range" min={item.minimum ?? 0} max={item.maximum ?? 1} step={step}
+            <input type="range" id={fieldId(item)} min={item.minimum ?? 0} max={item.maximum ?? 1} step={step}
               value={Number(value)} disabled={disabled}
               onChange={e => onChange(parseFloat(e.target.value))}
               className="flex-1 accent-brand" />
@@ -172,7 +179,7 @@ function ScalarField({
     }
     return (
       <FieldChrome item={item}>
-        <input type="number" min={item.minimum ?? undefined} max={item.maximum ?? undefined} step={step}
+        <input type="number" id={fieldId(item)} min={item.minimum ?? undefined} max={item.maximum ?? undefined} step={step}
           value={Number(value)} disabled={disabled}
           onChange={e => onChange(item.type === "int" ? parseInt(e.target.value, 10) : parseFloat(e.target.value))}
           className="w-40 rounded-lg border border-slate-200 px-3.5 py-2 text-sm outline-none focus:border-brand disabled:bg-slate-50 disabled:text-slate-400" />
@@ -183,9 +190,31 @@ function ScalarField({
   // str
   return (
     <FieldChrome item={item}>
-      <input type="text" value={String(value ?? "")} disabled={disabled}
+      <input type="text" id={fieldId(item)} value={String(value ?? "")} disabled={disabled}
         onChange={e => onChange(e.target.value)}
         className="w-full rounded-lg border border-slate-200 px-3.5 py-2 text-sm outline-none focus:border-brand disabled:bg-slate-50 disabled:text-slate-400" />
+    </FieldChrome>
+  );
+}
+
+// "5/minute" as a number and a period; the backend accepts per minute or per hour.
+function RateLimitEditor({
+  item, value, onChange,
+}: { item: AppSettingItem; value: string; onChange: (v: string) => void }) {
+  const [count, period] = value.split("/");
+  return (
+    <FieldChrome item={item}>
+      <div className="flex items-center gap-2">
+        <input type="number" id={fieldId(item)} min={1} max={1000} value={count}
+          onChange={e => onChange(`${e.target.value}/${period}`)}
+          className="w-24 rounded-lg border border-slate-200 px-3.5 py-2 text-sm outline-none focus:border-brand" />
+        <span className="text-sm text-slate-600">per</span>
+        <select aria-label="Period" value={period} onChange={e => onChange(`${count}/${e.target.value}`)}
+          className="rounded-lg border border-slate-200 px-2.5 py-2 text-sm outline-none focus:border-brand">
+          <option value="minute">minute</option>
+          <option value="hour">hour</option>
+        </select>
+      </div>
     </FieldChrome>
   );
 }

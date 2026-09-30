@@ -24,7 +24,6 @@ import { ConsentViewPage } from "./pages/ConsentViewPage";
 import { ConsentSuccessPage } from "./pages/ConsentSuccessPage";
 import { RecordsPage } from "./pages/RecordsPage";
 import { InboxPage } from "./pages/InboxPage";
-import { LogCallPage } from "./pages/LogCallPage";
 
 // New pages (15 new designs)
 import { ReviewQueuePage } from "./pages/ReviewQueuePage";
@@ -39,14 +38,6 @@ import { AppointmentDetailPage } from "./pages/AppointmentDetailPage";
 import { AppointmentEditPage } from "./pages/AppointmentEditPage";
 import { AppointmentNewPage } from "./pages/AppointmentNewPage";
 
-// Platform Operations (separate shell)
-import {
-  PlatformOpsLoginPage,
-  PlatformOpsLayout,
-  SystemHealthPage,
-  ModelConfigPage,
-} from "./pages/PlatformOps";
-
 export default function App() {
   return (
     <AuthProvider>
@@ -57,22 +48,6 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/register/:token" element={<PatientRegistrationPage />} />
-
-          {/* Platform Operations — separate shell. Its endpoints require
-              READ_AUDIT (admin only), so the whole shell is admin-gated. */}
-          <Route path="/platform-ops/login" element={<PlatformOpsLoginPage />} />
-          <Route
-            path="/platform-ops"
-            element={
-              <ProtectedRoute roles={["admin"]}>
-                <PlatformOpsLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="/platform-ops/system-health" replace />} />
-            <Route path="system-health" element={<SystemHealthPage />} />
-            <Route path="model-config" element={<ModelConfigPage />} />
-          </Route>
 
           {/* Main app shell */}
           <Route
@@ -104,7 +79,6 @@ export default function App() {
 
             {/* Inbox */}
             <Route path="/inbox" element={<InboxPage />} />
-            <Route path="/inbox/log-call" element={<LogCallPage />} />
 
             {/* Review Queue */}
             <Route path="/review-queue" element={<ReviewQueuePage />} />
@@ -120,11 +94,11 @@ export default function App() {
               }
             />
 
-            {/* Audit — admin only */}
+            {/* Audit: read_audit, so admins and operators an admin has granted it */}
             <Route
               path="/audit"
               element={
-                <ProtectedRoute roles={["admin"]}>
+                <ProtectedRoute permission="read_audit">
                   <AuditPage />
                 </ProtectedRoute>
               }
@@ -132,7 +106,7 @@ export default function App() {
             <Route
               path="/audit/:eventId"
               element={
-                <ProtectedRoute roles={["admin"]}>
+                <ProtectedRoute permission="read_audit">
                   <AuditEventDetailPage />
                 </ProtectedRoute>
               }

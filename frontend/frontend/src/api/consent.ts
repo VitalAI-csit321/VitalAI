@@ -78,10 +78,10 @@ export async function verifyConsent(
 }
 
 export const CONSENT_TYPES: { value: string; label: string }[] = [
-  { value: "general_treatment", label: "General Treatment" },
-  { value: "surgical_procedure", label: "Surgical Procedure" },
-  { value: "data_sharing", label: "Data Sharing" },
-  { value: "research_study", label: "Research Study" },
+  { value: "general_treatment", label: "General treatment" },
+  { value: "surgical_procedure", label: "Surgical procedure" },
+  { value: "data_sharing", label: "Data sharing" },
+  { value: "research_study", label: "Research study" },
 ];
 
 // Types staff never create by hand, so not offered in CONSENT_TYPES.

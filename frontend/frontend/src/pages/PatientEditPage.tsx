@@ -88,16 +88,16 @@ export function PatientEditPage() {
           <h2 className="text-lg font-semibold text-slate-900 mb-5">Identity</h2>
           <div className="grid grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Name</label>
-              <input className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={name} onChange={e => setName(e.target.value)} />
+              <label htmlFor="patient-name" className="block text-sm font-medium text-slate-700 mb-1.5">Name</label>
+              <input id="patient-name" className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={name} onChange={e => setName(e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Date of birth</label>
-              <input placeholder="DD/MM/YYYY" className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={dob} onChange={e => setDob(e.target.value)} />
+              <label htmlFor="patient-dob" className="block text-sm font-medium text-slate-700 mb-1.5">Date of birth</label>
+              <input id="patient-dob" placeholder="DD/MM/YYYY" className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={dob} onChange={e => setDob(e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Gender</label>
-              <select className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={gender} onChange={e => setGender(e.target.value as NonNullable<Patient["gender"]> | "")}>
+              <label htmlFor="patient-gender" className="block text-sm font-medium text-slate-700 mb-1.5">Gender</label>
+              <select id="patient-gender" className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={gender} onChange={e => setGender(e.target.value as NonNullable<Patient["gender"]> | "")}>
                 <option value="" disabled>Not recorded</option>
                 <option value="male">Male</option><option value="female">Female</option><option value="non_binary">Non-binary</option>
               </select>

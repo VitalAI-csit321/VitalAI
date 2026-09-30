@@ -37,8 +37,9 @@ const EMPTY: FormData = {
 const inputClass = "w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand";
 const labelClass = "block text-sm font-medium text-slate-700 mb-1.5";
 
+// The label wraps its one control, so screen readers announce it.
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><label className={labelClass}>{label}</label>{children}</div>;
+  return <label className="block"><span className={labelClass}>{label}</span>{children}</label>;
 }
 
 function Stepper({ current }: { current: number }) {
@@ -158,9 +159,9 @@ export function PatientOnboardingPage() {
           <>
             <h2 className="text-lg font-semibold text-slate-900 mb-5">Personal information</h2>
             <div className="grid grid-cols-2 gap-5">
-              <Field label="First Name"><input className={inputClass} value={form.firstName} onChange={e => update("firstName", e.target.value)} /></Field>
-              <Field label="Last Name"><input className={inputClass} value={form.lastName} onChange={e => update("lastName", e.target.value)} /></Field>
-              <Field label="Date of Birth"><input className={inputClass} placeholder="DD/MM/YYYY" value={form.dateOfBirth} onChange={e => update("dateOfBirth", e.target.value)} /></Field>
+              <Field label="First name"><input className={inputClass} value={form.firstName} onChange={e => update("firstName", e.target.value)} /></Field>
+              <Field label="Last name"><input className={inputClass} value={form.lastName} onChange={e => update("lastName", e.target.value)} /></Field>
+              <Field label="Date of birth"><input className={inputClass} placeholder="DD/MM/YYYY" value={form.dateOfBirth} onChange={e => update("dateOfBirth", e.target.value)} /></Field>
               <Field label="Gender">
                 <select className={inputClass} value={form.gender} onChange={e => update("gender", e.target.value)}>
                   <option value="">Select...</option>
@@ -176,14 +177,14 @@ export function PatientOnboardingPage() {
               <Field label="Address"><input className={inputClass} value={form.address} onChange={e => update("address", e.target.value)} /></Field>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-5">
-              <Field label="Indigenous Status">
+              <Field label="Indigenous status">
                 <select className={inputClass} value={form.indigenousStatus} onChange={e => update("indigenousStatus", e.target.value)}>
                   <option value="">Select...</option>
                   <option>Aboriginal</option><option>Torres Strait Islander</option>
                   <option>Both</option><option>Neither</option><option>Not stated</option>
                 </select>
               </Field>
-              <Field label="Preferred Language"><input className={inputClass} value={form.preferredLanguage} onChange={e => update("preferredLanguage", e.target.value)} /></Field>
+              <Field label="Preferred language"><input className={inputClass} value={form.preferredLanguage} onChange={e => update("preferredLanguage", e.target.value)} /></Field>
             </div>
             <div className="mt-5">
               <DoctorSelect label="Preferred doctor" value={form.preferredDoctorId} onChange={v => update("preferredDoctorId", v)} emptyLabel="No preference" />
@@ -198,15 +199,15 @@ export function PatientOnboardingPage() {
             <div className="grid grid-cols-2 gap-5">
               <Field label="Phone"><input className={inputClass} placeholder="+61 4XX XXX XXX" value={form.phone} onChange={e => update("phone", e.target.value)} /></Field>
               <Field label="Email"><input className={inputClass} placeholder="patient@email.com" value={form.email} onChange={e => update("email", e.target.value)} /></Field>
-              <Field label="Emergency Contact Name"><input className={inputClass} value={form.emergencyContactName} onChange={e => update("emergencyContactName", e.target.value)} /></Field>
-              <Field label="Emergency Contact Phone"><input className={inputClass} value={form.emergencyContactPhone} onChange={e => update("emergencyContactPhone", e.target.value)} /></Field>
-              <Field label="Preferred Communication">
+              <Field label="Emergency contact name"><input className={inputClass} value={form.emergencyContactName} onChange={e => update("emergencyContactName", e.target.value)} /></Field>
+              <Field label="Emergency contact phone"><input className={inputClass} value={form.emergencyContactPhone} onChange={e => update("emergencyContactPhone", e.target.value)} /></Field>
+              <Field label="Preferred communication">
                 <select className={inputClass} value={form.preferredCommunication} onChange={e => update("preferredCommunication", e.target.value)}>
                   <option value="">Select...</option>
                   <option>Phone</option><option>Email</option><option>SMS</option><option>Portal</option>
                 </select>
               </Field>
-              <Field label="Best Time to Contact">
+              <Field label="Best time to contact">
                 <select className={inputClass} value={form.bestTimeToContact} onChange={e => update("bestTimeToContact", e.target.value)}>
                   <option value="">Select...</option>
                   <option>Morning</option><option>Afternoon</option><option>Evening</option>
@@ -221,10 +222,10 @@ export function PatientOnboardingPage() {
           <>
             <h2 className="text-lg font-semibold text-slate-900 mb-5">Medical history</h2>
             <div className="space-y-5">
-              <Field label="Known Conditions">
+              <Field label="Known conditions">
                 <textarea className={`${inputClass} h-28 resize-none`} placeholder="Enter conditions, one per line" value={form.knownConditions} onChange={e => update("knownConditions", e.target.value)} />
               </Field>
-              <Field label="Current Medications">
+              <Field label="Current medications">
                 <textarea className={`${inputClass} h-28 resize-none`} placeholder="Enter medications, one per line" value={form.currentMedications} onChange={e => update("currentMedications", e.target.value)} />
               </Field>
               <Field label="Allergies">
@@ -239,22 +240,22 @@ export function PatientOnboardingPage() {
           <>
             <h2 className="text-lg font-semibold text-slate-900 mb-5">Insurance</h2>
             <div className="grid grid-cols-2 gap-5">
-              <Field label="Insurance Provider"><input className={inputClass} value={form.insuranceProvider} onChange={e => update("insuranceProvider", e.target.value)} /></Field>
-              <Field label="Policy Number"><input className={inputClass} value={form.policyNumber} onChange={e => update("policyNumber", e.target.value)} /></Field>
-              <Field label="Group Number">
+              <Field label="Insurance provider"><input className={inputClass} value={form.insuranceProvider} onChange={e => update("insuranceProvider", e.target.value)} /></Field>
+              <Field label="Policy number"><input className={inputClass} value={form.policyNumber} onChange={e => update("policyNumber", e.target.value)} /></Field>
+              <Field label="Group number">
                 <div className="flex gap-2">
                   <input className={inputClass} value={form.groupNumber} onChange={e => update("groupNumber", e.target.value)} />
                   <button type="button" onClick={() => update("groupNumber", "N/A")} className="shrink-0 rounded-lg border border-slate-300 px-3 text-xs font-medium text-slate-600 hover:bg-slate-50">N/A</button>
                 </div>
               </Field>
-              <Field label="Expiry Date"><input className={inputClass} placeholder="DD/MM/YYYY" value={form.expiryDate} onChange={e => update("expiryDate", e.target.value)} /></Field>
-              <Field label="Medicare Number">
+              <Field label="Expiry date"><input className={inputClass} placeholder="DD/MM/YYYY" value={form.expiryDate} onChange={e => update("expiryDate", e.target.value)} /></Field>
+              <Field label="Medicare number">
                 <div className="flex gap-2">
                   <input className={inputClass} value={form.medicareNumber} onChange={e => update("medicareNumber", e.target.value)} />
                   <button type="button" onClick={() => update("medicareNumber", "N/A")} className="shrink-0 rounded-lg border border-slate-300 px-3 text-xs font-medium text-slate-600 hover:bg-slate-50">N/A</button>
                 </div>
               </Field>
-              <Field label="Concession Card">
+              <Field label="Concession card">
                 <select className={inputClass} value={form.concessionCard} onChange={e => update("concessionCard", e.target.value)}>
                   <option>None</option><option>Health Care Card</option><option>Pensioner Concession</option><option>Commonwealth Seniors</option>
                 </select>
@@ -269,23 +270,23 @@ export function PatientOnboardingPage() {
             <h2 className="text-lg font-semibold text-slate-900 mb-5">Review and submit</h2>
             <div className="rounded-lg border border-slate-200 divide-y divide-slate-100 text-sm">
               {[
-                ["NAME", `${form.firstName} ${form.lastName}`.trim() || "—"],
+                ["Name", `${form.firstName} ${form.lastName}`.trim() || "Not provided"],
                 ["MRN", "Assigned automatically after submission"],
-                ["DOB", form.dateOfBirth || "—"],
-                ["GENDER", form.gender || "—"],
-                ["ADDRESS", form.address || "—"],
-                ["PHONE", form.phone || "—"],
-                ["EMAIL", form.email || "—"],
-                ["EMERGENCY", form.emergencyContactName || "—"],
-                ["CONDITIONS", form.knownConditions || "Not provided"],
-                ["MEDICATIONS", form.currentMedications || "Not provided"],
-                ["ALLERGIES", form.allergies || "Not provided"],
-                ["INSURANCE", [form.insuranceProvider, form.policyNumber].filter(Boolean).join(" ") || "Not provided"],
-                ["MEDICARE", form.medicareNumber || "Not provided"],
-                ["EXPIRY", form.expiryDate || "Not provided"],
+                ["Date of birth", form.dateOfBirth || "Not provided"],
+                ["Gender", form.gender || "Not provided"],
+                ["Address", form.address || "Not provided"],
+                ["Phone", form.phone || "Not provided"],
+                ["Email", form.email || "Not provided"],
+                ["Emergency contact", form.emergencyContactName || "Not provided"],
+                ["Conditions", form.knownConditions || "Not provided"],
+                ["Medications", form.currentMedications || "Not provided"],
+                ["Allergies", form.allergies || "Not provided"],
+                ["Insurance", [form.insuranceProvider, form.policyNumber].filter(Boolean).join(" ") || "Not provided"],
+                ["Medicare", form.medicareNumber || "Not provided"],
+                ["Insurance expiry", form.expiryDate || "Not provided"],
               ].map(([label, value]) => (
                 <div key={label} className="flex px-4 py-3">
-                  <span className="w-36 shrink-0 font-semibold uppercase tracking-wide text-slate-500 text-xs pt-0.5">{label}:</span>
+                  <span className="w-36 shrink-0 font-semibold text-slate-500 text-xs pt-0.5">{label}:</span>
                   <span className="text-slate-900 whitespace-pre-line">{value}</span>
                 </div>
               ))}
