@@ -26,6 +26,8 @@ class TaskType(enum.StrEnum):
     # message, so it has episode_id and no case_id.
     CASE_CHOICE = "case_choice"
     CASE_CLOSE = "case_close"
+    # A repeat prescription request for the prescriber (prescription_service).
+    PRESCRIPTION_REQUEST = "prescription_request"
 
 
 class TaskStatus(enum.StrEnum):

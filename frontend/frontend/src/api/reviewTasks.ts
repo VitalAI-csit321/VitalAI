@@ -10,6 +10,7 @@ export const KIND_LABEL: Record<string, string> = {
   complaint_review: "Complaint needs a response",
   case_choice: "Which case does this belong to?",
   case_close: "Close this case?",
+  prescription_request: "Repeat prescription",
   consent_review: "Consent review",
   triage_review: "Triage review",
   escalation_review: "Escalation review",

@@ -78,6 +78,16 @@ async def lifespan(application: FastAPI):
     async with AsyncSessionLocal() as db:
         await settings_service.hydrate(db)
 
+    # Messages held before the Review Queue existed get the item a new one
+    # would (app/services/review_backfill.py). Finds nothing once caught up.
+    from app.services import review_backfill
+    from app.services.system_actor import get_or_create_agent_actor
+
+    async with AsyncSessionLocal() as db:
+        opened = await review_backfill.backfill(db, actor=await get_or_create_agent_actor(db))
+        if opened:
+            logger.info("review queue: opened %d items for messages held before it existed", opened)
+
     # The checkpointer owns its own tables (not Alembic's, see
     # app/agents/checkpointer.py). setup() is idempotent.
     if settings.agentic_pipeline_enabled:

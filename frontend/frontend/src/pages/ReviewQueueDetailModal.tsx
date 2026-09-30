@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
-import { formatDateTime } from "../lib/format";
+import { formatDateTime, humanize } from "../lib/format";
 import { Link, useNavigate } from "react-router-dom";
 import { approveDraft, getInboxMessage, rejectDraft, sendManualReply } from "../api/misc";
 import { listDoctors } from "../api/doctors";
@@ -87,11 +87,11 @@ export function ReviewQueueDetailModal({ item, onClose, onDone }: { item: RawRev
           <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 p-5 text-sm">
-                {[["Patient", item.patient_name ?? "Unidentified"], ["Channel", item.channel ?? "-"],
-                  ["Owner", item.owner_label ?? "-"], ["Priority", item.priority],
+                {[["Patient", item.patient_name ?? "Unidentified"], ["Channel", item.channel ? humanize(item.channel) : "-"],
+                  ["Owner", item.owner_label ?? "-"], ["Priority", humanize(item.priority)],
                   ["Submitted", formatDateTime(item.created_at)],
                   ["Due", item.due_at ? formatDateTime(item.due_at) : "No due date"]].map(([l, v]) => (
-                  <div key={l}><div className="text-xs text-slate-500">{l}</div><div className="mt-0.5 font-medium capitalize text-slate-900">{v}</div></div>
+                  <div key={l}><div className="text-xs text-slate-500">{l}</div><div className="mt-0.5 font-medium text-slate-900">{v}</div></div>
                 ))}
                 <div className="col-span-2"><div className="text-xs text-slate-500">Reason</div><p className="mt-0.5 whitespace-pre-wrap text-slate-900">{item.notes ?? "-"}</p></div>
                 {item.details?.escalation && (

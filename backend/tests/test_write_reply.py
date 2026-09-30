@@ -12,7 +12,7 @@ from app.models.call import Call
 from app.models.email import Email
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.task import Task, TaskCategory, TaskItemStatus, TaskSource
-from app.services import approval_service, email_service, review_routing
+from app.services import approval_service, email_service, prescription_service, review_routing
 from tests.review_helpers import assign, events, inbox_task
 from tests.test_inbox import _held
 
@@ -117,6 +117,20 @@ async def test_refused_on_a_call(db_session, client, admin_headers):
     await db_session.flush()
     task.source, task.call_id = TaskSource.CALL, call.id
     await db_session.commit()
+    assert (await _reply(client, admin_headers, task)).status_code == 409
+    assert await events(db_session, "email.sent") == []
+
+
+@pytest.mark.parametrize(
+    "reason", [prescription_service.REVIEW_DUE_REASON, prescription_service.TO_CONSIDER_REASON]
+)
+async def test_refused_on_the_prescribers_request(db_session, client, admin_headers, reason):
+    """The request shares the patient's email; the answer to the patient is the
+    acknowledgement on their own message, so a second reply is never offered."""
+    task = await inbox_task(db_session, category=TaskCategory.PRESCRIPTION_RENEWAL)
+    task.handover_context = reason
+    await db_session.commit()
+    assert (await _listed(client, admin_headers, task))["canWriteReply"] is False
     assert (await _reply(client, admin_headers, task)).status_code == 409
     assert await events(db_session, "email.sent") == []
 

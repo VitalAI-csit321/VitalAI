@@ -25,14 +25,19 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.human_review import TaskType
 from app.models.task import Task, TaskCategory, TaskItemStatus, TaskPriority, TaskSource
 from app.models.user import User, UserRole
-from app.services import medication_service
+from app.services import medication_service, review_routing
 from app.services.audit_service import record_event
 
 BRANCH = "prescription"
 
 _SIGN_OFF = "Kind regards,\nThe clinic team"
+# The request Task's handover_context; the inbox and review_backfill match on these.
+REVIEW_DUE_REASON = "Repeat request from the patient. A review is due before it can be renewed."
+TO_CONSIDER_REASON = "Repeat request from the patient, for the prescriber to consider."
+REQUEST_REASONS = (REVIEW_DUE_REASON, TO_CONSIDER_REASON)
 
 
 def draft_prescription_reply(*, name: str | None, review_due: bool) -> str:
@@ -69,8 +74,10 @@ async def request_from_doctor(
     """The internal half: a Task for the prescriber, never an email.
 
     Assigned to the prescriber when the history names one, otherwise left for
-    whoever works the doctor queue, which is better than dropping it.
+    whoever works the doctor queue, which is better than dropping it. Opens the
+    matching Review Queue item in the same commit.
     """
+    reason = REVIEW_DUE_REASON if review_due else TO_CONSIDER_REASON
     task = Task(
         case_id=case_id,
         assigned_to=doctor_id,
@@ -79,14 +86,17 @@ async def request_from_doctor(
         target_role=UserRole.DOCTOR,
         priority=TaskPriority.HIGH,
         status=TaskItemStatus.PENDING,
-        handover_context=(
-            "Repeat request from the patient. A review is due before it can be renewed."
-            if review_due
-            else "Repeat request from the patient, for the prescriber to consider."
-        ),
+        handover_context=reason,
     )
     db.add(task)
     await db.flush()
+    await review_routing.open_item(
+        db,
+        kind=TaskType.PRESCRIPTION_REQUEST,
+        inbox_task=task,
+        reason=reason,
+        actor=actor,
+    )
     await record_event(
         db,
         actor=actor,

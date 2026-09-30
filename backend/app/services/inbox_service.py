@@ -28,7 +28,13 @@ from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.task import Task, TaskItemStatus, TaskPriority, TaskSource
 from app.models.user import User, UserRole
 from app.schemas.inbox import InboxMessageOut
-from app.services import approval_service, email_service, human_review_service, review_routing
+from app.services import (
+    approval_service,
+    email_service,
+    human_review_service,
+    prescription_service,
+    review_routing,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -140,10 +146,13 @@ async def write_reply_open(db: AsyncSession, task: Task) -> bool:
     awaiting approval. Covers no draft, a blocked one, a rejected one, and an
     approved one whose delivery failed."""
     # Archived (completed) messages were usually answered outside the system.
+    # A prescriber's request shares the patient's email but is not theirs to
+    # answer: the patient's reply is the acknowledgement on their own message.
     if (
         task.source != TaskSource.EMAIL
         or task.draft_sent
         or task.status == TaskItemStatus.COMPLETED
+        or task.handover_context in prescription_service.REQUEST_REASONS
     ):
         return False
     if task.draft_approval_id is None:

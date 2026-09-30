@@ -33,7 +33,9 @@ _PRIORITY = {
 }
 
 # Kinds owned by whoever owns the message itself (spec section 5).
-_FOLLOWS_MESSAGE = frozenset({TaskType.DRAFT_APPROVAL, TaskType.AGENT_HANDOVER})
+_FOLLOWS_MESSAGE = frozenset(
+    {TaskType.DRAFT_APPROVAL, TaskType.AGENT_HANDOVER, TaskType.PRESCRIPTION_REQUEST}
+)
 
 
 async def owner_for(
@@ -56,6 +58,8 @@ async def owner_for(
     role = inbox_task.target_role or UserRole.OPERATOR
     if role != UserRole.DOCTOR:
         return role, None
+    if kind == TaskType.PRESCRIPTION_REQUEST and inbox_task.assigned_to is not None:
+        return UserRole.DOCTOR, inbox_task.assigned_to  # the prescriber
     case = await db.get(IntakeCase, inbox_task.case_id)
     # The case's doctor, else the patient's (M4). Doctor work for a patient
     # without one (the unidentified, or registered before M4) is the operator's.
