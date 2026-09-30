@@ -92,5 +92,9 @@ def test_total_route_count():
     # /link-patient and /reassign.
     # 105: +1 for GET /inbox/{task_id}.
     # 106: +1 for POST /inbox/{task_id}/reply (Write reply, D14).
+    # 117 as of cases as episodes of care (M4): +8 for /cases (GET and POST,
+    # GET and PATCH /{episode_id}, POST /{episode_id}/close, /reopen and
+    # /contact, POST /move), +2 for POST /human-review/{task_id}/choose-case and
+    # /case-close, +1 for PUT /patients/{patient_id}/doctor (ASSIGN_PATIENTS).
     voice = 5 if settings.twilio_enabled else 0
-    assert len({(e.method, e.path) for e in registry}) == 106 + voice
+    assert len({(e.method, e.path) for e in registry}) == 117 + voice

@@ -138,8 +138,16 @@ export async function apiPostForm<T>(path: string, form: FormData): Promise<T> {
 }
 
 export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
+  return apiSend<T>("PATCH", path, body);
+}
+
+export async function apiPut<T>(path: string, body?: unknown): Promise<T> {
+  return apiSend<T>("PUT", path, body);
+}
+
+async function apiSend<T>(method: "PATCH" | "PUT", path: string, body?: unknown): Promise<T> {
   const res = await fetch(BASE_URL + path, {
-    method: "PATCH",
+    method,
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: body === undefined ? undefined : JSON.stringify(body),
   });

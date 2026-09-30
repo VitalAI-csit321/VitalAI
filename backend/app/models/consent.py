@@ -34,3 +34,7 @@ class ConsentRecord(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     consent_type: Mapped[str] = mapped_column(String(50), nullable=False, default="administrative")
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     form_snapshot: Mapped[dict | None] = mapped_column(_jsonb, nullable=True)
+    # Taken from the contact when the record is created (consent_service).
+    episode_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("episodes.id", ondelete="SET NULL"), nullable=True, index=True
+    )

@@ -5,7 +5,9 @@ import { getConsentForCase } from "../api/consent";
 import type { Case, Consent } from "../api/types";
 import { StatusBadge, Spinner } from "../components/ui";
 
-export function CaseDetailPage() {
+// One contact: a message, call or voicemail (backend IntakeCase). Cases
+// (episodes of care) have their own page, CasePage.
+export function ContactPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [caseData, setCaseData] = useState<Case | null>(null);
@@ -19,14 +21,14 @@ export function CaseDetailPage() {
     setError(null);
     Promise.all([getCase(id), getConsentForCase(id)])
       .then(([c, cons]) => { setCaseData(c); setConsent(cons); })
-      .catch(() => setError("Could not load this case."))
+      .catch(() => setError("Could not load this contact."))
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <div className="p-6"><Spinner label="Loading case..." /></div>;
+  if (loading) return <div className="p-6"><Spinner label="Loading contact..." /></div>;
   if (error || !caseData) return (
     <div className="p-6">
-      <p className="text-sm text-red-600">{error ?? "Case not found."}</p>
+      <p className="text-sm text-red-600">{error ?? "Contact not found."}</p>
       <button onClick={() => navigate("/patients")} className="mt-4 text-sm text-brand hover:underline">Back to patients</button>
     </div>
   );
@@ -52,6 +54,9 @@ export function CaseDetailPage() {
       <div className="mt-6 grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-white p-5 max-w-lg text-sm">
         <div><div className="text-xs text-slate-500 uppercase tracking-wide">Contact channel</div><div className="font-medium text-slate-900 mt-0.5 capitalize">{caseData.contactChannel}</div></div>
         <div><div className="text-xs text-slate-500 uppercase tracking-wide">Created</div><div className="font-medium text-slate-900 mt-0.5">{new Date(caseData.createdAt).toLocaleString("en-GB")}</div></div>
+        <div className="col-span-2"><div className="text-xs text-slate-500 uppercase tracking-wide">Case</div><div className="font-medium text-slate-900 mt-0.5">
+          {caseData.episodeId ? <Link to={`/cases/${caseData.episodeId}`} className="text-brand hover:underline">Open the case</Link> : "Not in a case"}
+        </div></div>
       </div>
 
       {consent && (

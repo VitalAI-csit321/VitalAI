@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { getPatient, listCasesForPatient, promotePatient } from "../api/cases";
+import { changePatientDoctor, getPatient, listCasesForPatient, promotePatient } from "../api/cases";
+import { createEpisode, listEpisodes, type Episode } from "../api/episodes";
+import { listDoctors } from "../api/doctors";
+import { DoctorSelect } from "../components/CaseFields";
 import { listAppointments } from "../api/appointments";
 import { listClinicalDocuments, openClinicalDocument } from "../api/records";
 import { listConsentsForPatient, consentTypeLabel } from "../api/consent";
-import type { Patient, Case, Appointment, ClinicalDocument, Consent } from "../api/types";
+import type { Patient, Case, Appointment, ClinicalDocument, Consent, Doctor } from "../api/types";
 import { StatusBadge, Spinner } from "../components/ui";
 import { describeApiError } from "../lib/apiClient";
 import { PROFILE_FIELD_GROUPS, PROFILE_FIELD_LABELS_BY_API_KEY } from "../components/patientProfileFields";
@@ -25,6 +28,13 @@ export function PatientDetailPage() {
   // Doctors hold neither view_queue (intake cases) nor capture_consent, so they
   // skip the Onboarding history rather than log two refused requests per visit.
   const isDoctor = user?.role === "doctor";
+  // ASSIGN_PATIENTS: who may change the patient's doctor.
+  const canAssign = user?.role === "operator" || user?.role === "admin";
+  const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [newCase, setNewCase] = useState<{ title: string; doctorId: string } | null>(null);
+  const [changingDoctor, setChangingDoctor] = useState<string | null>(null);
+  const [caseError, setCaseError] = useState<string | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [cases, setCases] = useState<Case[]>([]);
   const [casesError, setCasesError] = useState<string | null>(null);
@@ -50,12 +60,15 @@ export function PatientDetailPage() {
     if (!isDoctor) {
       listCasesForPatient(id)
         .then(setCases)
-        .catch(() => setCasesError("Could not load onboarding cases for this patient."));
+        .catch(() => setCasesError("Could not load contacts for this patient."));
 
       listConsentsForPatient(id)
         .then(setConsents)
         .catch(() => setConsents([]));
     }
+
+    listEpisodes({ patientId: id }).then(setEpisodes).catch(() => setEpisodes([]));
+    listDoctors().then(setDoctors).catch(() => setDoctors([]));
 
     setAppointmentsError(null);
     listAppointments({ patientId: id, limit: 100 })
@@ -94,6 +107,28 @@ export function PatientDetailPage() {
     }
   }
 
+  async function openCase() {
+    if (!id || !newCase) return;
+    setCaseError(null);
+    try {
+      const created = await createEpisode({ patientId: id, title: newCase.title, doctorId: newCase.doctorId || null });
+      navigate(`/cases/${created.id}`);
+    } catch (err) {
+      setCaseError(describeApiError(err, "Could not open the case."));
+    }
+  }
+
+  async function saveDoctor() {
+    if (!id || !changingDoctor) return;
+    setCaseError(null);
+    try {
+      setPatient(await changePatientDoctor(id, changingDoctor));
+      setChangingDoctor(null);
+    } catch (err) {
+      setCaseError(describeApiError(err, "Could not change the doctor."));
+    }
+  }
+
   if (loading) return <div className="p-6"><Spinner label="Loading patient..." /></div>;
   if (error || !patient) return (
     <div className="p-6">
@@ -111,7 +146,7 @@ export function PatientDetailPage() {
       channel: c.contactChannel,
       status: c.status,
       created: c.createdAt,
-      action: <Link to={`/cases/${c.id}`} className="text-brand font-medium hover:underline">Open case</Link>,
+      action: <Link to={`/contacts/${c.id}`} className="text-brand font-medium hover:underline">Open contact</Link>,
     })),
     ...consents.map(cons => ({
       key: `consent-${cons.id}`,
@@ -163,7 +198,76 @@ export function PatientDetailPage() {
       <div className="mt-6 grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-white p-5 max-w-lg text-sm">
         <div><div className="text-xs text-slate-500 uppercase tracking-wide">Date of birth</div><div className="font-medium text-slate-900 mt-0.5">{patient.dob ? new Date(patient.dob).toLocaleDateString("en-GB") : "—"}</div></div>
         <div><div className="text-xs text-slate-500 uppercase tracking-wide">Gender</div><div className="font-medium text-slate-900 mt-0.5 capitalize">{patient.gender?.replace("_", " ") ?? "—"}</div></div>
+        <div>
+          <div className="text-xs text-slate-500 uppercase tracking-wide">Doctor</div>
+          <div className="font-medium text-slate-900 mt-0.5">{patient.doctorName ?? (patient.isProvisional ? "Assigned when registered" : "No doctor")}</div>
+          {canAssign && !patient.isProvisional && changingDoctor === null && (
+            <button onClick={() => setChangingDoctor(patient.doctorId ?? "")} className="mt-1 text-xs text-brand hover:underline">Change doctor</button>
+          )}
+        </div>
+        <div>
+          <div className="text-xs text-slate-500 uppercase tracking-wide">Preferred doctor</div>
+          <div className="font-medium text-slate-900 mt-0.5">{doctors.find(d => d.id === patient.preferredDoctorId)?.fullName ?? "No preference"}</div>
+        </div>
+        {changingDoctor !== null && (
+          <div className="col-span-2 flex items-end gap-2">
+            <div className="flex-1"><DoctorSelect label="New doctor" value={changingDoctor} onChange={setChangingDoctor} emptyLabel="Choose a doctor" /></div>
+            <button onClick={saveDoctor} disabled={!changingDoctor} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Save</button>
+            <button onClick={() => setChangingDoctor(null)} className="text-sm text-slate-500">Cancel</button>
+          </div>
+        )}
       </div>
+
+      {!patient.isProvisional && (
+        <div className="mt-6 max-w-4xl">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-900">Cases</h2>
+            {newCase === null && (
+              <button onClick={() => setNewCase({ title: "", doctorId: "" })} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover">New case</button>
+            )}
+          </div>
+          {newCase !== null && (
+            <form onSubmit={e => { e.preventDefault(); void openCase(); }} className="mb-3 grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 md:grid-cols-[1fr_1fr_auto]">
+              <div>
+                <label htmlFor="new-case-title" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Title</label>
+                <input id="new-case-title" value={newCase.title} onChange={e => setNewCase({ ...newCase, title: e.target.value })}
+                  placeholder="e.g. Asthma review" className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm" />
+              </div>
+              <DoctorSelect label="Doctor" value={newCase.doctorId} onChange={v => setNewCase({ ...newCase, doctorId: v })}
+                emptyLabel={patient.doctorName ? `Patient's doctor (${patient.doctorName})` : "Patient's doctor"} />
+              <div className="flex items-end gap-2">
+                <button disabled={!newCase.title.trim()} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">Open case</button>
+                <button type="button" onClick={() => setNewCase(null)} className="text-sm text-slate-500">Cancel</button>
+              </div>
+            </form>
+          )}
+          {caseError && <p className="mb-3 text-sm text-red-600">{caseError}</p>}
+          {episodes.length === 0 ? (
+            <p className="text-sm text-slate-500">No cases yet for this patient.</p>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {["Case", "Status", "Doctor", "Last activity", ""].map(h => <th key={h} className="px-6 py-3">{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {episodes.map(e => (
+                    <tr key={e.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                      <td className="px-6 py-4 text-slate-900">{e.title}</td>
+                      <td className="px-6 py-4"><StatusBadge tone={e.status === "open" ? "green" : "gray"}>{e.status}</StatusBadge></td>
+                      <td className="px-6 py-4 text-slate-600">{e.doctorName ?? "No doctor"}</td>
+                      <td className="px-6 py-4 text-slate-600">{new Date(e.lastActivityAt).toLocaleDateString("en-GB")}</td>
+                      <td className="px-6 py-4"><Link to={`/cases/${e.id}`} className="text-brand font-medium hover:underline">Open case</Link></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2 max-w-4xl">
         {PROFILE_FIELD_GROUPS.map(group => (
@@ -257,11 +361,11 @@ export function PatientDetailPage() {
 
       {!isDoctor && (
         <div className="mt-6">
-          <h2 className="text-sm font-semibold text-slate-900 mb-3">Onboarding</h2>
+          <h2 className="text-sm font-semibold text-slate-900 mb-3">Contacts</h2>
           {casesError ? (
             <p className="text-sm text-red-600">{casesError}</p>
           ) : historyRows.length === 0 ? (
-            <p className="text-sm text-slate-500">No intake cases yet for this patient.</p>
+            <p className="text-sm text-slate-500">No contacts yet for this patient.</p>
           ) : (
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
               <table className="w-full text-sm">

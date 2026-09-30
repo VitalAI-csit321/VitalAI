@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit import AuditEvent
-from app.models.user import User
+from app.models.user import User, UserRole
 
 
 async def test_create_patient_allowed_for_front_desk(client: AsyncClient, front_desk_headers: dict):
@@ -57,9 +57,24 @@ async def test_list_patients_allowed_for_doctor(
     assert set(body["counts"].keys()) == {"active", "pending", "inactive"}
 
 
+async def _another_doctor(db) -> User:
+    """Since M4 every patient staff create gets a doctor (E6), so "not this
+    doctor's patient" means someone else's."""
+    other = User(
+        email="other.doctor@example.com",
+        hashed_password="h",
+        full_name="Dr Other",
+        role=UserRole.DOCTOR,
+    )
+    db.add(other)
+    await db.commit()
+    return other
+
+
 async def test_list_patients_scoped_to_assigned_for_doctor(
-    client: AsyncClient, admin_headers: dict, doctor_headers: dict, doctor_user: User
+    client: AsyncClient, admin_headers: dict, doctor_headers: dict, doctor_user: User, db_session
 ):
+    other = await _another_doctor(db_session)
     assigned = await client.post(
         "/api/v1/patients",
         json={"name": "Assigned Patient", "dob": "1990-01-01", "gender": "female"},
@@ -67,7 +82,12 @@ async def test_list_patients_scoped_to_assigned_for_doctor(
     )
     await client.post(
         "/api/v1/patients",
-        json={"name": "Unassigned Patient", "dob": "1990-01-01", "gender": "male"},
+        json={
+            "name": "Unassigned Patient",
+            "dob": "1990-01-01",
+            "gender": "male",
+            "preferred_doctor_id": str(other.id),
+        },
         headers=admin_headers,
     )
     await client.post(
@@ -230,11 +250,17 @@ async def test_get_patient_404_for_unknown_id(client: AsyncClient, admin_headers
 
 
 async def test_get_patient_404_for_doctor_not_assigned(
-    client: AsyncClient, admin_headers: dict, doctor_headers: dict
+    client: AsyncClient, admin_headers: dict, doctor_headers: dict, db_session
 ):
+    other = await _another_doctor(db_session)
     created = await client.post(
         "/api/v1/patients",
-        json={"name": "Not My Patient", "dob": "1990-01-01", "gender": "female"},
+        json={
+            "name": "Not My Patient",
+            "dob": "1990-01-01",
+            "gender": "female",
+            "preferred_doctor_id": str(other.id),
+        },
         headers=admin_headers,
     )
     patient_id = created.json()["id"]

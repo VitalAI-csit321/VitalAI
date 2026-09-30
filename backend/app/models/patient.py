@@ -1,7 +1,8 @@
 import enum
 from datetime import date, datetime
+from uuid import UUID
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
@@ -102,3 +103,5 @@ class Patient(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     # referencing patients.id declares an ondelete, and the audit hash chain
     # has to stay verifiable.
     purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Honoured by assignment_service.ensure_doctor while that doctor is active.
+    preferred_doctor_id: Mapped[UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)

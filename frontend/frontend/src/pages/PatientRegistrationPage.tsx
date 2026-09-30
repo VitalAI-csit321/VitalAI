@@ -20,7 +20,7 @@ const checkbox =
 const EMPTY: RegistrationForm = {
   name: "", dob: "", phone: "", gender: "", address: "",
   emergency_contact_name: "", emergency_contact_phone: "", preferred_language: "",
-  preferred_communication: "", preferred_day: "", part_of_day: "any",
+  preferred_communication: "", preferred_day: "", part_of_day: "any", preferred_doctor_id: "",
 };
 
 function isoDate(d: Date): string {
@@ -177,6 +177,14 @@ export function PatientRegistrationPage() {
                   <option>Phone</option><option>Email</option><option>SMS</option>
                 </select>
               </Field>
+              {link.doctors.length > 0 && (
+                <Field label="Preferred doctor" optional>
+                  <select className={input} value={form.preferred_doctor_id} onChange={(e) => update("preferred_doctor_id", e.target.value)}>
+                    <option value="">No preference</option>
+                    {link.doctors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </Field>
+              )}
             </Section>
 
             <Section title="Your appointment">

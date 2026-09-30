@@ -2,6 +2,7 @@ import re
 import unicodedata
 from datetime import date, datetime
 from typing import Literal
+from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -23,6 +24,13 @@ _OPTIONAL_TEXT = (
 _PHONE = re.compile(r"[0-9 +()\-]+")
 
 
+class RegistrationDoctor(BaseModel):
+    """A doctor the patient may prefer. Name and id only: the form is public."""
+
+    id: UUID
+    name: str
+
+
 class RegistrationLinkOut(BaseModel):
     email: str
     needs_preferred_day: bool
@@ -32,6 +40,8 @@ class RegistrationLinkOut(BaseModel):
     statements: list[str]
     clauses: list[str]
     clinic_checks: list[str]
+    # Active doctors only (M4, E6): "No preference" is the default.
+    doctors: list[RegistrationDoctor]
 
 
 class RegistrationSubmit(BaseModel):
@@ -51,6 +61,7 @@ class RegistrationSubmit(BaseModel):
     preferred_communication: str | None = Field(default=None, max_length=255)
     preferred_day: date | None = None
     part_of_day: Literal["morning", "afternoon", "any"] | None = None
+    preferred_doctor_id: UUID | None = None
     agree_data: Literal[True]
     agree_contact: Literal[True]
     # One answer per CLINIC_CHECKS statement, in order, or none at all.

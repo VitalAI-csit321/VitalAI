@@ -11,6 +11,7 @@ from app.models.clinical_document import ClinicalDocType, ClinicalDocument
 from app.models.consent import ConsentRecord, ConsentStatus
 from app.models.email import Email
 from app.models.email_conversation import EmailConversation
+from app.models.episode import Episode, EpisodeStatus
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.medication import Medication, MedicationStatus
 from app.models.patient import Gender, Patient, PatientStatus
@@ -61,6 +62,8 @@ __all__ = [
     "TaskCategory",
     "Email",
     "EmailConversation",
+    "Episode",
+    "EpisodeStatus",
     "Medication",
     "MedicationStatus",
 ]

@@ -10,9 +10,9 @@ from app.auth.scoping import assigned_patient_ids_subquery
 from app.models.case import IntakeCase
 from app.models.consent import ConsentStatus
 from app.models.patient import PROFILE_FIELDS, Patient, PatientStatus
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.patient import PatientCreate, PatientUpdate
-from app.services import consent_service
+from app.services import assignment_service, consent_service
 from app.services.audit_service import record_event
 
 _MRN_GENERATION_ATTEMPTS = 5
@@ -25,6 +25,20 @@ class ProvisionalPatientError(Exception):
 
 class PromotionRefusedError(Exception):
     """promote_patient's preconditions do not hold."""
+
+
+class PreferredDoctorError(Exception):
+    """The preferred doctor is not an active doctor."""
+
+
+async def check_preferred_doctor(db: AsyncSession, doctor_id: UUID | None) -> None:
+    """A preference must name an active doctor when it is recorded. One who
+    leaves later is skipped by assignment_service.ensure_doctor."""
+    if doctor_id is None:
+        return
+    doctor = await db.get(User, doctor_id)
+    if doctor is None or doctor.role != UserRole.DOCTOR or not doctor.is_active:
+        raise PreferredDoctorError("Choose an active doctor, or no preference")
 
 
 async def assert_not_provisional(db: AsyncSession, patient_id: UUID | None) -> None:
@@ -103,6 +117,7 @@ def is_profile_complete(patient: Patient) -> bool:
 
 
 async def create_patient(db: AsyncSession, payload: PatientCreate, actor: User) -> Patient:
+    await check_preferred_doctor(db, payload.preferred_doctor_id)
     mrn = await _generate_unique_mrn(db)
     patient = Patient(
         mrn=mrn,
@@ -110,6 +125,7 @@ async def create_patient(db: AsyncSession, payload: PatientCreate, actor: User) 
         dob=payload.dob,
         gender=payload.gender,
         status=PatientStatus.PENDING,
+        preferred_doctor_id=payload.preferred_doctor_id,
     )
     for field in PROFILE_FIELDS:
         value = getattr(payload, field, None)
@@ -125,6 +141,7 @@ async def create_patient(db: AsyncSession, payload: PatientCreate, actor: User) 
         action="patient.registered",
         details={"patient_id": str(patient.id), "mrn": mrn},
     )
+    await assignment_service.ensure_doctor(db, patient, actor)
     await db.commit()
     await db.refresh(patient)
     return patient
@@ -152,6 +169,12 @@ async def update_patient(
         if value is not None:
             setattr(patient, field, value)
             changes[field] = str(value)
+
+    if "preferred_doctor_id" in payload.model_fields_set:
+        # Explicitly sent: null clears the preference ("No preference").
+        await check_preferred_doctor(db, payload.preferred_doctor_id)
+        patient.preferred_doctor_id = payload.preferred_doctor_id
+        changes["preferred_doctor_id"] = str(payload.preferred_doctor_id)
 
     if payload.status is not None:
         patient.status = payload.status
@@ -257,6 +280,7 @@ async def promote_patient(db: AsyncSession, patient_id: UUID, actor: User) -> Pa
             "after": {"is_provisional": False, "status": patient.status.value},
         },
     )
+    await assignment_service.ensure_doctor(db, patient, actor)
     await db.commit()
     await db.refresh(patient)
     return patient

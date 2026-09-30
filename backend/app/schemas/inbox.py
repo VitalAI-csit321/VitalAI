@@ -35,6 +35,10 @@ class InboxMessageOut(BaseModel):
     reviewItemId: str | None = None  # noqa: N815
     # Write reply (D14): an email nothing was sent on and no draft awaits approval.
     canWriteReply: bool = False  # noqa: N815
+    # The case chip (M4): the confirmed patient, and the case the message is in.
+    patientId: str | None = None  # noqa: N815
+    episodeId: str | None = None  # noqa: N815
+    episodeTitle: str | None = None  # noqa: N815
 
 
 class InboxListResponse(BaseModel):

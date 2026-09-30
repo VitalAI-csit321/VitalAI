@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPatientFromOnboarding } from "../api/cases";
+import { DoctorSelect } from "../components/CaseFields";
 
 const STEPS = ["Details", "Contact", "History", "Insurance", "Review"];
 
@@ -18,6 +19,8 @@ interface FormData {
   expiryDate: string; medicareNumber: string; concessionCard: string;
   // Step 5
   confirmed: boolean;
+  // Step 1: "" is no preference; they still get a doctor (the least busy one).
+  preferredDoctorId: string;
 }
 
 const EMPTY: FormData = {
@@ -27,7 +30,7 @@ const EMPTY: FormData = {
   preferredCommunication: "", bestTimeToContact: "",
   knownConditions: "", currentMedications: "", allergies: "",
   insuranceProvider: "", policyNumber: "", groupNumber: "",
-  expiryDate: "", medicareNumber: "", concessionCard: "None",
+  expiryDate: "", medicareNumber: "", concessionCard: "None", preferredDoctorId: "",
   confirmed: false,
 };
 
@@ -86,6 +89,7 @@ export function PatientOnboardingPage() {
       knownConditions: form.knownConditions, currentMedications: form.currentMedications, allergies: form.allergies,
       insuranceProvider: form.insuranceProvider, policyNumber: form.policyNumber, groupNumber: form.groupNumber,
       expiryDate: form.expiryDate, medicareNumber: form.medicareNumber, concessionCard: form.concessionCard,
+      preferredDoctorId: form.preferredDoctorId,
     };
   }
 
@@ -180,6 +184,9 @@ export function PatientOnboardingPage() {
                 </select>
               </Field>
               <Field label="Preferred Language"><input className={inputClass} value={form.preferredLanguage} onChange={e => update("preferredLanguage", e.target.value)} /></Field>
+            </div>
+            <div className="mt-5">
+              <DoctorSelect label="Preferred doctor" value={form.preferredDoctorId} onChange={v => update("preferredDoctorId", v)} emptyLabel="No preference" />
             </div>
           </>
         )}

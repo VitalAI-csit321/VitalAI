@@ -88,6 +88,10 @@ class Appointment(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     notify_provider: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     series_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    # Taken from the contact at booking (appointment_service.book_appointment).
+    episode_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("episodes.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # excl_doctor_overlap is a Postgres EXCLUDE constraint and has no SQLAlchemy
     # equivalent; it lives only in migration 0026. Declared here for SQLite runs

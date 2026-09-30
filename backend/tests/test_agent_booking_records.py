@@ -314,6 +314,16 @@ async def test_a_failing_booking_node_takes_the_failure_path(
     patient = await _patient(db_session)
     await _assign(db_session, doctor_user, patient, admin_user)
     case = await _linked_case(db_session, patient)
+    # Already in an open case, so identity files the message without looking
+    # up a doctor for a new case (M4) and the booking node is the first to
+    # hit the failing lookup.
+    from app.models.episode import Episode, EpisodeStatus
+
+    episode = Episode(patient_id=patient.id, title="Booking", status=EpisodeStatus.OPEN)
+    db_session.add(episode)
+    await db_session.flush()
+    case.episode_id = episode.id
+    await db_session.commit()
     monkeypatch.setattr(
         booking_service, "doctor_for_patient", AsyncMock(side_effect=RuntimeError("db gone"))
     )

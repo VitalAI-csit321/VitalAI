@@ -17,6 +17,7 @@ import { useAuth } from "../lib/auth";
 import { listTasks } from "../api/tasks";
 import { Avatar, Spinner } from "../components/ui";
 import { VoicemailPlayer } from "../components/VoicemailPlayer";
+import { CaseChip } from "../components/CaseFields";
 
 type Tab = "all" | "urgent" | "archived";
 
@@ -98,6 +99,16 @@ export function InboxPage() {
   }, [tab]);
 
   const selected = messages.find((m) => m.id === selectedId) ?? null;
+
+  // A deep-linked message is not in this viewer's own list: re-read it alone.
+  async function afterCaseChange(id: string) {
+    if (id === foreignId) {
+      const m = await getInboxMessage(id);
+      setMessages((prev) => prev.map((x) => (x.id === id ? m : x)));
+    } else {
+      await refresh(id);
+    }
+  }
 
   useEffect(() => {
     setEditedDraft(selected?.draftText ?? "");
@@ -403,6 +414,8 @@ export function InboxPage() {
                     Open in Review Queue
                   </button>
                 )}
+
+                <CaseChip message={selected} onChanged={() => void afterCaseChange(selected.id)} />
 
                 <h2 className="mt-5 text-base font-semibold text-slate-900">{selected.subject}</h2>
                 <div className="my-4 h-px bg-slate-100" />

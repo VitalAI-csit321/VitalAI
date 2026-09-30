@@ -113,7 +113,7 @@ export function ReviewQueuePage() {
               : filtered.map(t => (
                 <tr key={t.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                   <td className="px-6 py-4 max-w-xs">
-                    <button onClick={() => selectRow(t)} className="font-medium text-brand hover:underline">C-{t.case_id.slice(0, 8)}</button>
+                    <button onClick={() => selectRow(t)} className="font-medium text-brand hover:underline">{t.case_id ? `C-${t.case_id.slice(0, 8)}` : t.case_title ?? "Case"}</button>
                     {t.contact_reason && <div className="mt-0.5 truncate text-xs text-slate-500" title={t.contact_reason}>{t.contact_reason}</div>}
                   </td>
                   <td className="px-6 py-4 text-slate-600">{new Date(t.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</td>

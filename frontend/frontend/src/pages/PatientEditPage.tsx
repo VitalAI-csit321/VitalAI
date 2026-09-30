@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getPatient, updatePatient } from "../api/cases";
+import { DoctorSelect } from "../components/CaseFields";
 import type { ProfileFields } from "../api/cases";
 import type { Patient } from "../api/types";
 import { Spinner } from "../components/ui";
@@ -13,6 +14,7 @@ export function PatientEditPage() {
   const [name, setName] = useState("");
   const [dob, setDob] = useState("");
   const [gender, setGender] = useState<NonNullable<Patient["gender"]> | "">("");
+  const [preferredDoctorId, setPreferredDoctorId] = useState("");
   const [fields, setFields] = useState<ProfileFields>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -25,6 +27,7 @@ export function PatientEditPage() {
       setName(p.name);
       setDob(p.dob ? new Date(p.dob).toLocaleDateString("en-GB") : "");
       setGender(p.gender ?? "");
+      setPreferredDoctorId(p.preferredDoctorId ?? "");
       setFields({
         address: p.address ?? "", indigenousStatus: p.indigenousStatus ?? "", preferredLanguage: p.preferredLanguage ?? "",
         phone: p.phone ?? "", email: p.email ?? "",
@@ -47,7 +50,7 @@ export function PatientEditPage() {
     if (!gender) { setError("Choose a gender before saving."); return; }
     setBusy(true); setError(null);
     try {
-      await updatePatient(id, { name, dob, gender, ...fields });
+      await updatePatient(id, { name, dob, gender, preferredDoctorId, ...fields });
       navigate(`/patients/${id}`);
     } catch {
       setError("Could not save changes. Please try again.");
@@ -99,6 +102,7 @@ export function PatientEditPage() {
                 <option value="male">Male</option><option value="female">Female</option><option value="non_binary">Non-binary</option>
               </select>
             </div>
+            <DoctorSelect label="Preferred doctor" value={preferredDoctorId} onChange={setPreferredDoctorId} emptyLabel="No preference" />
           </div>
         </div>
 

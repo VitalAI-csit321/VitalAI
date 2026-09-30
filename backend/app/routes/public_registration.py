@@ -6,13 +6,15 @@ the reviewed no-permission allowlist in tests/test_rbac_enforcement.py.
 """
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
 from app.limiter import limiter
 from app.models.email import Email
-from app.schemas.registration import RegistrationLinkOut, RegistrationSubmit
+from app.models.user import User, UserRole
+from app.schemas.registration import RegistrationDoctor, RegistrationLinkOut, RegistrationSubmit
 from app.services import consent_service, patient_form_service
 from app.services.system_actor import get_or_create_agent_actor
 
@@ -48,6 +50,16 @@ async def open_registration_link(
         statements=list(patient_form_service.CONSENT_STATEMENTS),
         clauses=list(consent_service.CLINIC_CLAUSES),
         clinic_checks=list(consent_service.CLINIC_CHECKS),
+        doctors=[
+            RegistrationDoctor(id=doctor_id, name=name)
+            for doctor_id, name in (
+                await db.execute(
+                    select(User.id, User.full_name)
+                    .where(User.role == UserRole.DOCTOR, User.is_active.is_(True))
+                    .order_by(User.full_name)
+                )
+            ).tuples()
+        ],
     )
 
 

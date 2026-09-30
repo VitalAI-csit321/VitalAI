@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { createAppointment, getAvailability } from "../api/appointments";
-import { findLatestCaseForPatient, createCase, getCase, getPatient, listPatients } from "../api/cases";
+import { getCase, getPatient, listPatients } from "../api/cases";
+import { resolveCaseChoice, staffContactFor } from "../api/episodes";
+import { CasePicker } from "../components/CaseFields";
 import { listDoctors } from "../api/doctors";
 import { isDemoMode } from "../lib/demoMode";
 import { ApiError, describeApiError } from "../lib/apiClient";
@@ -15,7 +17,9 @@ const DURATIONS = [15, 30, 45, 60, 90, 120];
 export function AppointmentNewPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  // caseId: a contact (the inbox's "Book appointment"); episodeId: a case (the case page).
   const prefillCaseId = searchParams.get("caseId");
+  const prefillEpisodeId = searchParams.get("episodeId");
   const prefillPatientId = searchParams.get("patientId");
   const prefillReason = searchParams.get("reason");
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -24,6 +28,8 @@ export function AppointmentNewPage() {
   const [patientQuery, setPatientQuery] = useState("");
   const [patientResults, setPatientResults] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [caseChoice, setCaseChoice] = useState(prefillEpisodeId ?? "");
+  const [newCaseTitle, setNewCaseTitle] = useState("");
 
   const [appointmentType, setAppointmentType] = useState<AppointmentType>("new_patient");
   const [doctorId, setDoctorId] = useState("");
@@ -104,29 +110,21 @@ export function AppointmentNewPage() {
     }
     setSaving(true); setError(null);
     try {
-      // The backend books against an intake case, not a patient directly.
-      // The calendar UI only exposes patient search, so reuse the patient's
-      // most recent case, or open a lightweight new one for this booking.
+      // The backend books against a contact. From the inbox that is the
+      // message's own contact (its case comes with it); otherwise the chosen
+      // case's contact, which the backend reuses or creates for staff.
       let caseId: string;
       if (prefillCaseId) {
-        // Booking against the task's existing case keeps the audit trail and
-        // the task linked to the appointment.
         caseId = prefillCaseId;
       } else if (isDemoMode()) {
         caseId = `demo-case-${selectedPatient.id}`;
       } else {
-        const existingCase = await findLatestCaseForPatient(selectedPatient.id);
-        if (existingCase) {
-          caseId = existingCase.id;
-        } else {
-          const newCase = await createCase({
-            patient_id: selectedPatient.id,
-            patient_name: selectedPatient.name,
-            contact_reason: reason || `${TYPE_LABEL[appointmentType]} appointment`,
-            contact_channel: "calendar",
-          });
-          caseId = newCase.id;
-        }
+        const episodeId = await resolveCaseChoice(
+          selectedPatient.id, caseChoice, newCaseTitle || reason || `${TYPE_LABEL[appointmentType]} appointment`,
+        );
+        if (!episodeId) { setError("Choose the case this appointment is for."); return; }
+        setCaseChoice(episodeId); // a retry after a clash must not open a second case
+        caseId = await staffContactFor(episodeId, "Booked by staff");
       }
 
       await createAppointment({
@@ -165,7 +163,7 @@ export function AppointmentNewPage() {
             {selectedPatient ? (
               <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm">
                 <span className="text-slate-900">{selectedPatient.name} — {selectedPatient.mrn}</span>
-                <button onClick={() => { setSelectedPatient(null); setPatientQuery(""); }} className="text-xs text-brand hover:underline">Change patient</button>
+                <button onClick={() => { setSelectedPatient(null); setPatientQuery(""); setCaseChoice(""); }} className="text-xs text-brand hover:underline">Change patient</button>
               </div>
             ) : (
               <div className="relative">
@@ -184,6 +182,11 @@ export function AppointmentNewPage() {
               </div>
             )}
           </div>
+
+          {selectedPatient && !prefillCaseId && !isDemoMode() && (
+            <CasePicker patientId={selectedPatient.id} value={caseChoice} onChange={setCaseChoice}
+              newTitle={newCaseTitle} onNewTitle={setNewCaseTitle} />
+          )}
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Appointment Type</label>

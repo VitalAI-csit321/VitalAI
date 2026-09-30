@@ -164,7 +164,7 @@ export function AppointmentDetailPage() {
             <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
               Consent {a.consent.status}{a.consent.capturedAt ? ` · verified ${new Date(a.consent.capturedAt).toLocaleDateString("en-GB")}` : ""}
               <br />
-              <Link to={`/cases/${a.caseId}`} className="text-emerald-700 underline">View consent record</Link>
+              <Link to={`/contacts/${a.caseId}`} className="text-emerald-700 underline">View consent record</Link>
             </div>
           )}
         </div>

@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { transcribeAudio, createCall, routeCall } from "../api/calls";
 import type { CallRouteResult } from "../api/calls";
-import { listCases } from "../api/cases";
-import type { Case } from "../api/types";
+import { resolveCaseChoice } from "../api/episodes";
+import type { Patient } from "../api/types";
+import { CasePicker, PatientSearch } from "../components/CaseFields";
 import { VoicemailSimulator } from "../components/VoicemailSimulator";
 
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
@@ -34,8 +35,11 @@ function ModeToggle({ mode, onChange }: { mode: "call" | "voicemail"; onChange: 
 
 export function LogCallPage() {
   const navigate = useNavigate();
-  const [cases, setCases] = useState<Case[]>([]);
-  const [caseId, setCaseId] = useState("");
+  // A call is its own contact: who it was from (optional, callers may be
+  // unknown) and, optionally, the case it is about (clinical calls).
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [caseChoice, setCaseChoice] = useState("");
+  const [newCaseTitle, setNewCaseTitle] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [transcript, setTranscript] = useState("");
@@ -44,10 +48,6 @@ export function LogCallPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CallRouteResult | null>(null);
   const [mode, setMode] = useState<"call" | "voicemail">("call");
-
-  useEffect(() => {
-    listCases({ limit: 100 }).then((r) => setCases(r.items)).catch(() => {});
-  }, []);
 
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0] ?? null;
@@ -79,7 +79,9 @@ export function LogCallPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const call = await createCall(caseId, phoneNumber, transcript);
+      const episodeId = patient ? await resolveCaseChoice(patient.id, caseChoice, newCaseTitle) : null;
+      if (episodeId) setCaseChoice(episodeId);
+      const call = await createCall({ patientId: patient?.id ?? null, episodeId, phoneNumber, transcript });
       const routed = await routeCall(call.id);
       setResult(routed);
     } catch {
@@ -152,20 +154,12 @@ export function LogCallPage() {
         this is how a call gets into the system in this MVP.
       </p>
       <form onSubmit={onSubmit} className="max-w-xl rounded-xl border border-slate-200 bg-white p-5 space-y-4">
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-1.5">Case</label>
-          <select
-            required
-            value={caseId}
-            onChange={(e) => setCaseId(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand"
-          >
-            <option value="" disabled>Select a case</option>
-            {cases.map((c) => (
-              <option key={c.id} value={c.id}>{c.patientName} — {c.contactReason}</option>
-            ))}
-          </select>
-        </div>
+        <PatientSearch label="Caller (if known)" selected={patient} onSelect={p => { setPatient(p); setCaseChoice(""); }} />
+        {patient && (
+          <CasePicker patientId={patient.id} value={caseChoice} onChange={setCaseChoice}
+            newTitle={newCaseTitle} onNewTitle={setNewCaseTitle}
+            optional optionalLabel="Decide from the call (clinical calls join a case)" />
+        )}
         <div>
           <label className="block text-sm font-semibold text-slate-700 mb-1.5">Caller phone number</label>
           <input

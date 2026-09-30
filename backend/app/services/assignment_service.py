@@ -8,6 +8,7 @@ from app.models.assignment import DoctorPatientAssignment
 from app.models.patient import Patient
 from app.models.user import User, UserRole
 from app.services.audit_service import record_event
+from app.services.doctor_suggestion import suggest_doctor_for_patient
 
 
 class AssignmentExistsError(Exception):
@@ -86,3 +87,86 @@ async def list_assignments(db: AsyncSession, doctor_id: UUID) -> list[DoctorPati
         select(DoctorPatientAssignment).where(DoctorPatientAssignment.doctor_id == doctor_id)
     )
     return list(result.scalars().all())
+
+
+async def _active_doctor(db: AsyncSession, doctor_id: UUID | None) -> User | None:
+    doctor = await db.get(User, doctor_id) if doctor_id is not None else None
+    if doctor is None or doctor.role != UserRole.DOCTOR or not doctor.is_active:
+        return None
+    return doctor
+
+
+async def ensure_doctor(db: AsyncSession, patient: Patient, actor: User) -> UUID | None:
+    """M4 spec E6: a registered patient with no active doctor gets one now,
+    their preference while that doctor is active, else the least-loaded
+    active doctor. Returns the doctor assigned, None when nothing changed
+    (already has one, provisional or purged, or no active doctor exists).
+    Flushes, never commits: it runs inside patient creation and promotion."""
+    # Imported here: booking_service -> appointment_service -> patient_service,
+    # which calls this module.
+    from app.services.booking_service import doctor_for_patient
+
+    if patient.is_provisional or patient.purged_at is not None:
+        return None
+    if await doctor_for_patient(db, patient.id) is not None:
+        return None
+    preferred = await _active_doctor(db, patient.preferred_doctor_id)
+    doctor_id = preferred.id if preferred else await suggest_doctor_for_patient(db, patient.id)
+    if doctor_id is None:
+        return None
+    # An inactive doctor's old assignment may still be there; this pair is new
+    # only if they are a different doctor.
+    if await db.get(DoctorPatientAssignment, (doctor_id, patient.id)) is None:
+        db.add(
+            DoctorPatientAssignment(
+                doctor_id=doctor_id, patient_id=patient.id, assigned_by=actor.id
+            )
+        )
+        await db.flush()
+    await record_event(
+        db,
+        actor=actor,
+        action="patient.doctor_assigned",
+        details={
+            "patient_id": str(patient.id),
+            "doctor_id": str(doctor_id),
+            "reason": "preference" if preferred else "least_loaded",
+        },
+    )
+    return doctor_id
+
+
+async def change_doctor(db: AsyncSession, patient: Patient, doctor_id: UUID, actor: User) -> None:
+    """Staff change who the patient's doctor is (E6: changeable). The new
+    doctor is assigned and the previous one (booking_service.doctor_for_patient,
+    the longest-standing) loses the assignment, so the new one is the answer
+    from now on. Other assignments (e.g. a case doctor) stay. Commits."""
+    from app.services.booking_service import doctor_for_patient
+
+    doctor = await _active_doctor(db, doctor_id)
+    if doctor is None:
+        raise NotADoctorError(f"User {doctor_id} is not an active doctor")
+    previous = await doctor_for_patient(db, patient.id)
+    if previous is not None and previous[0] != doctor.id:
+        old = await db.get(DoctorPatientAssignment, (previous[0], patient.id))
+        if old is not None:
+            await db.delete(old)
+    if await db.get(DoctorPatientAssignment, (doctor.id, patient.id)) is None:
+        db.add(
+            DoctorPatientAssignment(
+                doctor_id=doctor.id, patient_id=patient.id, assigned_by=actor.id
+            )
+        )
+    await db.flush()
+    await record_event(
+        db,
+        actor=actor,
+        action="patient.doctor_assigned",
+        details={
+            "patient_id": str(patient.id),
+            "doctor_id": str(doctor.id),
+            "previous_doctor_id": str(previous[0]) if previous else None,
+            "reason": "staff",
+        },
+    )
+    await db.commit()

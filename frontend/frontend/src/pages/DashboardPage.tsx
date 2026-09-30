@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getDashboard } from "../api/misc";
+import { createEpisode } from "../api/episodes";
+import { describeApiError } from "../lib/apiClient";
+import { DoctorSelect, PatientSearch } from "../components/CaseFields";
+import type { Patient } from "../api/types";
 import { useAuth } from "../lib/auth";
 import type { DashboardSummary } from "../api/types";
 import { Spinner } from "../components/ui";
@@ -10,6 +14,20 @@ export function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardSummary | null>(null);
+  // New case (M4): pick the patient, then what it is about and who looks after it.
+  const [newCase, setNewCase] = useState<{ patient: Patient | null; title: string; doctorId: string } | null>(null);
+  const [newCaseError, setNewCaseError] = useState<string | null>(null);
+
+  async function openCase() {
+    if (!newCase?.patient) return;
+    setNewCaseError(null);
+    try {
+      const created = await createEpisode({ patientId: newCase.patient.id, title: newCase.title, doctorId: newCase.doctorId || null });
+      navigate(`/cases/${created.id}`);
+    } catch (err) {
+      setNewCaseError(describeApiError(err, "Could not open the case."));
+    }
+  }
 
   useEffect(() => { getDashboard(user).then(setData).catch(() => {}); }, [user]);
 
@@ -27,10 +45,34 @@ export function DashboardPage() {
           <h1 className="text-2xl font-bold text-slate-900">Overview</h1>
           <p className="mt-1 text-sm text-slate-500">Welcome back, {user?.fullName ?? ""}</p>
         </div>
-        {user?.role !== "doctor" && (
-          <button onClick={() => navigate("/patients/onboarding")} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover">New case</button>
+        {newCase === null && (
+          <button onClick={() => setNewCase({ patient: null, title: "", doctorId: "" })} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover">New case</button>
         )}
       </div>
+
+      {newCase !== null && (
+        <form onSubmit={e => { e.preventDefault(); void openCase(); }} className="mt-4 max-w-2xl space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+          <PatientSearch selected={newCase.patient} onSelect={p => setNewCase({ ...newCase, patient: p })} />
+          {!newCase.patient && user?.role !== "doctor" && (
+            <button type="button" onClick={() => navigate("/patients/onboarding")} className="text-sm text-brand hover:underline">Onboard a new patient</button>
+          )}
+          {newCase.patient && (
+            <>
+              <div>
+                <label htmlFor="dash-case-title" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Title</label>
+                <input id="dash-case-title" value={newCase.title} onChange={e => setNewCase({ ...newCase, title: e.target.value })}
+                  placeholder="e.g. Asthma review" className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand" />
+              </div>
+              <DoctorSelect label="Doctor" value={newCase.doctorId} onChange={v => setNewCase({ ...newCase, doctorId: v })} emptyLabel="The patient's doctor" />
+            </>
+          )}
+          {newCaseError && <p className="text-sm text-red-600">{newCaseError}</p>}
+          <div className="flex gap-2">
+            <button disabled={!newCase.patient || !newCase.title.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Open case</button>
+            <button type="button" onClick={() => { setNewCase(null); setNewCaseError(null); }} className="text-sm text-slate-500">Cancel</button>
+          </div>
+        </form>
+      )}
 
       {!data ? <div className="mt-8"><Spinner /></div> : <>
         <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">

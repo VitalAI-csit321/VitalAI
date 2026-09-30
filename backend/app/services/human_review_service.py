@@ -21,7 +21,7 @@ VIEW_ALL_QUEUES (app/auth/permissions.py) who see and can act on every role's
 queue - currently ADMIN only. See can_act().
 """
 
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import case, func, or_, select
@@ -32,11 +32,12 @@ from app.auth.scoping import assigned_patient_ids_subquery
 from app.config import settings
 from app.models.audit import AuditEvent
 from app.models.case import IntakeCase, IntakeStatus
+from app.models.episode import Episode
 from app.models.human_review import HumanReviewTask, TaskPriority, TaskStatus, TaskType
 from app.models.patient import Patient
 from app.models.task import Task, TaskCategory
 from app.models.user import User, UserRole
-from app.services import email_service, review_routing, task_service
+from app.services import email_service, episode_service, review_routing, task_service
 from app.services.audit_service import record_event
 from app.services.task_routing_rules import resolve_target_role
 
@@ -174,12 +175,55 @@ async def describe_tasks(db: AsyncSession, tasks: list[HumanReviewTask]) -> dict
         ).tuples()
     }
 
+    # Cases (M4): the case a "Close this case?" item is about, and the open
+    # cases a "Which case?" item offers.
+    episode_ids = {t.episode_id for t in tasks if t.episode_id} | {
+        UUID(c)
+        for t in tasks
+        if t.task_type == TaskType.CASE_CHOICE
+        for c in (t.details or {}).get("candidates", [])
+    }
+    episodes = {
+        e.id: e
+        for e in (await db.scalars(select(Episode).where(Episode.id.in_(episode_ids)))).all()
+    }
+    episode_patients: dict[UUID, str] = dict(
+        (
+            await db.execute(
+                select(Patient.id, Patient.name).where(
+                    Patient.id.in_({e.patient_id for e in episodes.values()})
+                )
+            )
+        )
+        .tuples()
+        .all()
+    )
+
+    def _candidate(episode_id: str) -> dict | None:
+        e = episodes.get(UUID(episode_id))
+        return (
+            {"id": episode_id, "title": e.title, "last_activity_at": e.last_activity_at}
+            if e
+            else None
+        )
+
     details = {}
     for t in tasks:
-        case, event = cases.get(t.case_id), created.get(t.case_id)
+        # An item about a case (case_close) has no contact.
+        case = cases.get(t.case_id) if t.case_id else None
+        event = created.get(t.case_id) if t.case_id else None
+        episode = episodes.get(t.episode_id) if t.episode_id else None
         details[t.id] = {
             "contact_reason": case.contact_reason if case else None,
-            "patient_name": case.patient_name if case else None,
+            "patient_name": case.patient_name
+            if case
+            else (episode_patients.get(episode.patient_id) if episode else None),
+            "case_title": episode.title if episode else None,
+            "case_candidates": [
+                c for c in map(_candidate, (t.details or {}).get("candidates", [])) if c is not None
+            ]
+            if t.task_type == TaskType.CASE_CHOICE
+            else None,
             "created_by": (names.get(event.actor_id) or event.actor_label) if event else None,
             "assigned_to_name": names.get(t.assigned_to),
             "owner_label": names.get(t.assigned_to)
@@ -272,6 +316,20 @@ async def create_task(
     return task
 
 
+async def _doctor_sees_episode(db: AsyncSession, episode_id: UUID | None, doctor_id: UUID) -> bool:
+    """An item about a case (no contact): the case's patient is assigned to them."""
+    return (
+        episode_id is not None
+        and await db.scalar(
+            select(Episode.id).where(
+                Episode.id == episode_id,
+                Episode.patient_id.in_(assigned_patient_ids_subquery(doctor_id)),
+            )
+        )
+        is not None
+    )
+
+
 async def _doctor_sees_case(db: AsyncSession, case_id: UUID, doctor_id: UUID) -> bool:
     return (
         await db.scalar(
@@ -289,7 +347,11 @@ async def can_act(db: AsyncSession, actor: User, item: HumanReviewTask) -> bool:
     if item.target_role == actor.role:
         if actor.role != UserRole.DOCTOR:
             return True
-        return item.assigned_to == actor.id or await _doctor_sees_case(db, item.case_id, actor.id)
+        if item.assigned_to == actor.id:
+            return True
+        if item.case_id is not None:
+            return await _doctor_sees_case(db, item.case_id, actor.id)
+        return await _doctor_sees_episode(db, item.episode_id, actor.id)
     return actor.role == UserRole.OPERATOR and item.target_role == UserRole.FRONT_DESK
 
 
@@ -369,8 +431,17 @@ def _scope(query, actor: User):
     roles = [actor.role, UserRole.FRONT_DESK] if actor.role == UserRole.OPERATOR else [actor.role]
     query = query.where(HumanReviewTask.target_role.in_(roles))
     if actor.role == UserRole.DOCTOR:
-        query = query.join(IntakeCase, HumanReviewTask.case_id == IntakeCase.id).where(
-            or_(HumanReviewTask.assigned_to == actor.id, _doctor_case_filter(actor.id))
+        # Outer joins: an item about a case (CASE_CLOSE) has no contact.
+        query = (
+            query.outerjoin(IntakeCase, HumanReviewTask.case_id == IntakeCase.id)
+            .outerjoin(Episode, HumanReviewTask.episode_id == Episode.id)
+            .where(
+                or_(
+                    HumanReviewTask.assigned_to == actor.id,
+                    _doctor_case_filter(actor.id),
+                    Episode.patient_id.in_(assigned_patient_ids_subquery(actor.id)),
+                )
+            )
         )
     return query
 
@@ -528,6 +599,8 @@ async def link_patient(
             raise HumanReviewTaskWrongStateError("The case is already linked to another patient")
         intake.patient_id, intake.patient_name = patient.id, patient.name
         await _audit(db, actor, task, "review.patient_linked", patient_id=str(patient.id))
+        # Staff confirmed who it is: a clinical message now joins a case (M4).
+        await episode_service.attach_contact(db, intake, actor=actor)
     task.status = TaskStatus.COMPLETED
     await db.commit()
     await db.refresh(task)
@@ -546,6 +619,54 @@ async def reassign(
         raise HumanReviewInvalidChoiceError("Choose an active doctor")
     task.target_role, task.assigned_to, task.status = UserRole.DOCTOR, doctor.id, TaskStatus.PENDING
     await _audit(db, actor, task, "review.reassigned", doctor_id=str(doctor.id))
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+
+async def choose_case(
+    db: AsyncSession, task_id: UUID, actor: User, episode_id: UUID | None
+) -> HumanReviewTask:
+    """ "Which case does this belong to?": one of the offered cases, or a new one."""
+    task = await _open_item(db, task_id, actor, {TaskType.CASE_CHOICE})
+    try:
+        await episode_service.choose(db, task, episode_id, actor=actor)
+    except episode_service.EpisodeClosedError as exc:
+        raise HumanReviewTaskWrongStateError(str(exc)) from exc
+    except episode_service.EpisodeError as exc:
+        raise HumanReviewInvalidChoiceError(str(exc)) from exc
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+
+async def answer_case_close(
+    db: AsyncSession, task_id: UUID, actor: User, *, close: bool, note: str | None
+) -> HumanReviewTask:
+    """ "Close this case?": Close (with the outcome note) or Keep open, which
+    asks again after case_close_nudge_days of quiet."""
+    task = await _open_item(db, task_id, actor, {TaskType.CASE_CLOSE})
+    episode = await db.get(Episode, task.episode_id) if task.episode_id else None
+    if episode is None:
+        raise HumanReviewTaskWrongStateError("The case is gone")
+    if close:
+        try:
+            await episode_service.close(db, episode, note=note or "", actor=actor)
+        except episode_service.EpisodeClosedError as exc:
+            raise HumanReviewTaskWrongStateError(str(exc)) from exc
+        except episode_service.EpisodeError as exc:
+            raise HumanReviewInvalidChoiceError(str(exc)) from exc
+    else:
+        until = datetime.now(UTC) + timedelta(days=settings.case_close_nudge_days)
+        episode.nudge_snoozed_until = until
+        task.status = TaskStatus.COMPLETED
+        await record_event(
+            db,
+            actor=actor,
+            action="case.kept_open",
+            details={"episode_id": str(episode.id), "until": until.isoformat(), "note": note},
+        )
+        await _audit(db, actor, task, "review.completed", note="Kept open")
     await db.commit()
     await db.refresh(task)
     return task

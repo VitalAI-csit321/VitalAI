@@ -48,14 +48,18 @@ export interface Patient {
   medicareNumber: string | null;
   concessionCard: string | null;
   missingFields: string[];
+  // The patient's doctor (every registered patient has one, M4) and their preference.
+  preferredDoctorId?: string | null; doctorId?: string | null; doctorName?: string | null;
 }
 
 export interface PatientCounts { active: number; pending: number; inactive: number; }
 
+// A contact: one message, call or voicemail (backend IntakeCase). The case
+// it belongs to, if any, is episodeId (api/episodes.ts).
 export interface Case {
   id: string; patientId: string | null; patientName: string; contactReason: string;
   contactChannel: string; notes: string | null; status: string;
-  createdAt: string; updatedAt: string;
+  createdAt: string; updatedAt: string; episodeId?: string | null;
 }
 
 export type ConsentStatus = "pending" | "captured" | "withdrawn" | "not_required";
@@ -135,6 +139,8 @@ export interface Message {
   canApprove?: boolean; reviewItemId?: string | null;
   // Write reply (D14): no AI draft awaits approval and nothing was sent yet.
   canWriteReply?: boolean;
+  // The case chip (M4): the confirmed patient and the case the message is in.
+  patientId?: string | null; episodeId?: string | null; episodeTitle?: string | null;
 }
 
 export interface DashboardSummary {

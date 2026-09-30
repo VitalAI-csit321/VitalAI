@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { approveDraft, getInboxMessage, rejectDraft, sendManualReply } from "../api/misc";
 import { listDoctors } from "../api/doctors";
 import {
-  KIND_LABEL, claimReviewTask, completeReviewTask, dismissReviewTask, escalateReviewTask,
-  isOpen, linkReviewPatient, reassignReviewTask, rerouteReviewTask, type RawReviewTask,
+  KIND_LABEL, answerCaseClose, chooseCase, claimReviewTask, completeReviewTask, dismissReviewTask,
+  escalateReviewTask, isOpen, linkReviewPatient, reassignReviewTask, rerouteReviewTask, type RawReviewTask,
 } from "../api/reviewTasks";
 import { TASK_CATEGORIES } from "../api/tasks";
 import type { Doctor, Message } from "../api/types";
@@ -24,6 +24,9 @@ export function ReviewQueueDetailModal({ item, onClose, onDone }: { item: RawRev
   const [patientId, setPatientId] = useState("");
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [doctorId, setDoctorId] = useState("");
+  // Cases (M4): the chosen case ("" = a new one) and the outcome note to close one.
+  const [caseChoice, setCaseChoice] = useState(item.details?.suggested_episode_id ?? "");
+  const [outcome, setOutcome] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const kind = item.task_type;
@@ -33,6 +36,7 @@ export function ReviewQueueDetailModal({ item, onClose, onDone }: { item: RawRev
   const rerouting = (kind === "routing_review" || kind === "intent_review") && !!item.inbox_task_id;
   // Write reply (D14): server-decided, and never alongside a draft awaiting approval.
   const writing = message?.canWriteReply ?? false;
+  const caseKind = kind === "case_choice" || kind === "case_close";
 
   // A closed item just shows its stored reason and status below -- no
   // source message fetch, and so no fetch error either.
@@ -72,7 +76,9 @@ export function ReviewQueueDetailModal({ item, onClose, onDone }: { item: RawRev
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">{KIND_LABEL[kind] ?? kind}</h1>
-              <p className="text-sm text-slate-500">Case C-{item.case_id.slice(0, 8)}</p>
+              {item.case_id
+                ? <p className="text-sm text-slate-500">Contact C-{item.case_id.slice(0, 8)}</p>
+                : item.episode_id && <Link to={`/cases/${item.episode_id}`} className="text-sm text-brand hover:underline">Case: {item.case_title}</Link>}
             </div>
             <button onClick={onClose} aria-label="Close" className="text-xl text-slate-400 hover:text-slate-600">×</button>
           </div>
@@ -140,7 +146,30 @@ export function ReviewQueueDetailModal({ item, onClose, onDone }: { item: RawRev
                     <button onClick={() => run(() => linkReviewPatient(item.id, null))} disabled={busy} className={`${btn} border border-slate-200 text-slate-700`}>None of these</button>
                   </>
                 )}
-                {kind !== "draft_approval" && !rerouting && kind !== "identity_review" && (
+                {kind === "case_choice" && (
+                  <>
+                    {(item.case_candidates ?? []).map(c => (
+                      <label key={c.id} className="flex items-center gap-2 text-sm">
+                        <input type="radio" name="rq-case" value={c.id} checked={caseChoice === c.id} onChange={() => setCaseChoice(c.id)} />
+                        {c.title}{c.id === item.details?.suggested_episode_id && <span className="text-xs text-brand">(suggested)</span>}
+                      </label>
+                    ))}
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="radio" name="rq-case" value="" checked={caseChoice === ""} onChange={() => setCaseChoice("")} />New case
+                    </label>
+                    <button onClick={() => run(() => chooseCase(item.id, caseChoice || null))} disabled={busy} className={`${btn} bg-brand text-white`}>Put it in this case</button>
+                  </>
+                )}
+                {kind === "case_close" && (
+                  <>
+                    <label htmlFor="rq-outcome" className="block text-xs font-medium text-slate-600">Outcome note (to close)</label>
+                    <textarea id="rq-outcome" value={outcome} onChange={e => setOutcome(e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                    <button onClick={() => run(() => answerCaseClose(item.id, true, outcome.trim()))} disabled={busy || !outcome.trim()} className={`${btn} bg-brand text-white`}>Close case</button>
+                    <button onClick={() => run(() => answerCaseClose(item.id, false, null))} disabled={busy} className={`${btn} border border-slate-200 text-slate-700`}>Keep open</button>
+                    {item.episode_id && <button onClick={() => navigate(`/cases/${item.episode_id}`)} className={`${btn} border border-slate-200 text-slate-700`}>Open case</button>}
+                  </>
+                )}
+                {kind !== "draft_approval" && !rerouting && kind !== "identity_review" && !caseKind && (
                   <button onClick={() => run(() => completeReviewTask(item.id, note.trim() || null))} disabled={busy} className={`${btn} bg-brand text-white`}>Done</button>
                 )}
                 {item.inbox_task_id && (

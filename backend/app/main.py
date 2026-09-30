@@ -27,6 +27,7 @@ from app.routes import (
     consent,
     doctors,
     email,
+    episodes,
     health,
     human_review,
     inbox,
@@ -114,9 +115,15 @@ async def lifespan(application: FastAPI):
 
     voicemail_task: asyncio.Task | None = asyncio.create_task(run_voicemail_sweep())
 
+    # "Close this case?" for quiet cases (M4). Always on and not tied to the
+    # reminders flag: it only opens Review Queue items, it emails nobody.
+    from app.services.case_nudge import run_case_nudges
+
+    nudge_task: asyncio.Task | None = asyncio.create_task(run_case_nudges())
+
     yield
 
-    for task in (poller_task, purge_task, reminder_task, voicemail_task):
+    for task in (poller_task, purge_task, reminder_task, voicemail_task, nudge_task):
         if task is not None:
             task.cancel()
             with suppress(asyncio.CancelledError):
@@ -218,6 +225,7 @@ app.include_router(doctors.router, prefix=API_PREFIX)
 app.include_router(approvals.router, prefix=API_PREFIX)
 app.include_router(public_registration.router, prefix=API_PREFIX)
 app.include_router(human_review.router, prefix=API_PREFIX)
+app.include_router(episodes.router, prefix=API_PREFIX)
 app.include_router(settings_routes.router, prefix=API_PREFIX)
 app.include_router(health.detailed_router, prefix=API_PREFIX)
 

@@ -16,15 +16,16 @@ export async function transcribeAudio(file: File): Promise<string> {
   return res.transcript;
 }
 
-export async function createCall(
-  caseId: string,
-  phoneNumber: string,
-  transcript: string,
-): Promise<{ id: string }> {
+// A logged call is its own contact (M4): the caller when known, and the case
+// staff chose. With no case chosen, a clinical call joins one when routed.
+export async function createCall(input: {
+  patientId: string | null; episodeId: string | null; phoneNumber: string; transcript: string;
+}): Promise<{ id: string }> {
   return apiPost<{ id: string }>("/api/v1/calls", {
-    case_id: caseId,
-    phone_number: phoneNumber,
-    transcript,
+    patient_id: input.patientId,
+    episode_id: input.episodeId,
+    phone_number: input.phoneNumber,
+    transcript: input.transcript,
   });
 }
 

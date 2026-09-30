@@ -151,6 +151,15 @@ SETTINGS_REGISTRY: dict[str, SettingSpec] = {
         minimum=1,
         maximum=168,
     ),
+    "case_close_nudge_days": SettingSpec(
+        int,
+        "Approval tiers",
+        "Quiet case before a close check (days)",
+        "An open case with no activity and no upcoming appointment for this long is put "
+        "to its doctor to close. Keep open waits this long again.",
+        minimum=1,
+        maximum=365,
+    ),
     # Routing rules
     "task_routing_category_roles": SettingSpec(
         dict,

@@ -11,7 +11,13 @@ from app.services.task_routing_gate import TaskRoutingOutcome
 
 
 class CallCreate(BaseModel):
-    case_id: UUID
+    """A logged call is its own contact (M4). Give the patient (optional,
+    a call can be from anyone) and, optionally, the case it belongs to. The
+    older case_id form files the call under an existing contact instead."""
+
+    case_id: UUID | None = None
+    patient_id: UUID | None = None
+    episode_id: UUID | None = None
     phone_number: str = Field(min_length=1, max_length=20)
     transcript: str | None = None
 

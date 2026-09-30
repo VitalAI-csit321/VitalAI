@@ -39,6 +39,7 @@ from app.services import (
     consent_service,
     email_conversation_service,
     email_service,
+    episode_service,
     identity_service,
     patient_service,
 )
@@ -137,6 +138,8 @@ EXTRAS = (
     "emergency_contact_phone",
     "preferred_language",
     "preferred_communication",
+    # Kept for when staff register them: assignment_service.ensure_doctor.
+    "preferred_doctor_id",
 )
 # Until the follow-up has gone: a restart between the response and the
 # background send loses it, and this must not read as normal progress.
@@ -252,6 +255,12 @@ async def submit(
     until create_consent_record, which is written last and commits it all.
     """
     _check_day(conversation, payload.preferred_day)
+    try:
+        await patient_service.check_preferred_doctor(db, payload.preferred_doctor_id)
+    except patient_service.PreferredDoctorError as exc:
+        raise RegistrationRejectedError(
+            "That doctor is not taking patients. Choose another, or no preference."
+        ) from exc
     now = datetime.now(UTC)
     conversation.form_submitted_at = now
     origin = await db.get(Email, conversation.origin_email_id)
@@ -330,6 +339,10 @@ async def submit(
     case = await db.get(IntakeCase, conversation.case_id)
     if case is not None and case.patient_id is None:
         case.patient_id, case.patient_name = patient.id, patient.name
+    if case is not None and case.patient_id is not None:
+        # A registered patient's booking joins their case; a new
+        # (provisional) one does not until staff register them.
+        await episode_service.attach_contact(db, case, actor=actor)
     conversation.preferred_day = payload.preferred_day
     if task is not None:
         task.handover_context = FOLLOWUP_PENDING_REASON

@@ -27,6 +27,7 @@ from app.models.user import User
 from app.schemas.email import EmailIngestRequest
 from app.services import (
     approval_service,
+    episode_service,
     outlook_auth,
     outlook_client,
     review_routing,
@@ -202,6 +203,10 @@ async def ingest_email(
     await task_service.apply_gate(
         db, task, gate, actor=actor, reasons=review_reasons, in_conversation=in_conversation
     )
+    # A contact that already has a patient (a conversation reply, or a
+    # message filed under a known patient's contact) joins or marks its case
+    # here. A new sender's contact is linked later, by identity.
+    await episode_service.attach_contact(db, case, actor=actor, category=category)
 
     await record_event(
         db,

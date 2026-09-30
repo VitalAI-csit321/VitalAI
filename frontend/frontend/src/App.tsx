@@ -15,7 +15,8 @@ import { PatientsPage } from "./pages/PatientsPage";
 import { PatientOnboardingPage } from "./pages/PatientOnboardingPage";
 import { PatientDetailPage } from "./pages/PatientDetailPage";
 import { PatientEditPage } from "./pages/PatientEditPage";
-import { CaseDetailPage } from "./pages/CaseDetailPage";
+import { CasePage } from "./pages/CasePage";
+import { ContactPage } from "./pages/ContactPage";
 import { ConsentQueuePage } from "./pages/ConsentQueuePage";
 import { ConsentNewPage } from "./pages/ConsentNewPage";
 import { ConsentCapturePage } from "./pages/ConsentCapturePage";
@@ -88,7 +89,8 @@ export default function App() {
             <Route path="/patients/onboarding" element={<PatientOnboardingPage />} />
             <Route path="/patients/:id" element={<PatientDetailPage />} />
             <Route path="/patients/:id/edit" element={<PatientEditPage />} />
-            <Route path="/cases/:id" element={<CaseDetailPage />} />
+            <Route path="/cases/:id" element={<CasePage />} />
+            <Route path="/contacts/:id" element={<ContactPage />} />
 
             {/* Consent */}
             <Route path="/consent" element={<ConsentQueuePage />} />

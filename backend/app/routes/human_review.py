@@ -11,6 +11,8 @@ from app.database import get_db
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.user import User
 from app.schemas.human_review import (
+    HumanReviewCaseCloseBody,
+    HumanReviewChooseCaseBody,
     HumanReviewCompleteBody,
     HumanReviewLinkPatientBody,
     HumanReviewNoteBody,
@@ -178,3 +180,27 @@ async def reassign_endpoint(
     actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
 ):
     return await _run(human_review_service.reassign(db, task_id, actor, payload.doctor_id))
+
+
+@router.post("/{task_id}/choose-case", response_model=HumanReviewTaskOut)
+async def choose_case_endpoint(
+    task_id: UUID,
+    payload: HumanReviewChooseCaseBody,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
+):
+    return await _run(human_review_service.choose_case(db, task_id, actor, payload.episode_id))
+
+
+@router.post("/{task_id}/case-close", response_model=HumanReviewTaskOut)
+async def case_close_endpoint(
+    task_id: UUID,
+    payload: HumanReviewCaseCloseBody,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
+):
+    return await _run(
+        human_review_service.answer_case_close(
+            db, task_id, actor, close=payload.close, note=payload.note
+        )
+    )

@@ -19,7 +19,7 @@ from app.schemas.call import (
     CallRoutingOverride,
     CallTranscribeOut,
 )
-from app.services import call_service, voicemail_service
+from app.services import call_service, episode_service, voicemail_service
 from app.services.audit_service import record_event
 from app.services.transcription_service import EmptyTranscriptError, transcribe_audio
 from app.services.triage_service import ConsentGatingError
@@ -38,8 +38,14 @@ async def create_call_endpoint(
 ):
     try:
         return await call_service.create_call(db, payload, actor)
-    except call_service.CaseNotFoundError as exc:
+    except (
+        call_service.CaseNotFoundError,
+        call_service.PatientNotFoundError,
+        episode_service.EpisodeNotFoundError,
+    ) as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except episode_service.EpisodeError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
 
 @router.get("", response_model=list[CallOut])

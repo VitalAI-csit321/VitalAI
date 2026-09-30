@@ -41,7 +41,8 @@ export async function getDashboard(user: CurrentUser | null): Promise<DashboardS
   const canReadAudit = user?.role === "admin" || (user?.grantedPermissions.includes("read_audit") ?? false);
   const [intakeRes, auditRes, pendingRes, inProgressRes, reviewEscalatedRes, escalatedRes, reviewListRes, weeklyRes] =
     await Promise.allSettled([
-      canViewQueue ? apiGet<{items:unknown[];total:number}>("/api/v1/intake?limit=1") : Promise.reject(),
+      // Open cases (episodes of care, M4); every role reads them, a doctor only their own.
+      apiGet<{items:unknown[];total:number}>("/api/v1/cases", {limit:1, status:"open"}),
       canReadAudit ? apiGet<{total:number}>("/api/v1/audit?limit=1") : Promise.reject(),
       apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"pending"}),
       apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"in_progress"}),
