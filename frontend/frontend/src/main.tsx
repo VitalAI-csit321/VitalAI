@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import { setClinicTimeZone } from "./components/calendarHelpers";
+import { setClinicTimeZone } from "./lib/format";
 import { apiGet } from "./lib/apiClient";
 import "./index.css";
 

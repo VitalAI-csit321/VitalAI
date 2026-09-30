@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { formatDateTime } from "../lib/format";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { getConsentForCase, resolveConsentReview, verifyConsent } from "../api/consent";
 import { getCase } from "../api/cases";
@@ -150,8 +151,8 @@ export function ConsentViewPage() {
           )}
           {consent.capturedAt && (
             <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm">
-              <div className="text-xs text-slate-500 uppercase tracking-wide">Captured</div>
-              <div className="mt-0.5 font-medium text-slate-900">{new Date(consent.capturedAt).toLocaleString("en-GB")}</div>
+              <div className="text-xs text-slate-500">Captured</div>
+              <div className="mt-0.5 font-medium text-slate-900">{formatDateTime(consent.capturedAt)}</div>
             </div>
           )}
         </div>

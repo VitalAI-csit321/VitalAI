@@ -47,6 +47,7 @@ from app.models.user import User
 from app.services import (
     appointment_service,
     booking_service,
+    episode_service,
     identity_service,
     onboarding_service,
     patient_service,
@@ -652,6 +653,8 @@ async def _link(
     if case is not None and case.patient_id is None:
         case.patient_id = patient.id
         case.patient_name = patient.name
+    if case is not None and case.patient_id is not None:
+        await episode_service.attach_contact(db, case, actor=actor)
     if case is not None and case.patient_id == patient.id:
         # Nothing left to confirm: the sender answered the verification.
         await review_routing.complete_open(

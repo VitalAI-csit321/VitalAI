@@ -19,6 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.assignment import DoctorPatientAssignment
+from app.models.case import IntakeCase
+from app.models.episode import Episode
 from app.models.user import User, UserRole
 from app.services import appointment_service
 from app.services.appointment_service import is_clinic_day
@@ -60,6 +62,38 @@ async def doctor_for_patient(db: AsyncSession, patient_id: UUID) -> tuple[UUID, 
         )
     ).first()
     return (row[0], row[1]) if row else None
+
+
+async def doctor_for_episode(db: AsyncSession, episode: Episode) -> tuple[UUID, str] | None:
+    """Who does a case's doctor work (M4): its doctor while they are active and
+    still assigned to the patient, else the patient's doctor. inbox_service._scoped
+    applies the same rule in SQL."""
+    if episode.doctor_id is not None:
+        row = (
+            await db.execute(
+                select(User.id, User.full_name)
+                .join(DoctorPatientAssignment, DoctorPatientAssignment.doctor_id == User.id)
+                .where(
+                    User.id == episode.doctor_id,
+                    User.is_active.is_(True),
+                    DoctorPatientAssignment.patient_id == episode.patient_id,
+                )
+            )
+        ).first()
+        if row is not None:
+            return row[0], row[1]
+    return await doctor_for_patient(db, episode.patient_id)
+
+
+async def doctor_for_contact(db: AsyncSession, contact: IntakeCase) -> tuple[UUID, str] | None:
+    """Who does the doctor work on this message: its case's (doctor_for_episode),
+    or the patient's when it is in no case."""
+    if contact.patient_id is None:
+        return None
+    episode = await db.get(Episode, contact.episode_id) if contact.episode_id else None
+    if episode is not None:
+        return await doctor_for_episode(db, episode)
+    return await doctor_for_patient(db, contact.patient_id)
 
 
 async def find_slots(

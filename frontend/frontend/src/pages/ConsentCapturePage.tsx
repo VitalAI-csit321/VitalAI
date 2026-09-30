@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { formatDate } from "../lib/format";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { createConsent, captureConsent, consentTypeLabel } from "../api/consent";
@@ -16,7 +17,7 @@ export function ConsentCapturePage() {
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState<string|null>(null);
   const canvasRef=useRef<HTMLCanvasElement>(null);
-  const today=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+  const today=formatDate(new Date());
   const consentType=params.get("type") ?? "general_treatment";
   const typeLabel=consentTypeLabel(consentType);
 
@@ -37,11 +38,11 @@ export function ConsentCapturePage() {
     <div className="p-6">
       <div className="flex items-start justify-between">
         <h1 className="text-2xl font-bold text-slate-900">Consent capture</h1>
-        <span className={`rounded-md px-3 py-1 text-xs font-semibold uppercase ${signed?"bg-emerald-100 text-emerald-700":"bg-amber-100 text-amber-700"}`}>{signed?"Signed":"Awaiting signature"}</span>
+        <span className={`rounded-md px-3 py-1 text-xs font-semibold ${signed?"bg-emerald-100 text-emerald-700":"bg-amber-100 text-amber-700"}`}>{signed?"Signed":"Awaiting signature"}</span>
       </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="rounded-xl border border-slate-200 bg-white p-6">
-          <h2 className="font-semibold text-slate-900">Patient consent — {typeLabel}</h2>
+          <h2 className="font-semibold text-slate-900">Patient consent: {typeLabel}</h2>
           <div className="mt-4 space-y-4">{CLAUSES.map((c,i)=><p key={i} className="text-sm text-slate-700">{i+1}. {c}</p>)}</div>
           <div className="my-5 h-px bg-slate-100"/>
           <div className="space-y-3">{CHECKS.map((label,i)=>(
@@ -55,7 +56,7 @@ export function ConsentCapturePage() {
           <div className="rounded-xl border border-slate-200 bg-white p-6">
             <h2 className="font-semibold text-slate-900 mb-4">Witness</h2>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-slate-500">Name</span><span className="font-medium text-slate-900">{user?(user.role==="doctor"?`Dr ${user.fullName}`:user.fullName):"—"}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">Name</span><span className="font-medium text-slate-900">{user?(user.role==="doctor"?`Dr ${user.fullName}`:user.fullName):"Unknown"}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">Date</span><span className="font-medium text-slate-900">{today}</span></div>
             </div>
           </div>

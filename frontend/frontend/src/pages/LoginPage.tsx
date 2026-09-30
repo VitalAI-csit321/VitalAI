@@ -39,10 +39,10 @@ export function LoginPage() {
 
         <form onSubmit={onSubmit} className="mt-8 space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+            <label htmlFor="login-field-1" className="mb-1.5 block text-sm font-semibold text-slate-700">
               Email address
             </label>
-            <input
+            <input id="login-field-1"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -52,8 +52,8 @@ export function LoginPage() {
           </div>
 
           <div>
-            <label className="mb-1.5 block text-sm font-semibold text-slate-700">Password</label>
-            <input
+            <label htmlFor="login-field-2" className="mb-1.5 block text-sm font-semibold text-slate-700">Password</label>
+            <input id="login-field-2"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -82,20 +82,6 @@ export function LoginPage() {
           </button>
         </form>
 
-        <div className="my-6 flex items-center gap-4">
-          <span className="h-px flex-1 bg-slate-200" />
-          <span className="text-xs font-medium text-slate-400">OR</span>
-          <span className="h-px flex-1 bg-slate-200" />
-        </div>
-
-        <button
-          disabled
-          className="w-full cursor-not-allowed rounded-lg bg-slate-100 py-2.5 text-sm font-semibold text-slate-400"
-        >
-          Sign in with SSO
-        </button>
-
-        <p className="mt-6 text-center text-xs text-slate-400">MVP Build • Limited SSO Support</p>
       </div>
     </div>
   );

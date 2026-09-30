@@ -13,7 +13,9 @@ NonBlank = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)
 class HumanReviewTaskOut(BaseModel):
     id: UUID
     created_at: datetime
-    case_id: UUID
+    # The contact; None for an item about a case (case_close), see episode_id.
+    case_id: UUID | None
+    episode_id: UUID | None = None
     triage_id: UUID | None
     task_type: TaskType
     status: TaskStatus
@@ -33,6 +35,8 @@ class HumanReviewTaskOut(BaseModel):
     channel: str | None = None
     due_at: datetime | None = None
     candidates: list[dict] | None = None
+    case_title: str | None = None
+    case_candidates: list[dict] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -65,6 +69,15 @@ class HumanReviewLinkPatientBody(BaseModel):
 
 class HumanReviewReassignBody(BaseModel):
     doctor_id: UUID
+
+
+class HumanReviewChooseCaseBody(BaseModel):
+    episode_id: UUID | None  # None: a new case
+
+
+class HumanReviewCaseCloseBody(BaseModel):
+    close: bool
+    note: str | None = Field(default=None, max_length=2000)
 
 
 class HumanReviewTaskCreate(BaseModel):

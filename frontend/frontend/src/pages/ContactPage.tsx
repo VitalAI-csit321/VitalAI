@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
+import { contactStatusLabel, formatDateTime } from "../lib/format";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getCase } from "../api/cases";
 import { getConsentForCase } from "../api/consent";
 import type { Case, Consent } from "../api/types";
 import { StatusBadge, Spinner } from "../components/ui";
 
-export function CaseDetailPage() {
+// One contact: a message, call or voicemail (backend IntakeCase). Cases
+// (episodes of care) have their own page, CasePage.
+export function ContactPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [caseData, setCaseData] = useState<Case | null>(null);
@@ -19,14 +22,14 @@ export function CaseDetailPage() {
     setError(null);
     Promise.all([getCase(id), getConsentForCase(id)])
       .then(([c, cons]) => { setCaseData(c); setConsent(cons); })
-      .catch(() => setError("Could not load this case."))
+      .catch(() => setError("Could not load this contact."))
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <div className="p-6"><Spinner label="Loading case..." /></div>;
+  if (loading) return <div className="p-6"><Spinner label="Loading contact..." /></div>;
   if (error || !caseData) return (
     <div className="p-6">
-      <p className="text-sm text-red-600">{error ?? "Case not found."}</p>
+      <p className="text-sm text-red-600">{error ?? "Contact not found."}</p>
       <button onClick={() => navigate("/patients")} className="mt-4 text-sm text-brand hover:underline">Back to patients</button>
     </div>
   );
@@ -46,22 +49,25 @@ export function CaseDetailPage() {
             <p className="mt-1 text-sm text-slate-500">{caseData.patientName}</p>
           )}
         </div>
-        <StatusBadge tone="gray">{caseData.status}</StatusBadge>
+        <StatusBadge tone="gray">{contactStatusLabel(caseData.status)}</StatusBadge>
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-white p-5 max-w-lg text-sm">
-        <div><div className="text-xs text-slate-500 uppercase tracking-wide">Contact channel</div><div className="font-medium text-slate-900 mt-0.5 capitalize">{caseData.contactChannel}</div></div>
-        <div><div className="text-xs text-slate-500 uppercase tracking-wide">Created</div><div className="font-medium text-slate-900 mt-0.5">{new Date(caseData.createdAt).toLocaleString("en-GB")}</div></div>
+        <div><div className="text-xs text-slate-500">Contact channel</div><div className="font-medium text-slate-900 mt-0.5 capitalize">{caseData.contactChannel}</div></div>
+        <div><div className="text-xs text-slate-500">Created</div><div className="font-medium text-slate-900 mt-0.5">{formatDateTime(caseData.createdAt)}</div></div>
+        <div className="col-span-2"><div className="text-xs text-slate-500">Case</div><div className="font-medium text-slate-900 mt-0.5">
+          {caseData.episodeId ? <Link to={`/cases/${caseData.episodeId}`} className="text-brand hover:underline">Open the case</Link> : "Not in a case"}
+        </div></div>
       </div>
 
       {consent && (
         <div className="mt-6 max-w-lg">
           <h2 className="text-sm font-semibold text-slate-900 mb-2">Consent</h2>
           <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-white p-5 text-sm">
-            <div><div className="text-xs text-slate-500 uppercase tracking-wide">Type</div><div className="font-medium text-slate-900 mt-0.5 capitalize">{consent.consentType}</div></div>
-            <div><div className="text-xs text-slate-500 uppercase tracking-wide">Status</div><div className="mt-0.5"><StatusBadge tone={consent.status === "captured" ? "green" : consent.status === "withdrawn" ? "red" : "amber"}>{consent.status}</StatusBadge></div></div>
+            <div><div className="text-xs text-slate-500">Type</div><div className="font-medium text-slate-900 mt-0.5 capitalize">{consent.consentType}</div></div>
+            <div><div className="text-xs text-slate-500">Status</div><div className="mt-0.5"><StatusBadge tone={consent.status === "captured" ? "green" : consent.status === "withdrawn" ? "red" : "amber"}>{consent.status}</StatusBadge></div></div>
             {consent.capturedAt && (
-              <div><div className="text-xs text-slate-500 uppercase tracking-wide">Captured</div><div className="font-medium text-slate-900 mt-0.5">{new Date(consent.capturedAt).toLocaleString("en-GB")}</div></div>
+              <div><div className="text-xs text-slate-500">Captured</div><div className="font-medium text-slate-900 mt-0.5">{formatDateTime(consent.capturedAt)}</div></div>
             )}
           </div>
         </div>

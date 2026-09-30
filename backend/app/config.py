@@ -94,6 +94,9 @@ class Settings(BaseSettings):
     # Review Queue "Over SLA": open longer than this many hours (review queue spec D7).
     review_sla_hours_high: int = 4
     review_sla_hours_default: int = 24
+    # A case this long without activity (and no future appointment) gets a
+    # "Close this case?" Review Queue item; Keep open snoozes it this long.
+    case_close_nudge_days: int = 30
 
     # Clinic hours. The calendar UI renders an 8am-6pm grid; these are the
     # single source of truth so a clinic that opens at 7 needs no code change.

@@ -4,8 +4,10 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.base import utcnow
 from app.models.case import IntakeCase
 from app.models.consent import ConsentRecord, ConsentStatus
+from app.models.episode import Episode
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.user import User
 from app.services.audit_service import record_event
@@ -57,14 +59,20 @@ async def create_consent_record(
     notes: str | None = None,
     form_snapshot: dict | None = None,
 ) -> ConsentRecord:
+    contact = await db.get(IntakeCase, case_id)
+    # Filed in the case (episode) its contact is in (M4).
+    episode = await db.get(Episode, contact.episode_id) if contact and contact.episode_id else None
     record = ConsentRecord(
         case_id=case_id,
         status=ConsentStatus.PENDING,
         consent_type=consent_type,
         notes=notes,
         form_snapshot=form_snapshot,
+        episode_id=episode.id if episode else None,
     )
     db.add(record)
+    if episode is not None:
+        episode.last_activity_at = utcnow()
     await db.flush()
 
     await record_event(

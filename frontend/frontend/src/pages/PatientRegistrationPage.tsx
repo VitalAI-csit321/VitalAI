@@ -20,7 +20,7 @@ const checkbox =
 const EMPTY: RegistrationForm = {
   name: "", dob: "", phone: "", gender: "", address: "",
   emergency_contact_name: "", emergency_contact_phone: "", preferred_language: "",
-  preferred_communication: "", preferred_day: "", part_of_day: "any",
+  preferred_communication: "", preferred_day: "", part_of_day: "any", preferred_doctor_id: "",
 };
 
 function isoDate(d: Date): string {
@@ -110,7 +110,7 @@ export function PatientRegistrationPage() {
           opened from an email looks like it belongs to someone. */}
       <header className="bg-sidebar px-4 pb-7 pt-6">
         <div className="mx-auto w-full max-w-xl">
-          <p className="text-sm font-semibold tracking-wide text-brand-light">VitalAI</p>
+          <p className="text-sm font-semibold text-brand-light">VitalAI</p>
           <h1 className="mt-2 text-balance text-2xl font-bold text-white">Register with the clinic</h1>
         </div>
       </header>
@@ -177,6 +177,14 @@ export function PatientRegistrationPage() {
                   <option>Phone</option><option>Email</option><option>SMS</option>
                 </select>
               </Field>
+              {link.doctors.length > 0 && (
+                <Field label="Preferred doctor" optional>
+                  <select className={input} value={form.preferred_doctor_id} onChange={(e) => update("preferred_doctor_id", e.target.value)}>
+                    <option value="">No preference</option>
+                    {link.doctors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </Field>
+              )}
             </Section>
 
             <Section title="Your appointment">

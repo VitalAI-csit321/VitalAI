@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
+import { formatDateTime } from "../lib/format";
 import { Check } from "lucide-react";
 
 interface SuccessState { patientName: string; formType: string; timestamp: string; }
@@ -9,12 +10,12 @@ export function ConsentSuccessPage() {
   const state = location.state as SuccessState | null;
 
   const timestamp = state?.timestamp
-    ? new Date(state.timestamp).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
-    : new Date().toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    ? formatDateTime(state.timestamp)
+    : formatDateTime(new Date());
 
   const rows = [
-    { label: "Patient", value: state?.patientName ?? "—" },
-    { label: "Form", value: state?.formType ?? "—" },
+    { label: "Patient", value: state?.patientName ?? "Not recorded" },
+    { label: "Form", value: state?.formType ?? "Not recorded" },
     { label: "Timestamp", value: timestamp },
   ];
 

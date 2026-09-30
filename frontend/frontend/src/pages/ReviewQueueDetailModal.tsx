@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Check } from "lucide-react";
+import { formatDateTime, humanize } from "../lib/format";
+import { Link, useNavigate } from "react-router-dom";
 import { approveDraft, getInboxMessage, rejectDraft, sendManualReply } from "../api/misc";
 import { listDoctors } from "../api/doctors";
 import {
-  KIND_LABEL, claimReviewTask, completeReviewTask, dismissReviewTask, escalateReviewTask,
-  isOpen, linkReviewPatient, reassignReviewTask, rerouteReviewTask, type RawReviewTask,
+  KIND_LABEL, answerCaseClose, chooseCase, claimReviewTask, completeReviewTask, dismissReviewTask,
+  escalateReviewTask, isOpen, linkReviewPatient, reassignReviewTask, rerouteReviewTask, type RawReviewTask,
 } from "../api/reviewTasks";
 import { TASK_CATEGORIES } from "../api/tasks";
 import type { Doctor, Message } from "../api/types";
@@ -24,6 +26,9 @@ export function ReviewQueueDetailModal({ item, onClose, onDone }: { item: RawRev
   const [patientId, setPatientId] = useState("");
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [doctorId, setDoctorId] = useState("");
+  // Cases (M4): the chosen case ("" = a new one) and the outcome note to close one.
+  const [caseChoice, setCaseChoice] = useState(item.details?.suggested_episode_id ?? "");
+  const [outcome, setOutcome] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const kind = item.task_type;
@@ -33,6 +38,7 @@ export function ReviewQueueDetailModal({ item, onClose, onDone }: { item: RawRev
   const rerouting = (kind === "routing_review" || kind === "intent_review") && !!item.inbox_task_id;
   // Write reply (D14): server-decided, and never alongside a draft awaiting approval.
   const writing = message?.canWriteReply ?? false;
+  const caseKind = kind === "case_choice" || kind === "case_close";
 
   // A closed item just shows its stored reason and status below -- no
   // source message fetch, and so no fetch error either.
@@ -72,20 +78,22 @@ export function ReviewQueueDetailModal({ item, onClose, onDone }: { item: RawRev
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">{KIND_LABEL[kind] ?? kind}</h1>
-              <p className="text-sm text-slate-500">Case C-{item.case_id.slice(0, 8)}</p>
+              {item.case_id
+                ? <p className="text-sm text-slate-500">Contact C-{item.case_id.slice(0, 8)}</p>
+                : item.episode_id && <Link to={`/cases/${item.episode_id}`} className="text-sm text-brand hover:underline">Case: {item.case_title}</Link>}
             </div>
             <button onClick={onClose} aria-label="Close" className="text-xl text-slate-400 hover:text-slate-600">×</button>
           </div>
           <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 p-5 text-sm">
-                {[["Patient", item.patient_name ?? "Unidentified"], ["Channel", item.channel ?? "-"],
-                  ["Owner", item.owner_label ?? "-"], ["Priority", item.priority],
-                  ["Submitted", new Date(item.created_at).toLocaleString("en-AU")],
-                  ["Due", item.due_at ? new Date(item.due_at).toLocaleString("en-AU") : "-"]].map(([l, v]) => (
-                  <div key={l}><div className="text-xs uppercase tracking-wide text-slate-500">{l}</div><div className="mt-0.5 font-medium capitalize text-slate-900">{v}</div></div>
+                {[["Patient", item.patient_name ?? "Unidentified"], ["Channel", item.channel ? humanize(item.channel) : "-"],
+                  ["Owner", item.owner_label ?? "-"], ["Priority", humanize(item.priority)],
+                  ["Submitted", formatDateTime(item.created_at)],
+                  ["Due", item.due_at ? formatDateTime(item.due_at) : "No due date"]].map(([l, v]) => (
+                  <div key={l}><div className="text-xs text-slate-500">{l}</div><div className="mt-0.5 font-medium text-slate-900">{v}</div></div>
                 ))}
-                <div className="col-span-2"><div className="text-xs uppercase tracking-wide text-slate-500">Reason</div><p className="mt-0.5 whitespace-pre-wrap text-slate-900">{item.notes ?? "-"}</p></div>
+                <div className="col-span-2"><div className="text-xs text-slate-500">Reason</div><p className="mt-0.5 whitespace-pre-wrap text-slate-900">{item.notes ?? "-"}</p></div>
                 {item.details?.escalation && (
                   <div className="col-span-2 rounded-lg bg-red-50 p-3 text-red-900">Escalated by {item.details.escalation.by}: {item.details.escalation.note}</div>
                 )}
@@ -97,7 +105,7 @@ export function ReviewQueueDetailModal({ item, onClose, onDone }: { item: RawRev
                   <p className="mt-3 whitespace-pre-line text-slate-700">{message.body}</p>
                   {kind === "draft_approval" && message.draftText && !writing && (
                     message.draftSent
-                      ? <p className="mt-4 text-sm font-medium text-emerald-700">Already sent ✓</p>
+                      ? <p className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-emerald-700"><Check className="h-4 w-4" aria-hidden />Already sent</p>
                       : <textarea aria-label="Draft reply" value={draft} onChange={e => setDraft(e.target.value)} disabled={busy || !open}
                           rows={6} className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
                   )}
@@ -140,7 +148,30 @@ export function ReviewQueueDetailModal({ item, onClose, onDone }: { item: RawRev
                     <button onClick={() => run(() => linkReviewPatient(item.id, null))} disabled={busy} className={`${btn} border border-slate-200 text-slate-700`}>None of these</button>
                   </>
                 )}
-                {kind !== "draft_approval" && !rerouting && kind !== "identity_review" && (
+                {kind === "case_choice" && (
+                  <>
+                    {(item.case_candidates ?? []).map(c => (
+                      <label key={c.id} className="flex items-center gap-2 text-sm">
+                        <input type="radio" name="rq-case" value={c.id} checked={caseChoice === c.id} onChange={() => setCaseChoice(c.id)} />
+                        {c.title}{c.id === item.details?.suggested_episode_id && <span className="text-xs text-brand">(suggested)</span>}
+                      </label>
+                    ))}
+                    <label className="flex items-center gap-2 text-sm">
+                      <input type="radio" name="rq-case" value="" checked={caseChoice === ""} onChange={() => setCaseChoice("")} />New case
+                    </label>
+                    <button onClick={() => run(() => chooseCase(item.id, caseChoice || null))} disabled={busy} className={`${btn} bg-brand text-white`}>Put it in this case</button>
+                  </>
+                )}
+                {kind === "case_close" && (
+                  <>
+                    <label htmlFor="rq-outcome" className="block text-xs font-medium text-slate-600">Outcome note (to close)</label>
+                    <textarea id="rq-outcome" value={outcome} onChange={e => setOutcome(e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                    <button onClick={() => run(() => answerCaseClose(item.id, true, outcome.trim()))} disabled={busy || !outcome.trim()} className={`${btn} bg-brand text-white`}>Close case</button>
+                    <button onClick={() => run(() => answerCaseClose(item.id, false, null))} disabled={busy} className={`${btn} border border-slate-200 text-slate-700`}>Keep open</button>
+                    {item.episode_id && <button onClick={() => navigate(`/cases/${item.episode_id}`)} className={`${btn} border border-slate-200 text-slate-700`}>Open case</button>}
+                  </>
+                )}
+                {kind !== "draft_approval" && !rerouting && kind !== "identity_review" && !caseKind && (
                   <button onClick={() => run(() => completeReviewTask(item.id, note.trim() || null))} disabled={busy} className={`${btn} bg-brand text-white`}>Done</button>
                 )}
                 {item.inbox_task_id && (

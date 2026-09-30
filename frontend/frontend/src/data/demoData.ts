@@ -65,7 +65,7 @@ export const demoAppointments: Appointment[] = SEEDS.map((s, i) => {
   return {
     id: `appt-${i + 1}`, caseId: `case-${i + 1}`, doctorId: s.doctorId, timeSlot: start,
     endTime: addMinutes(start, s.duration), durationMinutes: s.duration, appointmentType: s.type,
-    location: s.location, reason: "Fatigue and shortness of breath — ongoing for 6 weeks.",
+    location: s.location, reason: "Fatigue and shortness of breath, ongoing for 6 weeks.",
     internalNotes: "Ensure consent forms completed before consultation.", status: s.status,
     referenceCode: `APT-DEMO-${String(i + 1).padStart(4, "0")}`, notifyPatient: true, notifyProvider: true,
     seriesId: null, createdAt: start, updatedAt: start,

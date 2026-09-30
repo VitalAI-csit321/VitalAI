@@ -10,6 +10,8 @@ export interface RegistrationLink {
   // The clinic's own consent: optional here, finished at the clinic.
   clauses: string[];
   clinicChecks: string[];
+  // Active doctors the patient may prefer (name and id only).
+  doctors: { id: string; name: string }[];
 }
 
 export interface RegistrationForm {
@@ -24,6 +26,7 @@ export interface RegistrationForm {
   preferred_communication: string;
   preferred_day: string;
   part_of_day: "morning" | "afternoon" | "any";
+  preferred_doctor_id: string; // "" is no preference
 }
 
 const path = (token: string) => `/api/v1/public/registration/${encodeURIComponent(token)}`;
@@ -35,6 +38,7 @@ export async function getRegistrationLink(token: string): Promise<RegistrationLi
     statements: string[];
     clauses: string[];
     clinic_checks: string[];
+    doctors: { id: string; name: string }[];
   }>(path(token));
   return {
     email: raw.email,
@@ -42,6 +46,7 @@ export async function getRegistrationLink(token: string): Promise<RegistrationLi
     statements: raw.statements,
     clauses: raw.clauses,
     clinicChecks: raw.clinic_checks,
+    doctors: raw.doctors ?? [],
   };
 }
 
@@ -54,5 +59,5 @@ export async function submitRegistration(
     signature: string | null;
   },
 ): Promise<void> {
-  await apiPost(path(token), form);
+  await apiPost(path(token), { ...form, preferred_doctor_id: form.preferred_doctor_id || null });
 }

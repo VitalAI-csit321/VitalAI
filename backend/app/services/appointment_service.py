@@ -16,7 +16,9 @@ from app.auth.scoping import assigned_patient_ids_subquery, is_assigned
 from app.config import settings
 from app.models.appointment import Appointment, AppointmentStatus, AppointmentType
 from app.models.assignment import DoctorPatientAssignment
+from app.models.base import utcnow
 from app.models.case import IntakeCase
+from app.models.episode import Episode
 from app.models.patient import Patient
 from app.models.user import User, UserRole
 from app.schemas.appointment import (
@@ -187,6 +189,9 @@ async def book_appointment(
         notify_patient=notify_patient,
         notify_provider=notify_provider,
         series_id=series_id,
+        # The case (episode) its contact is in: the agent's booking and a
+        # staff booking against a chosen case both land there (M4).
+        episode_id=case.episode_id,
     )
     db.add(appointment)
     try:
@@ -198,6 +203,9 @@ async def book_appointment(
         ) from exc
 
     await _assign_if_unassigned(db, doctor_id, case.patient_id, case_id, actor)
+    episode = await db.get(Episode, case.episode_id) if case.episode_id else None
+    if episode is not None:
+        episode.last_activity_at = utcnow()
     await record_event(
         db,
         case_id=case_id,

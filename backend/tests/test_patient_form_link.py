@@ -274,6 +274,7 @@ async def test_the_link_opens_with_the_address_and_the_statements(
         # The clinic's own consent, the one staff capture in person.
         "clauses": list(consent_service.CLINIC_CLAUSES),
         "clinic_checks": list(consent_service.CLINIC_CHECKS),
+        "doctors": [],  # no doctor in this test's clinic
     }
 
 
@@ -433,6 +434,32 @@ async def test_details_matching_one_registered_patient_link_to_them_and_change_n
         .all()
     )
     assert len(count) == 1
+
+
+async def test_a_registered_patient_booking_by_form_joins_a_case(
+    client, db_session, admin_user, doctor_user, llm, sends
+):
+    from app.models.case import IntakeCase
+    from app.models.episode import Episode
+
+    email, _, token = await _link_sent(db_session, admin_user, llm, sends)
+    existing = Patient(
+        mrn="MRN-EXIST02",
+        name="Jane Citizen",
+        dob=date(1990, 2, 1),
+        phone="+61 412 345 678",
+        is_provisional=False,
+    )
+    db_session.add(existing)
+    await db_session.commit()
+
+    response = await client.post(f"{URL}/{token}", json=_form(_weekday_ahead()))
+
+    assert response.status_code == 201
+    (episode,) = (await db_session.scalars(select(Episode))).all()
+    contact = await db_session.get(IntakeCase, email.case_id)
+    await db_session.refresh(contact)
+    assert (episode.patient_id, contact.episode_id) == (existing.id, episode.id)
 
 
 async def test_details_partly_matching_someone_go_to_staff_quietly(
@@ -825,3 +852,67 @@ async def test_the_clinic_consent_can_be_left_part_done_and_unsigned(
         True,
         False,
     ]
+
+
+# The preferred doctor on the form (M4 spec, E6)
+
+
+async def _gone_doctor(db):
+    from app.models.user import User, UserRole
+
+    gone = User(
+        email="gone.doctor@example.com",
+        hashed_password="h",
+        full_name="Dr Gone",
+        role=UserRole.DOCTOR,
+        is_active=False,
+    )
+    db.add(gone)
+    await db.commit()
+    return gone
+
+
+async def test_the_form_lists_only_active_doctors_by_name(
+    client, db_session, admin_user, doctor_user, llm, sends
+):
+    _, _, token = await _link_sent(db_session, admin_user, llm, sends)
+    await _gone_doctor(db_session)
+
+    doctors = (await client.get(f"{URL}/{token}")).json()["doctors"]
+
+    assert doctors == [{"id": str(doctor_user.id), "name": doctor_user.full_name}]
+
+
+async def test_a_preferred_doctor_on_the_form_waits_for_registration(
+    client, db_session, admin_user, doctor_user, llm, sends
+):
+    from app.models.assignment import DoctorPatientAssignment
+
+    email, _, token = await _link_sent(db_session, admin_user, llm, sends)
+
+    response = await client.post(
+        f"{URL}/{token}",
+        json=_form(_weekday_ahead(), preferred_doctor_id=str(doctor_user.id)),
+    )
+
+    assert response.status_code == 201
+    conversation = await _conversation(db_session, email.case_id)
+    patient = await db_session.get(Patient, conversation.patient_id)
+    await db_session.refresh(patient)
+    assert patient.is_provisional and patient.preferred_doctor_id == doctor_user.id
+    # Provisional: no doctor until staff register them (E6).
+    rows = await db_session.scalars(
+        select(DoctorPatientAssignment).where(DoctorPatientAssignment.patient_id == patient.id)
+    )
+    assert rows.all() == []
+
+
+async def test_an_inactive_preferred_doctor_is_refused_on_the_form(
+    client, db_session, admin_user, llm, sends
+):
+    _, _, token = await _link_sent(db_session, admin_user, llm, sends)
+    gone = await _gone_doctor(db_session)
+    response = await client.post(
+        f"{URL}/{token}", json=_form(_weekday_ahead(), preferred_doctor_id=str(gone.id))
+    )
+    assert response.status_code == 422

@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +24,18 @@ from app.services.outlook_auth import OutlookAuthRequiredError
 from app.services.system_actor import get_or_create_system_actor
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class PollerStatus:
+    """What the last poll actually saw, for Operations and Settings."""
+
+    last_ok_at: datetime | None = None
+    needs_signin: bool = False
+    failing: bool = False
+
+
+status = PollerStatus()
 
 CONNECTOR_EMAIL = "outlook-connector@vitalai.local"
 CONNECTOR_NAME = "Outlook Connector"
@@ -65,11 +79,14 @@ async def run_poller() -> None:
     while True:
         try:
             await poll_once()
+            status.last_ok_at, status.needs_signin, status.failing = datetime.now(UTC), False, False
         except OutlookAuthRequiredError as exc:
+            status.needs_signin = True
             logger.warning("Outlook connector needs re-authentication: %s", exc)
         except asyncio.CancelledError:
             logger.info("Outlook poller stopping")
             raise
         except Exception:
+            status.failing = True
             logger.exception("Outlook poll cycle failed")
         await asyncio.sleep(settings.outlook_poll_interval_seconds)

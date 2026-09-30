@@ -50,6 +50,10 @@ _NO_PERMISSION_GATE: frozenset[tuple[str, str]] = frozenset(
         ("POST", "/api/v1/voice/done"),
         ("POST", "/api/v1/voice/recording"),
         ("POST", "/api/v1/voice/status"),
+        # Microsoft's redirect after "Sign in with Microsoft" in Settings. The
+        # browser arrives with no bearer token; the single-use OAuth state that
+        # an admin's POST /integrations/outlook/connect issued is the credential.
+        ("GET", "/api/v1/integrations/outlook/callback"),
     }
 )
 

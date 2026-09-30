@@ -8,7 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.llm import get_llm
 from app.models.call import Call, CallStatus
-from app.models.case import IntakeCase
+from app.models.case import IntakeCase, IntakeStatus
+from app.models.episode import EpisodeStatus
+from app.models.patient import Patient
 from app.models.task import Task, TaskItemStatus, TaskPriority, TaskSource
 from app.models.user import User
 from app.schemas.call import (
@@ -17,7 +19,7 @@ from app.schemas.call import (
     CallRouteRequest,
     CallRoutingOverride,
 )
-from app.services import identity_service, onboarding_service, task_service
+from app.services import episode_service, identity_service, onboarding_service, task_service
 from app.services.audit_service import record_event
 from app.services.content_classifier import classify_content
 from app.services.identity_service import ONBOARDING_INTENTS
@@ -35,6 +37,10 @@ class CaseNotFoundError(Exception):
 
 class CallNotFoundError(Exception):
     """Raised when a requested call does not exist."""
+
+
+class PatientNotFoundError(Exception):
+    """Raised when a call names a patient that does not exist."""
 
 
 class TranscriptRequiredError(Exception):
@@ -61,13 +67,54 @@ def _priority_for_gate(gate: TaskRoutingGateResult) -> TaskPriority:
     return TaskPriority.LOW
 
 
+async def _new_contact(db: AsyncSession, payload: CallCreate, actor: User) -> IntakeCase:
+    """The call's own contact, for the patient and case staff chose. Raises
+    episode_service's errors for a case that is closed or someone else's."""
+    episode = await episode_service.get(db, payload.episode_id) if payload.episode_id else None
+    patient_id = payload.patient_id or (episode.patient_id if episode else None)
+    patient = await db.get(Patient, patient_id) if patient_id else None
+    if patient_id is not None and patient is None:
+        raise PatientNotFoundError(f"Patient {patient_id} not found")
+    if episode is not None:
+        if episode.patient_id != patient_id:
+            raise episode_service.WrongPatientError("That case belongs to another patient")
+        if episode.status != EpisodeStatus.OPEN:
+            raise episode_service.EpisodeClosedError("That case is closed; reopen it first")
+    contact = IntakeCase(
+        patient_id=patient.id if patient else None,
+        patient_name=patient.name if patient else None,
+        contact_reason="Phone call",
+        contact_channel="call",
+        status=IntakeStatus.RECEIVED,
+        episode_id=episode.id if episode else None,
+    )
+    db.add(contact)
+    await db.flush()
+    await record_event(
+        db, case_id=contact.id, actor=actor, action="intake.created", details={"channel": "call"}
+    )
+    if episode is not None:
+        episode_service.touch(episode)
+        await record_event(
+            db,
+            case_id=contact.id,
+            actor=actor,
+            action="case.contact_attached",
+            details={"episode_id": str(episode.id), "chosen": True},
+        )
+    return contact
+
+
 async def create_call(db: AsyncSession, payload: CallCreate, actor: User) -> Call:
-    case = await db.get(IntakeCase, payload.case_id)
-    if case is None:
-        raise CaseNotFoundError(f"Case {payload.case_id} not found")
+    if payload.case_id is not None:
+        case = await db.get(IntakeCase, payload.case_id)
+        if case is None:
+            raise CaseNotFoundError(f"Case {payload.case_id} not found")
+    else:
+        case = await _new_contact(db, payload, actor)
 
     call = Call(
-        case_id=payload.case_id,
+        case_id=case.id,
         phone_number=payload.phone_number,
         transcript=payload.transcript,
         status=CallStatus.RECEIVED,
@@ -138,6 +185,10 @@ async def route_call(
     task.priority = priority
     await db.flush()
     await task_service.apply_gate(db, task, gate, actor=actor)
+    case = await db.get(IntakeCase, call.case_id)
+    if case is not None:
+        # A call about a known patient joins their case now its category is known.
+        await episode_service.attach_contact(db, case, actor=actor, category=category)
 
     await record_event(
         db,
@@ -185,6 +236,7 @@ async def _profile_from_call(db: AsyncSession, call: Call, task: Task, llm, acto
     if result.outcome == identity_service.IdentityOutcome.MATCHED and result.patient is not None:
         case.patient_id = result.patient.id
         case.patient_name = result.patient.name
+        await episode_service.attach_contact(db, case, actor=actor, category=task.category)
     elif result.outcome == identity_service.IdentityOutcome.NO_MATCH and fields.name:
         created = (
             await onboarding_service.start_onboarding(

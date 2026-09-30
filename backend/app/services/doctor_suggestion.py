@@ -21,9 +21,8 @@ from app.models.user import User, UserRole
 async def suggest_doctor_for_patient(db: AsyncSession, patient_id: UUID) -> UUID | None:
     """Suggest the doctor with the fewest current patient assignments.
 
-    Only ever a suggestion: nothing here writes an assignment. A human must
-    approve the resulting ApprovalRequest before assignment_service.assign_patient()
-    creates the real DoctorPatientAssignment row.
+    Nothing here writes an assignment: assignment_service.ensure_doctor does,
+    when staff create or promote a patient with no active preferred doctor.
     """
     counts = (
         select(
@@ -36,7 +35,8 @@ async def suggest_doctor_for_patient(db: AsyncSession, patient_id: UUID) -> UUID
     result = await db.execute(
         select(User.id)
         .outerjoin(counts, User.id == counts.c.doctor_id)
-        .where(User.role == UserRole.DOCTOR)
+        # A doctor who has left takes no new patients.
+        .where(User.role == UserRole.DOCTOR, User.is_active.is_(True))
         .order_by(func.coalesce(counts.c.assignment_count, 0).asc(), User.id.asc())
         .limit(1)
     )

@@ -32,6 +32,7 @@ class PatientCreate(PatientProfileFields):
     name: str = Field(min_length=1, max_length=255)
     dob: date
     gender: Gender
+    preferred_doctor_id: UUID | None = None
 
 
 class PatientUpdate(PatientProfileFields):
@@ -39,6 +40,8 @@ class PatientUpdate(PatientProfileFields):
     dob: date | None = None
     gender: Gender | None = None
     status: PatientStatus | None = None
+    # Sent as null to clear the preference.
+    preferred_doctor_id: UUID | None = None
 
 
 class PatientOut(PatientProfileFields):
@@ -53,6 +56,11 @@ class PatientOut(PatientProfileFields):
     is_provisional: bool
     created_at: datetime
     updated_at: datetime
+    preferred_doctor_id: UUID | None = None
+    # The patient's doctor (booking_service.doctor_for_patient). Filled by the
+    # routes that return one patient; lists leave it empty.
+    doctor_id: UUID | None = None
+    doctor_name: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -72,3 +80,7 @@ class PatientListResponse(BaseModel):
     items: list[PatientOut]
     total: int
     counts: PatientCounts
+
+
+class PatientDoctorChange(BaseModel):
+    doctor_id: UUID

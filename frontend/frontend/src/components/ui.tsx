@@ -10,12 +10,18 @@ const TONE: Record<Tone, string> = {
   gray: "bg-slate-100 text-slate-500",
 };
 
+// A raw status code or a shouted label reads as a sentence: "in_progress" -> "In progress".
+const asLabel = (text: string) => {
+  const s = text.replace(/_/g, " ").toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
+
 export function StatusBadge({ tone, children }: { tone: Tone; children: ReactNode }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${TONE[tone]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${TONE[tone]}`}
     >
-      {children}
+      {typeof children === "string" ? asLabel(children) : children}
     </span>
   );
 }

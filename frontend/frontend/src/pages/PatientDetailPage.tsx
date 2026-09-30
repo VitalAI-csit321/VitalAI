@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { contactStatusLabel, formatDate, formatDateTime, humanize } from "../lib/format";
+import { STATUS_LABEL, STATUS_TONE, TYPE_LABEL } from "../components/calendarHelpers";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { getPatient, listCasesForPatient, promotePatient } from "../api/cases";
+import { changePatientDoctor, getPatient, listCasesForPatient, promotePatient } from "../api/cases";
+import { createEpisode, listEpisodes, type Episode } from "../api/episodes";
+import { listDoctors } from "../api/doctors";
+import { DoctorSelect } from "../components/CaseFields";
 import { listAppointments } from "../api/appointments";
 import { listClinicalDocuments, openClinicalDocument } from "../api/records";
 import { listConsentsForPatient, consentTypeLabel } from "../api/consent";
-import type { Patient, Case, Appointment, ClinicalDocument, Consent } from "../api/types";
+import type { Patient, Case, Appointment, ClinicalDocument, Consent, Doctor } from "../api/types";
 import { StatusBadge, Spinner } from "../components/ui";
 import { describeApiError } from "../lib/apiClient";
 import { PROFILE_FIELD_GROUPS, PROFILE_FIELD_LABELS_BY_API_KEY } from "../components/patientProfileFields";
@@ -25,6 +30,13 @@ export function PatientDetailPage() {
   // Doctors hold neither view_queue (intake cases) nor capture_consent, so they
   // skip the Onboarding history rather than log two refused requests per visit.
   const isDoctor = user?.role === "doctor";
+  // ASSIGN_PATIENTS: who may change the patient's doctor.
+  const canAssign = user?.role === "operator" || user?.role === "admin";
+  const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [newCase, setNewCase] = useState<{ title: string; doctorId: string } | null>(null);
+  const [changingDoctor, setChangingDoctor] = useState<string | null>(null);
+  const [caseError, setCaseError] = useState<string | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [cases, setCases] = useState<Case[]>([]);
   const [casesError, setCasesError] = useState<string | null>(null);
@@ -35,6 +47,7 @@ export function PatientDetailPage() {
   const [documentsError, setDocumentsError] = useState<string | null>(null);
   const [openingDocumentId, setOpeningDocumentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<"cases" | "appointments" | "contacts" | "documents">("cases");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -50,12 +63,15 @@ export function PatientDetailPage() {
     if (!isDoctor) {
       listCasesForPatient(id)
         .then(setCases)
-        .catch(() => setCasesError("Could not load onboarding cases for this patient."));
+        .catch(() => setCasesError("Could not load contacts for this patient."));
 
       listConsentsForPatient(id)
         .then(setConsents)
         .catch(() => setConsents([]));
     }
+
+    listEpisodes({ patientId: id }).then(setEpisodes).catch(() => setEpisodes([]));
+    listDoctors().then(setDoctors).catch(() => setDoctors([]));
 
     setAppointmentsError(null);
     listAppointments({ patientId: id, limit: 100 })
@@ -94,6 +110,28 @@ export function PatientDetailPage() {
     }
   }
 
+  async function openCase() {
+    if (!id || !newCase) return;
+    setCaseError(null);
+    try {
+      const created = await createEpisode({ patientId: id, title: newCase.title, doctorId: newCase.doctorId || null });
+      navigate(`/cases/${created.id}`);
+    } catch (err) {
+      setCaseError(describeApiError(err, "Could not open the case."));
+    }
+  }
+
+  async function saveDoctor() {
+    if (!id || !changingDoctor) return;
+    setCaseError(null);
+    try {
+      setPatient(await changePatientDoctor(id, changingDoctor));
+      setChangingDoctor(null);
+    } catch (err) {
+      setCaseError(describeApiError(err, "Could not change the doctor."));
+    }
+  }
+
   if (loading) return <div className="p-6"><Spinner label="Loading patient..." /></div>;
   if (error || !patient) return (
     <div className="p-6">
@@ -111,36 +149,67 @@ export function PatientDetailPage() {
       channel: c.contactChannel,
       status: c.status,
       created: c.createdAt,
-      action: <Link to={`/cases/${c.id}`} className="text-brand font-medium hover:underline">Open case</Link>,
+      action: <Link to={`/contacts/${c.id}`} className="text-brand font-medium hover:underline">Open contact</Link>,
     })),
     ...consents.map(cons => ({
       key: `consent-${cons.id}`,
       reason: `Consent - ${consentTypeLabel(cons.consentType)}`,
-      channel: "—",
+      channel: "",
       status: cons.status,
       created: cons.createdAt,
       action: <Link to={`/consent/${cons.caseId}/view`} className="text-brand font-medium hover:underline">View</Link>,
     })),
   ].sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
 
+  const age = patient.dob ? ageOn(patient.dob) : null;
+  const missing = patient.missingFields.map(f => PROFILE_FIELD_LABELS_BY_API_KEY[f] ?? f);
+  const tabs: { key: Tab; label: string; count: number }[] = [
+    ...(!patient.isProvisional ? [{ key: "cases" as const, label: "Cases", count: episodes.length }] : []),
+    { key: "appointments", label: "Appointments", count: appointments.length },
+    ...(!isDoctor ? [{ key: "contacts" as const, label: "Contacts", count: historyRows.length }] : []),
+    { key: "documents", label: "Documents", count: documents.length },
+  ];
+  const activeTab = tabs.find(t => t.key === tab)?.key ?? tabs[0].key;
+  // Allergies lead the clinical summary: the one field staff must never miss.
+  const summaryGroups = [...PROFILE_FIELD_GROUPS]
+    .sort((a, b) => Number(b.title === "History") - Number(a.title === "History"))
+    .map(g => ({ ...g, fields: [...g.fields].sort((a, b) => Number(b.key === "allergies") - Number(a.key === "allergies")) }));
+
   return (
     <div className="p-6">
       <button onClick={() => navigate("/patients")} className="text-sm text-slate-500 hover:text-slate-700">← Back to patients</button>
 
-      <div className="mt-4 flex items-start justify-between">
-        <div>
+      <div className="mt-4 flex items-start justify-between gap-6">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-slate-900">{patient.name}</h1>
-          <p className="mt-1 text-sm text-slate-500 font-mono">{patient.mrn}</p>
+          <p className="mt-1 text-sm text-slate-600">
+            <span className="font-mono">{patient.mrn}</span>
+            <span className="text-slate-400"> | </span>
+            {patient.dob ? `${formatDate(patient.dob)}${age !== null ? ` (${age})` : ""}` : "Date of birth not recorded"}
+            <span className="text-slate-400"> | </span>
+            <span className="capitalize">{patient.gender?.replace("_", " ") ?? "Gender not recorded"}</span>
+          </p>
+          <p className="mt-1 text-sm text-slate-600">
+            Doctor: <span className="font-medium text-slate-900">{patient.doctorName ?? (patient.isProvisional ? "assigned when registered" : "none")}</span>
+            {patient.preferredDoctorId && patient.preferredDoctorId !== patient.doctorId && <span className="text-slate-500"> (prefers {doctors.find(d => d.id === patient.preferredDoctorId)?.fullName ?? "another doctor"})</span>}
+            {canAssign && !patient.isProvisional && changingDoctor === null && (
+              <button onClick={() => setChangingDoctor(patient.doctorId ?? "")} className="ml-2 text-sm font-medium text-brand hover:underline">Change</button>
+            )}
+          </p>
+          {changingDoctor !== null && (
+            <div className="mt-3 flex max-w-lg items-end gap-2">
+              <div className="flex-1"><DoctorSelect label="New doctor" value={changingDoctor} onChange={setChangingDoctor} emptyLabel="Choose a doctor" /></div>
+              <button onClick={saveDoctor} disabled={!changingDoctor} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Save</button>
+              <button onClick={() => setChangingDoctor(null)} className="text-sm text-slate-500">Cancel</button>
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           {patient.isProvisional && <StatusBadge tone="amber">Provisional</StatusBadge>}
           <StatusBadge tone={patient.status === "active" ? "green" : patient.status === "pending" ? "amber" : "gray"}>{patient.status}</StatusBadge>
           {patient.isProvisional && (
-            <button
-              onClick={promote}
-              disabled={promoting}
-              className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-            >
+            <button onClick={promote} disabled={promoting}
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
               {promoting ? "Promoting..." : "Promote"}
             </button>
           )}
@@ -148,144 +217,175 @@ export function PatientDetailPage() {
         </div>
       </div>
 
-      {promoteError && (
-        <div className="mt-4 max-w-lg rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {promoteError}
-        </div>
+      {(promoteError || caseError) && (
+        <div className="mt-4 max-w-lg rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{promoteError ?? caseError}</div>
       )}
 
-      {patient.missingFields.length > 0 && (
-        <div className="mt-4 max-w-lg rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Pending — missing: {patient.missingFields.map(f => PROFILE_FIELD_LABELS_BY_API_KEY[f] ?? f).join(", ")}
-        </div>
-      )}
-
-      <div className="mt-6 grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-white p-5 max-w-lg text-sm">
-        <div><div className="text-xs text-slate-500 uppercase tracking-wide">Date of birth</div><div className="font-medium text-slate-900 mt-0.5">{patient.dob ? new Date(patient.dob).toLocaleDateString("en-GB") : "—"}</div></div>
-        <div><div className="text-xs text-slate-500 uppercase tracking-wide">Gender</div><div className="font-medium text-slate-900 mt-0.5 capitalize">{patient.gender?.replace("_", " ") ?? "—"}</div></div>
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2 max-w-4xl">
-        {PROFILE_FIELD_GROUPS.map(group => (
-          <div key={group.title} className="rounded-xl border border-slate-200 bg-white p-5 text-sm">
-            <h2 className="text-sm font-semibold text-slate-900 mb-3">{group.title}</h2>
-            <div className="space-y-3">
-              {group.fields.map(def => (
-                <div key={def.key}>
-                  <div className="text-xs text-slate-500 uppercase tracking-wide">{def.label}</div>
-                  <div className="font-medium text-slate-900 mt-0.5 whitespace-pre-line">{values[def.key] || "Not provided"}</div>
-                </div>
-              ))}
-            </div>
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)_320px] items-start gap-6">
+        <div className="min-w-0">
+          <div role="tablist" aria-label="Patient record" className="flex gap-6 border-b border-slate-200">
+            {tabs.map(t => (
+              <button key={t.key} role="tab" aria-selected={activeTab === t.key} onClick={() => setTab(t.key)}
+                className={`-mb-px border-b-2 pb-2.5 text-sm font-medium ${activeTab === t.key ? "border-brand text-slate-900" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
+                {t.label} <span className="text-slate-400">{t.count}</span>
+              </button>
+            ))}
           </div>
-        ))}
-      </div>
 
-      <div className="mt-6">
-        <h2 className="text-sm font-semibold text-slate-900 mb-3">Appointments</h2>
-        {appointmentsError ? (
-          <p className="text-sm text-red-600">{appointmentsError}</p>
-        ) : appointments.length === 0 ? (
-          <p className="text-sm text-slate-500">No appointments yet for this patient.</p>
-        ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {["Date", "Doctor", "Type", "Status", "Reason", ""].map(h => <th key={h} className="px-6 py-3">{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
+          <div role="tabpanel" className="mt-4">
+            {activeTab === "cases" && (
+              <>
+                <div className="mb-3 flex justify-end">
+                  {newCase === null && (
+                    <button onClick={() => setNewCase({ title: "", doctorId: "" })} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover">New case</button>
+                  )}
+                </div>
+                {newCase !== null && (
+                  <form onSubmit={e => { e.preventDefault(); void openCase(); }} className="mb-3 grid grid-cols-[1fr_1fr_auto] gap-3 rounded-xl border border-slate-200 bg-white p-4">
+                    <div>
+                      <label htmlFor="new-case-title" className="mb-1.5 block text-xs font-semibold text-slate-500">Title</label>
+                      <input id="new-case-title" value={newCase.title} onChange={e => setNewCase({ ...newCase, title: e.target.value })}
+                        placeholder="e.g. Asthma review" className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm" />
+                    </div>
+                    <DoctorSelect label="Doctor" value={newCase.doctorId} onChange={v => setNewCase({ ...newCase, doctorId: v })}
+                      emptyLabel={patient.doctorName ? `Patient's doctor (${patient.doctorName})` : "Patient's doctor"} />
+                    <div className="flex items-end gap-2">
+                      <button disabled={!newCase.title.trim()} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">Open case</button>
+                      <button type="button" onClick={() => setNewCase(null)} className="text-sm text-slate-500">Cancel</button>
+                    </div>
+                  </form>
+                )}
+                {episodes.length === 0 ? <p className="text-sm text-slate-500">No cases yet for this patient.</p> : (
+                  <Table head={["Case", "Status", "Doctor", "Last activity", ""]}>
+                    {episodes.map(e => (
+                      <tr key={e.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                        <td className="px-5 py-3.5 text-slate-900">{e.title}</td>
+                        <td className="px-5 py-3.5"><StatusBadge tone={e.status === "open" ? "green" : "gray"}>{e.status}</StatusBadge></td>
+                        <td className="px-5 py-3.5 text-slate-600">{e.doctorName ?? "No doctor"}</td>
+                        <td className="px-5 py-3.5 text-slate-600">{formatDate(e.lastActivityAt)}</td>
+                        <td className="px-5 py-3.5 text-right"><Link to={`/cases/${e.id}`} className="font-medium text-brand hover:underline">Open case</Link></td>
+                      </tr>
+                    ))}
+                  </Table>
+                )}
+              </>
+            )}
+
+            {activeTab === "appointments" && (appointmentsError ? <p className="text-sm text-red-600">{appointmentsError}</p>
+              : appointments.length === 0 ? <p className="text-sm text-slate-500">No appointments yet for this patient.</p> : (
+              <Table head={["Date", "Doctor", "Type", "Status", "Reason", ""]}>
                 {appointments.map(a => (
                   <tr key={a.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                    <td className="px-6 py-4 text-slate-900">{new Date(a.timeSlot).toLocaleString("en-GB")}</td>
-                    <td className="px-6 py-4 text-slate-600">{a.doctorName ?? "—"}</td>
-                    <td className="px-6 py-4 text-slate-600 capitalize">{a.appointmentType.replace(/_/g, " ")}</td>
-                    <td className="px-6 py-4"><StatusBadge tone="gray">{a.status}</StatusBadge></td>
-                    <td className="px-6 py-4 text-slate-600">{a.reason ?? "—"}</td>
-                    <td className="px-6 py-4"><Link to={`/calendar/${a.id}`} className="text-brand font-medium hover:underline">Open</Link></td>
+                    <td className="whitespace-nowrap px-5 py-3.5 text-slate-900">{formatDateTime(a.timeSlot)}</td>
+                    <td className="px-5 py-3.5 text-slate-600">{a.doctorName ?? "Unassigned"}</td>
+                    <td className="px-5 py-3.5 text-slate-600">{TYPE_LABEL[a.appointmentType]}</td>
+                    <td className="px-5 py-3.5"><StatusBadge tone={STATUS_TONE[a.status]}>{STATUS_LABEL[a.status]}</StatusBadge></td>
+                    <td className="px-5 py-3.5 text-slate-600">{a.reason ?? "Not given"}</td>
+                    <td className="px-5 py-3.5 text-right"><Link to={`/calendar/${a.id}`} className="font-medium text-brand hover:underline">Open</Link></td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+              </Table>
+            ))}
 
-      <div className="mt-6">
-        <h2 className="text-sm font-semibold text-slate-900 mb-3">Clinical documents</h2>
-        {documentsError ? (
-          <p className="text-sm text-red-600">{documentsError}</p>
-        ) : documents.length === 0 ? (
-          <p className="text-sm text-slate-500">No clinical documents on file for this patient.</p>
-        ) : (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {["Type", "Filename", "Date", "Status"].map(h => <th key={h} className="px-6 py-3">{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
+            {activeTab === "contacts" && (casesError ? <p className="text-sm text-red-600">{casesError}</p>
+              : historyRows.length === 0 ? <p className="text-sm text-slate-500">No contacts yet for this patient.</p> : (
+              <Table head={["Reason", "Channel", "Status", "Created", ""]}>
+                {historyRows.map(r => (
+                  <tr key={r.key} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    <td className="px-5 py-3.5 text-slate-900">{r.reason}</td>
+                    <td className="px-5 py-3.5 capitalize text-slate-600">{r.channel}</td>
+                    <td className="px-5 py-3.5"><StatusBadge tone="gray">{contactStatusLabel(r.status)}</StatusBadge></td>
+                    <td className="px-5 py-3.5 text-slate-600">{formatDate(r.created)}</td>
+                    <td className="px-5 py-3.5 text-right">{r.action}</td>
+                  </tr>
+                ))}
+              </Table>
+            ))}
+
+            {activeTab === "documents" && (documentsError ? <p className="text-sm text-red-600">{documentsError}</p>
+              : documents.length === 0 ? <p className="text-sm text-slate-500">No clinical documents on file for this patient.</p> : (
+              <Table head={["Type", "File", "Date", "Status"]}>
                 {documents.map(d => (
                   <tr key={d.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                    <td className="px-6 py-4 text-slate-900 capitalize">{d.docType.replace(/_/g, " ")}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-3.5 text-slate-900">{humanize(d.docType)}</td>
+                    <td className="px-5 py-3.5">
                       {canOpenDocuments ? (
-                        <button
-                          onClick={() => handleOpenDocument(d.id)}
-                          disabled={openingDocumentId === d.id}
-                          className="text-brand font-medium hover:underline disabled:opacity-50"
-                        >
+                        <button onClick={() => handleOpenDocument(d.id)} disabled={openingDocumentId === d.id} className="font-medium text-brand hover:underline disabled:opacity-50">
                           {openingDocumentId === d.id ? "Opening…" : d.filename}
                         </button>
                       ) : (
                         <span className="text-slate-600" title="Only doctors can open clinical documents">{d.filename}</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-slate-600">{new Date(d.createdAt).toLocaleDateString("en-GB")}</td>
-                    <td className="px-6 py-4">
-                      {d.ingestedAt ? <StatusBadge tone="green">Ingested</StatusBadge> : <StatusBadge tone="amber">Not ingested</StatusBadge>}
-                    </td>
+                    <td className="px-5 py-3.5 text-slate-600">{formatDate(d.createdAt)}</td>
+                    <td className="px-5 py-3.5">{d.ingestedAt ? <StatusBadge tone="green">Ingested</StatusBadge> : <StatusBadge tone="amber">Not ingested</StatusBadge>}</td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
+              </Table>
+            ))}
           </div>
-        )}
-      </div>
-
-      {!isDoctor && (
-        <div className="mt-6">
-          <h2 className="text-sm font-semibold text-slate-900 mb-3">Onboarding</h2>
-          {casesError ? (
-            <p className="text-sm text-red-600">{casesError}</p>
-          ) : historyRows.length === 0 ? (
-            <p className="text-sm text-slate-500">No intake cases yet for this patient.</p>
-          ) : (
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    {["Reason", "Channel", "Status", "Created", ""].map(h => <th key={h} className="px-6 py-3">{h}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {historyRows.map(r => (
-                    <tr key={r.key} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                      <td className="px-6 py-4 text-slate-900">{r.reason}</td>
-                      <td className="px-6 py-4 text-slate-600 capitalize">{r.channel}</td>
-                      <td className="px-6 py-4"><StatusBadge tone="gray">{r.status}</StatusBadge></td>
-                      <td className="px-6 py-4 text-slate-600">{new Date(r.created).toLocaleDateString("en-GB")}</td>
-                      <td className="px-6 py-4">{r.action}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
-      )}
+
+        <aside className="space-y-4" aria-label="Patient summary">
+          {missing.length > 0 && (
+            <section className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <h2 className="text-sm font-semibold text-amber-900">Profile incomplete</h2>
+              <p className="mt-1 text-sm text-amber-900">
+                {missing.length} {missing.length === 1 ? "detail" : "details"} missing: {missing.slice(0, 3).join(", ").toLowerCase()}
+                {missing.length > 3 ? `, and ${missing.length - 3} more` : ""}.
+              </p>
+              <button onClick={() => navigate(`/patients/${patient.id}/edit`)} className="mt-3 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-100">
+                Complete profile
+              </button>
+            </section>
+          )}
+          {summaryGroups.map(group => (
+            <section key={group.title} className="rounded-xl border border-slate-200 bg-white p-4">
+              <h2 className="text-sm font-semibold text-slate-900">{group.title === "History" ? "Clinical" : group.title}</h2>
+              <dl className="mt-3 space-y-2.5 text-sm">
+                {group.fields.map(def => {
+                  const v = values[def.key];
+                  const flagged = def.key === "allergies" && !!v && !/^(none|nil|n\/a|nkda)$/i.test(v.trim());
+                  return (
+                    <div key={def.key}>
+                      <dt className="text-xs text-slate-500">{def.label}</dt>
+                      <dd className={`mt-0.5 whitespace-pre-line ${!v ? "text-slate-400" : flagged ? "font-semibold text-red-700" : "font-medium text-slate-900"}`}>
+                        {v || (def.key === "allergies" ? "None recorded" : "Not provided")}
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </section>
+          ))}
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+type Tab = "cases" | "appointments" | "contacts" | "documents";
+
+function ageOn(dob: string): number | null {
+  const born = new Date(dob);
+  if (Number.isNaN(born.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - born.getUTCFullYear();
+  if (now.getMonth() < born.getUTCMonth() || (now.getMonth() === born.getUTCMonth() && now.getDate() < born.getUTCDate())) age -= 1;
+  return age;
+}
+
+function Table({ head, children }: { head: string[]; children: ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-200 text-left text-xs font-medium text-slate-500">
+            {head.map((h, i) => <th key={h || i} scope="col" className="px-5 py-3">{h}</th>)}
+          </tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
     </div>
   );
 }

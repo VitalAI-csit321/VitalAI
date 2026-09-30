@@ -27,10 +27,12 @@ from app.routes import (
     consent,
     doctors,
     email,
+    episodes,
     health,
     human_review,
     inbox,
     intake,
+    integrations,
     llm,
     patients,
     public_registration,
@@ -76,6 +78,16 @@ async def lifespan(application: FastAPI):
     async with AsyncSessionLocal() as db:
         await settings_service.hydrate(db)
 
+    # Messages held before the Review Queue existed get the item a new one
+    # would (app/services/review_backfill.py). Finds nothing once caught up.
+    from app.services import review_backfill
+    from app.services.system_actor import get_or_create_agent_actor
+
+    async with AsyncSessionLocal() as db:
+        opened = await review_backfill.backfill(db, actor=await get_or_create_agent_actor(db))
+        if opened:
+            logger.info("review queue: opened %d items for messages held before it existed", opened)
+
     # The checkpointer owns its own tables (not Alembic's, see
     # app/agents/checkpointer.py). setup() is idempotent.
     if settings.agentic_pipeline_enabled:
@@ -114,9 +126,15 @@ async def lifespan(application: FastAPI):
 
     voicemail_task: asyncio.Task | None = asyncio.create_task(run_voicemail_sweep())
 
+    # "Close this case?" for quiet cases (M4). Always on and not tied to the
+    # reminders flag: it only opens Review Queue items, it emails nobody.
+    from app.services.case_nudge import run_case_nudges
+
+    nudge_task: asyncio.Task | None = asyncio.create_task(run_case_nudges())
+
     yield
 
-    for task in (poller_task, purge_task, reminder_task, voicemail_task):
+    for task in (poller_task, purge_task, reminder_task, voicemail_task, nudge_task):
         if task is not None:
             task.cancel()
             with suppress(asyncio.CancelledError):
@@ -130,7 +148,7 @@ async def _rate_limit_handler(request: Request, exc: Exception) -> Response:
 
 
 app = FastAPI(
-    title=f"{settings.app_name} — Phase One API",
+    title=f"{settings.app_name} API",
     description="Backend for administrative intake, consent, triage, and routing.",
     version=settings.app_version,
     lifespan=lifespan,
@@ -218,7 +236,9 @@ app.include_router(doctors.router, prefix=API_PREFIX)
 app.include_router(approvals.router, prefix=API_PREFIX)
 app.include_router(public_registration.router, prefix=API_PREFIX)
 app.include_router(human_review.router, prefix=API_PREFIX)
+app.include_router(episodes.router, prefix=API_PREFIX)
 app.include_router(settings_routes.router, prefix=API_PREFIX)
+app.include_router(integrations.router, prefix=API_PREFIX)
 app.include_router(health.detailed_router, prefix=API_PREFIX)
 
 # The Twilio voicemail line: public, signature-checked webhooks. Not mounted

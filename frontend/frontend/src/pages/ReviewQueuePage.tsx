@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { formatDate } from "../lib/format";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Download } from "lucide-react";
 import { StatusBadge, Spinner } from "../components/ui";
@@ -17,16 +18,16 @@ function statusBadge(t: RawReviewTask) {
   if (t.status === "escalated") {
     return (
       <div>
-        <StatusBadge tone="red">ESCALATED</StatusBadge>
+        <StatusBadge tone="red">Escalated</StatusBadge>
         {t.details?.escalation && (
           <div className="mt-0.5 text-xs text-slate-500">by {t.details.escalation.by}</div>
         )}
       </div>
     );
   }
-  if (t.status === "pending") return <StatusBadge tone="gray">OPEN</StatusBadge>;
-  if (t.status === "in_progress") return <StatusBadge tone="amber">IN REVIEW</StatusBadge>;
-  return <StatusBadge tone="green">DONE</StatusBadge>;
+  if (t.status === "pending") return <StatusBadge tone="gray">Open</StatusBadge>;
+  if (t.status === "in_progress") return <StatusBadge tone="amber">In review</StatusBadge>;
+  return <StatusBadge tone="green">Done</StatusBadge>;
 }
 
 export function ReviewQueuePage() {
@@ -89,7 +90,7 @@ export function ReviewQueuePage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Administrative review queue</h1>
-          <p className="mt-1 text-sm text-slate-500">{items.length} cases • {overSlaCount} over SLA</p>
+          <p className="mt-1 text-sm text-slate-500">{items.length} cases, {overSlaCount} over SLA</p>
         </div>
         <div className="flex gap-3">
           <button className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"><Download className="h-4 w-4" />Export</button>
@@ -107,16 +108,18 @@ export function ReviewQueuePage() {
         </div>
         {loading ? <div className="p-8"><Spinner /></div> : (
           <table className="w-full text-sm">
-            <thead><tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">{["Case", "Submitted", "Type", "Patient", "Channel", "Priority", "Owner", "Status"].map(h => <th key={h} className="px-6 py-3">{h}</th>)}</tr></thead>
+            <thead><tr className="border-b border-slate-200 text-left text-xs font-semibold text-slate-500">{["Subject", "Submitted", "Type", "Patient", "Channel", "Priority", "Owner", "Status"].map(h => <th key={h} className="px-6 py-3">{h}</th>)}</tr></thead>
             <tbody>
               {filtered.length === 0 ? <tr><td colSpan={8} className="px-6 py-8 text-sm text-slate-500">No cases in this queue.</td></tr>
               : filtered.map(t => (
                 <tr key={t.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                   <td className="px-6 py-4 max-w-xs">
-                    <button onClick={() => selectRow(t)} className="font-medium text-brand hover:underline">C-{t.case_id.slice(0, 8)}</button>
-                    {t.contact_reason && <div className="mt-0.5 truncate text-xs text-slate-500" title={t.contact_reason}>{t.contact_reason}</div>}
+                    <button onClick={() => selectRow(t)} title={t.contact_reason ?? t.case_title ?? undefined}
+                      className="block max-w-full truncate text-left font-medium text-brand hover:underline">
+                      {t.contact_reason ?? t.case_title ?? "Untitled"}
+                    </button>
                   </td>
-                  <td className="px-6 py-4 text-slate-600">{new Date(t.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-slate-600">{formatDate(t.created_at)}</td>
                   <td className="px-6 py-4 text-slate-700">{KIND_LABEL[t.task_type] ?? t.task_type}</td>
                   <td className="px-6 py-4 text-slate-700">{t.patient_name ?? "Unidentified"}</td>
                   <td className="px-6 py-4 text-slate-700 capitalize">{t.channel ?? "-"}</td>

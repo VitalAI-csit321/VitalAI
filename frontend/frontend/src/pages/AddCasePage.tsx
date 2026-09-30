@@ -58,8 +58,8 @@ export function AddCasePage() {
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4 rounded-xl border border-slate-200 bg-white p-5">
         <div>
-          <label className="block text-sm font-medium text-slate-700">Reason</label>
-          <input
+          <label htmlFor="case-reason" className="block text-sm font-medium text-slate-700">Reason</label>
+          <input id="case-reason"
             value={contactReason}
             onChange={e => setContactReason(e.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -68,15 +68,15 @@ export function AddCasePage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700">Type</label>
-          <select value={taskType} onChange={e => setTaskType(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          <label htmlFor="case-type" className="block text-sm font-medium text-slate-700">Type</label>
+          <select id="case-type" value={taskType} onChange={e => setTaskType(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
             {TASK_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700">Priority</label>
-          <select value={priority} onChange={e => setPriority(e.target.value as "low"|"medium"|"high")} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          <label htmlFor="case-priority" className="block text-sm font-medium text-slate-700">Priority</label>
+          <select id="case-priority" value={priority} onChange={e => setPriority(e.target.value as "low"|"medium"|"high")} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
             <option value="low">Low</option>
             <option value="medium">Medium</option>
             <option value="high">High</option>
@@ -84,8 +84,8 @@ export function AddCasePage() {
         </div>
 
         {canPickOwner && <div>
-          <label className="block text-sm font-medium text-slate-700">Owner</label>
-          <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+          <label htmlFor="case-owner" className="block text-sm font-medium text-slate-700">Owner</label>
+          <select id="case-owner" value={assignedTo} onChange={e => setAssignedTo(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
             <option value="">Unassigned</option>
             {users.map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.email})</option>)}
           </select>

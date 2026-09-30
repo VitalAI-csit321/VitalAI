@@ -28,7 +28,7 @@ from app.models.human_review import TaskType
 from app.models.patient import Patient
 from app.models.task import TaskCategory
 from app.models.user import User
-from app.services import task_service
+from app.services import episode_service, task_service
 from app.services.audit_service import record_event
 
 logger = logging.getLogger(__name__)
@@ -287,6 +287,9 @@ async def identify_sender(
         ):
             case.patient_id = result.patient.id
             case.patient_name = result.patient.name
+    if case is not None and case.patient_id is not None:
+        # The sender is now a known patient: a clinical message joins a case.
+        await episode_service.attach_contact(db, case, actor=actor, category=intent)
     await record_event(
         db,
         actor=actor,

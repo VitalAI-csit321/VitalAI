@@ -1,8 +1,8 @@
 import { apiDelete, apiGet, apiPost } from "../lib/apiClient";
-import { listAppointments } from "./appointments";
+import { getDayView, listAppointments } from "./appointments";
 import { KIND_LABEL } from "./reviewTasks";
 import { getTaskBoard } from "./tasks";
-import type { CurrentUser, DashboardSummary, Message } from "./types";
+import type { AttentionItem, CurrentUser, DashboardSummary, Message } from "./types";
 import { toDateInputValue } from "../components/calendarHelpers";
 
 // Appointment counts for the current Monday-based week, for the dashboard's
@@ -34,62 +34,71 @@ async function getWeeklyAppointmentCounts(): Promise<DashboardSummary["workflowB
   });
 }
 
+type ReviewRow = {
+  id: string; task_type: string; status: string; priority: string; created_at: string;
+  patient_name: string | null; contact_reason?: string | null; case_title?: string | null;
+};
+const OPEN_REVIEW = new Set(["pending", "in_progress", "escalated"]);
+const oldest = (dates: string[]) => (dates.length ? dates.reduce((a, b) => (a < b ? a : b)) : null);
+
 export async function getDashboard(user: CurrentUser | null): Promise<DashboardSummary> {
   // Skip what this user may not read: the backend logs every refused call as a
-  // BLOCKED audit event. Doctors lack view_queue; read_audit is admin or a grant.
+  // BLOCKED audit event. Doctors lack view_queue, so no task board for them.
   const canViewQueue = user?.role !== "doctor";
-  const canReadAudit = user?.role === "admin" || (user?.grantedPermissions.includes("read_audit") ?? false);
-  const [intakeRes, auditRes, pendingRes, inProgressRes, reviewEscalatedRes, escalatedRes, reviewListRes, weeklyRes] =
+  const [casesRes, pendingRes, inProgressRes, reviewEscalatedRes, boardRes, reviewListRes, weeklyRes, todayRes] =
     await Promise.allSettled([
-      canViewQueue ? apiGet<{items:unknown[];total:number}>("/api/v1/intake?limit=1") : Promise.reject(),
-      canReadAudit ? apiGet<{total:number}>("/api/v1/audit?limit=1") : Promise.reject(),
+      // Open cases (episodes of care, M4); every role reads them, a doctor only their own.
+      apiGet<{items:unknown[];total:number}>("/api/v1/cases", {limit:1, status:"open"}),
       apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"pending"}),
       apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"in_progress"}),
       apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"escalated"}),
-      // Same source as EscalationsPage's own count (getTaskBoard) -- the
-      // /escalations page is built on task routing (/api/v1/tasks), a
-      // different model from human-review approvals, which has its own
-      // unrelated "escalated" status.
+      // The Escalations board's own source (task routing), a different model
+      // from human-review approvals and their own "escalated" status.
       canViewQueue ? getTaskBoard() : Promise.reject(),
-      apiGet<{items:{id:string;task_type:string;status:string;patient_name:string|null}[];total:number}>(
-        "/api/v1/human-review", {limit:20}
-      ),
+      // ponytail: the 50 most recent items; "oldest waiting" is exact only
+      // while fewer than 50 are open. Add a server-side oldest if queues grow.
+      apiGet<{items: ReviewRow[]; total: number}>("/api/v1/human-review", {limit:50}),
       getWeeklyAppointmentCounts(),
+      // A doctor sees their own day; everyone else the whole clinic's.
+      getDayView(toDateInputValue(new Date()), user?.role === "doctor" ? user.id : undefined),
     ]);
 
-  const openCases = intakeRes.status==="fulfilled" ? intakeRes.value.total : null;
-  const auditEvents = auditRes.status==="fulfilled" ? auditRes.value.total : null;
-  const pending = pendingRes.status==="fulfilled" ? pendingRes.value.total : 0;
-  const inProgress = inProgressRes.status==="fulfilled" ? inProgressRes.value.total : 0;
-  const reviewEscalated = reviewEscalatedRes.status==="fulfilled" ? reviewEscalatedRes.value.total : 0;
-  const escalated = escalatedRes.status==="fulfilled" ? escalatedRes.value.counts.escalated : null;
-  const workflowByDay = weeklyRes.status==="fulfilled" ? weeklyRes.value : [];
+  const total = (r: PromiseSettledResult<{ total: number }>) => (r.status === "fulfilled" ? r.value.total : 0);
+  const anyReviewCount = [pendingRes, inProgressRes, reviewEscalatedRes].some(r => r.status === "fulfilled");
+  const openReviews = reviewListRes.status === "fulfilled" ? reviewListRes.value.items.filter(t => OPEN_REVIEW.has(t.status)) : [];
+  const escalatedTasks = boardRes.status === "fulfilled" ? boardRes.value.columns.escalated ?? [] : [];
 
-  // Pending Reviews list: real human-review tasks; the list response carries
-  // each task's patient name from its linked case.
-  let pendingReviews: DashboardSummary["pendingReviews"] = [];
-  if (reviewListRes.status === "fulfilled") {
-    pendingReviews = reviewListRes.value.items
-      .filter(t => t.status !== "completed" && t.status !== "cancelled")
-      .slice(0, 4)
-      .map(task => ({
-        id: task.id,
-        name: task.patient_name ?? "Unknown patient",
-        kind: KIND_LABEL[task.task_type] ?? task.task_type,
-        isNew: task.status === "pending",
-      }));
-  }
+  const attention: AttentionItem[] = [
+    ...openReviews.map(t => ({
+      id: t.id,
+      href: `/review-queue?item=${t.id}`,
+      title: t.contact_reason ?? t.case_title ?? t.patient_name ?? "Review item",
+      kind: [KIND_LABEL[t.task_type] ?? t.task_type, t.patient_name].filter(Boolean).join(", "),
+      urgency: t.status === "escalated" ? ("urgent" as const) : t.priority === "high" ? ("high" as const) : null,
+      createdAt: t.created_at,
+    })),
+    ...escalatedTasks.map(t => ({
+      id: t.id,
+      href: `/escalations?task=${t.id}`,
+      title: t.subject ?? "Escalated message",
+      kind: ["Escalated", t.fromName].filter(Boolean).join(", "),
+      urgency: t.priority === "urgent" ? ("urgent" as const) : ("high" as const),
+      createdAt: t.createdAt,
+    })),
+  ].sort((a, b) => {
+    const rank = (u: AttentionItem["urgency"]) => (u === "urgent" ? 0 : u === "high" ? 1 : 2);
+    return rank(a.urgency) - rank(b.urgency) || a.createdAt.localeCompare(b.createdAt);
+  });
 
   return {
-    openCases,
-    awaitingApproval:
-      pendingRes.status === "fulfilled" || inProgressRes.status === "fulfilled" || reviewEscalatedRes.status === "fulfilled"
-        ? pending + inProgress + reviewEscalated
-        : null,
-    escalations: escalated,
-    auditEvents,
-    workflowByDay,
-    pendingReviews,
+    openCases: casesRes.status === "fulfilled" ? casesRes.value.total : null,
+    awaitingApproval: anyReviewCount ? total(pendingRes) + total(inProgressRes) + total(reviewEscalatedRes) : null,
+    escalations: boardRes.status === "fulfilled" ? boardRes.value.counts.escalated : null,
+    oldestAwaiting: oldest(openReviews.map(t => t.created_at)),
+    oldestEscalated: oldest(escalatedTasks.map(t => t.createdAt)),
+    workflowByDay: weeklyRes.status === "fulfilled" ? weeklyRes.value : [],
+    today: todayRes.status === "fulfilled" ? todayRes.value.appointments.filter(a => a.status !== "cancelled") : [],
+    attention: attention.slice(0, 6),
   };
 }
 

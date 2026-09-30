@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatDateTime, humanize } from "../lib/format";
 import { useNavigate } from "react-router-dom";
 import { Download } from "lucide-react";
 import { downloadAuditCsv, listAuditEvents } from "../api/audit";
@@ -60,7 +61,7 @@ export function AuditPage() {
           <p className="mt-1 text-sm text-slate-500">
             {events.length} events{" "}
             <span className="ml-2 text-brand font-medium">
-              {latestHash ? "# Chain verified" : "# Pre-chain, unverified"}
+              {latestHash ? "Hash chain verified" : "Recorded before the hash chain, not verified"}
             </span>
           </p>
         </div>
@@ -72,20 +73,20 @@ export function AuditPage() {
         </button>
       </div>
       <div className="mt-6 flex gap-3">
-        <input
+        <input aria-label="Search events" 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search events..."
           className="flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-brand"
         />
-        <select
+        <select aria-label="Filter by action" 
           value={actionFilter}
           onChange={(e) => setActionFilter(e.target.value)}
           className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700"
         >
-          {ACTION_OPTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
+          {ACTION_OPTIONS.map((a) => <option key={a} value={a}>{a === "Any action" ? a : humanize(a)}</option>)}
         </select>
-        <select
+        <select aria-label="Filter by risk" 
           value={riskFilter}
           onChange={(e) => setRiskFilter(e.target.value as (typeof RISK_OPTIONS)[number])}
           className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700"
@@ -100,8 +101,8 @@ export function AuditPage() {
           <>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {["Time", "User", "Action", "Resource", "Risk", "Status"].map((h) => (
+                <tr className="border-b border-slate-200 text-left text-xs font-semibold text-slate-500">
+                  {["Time", "User", "Action", "Record", "Risk", "Status"].map((h) => (
                     <th key={h} className="px-6 py-3">{h}</th>
                   ))}
                 </tr>
@@ -116,17 +117,18 @@ export function AuditPage() {
                       className="border-b border-slate-100 last:border-0 hover:bg-slate-50 cursor-pointer"
                       onClick={() => navigate(`/audit/${e.id}`)}
                     >
-                      <td className="px-6 py-4 font-mono text-slate-700">
-                        {new Date(e.timestamp).toLocaleTimeString("en-AU", { hour12: false })}
-                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-slate-700">{formatDateTime(e.timestamp)}</td>
                       <td className="px-6 py-4 text-slate-700">{e.actorLabel ?? "system"}</td>
                       <td className="px-6 py-4">
                         <span className={`font-semibold ${ACTION_COLOR[e.action] ?? "text-slate-700"}`}>
-                          {e.action.toUpperCase()}
+                          {humanize(e.action)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 font-mono text-xs text-slate-700">
-                        {e.caseId ?? (e.details?.case_id as string) ?? "—"}
+                      <td className="px-6 py-4 text-slate-700">
+                        {(() => {
+                          const id = e.caseId ?? (e.details?.case_id as string | undefined);
+                          return id ? `Contact ${id.slice(0, 8)}` : "None";
+                        })()}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
@@ -136,9 +138,9 @@ export function AuditPage() {
                       </td>
                       <td className="px-6 py-4">
                         {e.outcome === "BLOCKED" ? (
-                          <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600">BLOCKED</span>
+                          <span className="rounded bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Blocked</span>
                         ) : (
-                          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">OK</span>
+                          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">Allowed</span>
                         )}
                       </td>
                     </tr>
@@ -147,7 +149,7 @@ export function AuditPage() {
               </tbody>
             </table>
             <div className="flex items-center justify-between px-6 py-3 border-t border-slate-100 text-sm text-brand">
-              <span className="font-medium">{latestHash ? "# Chain verified" : "# Pre-chain, unverified"}</span>
+              <span className="font-medium">{latestHash ? "Hash chain verified" : "Recorded before the hash chain, not verified"}</span>
               <span className="text-slate-400">
                 {latestHash ? `Last hash: ${latestHash.slice(0, 8)}...` : "No hashed events yet"}
               </span>

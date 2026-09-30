@@ -26,6 +26,7 @@ from app.llm.output_guardrail import RESTRICTED_TERMS
 from app.models.approval import ApprovalRequest
 from app.models.audit import AuditEvent
 from app.models.case import IntakeCase
+from app.models.human_review import HumanReviewTask, TaskPriority, TaskType
 from app.models.medication import Medication, MedicationStatus
 from app.models.patient import Gender, Patient, PatientStatus
 from app.models.permission_grant import UserPermissionGrant
@@ -288,6 +289,22 @@ async def test_the_branch_drafts_raises_an_internal_task_and_never_auto_sends(
     raised = [t for t in tasks if t.assigned_to == doctor_user.id]
     assert len(raised) == 1
     assert raised[0].target_role == UserRole.DOCTOR
+    # And the prescriber's Review Queue item for it.
+    (item,) = (
+        (
+            await db_session.execute(
+                select(HumanReviewTask).where(HumanReviewTask.inbox_task_id == raised[0].id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert (item.task_type, item.target_role, item.assigned_to, item.priority) == (
+        TaskType.PRESCRIPTION_REQUEST,
+        UserRole.DOCTOR,
+        doctor_user.id,
+        TaskPriority.HIGH,
+    )
     events = (await db_session.execute(select(AuditEvent))).scalars().all()
     assert [e for e in events if e.action == "prescription.request_raised" and e.case_id == case.id]
     assert agent is not None

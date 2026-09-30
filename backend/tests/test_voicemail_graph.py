@@ -81,6 +81,17 @@ async def test_unique_phone_and_dob_names_a_probable_patient(db_session):
     assert case.patient_id is None
 
 
+async def test_a_probable_match_never_opens_a_case(db_session):
+    # M4: a voicemail joins a case only once staff confirm the caller.
+    from app.models.episode import Episode
+
+    await _patient(db_session)
+    _, task = await _voicemail(db_session, intent="results")
+    assert task.category is not None and task.category.value == "results_enquiry"
+    episodes = (await db_session.execute(select(func.count()).select_from(Episode))).scalar_one()
+    assert episodes == 0
+
+
 async def test_shared_phone_and_dob_matches_nobody(db_session):
     await _patient(db_session, name="Twin One")
     await _patient(db_session, name="Twin Two")

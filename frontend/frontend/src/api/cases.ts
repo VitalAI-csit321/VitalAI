@@ -1,7 +1,7 @@
-import { apiGet, apiPost, apiPatch } from "../lib/apiClient";
+import { apiGet, apiPost, apiPatch, apiPut } from "../lib/apiClient";
 import type { Case, Patient, PatientStatus } from "./types";
 
-interface RawCase { id:string; patient_id:string|null; patient_name:string|null; contact_reason:string; contact_channel:string; notes:string|null; status:string; created_at:string; updated_at:string; }
+interface RawCase { id:string; patient_id:string|null; patient_name:string|null; contact_reason:string; contact_channel:string; notes:string|null; status:string; created_at:string; updated_at:string; episode_id?:string|null; }
 
 interface RawPatient {
   id:string; mrn:string; name:string; dob:string|null; gender:string|null; status:PatientStatus;
@@ -14,9 +14,10 @@ interface RawPatient {
   insurance_provider: string | null; policy_number: string | null; group_number: string | null;
   insurance_expiry: string | null; medicare_number: string | null; concession_card: string | null;
   missing_fields: string[];
+  preferred_doctor_id?: string | null; doctor_id?: string | null; doctor_name?: string | null;
 }
 
-function toCase(r:RawCase):Case { return {id:r.id,patientId:r.patient_id,patientName:r.patient_name??"Unknown patient",contactReason:r.contact_reason,contactChannel:r.contact_channel,notes:r.notes,status:r.status,createdAt:r.created_at,updatedAt:r.updated_at}; }
+function toCase(r:RawCase):Case { return {id:r.id,patientId:r.patient_id,patientName:r.patient_name??"Unknown patient",contactReason:r.contact_reason,contactChannel:r.contact_channel,notes:r.notes,status:r.status,createdAt:r.created_at,updatedAt:r.updated_at,episodeId:r.episode_id??null}; }
 
 function toPatient(r:RawPatient):Patient {
   return {
@@ -30,6 +31,7 @@ function toPatient(r:RawPatient):Patient {
     insuranceProvider:r.insurance_provider, policyNumber:r.policy_number, groupNumber:r.group_number,
     expiryDate:r.insurance_expiry, medicareNumber:r.medicare_number, concessionCard:r.concession_card,
     missingFields:r.missing_fields,
+    preferredDoctorId:r.preferred_doctor_id ?? null, doctorId:r.doctor_id ?? null, doctorName:r.doctor_name ?? null,
   };
 }
 
@@ -48,11 +50,6 @@ export async function listCasesForPatient(patientId: string): Promise<Case[]> {
     limit: 100,
   });
   return page.items.map(toCase);
-}
-
-export async function findLatestCaseForPatient(patientId: string): Promise<Case | null> {
-  const cases = await listCasesForPatient(patientId);
-  return cases[0] ?? null;
 }
 
 export async function createCase(input:{patient_id:string;patient_name:string;contact_reason:string;contact_channel:string;notes?:string}):Promise<Case> {
@@ -123,7 +120,7 @@ function profileFieldsToPayload(input: ProfileFields): Record<string, unknown> {
 
 export async function updatePatient(
   id: string,
-  input: {name?:string; dob?:string; gender?:string; status?:string} & ProfileFields,
+  input: {name?:string; dob?:string; gender?:string; status?:string; preferredDoctorId?:string} & ProfileFields,
 ): Promise<Patient> {
   const payload: Record<string, unknown> = profileFieldsToPayload(input);
   if (input.name !== undefined) payload.name = input.name;
@@ -142,7 +139,14 @@ export async function updatePatient(
     payload.gender = genderMap[input.gender.toLowerCase()] ?? input.gender;
   }
   if (input.status !== undefined) payload.status = input.status;
+  // "" is "No preference": sent as null, which clears it.
+  if (input.preferredDoctorId !== undefined) payload.preferred_doctor_id = input.preferredDoctorId || null;
   return toPatient(await apiPatch<RawPatient>(`/api/v1/patients/${id}`, payload));
+}
+
+// Who the patient's doctor is (operator and admin: ASSIGN_PATIENTS).
+export async function changePatientDoctor(id: string, doctorId: string): Promise<Patient> {
+  return toPatient(await apiPut<RawPatient>(`/api/v1/patients/${id}/doctor`, { doctor_id: doctorId }));
 }
 
 // Provisional -> registered. 409 when there is no explicit captured consent;
@@ -153,7 +157,7 @@ export async function promotePatient(id: string): Promise<Patient> {
 
 export async function createPatientFromOnboarding(input:{
   firstName:string; lastName:string; dateOfBirth?:string; gender?:string;
-  contactReason?:string; contactChannel?:string;
+  contactReason?:string; contactChannel?:string; preferredDoctorId?:string;
 } & ProfileFields):Promise<Patient> {
   const name=`${input.firstName} ${input.lastName}`.trim();
   const dob = input.dateOfBirth ? ddmmyyyyToIso(input.dateOfBirth) : "";
@@ -161,6 +165,7 @@ export async function createPatientFromOnboarding(input:{
 
   const patient = await toPatient(await apiPost<RawPatient>("/api/v1/patients", {
     name, dob, gender, ...profileFieldsToPayload(input),
+    preferred_doctor_id: input.preferredDoctorId || null,
   }));
 
   try {

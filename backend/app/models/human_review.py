@@ -21,6 +21,13 @@ class TaskType(enum.StrEnum):
     AGENT_FAILURE = "agent_failure"
     AGENT_HANDOVER = "agent_handover"
     COMPLAINT_REVIEW = "complaint_review"
+    # Cases (M4, episode_service): which open case a message belongs to, and
+    # whether a quiet case can close. CASE_CLOSE is about a case, not a
+    # message, so it has episode_id and no case_id.
+    CASE_CHOICE = "case_choice"
+    CASE_CLOSE = "case_close"
+    # A repeat prescription request for the prescriber (prescription_service).
+    PRESCRIPTION_REQUEST = "prescription_request"
 
 
 class TaskStatus(enum.StrEnum):
@@ -44,6 +51,8 @@ _jsonb = JSONB().with_variant(JSON(), "sqlite")
 _OPEN_PER_MESSAGE = (
     "inbox_task_id IS NOT NULL AND status IN ('pending', 'in_progress', 'escalated')"
 )
+# The same backstop for items about a case (the hourly close nudge).
+_OPEN_PER_EPISODE = "episode_id IS NOT NULL AND status IN ('pending', 'in_progress', 'escalated')"
 
 
 class HumanReviewTask(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -58,10 +67,23 @@ class HumanReviewTask(Base, UUIDPrimaryKeyMixin, TimestampMixin):
             postgresql_where=text(_OPEN_PER_MESSAGE),
             sqlite_where=text(_OPEN_PER_MESSAGE),
         ),
+        Index(
+            "uq_human_review_open_per_episode",
+            "episode_id",
+            "task_type",
+            unique=True,
+            postgresql_where=text(_OPEN_PER_EPISODE),
+            sqlite_where=text(_OPEN_PER_EPISODE),
+        ),
     )
 
-    case_id: Mapped[UUID] = mapped_column(
-        ForeignKey("intake_cases.id", ondelete="CASCADE"), nullable=False
+    # The contact the item is about. NULL only for an item about a case
+    # (CASE_CLOSE), which carries episode_id instead.
+    case_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("intake_cases.id", ondelete="CASCADE"), nullable=True
+    )
+    episode_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("episodes.id", ondelete="CASCADE"), nullable=True
     )
     triage_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("triage_results.id", ondelete="SET NULL"), nullable=True

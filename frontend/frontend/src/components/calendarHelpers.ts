@@ -1,8 +1,9 @@
+import { clinicTimeZone } from "../lib/format";
 import type { AppointmentStatus, AppointmentType } from "../api/types";
 
 export const TYPE_LABEL: Record<AppointmentType, string> = {
-  new_patient: "New Patient",
-  follow_up: "Follow Up",
+  new_patient: "New patient",
+  follow_up: "Follow-up",
   procedure: "Procedure",
   other: "Other",
 };
@@ -32,24 +33,16 @@ export const STATUS_TONE: Record<AppointmentStatus, "green" | "amber" | "red" | 
 // (Australia/Sydney by default) and GET /health reports it. These helpers used
 // to assume the clinic ran on UTC: an "11:00" booking was stored as 10pm in
 // Sydney, and the email agent's 8am bookings showed at 9 or 10pm the day before.
-let clinicTimeZone = "Australia/Sydney";
-
-export function setClinicTimeZone(zone: string): void {
-  clinicTimeZone = zone;
-}
 
 function clinicParts(d: Date): { date: string; hour: number; minute: number } {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: clinicTimeZone, year: "numeric", month: "2-digit", day: "2-digit",
+    timeZone: clinicTimeZone(), year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hourCycle: "h23",
   }).formatToParts(d);
   const get = (type: string) => parts.find(p => p.type === type)!.value;
   return { date: `${get("year")}-${get("month")}-${get("day")}`, hour: Number(get("hour")), minute: Number(get("minute")) };
 }
 
-export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: clinicTimeZone });
-}
 
 /** Hours since clinic midnight, fractional, for placing an appointment on the day grid. */
 export function clinicHour(d: Date): number {
@@ -57,13 +50,6 @@ export function clinicHour(d: Date): number {
   return p.hour + p.minute / 60;
 }
 
-export function formatDateLong(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-}
-
-export function formatDateShort(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
-}
 
 export function toDateInputValue(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

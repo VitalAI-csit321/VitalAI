@@ -57,16 +57,13 @@ async def _availability(client, headers, doctor, day: str = DAY):
 # --- the setting itself ----------------------------------------------------------------
 
 
-def test_clinic_timezone_is_registered_read_only():
-    spec = settings_service.SETTINGS_REGISTRY["clinic_timezone"]
-    assert spec.type is str
-    assert spec.group == "General"
-    assert spec.editable is False
+def test_clinic_timezone_is_environment_config_not_a_setting():
+    assert "clinic_timezone" not in settings_service.SETTINGS_REGISTRY
     assert ZoneInfo(settings.clinic_timezone)
 
 
 def test_the_api_refuses_to_write_the_clinic_timezone():
-    with pytest.raises(settings_service.SettingsValidationError, match="read-only"):
+    with pytest.raises(settings_service.SettingsValidationError, match="Unknown setting"):
         settings_service.validate({"clinic_timezone": "Europe/Paris"})
 
 

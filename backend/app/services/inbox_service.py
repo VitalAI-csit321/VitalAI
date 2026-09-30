@@ -23,11 +23,18 @@ from app.models.assignment import DoctorPatientAssignment
 from app.models.call import Call
 from app.models.case import IntakeCase
 from app.models.email import Email
+from app.models.episode import Episode, EpisodeStatus
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.task import Task, TaskItemStatus, TaskPriority, TaskSource
 from app.models.user import User, UserRole
 from app.schemas.inbox import InboxMessageOut
-from app.services import approval_service, email_service, human_review_service, review_routing
+from app.services import (
+    approval_service,
+    email_service,
+    human_review_service,
+    prescription_service,
+    review_routing,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +108,26 @@ def _scoped(query, actor: User):
             in_queue = or_(in_queue, and_(Task.target_role == UserRole.DOCTOR, ~has_doctor))
         query = query.where(in_queue)
     if actor.role == UserRole.DOCTOR:
-        query = query.join(IntakeCase, Task.case_id == IntakeCase.id).where(
-            IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id))
+        # A message in a case is its case doctor's while they are active and
+        # still assigned to the patient; otherwise every assigned doctor's, as
+        # before cases (booking_service.doctor_for_contact is the same rule).
+        case_doctor_holds = (
+            select(DoctorPatientAssignment.doctor_id)
+            .join(User, User.id == DoctorPatientAssignment.doctor_id)
+            .where(
+                DoctorPatientAssignment.patient_id == IntakeCase.patient_id,
+                DoctorPatientAssignment.doctor_id == Episode.doctor_id,
+                User.is_active.is_(True),
+            )
+            .exists()
+        )
+        query = (
+            query.join(IntakeCase, Task.case_id == IntakeCase.id)
+            .outerjoin(Episode, IntakeCase.episode_id == Episode.id)
+            .where(
+                IntakeCase.patient_id.in_(assigned_patient_ids_subquery(actor.id)),
+                or_(Episode.doctor_id == actor.id, ~case_doctor_holds),
+            )
         )
     return query
 
@@ -121,10 +146,13 @@ async def write_reply_open(db: AsyncSession, task: Task) -> bool:
     awaiting approval. Covers no draft, a blocked one, a rejected one, and an
     approved one whose delivery failed."""
     # Archived (completed) messages were usually answered outside the system.
+    # A prescriber's request shares the patient's email but is not theirs to
+    # answer: the patient's reply is the acknowledgement on their own message.
     if (
         task.source != TaskSource.EMAIL
         or task.draft_sent
         or task.status == TaskItemStatus.COMPLETED
+        or task.handover_context in prescription_service.REQUEST_REASONS
     ):
         return False
     if task.draft_approval_id is None:
@@ -208,11 +236,28 @@ async def _to_message(db: AsyncSession, task: Task, actor: User) -> InboxMessage
     )
 
 
+async def _case_chip(db: AsyncSession, task: Task) -> dict:
+    """Who the message is from (once confirmed) and the case it is in (M4)."""
+    contact = await db.get(IntakeCase, task.case_id)
+    episode = await db.get(Episode, contact.episode_id) if contact and contact.episode_id else None
+    return {
+        "patientId": str(contact.patient_id) if contact and contact.patient_id else None,
+        "episodeId": str(episode.id) if episode else None,
+        # A reply on a closed case's conversation lands there: say so, so
+        # staff reopen it or file the message under another case.
+        "episodeTitle": (
+            f"{episode.title} (closed)" if episode.status == EpisodeStatus.CLOSED else episode.title
+        )
+        if episode
+        else None,
+    }
+
+
 async def _with_review(
     db: AsyncSession, actor: User, task: Task, message: InboxMessageOut
 ) -> InboxMessageOut:
     """canApprove and reviewItemId: server-decided, never inferred by the UI
-    from the actor's role (review queue spec section 7)."""
+    from the actor's role (review queue spec section 7). Also the case chip."""
     item = (
         await db.execute(
             select(HumanReviewTask)
@@ -250,7 +295,12 @@ async def _with_review(
         )
     can_write = await write_reply_open(db, task) and await can_act_on_task(db, actor, task)
     return message.model_copy(
-        update={"canApprove": can, "reviewItemId": review_item_id, "canWriteReply": can_write}
+        update={
+            "canApprove": can,
+            "reviewItemId": review_item_id,
+            "canWriteReply": can_write,
+            **await _case_chip(db, task),
+        }
     )
 
 

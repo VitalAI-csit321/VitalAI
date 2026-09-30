@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.audit import AuditEvent
 from app.schemas.health import ServiceStatusOut
+from app.services import outlook_auth, outlook_poller
 
 _TIMEOUT_SECONDS = 3.0
 _SESSION_WINDOW_MINUTES = 30
@@ -105,18 +106,38 @@ async def _probe_llm() -> ServiceStatusOut:
 
 
 def _probe_outlook() -> ServiceStatusOut:
+    """What the mailbox poller last saw, not just whether it is configured."""
+    name = "Outlook connector"
+    mailbox = outlook_auth.connected_account() or settings.outlook_mailbox_address or "No mailbox"
     if not settings.outlook_enabled:
         return ServiceStatusOut(
-            name="Outlook connector",
-            detail="Not enabled",
+            name=name,
+            detail=mailbox,
             status="disabled",
-            note="Enable in .env and provide a token cache via scripts/outlook_login.py",
+            note="Email is turned off on this installation",
+        )
+    seen = outlook_poller.status
+    if seen.needs_signin:
+        return ServiceStatusOut(
+            name=name,
+            detail=mailbox,
+            status="down",
+            note="Microsoft sign-in has expired. Reconnect in Settings, Integrations.",
+        )
+    if seen.last_ok_at is None:
+        return ServiceStatusOut(
+            name=name, detail=mailbox, status="degraded", note="No successful mailbox check yet"
+        )
+    age = int((datetime.now(UTC) - seen.last_ok_at).total_seconds())
+    if seen.failing or age > 3 * settings.outlook_poll_interval_seconds:
+        return ServiceStatusOut(
+            name=name,
+            detail=mailbox,
+            status="degraded",
+            note=f"Last successful check {age // 60} min ago",
         )
     return ServiceStatusOut(
-        name="Outlook connector",
-        detail=settings.outlook_mailbox_address or "mailbox not configured",
-        status="operational",
-        note=f"Polling every {settings.outlook_poll_interval_seconds}s",
+        name=name, detail=mailbox, status="operational", note=f"Last checked {age}s ago"
     )
 
 

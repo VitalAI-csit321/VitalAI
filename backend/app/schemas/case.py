@@ -27,6 +27,8 @@ class IntakeCaseOut(BaseModel):
     status: IntakeStatus
     created_at: datetime
     updated_at: datetime
+    # The case (episode of care) this contact is in, if any.
+    episode_id: UUID | None = None
 
     model_config = {"from_attributes": True}
 

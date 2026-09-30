@@ -5,7 +5,8 @@ import { listDoctors } from "../api/doctors";
 import { ApiError, describeApiError } from "../lib/apiClient";
 import type { AppointmentDetail, AppointmentStatus, AppointmentType, Availability, Doctor } from "../api/types";
 import { Spinner } from "../components/ui";
-import { TYPE_LABEL, formatTime, parseClinicDateTime, patientDisplayName, toDateInputValueClinic, toTimeInputValueClinic } from "../components/calendarHelpers";
+import { TYPE_LABEL, parseClinicDateTime, patientDisplayName, toDateInputValueClinic, toTimeInputValueClinic } from "../components/calendarHelpers";
+import { formatTime } from "../lib/format";
 
 const DURATIONS = [15, 30, 45, 60, 90, 120];
 
@@ -95,9 +96,9 @@ export function AppointmentEditPage() {
   return (
     <div className="p-6">
       <div className="flex items-center gap-1 text-sm text-slate-500">
-        <Link to="/calendar" className="hover:text-slate-700">Calendar</Link> / <Link to={`/calendar/${id}`} className="hover:text-slate-700">{patientDisplayName(original)}</Link> / <span className="text-slate-700">Edit Appointment</span>
+        <Link to="/calendar" className="hover:text-slate-700">Calendar</Link> / <Link to={`/calendar/${id}`} className="hover:text-slate-700">{patientDisplayName(original)}</Link> / <span className="text-slate-700">Edit appointment</span>
       </div>
-      <h1 className="mt-3 text-2xl font-bold text-slate-900">Edit Appointment</h1>
+      <h1 className="mt-3 text-2xl font-bold text-slate-900">Edit appointment</h1>
       <p className="mt-1 text-xs text-slate-400">{original.referenceCode}</p>
 
       <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
@@ -107,73 +108,73 @@ export function AppointmentEditPage() {
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Patient</label>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700">{patientDisplayName(original)}{original.patient?.mrn ? ` — ${original.patient.mrn}` : ""}</div>
+            <span className="mb-1.5 block text-sm font-medium text-slate-700">Patient</span>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-700">{patientDisplayName(original)}{original.patient?.mrn ? ` (${original.patient.mrn})` : ""}</div>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Appointment Type</label>
-            <select value={appointmentType} onChange={e => setAppointmentType(e.target.value as AppointmentType)} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand">
+            <label htmlFor="appt-edit-appointment-type" className="mb-1.5 block text-sm font-medium text-slate-700">Appointment type</label>
+            <select id="appt-edit-appointment-type" value={appointmentType} onChange={e => setAppointmentType(e.target.value as AppointmentType)} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand">
               {(Object.keys(TYPE_LABEL) as AppointmentType[]).map(t => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Provider</label>
-            <select value={doctorId} onChange={e => setDoctorId(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand">
+            <label htmlFor="appt-edit-provider" className="mb-1.5 block text-sm font-medium text-slate-700">Doctor</label>
+            <select id="appt-edit-provider" value={doctorId} onChange={e => setDoctorId(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand">
               {doctors.map(d => <option key={d.id} value={d.id}>{d.fullName}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Date</label>
-              <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand" />
+              <label htmlFor="appt-edit-date" className="mb-1.5 block text-sm font-medium text-slate-700">Date</label>
+              <input id="appt-edit-date" type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand" />
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Start Time</label>
-              <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand" />
+              <label htmlFor="appt-edit-start-time" className="mb-1.5 block text-sm font-medium text-slate-700">Start time</label>
+              <input id="appt-edit-start-time" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Duration</label>
-              <select value={durationMinutes} onChange={e => setDurationMinutes(Number(e.target.value))} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand">
+              <label htmlFor="appt-edit-duration" className="mb-1.5 block text-sm font-medium text-slate-700">Duration</label>
+              <select id="appt-edit-duration" value={durationMinutes} onChange={e => setDurationMinutes(Number(e.target.value))} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand">
                 {DURATIONS.map(d => <option key={d} value={d}>{d} minutes</option>)}
               </select>
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">End Time</label>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500">{endTimeLabel || "—"}</div>
+              <span className="mb-1.5 block text-sm font-medium text-slate-700">End time</span>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-500">{endTimeLabel || "Not set"}</div>
             </div>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Location</label>
-            <input value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Room 3 Level 2" className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand" />
+            <label htmlFor="appt-edit-location" className="mb-1.5 block text-sm font-medium text-slate-700">Location</label>
+            <input id="appt-edit-location" value={location} onChange={e => setLocation(e.target.value)} placeholder="e.g. Room 3 Level 2" className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand" />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Status</label>
-            <select value={status} onChange={e => setStatus(e.target.value as AppointmentStatus)} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand">
+            <label htmlFor="appt-edit-status" className="mb-1.5 block text-sm font-medium text-slate-700">Status</label>
+            <select id="appt-edit-status" value={status} onChange={e => setStatus(e.target.value as AppointmentStatus)} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand">
               <option value="pending">Pending</option>
               <option value="confirmed">Confirmed</option>
             </select>
             <p className="mt-1 text-xs text-slate-400">Use the Cancel/Mark Complete buttons on the appointment page to change those states.</p>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Reason for Visit</label>
-            <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand" />
+            <label htmlFor="appt-edit-reason-for-visit" className="mb-1.5 block text-sm font-medium text-slate-700">Reason for visit</label>
+            <textarea id="appt-edit-reason-for-visit" value={reason} onChange={e => setReason(e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand" />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Internal Notes</label>
-            <textarea value={internalNotes} onChange={e => setInternalNotes(e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand" />
+            <label htmlFor="appt-edit-internal-notes" className="mb-1.5 block text-sm font-medium text-slate-700">Internal notes</label>
+            <textarea id="appt-edit-internal-notes" value={internalNotes} onChange={e => setInternalNotes(e.target.value)} rows={3} className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand" />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-3 pt-2">
-            <button onClick={() => navigate(-1)} className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Discard Changes</button>
-            <button onClick={handleSave} disabled={saving} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-50">{saving ? "Saving…" : "Save Changes"}</button>
+            <button onClick={() => navigate(-1)} className="rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">Discard changes</button>
+            <button onClick={handleSave} disabled={saving} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-50">{saving ? "Saving…" : "Save changes"}</button>
           </div>
         </div>
 
         <div className="space-y-4">
           <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="text-sm font-semibold text-slate-900">Reschedule Assistant</div>
+            <div className="text-sm font-semibold text-slate-900">Reschedule assistant</div>
             <p className="mt-1 text-xs text-slate-500">Pick a date above, then choose an available time.</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {availability?.slots.filter(s => new Date(s.start).getUTCMinutes() === 0 || new Date(s.start).getUTCMinutes() === 30).map(s => {
@@ -199,8 +200,8 @@ export function AppointmentEditPage() {
             </label>
             {timeChanged && (
               <div className="mt-3">
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">Reschedule reason (optional)</label>
-                <textarea value={rescheduleReason} onChange={e => setRescheduleReason(e.target.value)} rows={2} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand" />
+                <label htmlFor="appt-edit-reschedule-reason-optional" className="mb-1.5 block text-sm font-medium text-slate-700">Reschedule reason (optional)</label>
+                <textarea id="appt-edit-reschedule-reason-optional" value={rescheduleReason} onChange={e => setRescheduleReason(e.target.value)} rows={2} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand" />
               </div>
             )}
             <p className="mt-3 text-xs text-slate-400">All changes to this appointment are logged in the VitalAI audit trail.</p>

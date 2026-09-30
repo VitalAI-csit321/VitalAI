@@ -25,6 +25,20 @@ _CATEGORY_TO_ROLE: dict[TaskCategory, UserRole] = {
     TaskCategory.URGENT_EMERGENCY: UserRole.OPERATOR,
 }
 
+# Clinical categories (M4, spec E3): a known patient's message in one of these
+# starts or joins a case (episode_service.attach_contact). Deliberately not
+# email_service._clinical_categories(), which is configurable and answers a
+# different question (which replies never auto-send).
+CASE_CATEGORIES: frozenset[TaskCategory] = frozenset(
+    {
+        TaskCategory.PRESCRIPTION_RENEWAL,
+        TaskCategory.RESULTS_ENQUIRY,
+        TaskCategory.REFERRAL_REQUEST,
+        TaskCategory.URGENT_EMERGENCY,
+        TaskCategory.APPOINTMENT_REQUEST,
+    }
+)
+
 
 def resolve_target_role(category: TaskCategory) -> UserRole:
     """Map a task category to the role whose queue it lands in.

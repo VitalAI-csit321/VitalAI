@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getPatient, updatePatient } from "../api/cases";
+import { DoctorSelect } from "../components/CaseFields";
 import type { ProfileFields } from "../api/cases";
 import type { Patient } from "../api/types";
 import { Spinner } from "../components/ui";
@@ -13,6 +14,7 @@ export function PatientEditPage() {
   const [name, setName] = useState("");
   const [dob, setDob] = useState("");
   const [gender, setGender] = useState<NonNullable<Patient["gender"]> | "">("");
+  const [preferredDoctorId, setPreferredDoctorId] = useState("");
   const [fields, setFields] = useState<ProfileFields>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -25,6 +27,7 @@ export function PatientEditPage() {
       setName(p.name);
       setDob(p.dob ? new Date(p.dob).toLocaleDateString("en-GB") : "");
       setGender(p.gender ?? "");
+      setPreferredDoctorId(p.preferredDoctorId ?? "");
       setFields({
         address: p.address ?? "", indigenousStatus: p.indigenousStatus ?? "", preferredLanguage: p.preferredLanguage ?? "",
         phone: p.phone ?? "", email: p.email ?? "",
@@ -47,7 +50,7 @@ export function PatientEditPage() {
     if (!gender) { setError("Choose a gender before saving."); return; }
     setBusy(true); setError(null);
     try {
-      await updatePatient(id, { name, dob, gender, ...fields });
+      await updatePatient(id, { name, dob, gender, preferredDoctorId, ...fields });
       navigate(`/patients/${id}`);
     } catch {
       setError("Could not save changes. Please try again.");
@@ -85,20 +88,21 @@ export function PatientEditPage() {
           <h2 className="text-lg font-semibold text-slate-900 mb-5">Identity</h2>
           <div className="grid grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Name</label>
-              <input className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={name} onChange={e => setName(e.target.value)} />
+              <label htmlFor="patient-name" className="block text-sm font-medium text-slate-700 mb-1.5">Name</label>
+              <input id="patient-name" className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={name} onChange={e => setName(e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Date of birth</label>
-              <input placeholder="DD/MM/YYYY" className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={dob} onChange={e => setDob(e.target.value)} />
+              <label htmlFor="patient-dob" className="block text-sm font-medium text-slate-700 mb-1.5">Date of birth</label>
+              <input id="patient-dob" placeholder="DD/MM/YYYY" className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={dob} onChange={e => setDob(e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Gender</label>
-              <select className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={gender} onChange={e => setGender(e.target.value as NonNullable<Patient["gender"]> | "")}>
+              <label htmlFor="patient-gender" className="block text-sm font-medium text-slate-700 mb-1.5">Gender</label>
+              <select id="patient-gender" className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand" value={gender} onChange={e => setGender(e.target.value as NonNullable<Patient["gender"]> | "")}>
                 <option value="" disabled>Not recorded</option>
                 <option value="male">Male</option><option value="female">Female</option><option value="non_binary">Non-binary</option>
               </select>
             </div>
+            <DoctorSelect label="Preferred doctor" value={preferredDoctorId} onChange={setPreferredDoctorId} emptyLabel="No preference" />
           </div>
         </div>
 

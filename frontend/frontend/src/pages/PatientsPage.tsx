@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatDate } from "../lib/format";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { listPatients } from "../api/cases";
@@ -42,25 +43,25 @@ export function PatientsPage() {
 
       <div className="mt-6 relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input value={search} onChange={e => { setSearch(e.target.value); setOffset(0); }} placeholder="Search patients..."
+        <input aria-label="Search patients" value={search} onChange={e => { setSearch(e.target.value); setOffset(0); }} placeholder="Search patients..."
           className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-brand" />
       </div>
 
       <div className="mt-3">
-        <select
+        <select aria-label="Filter patients" 
           value={sortMode}
           onChange={e => { setSortMode(e.target.value as "recent" | "pending_missing"); setOffset(0); }}
           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand"
         >
           <option value="recent">Newest first</option>
-          <option value="pending_missing">Pending — needs info</option>
+          <option value="pending_missing">Missing details</option>
         </select>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <tr className="border-b border-slate-200 text-left text-xs font-semibold text-slate-500">
               {["MRN","Name","DOB","Gender","Status","Actions"].map(h => <th key={h} className="px-6 py-3">{h}</th>)}
             </tr>
           </thead>
@@ -74,8 +75,8 @@ export function PatientsPage() {
                   {p.name}
                   {p.isProvisional && <span className="ml-2"><StatusBadge tone="amber">Provisional</StatusBadge></span>}
                 </td>
-                <td className="px-6 py-4 text-slate-600">{p.dob ? new Date(p.dob).toLocaleDateString("en-GB") : "—"}</td>
-                <td className="px-6 py-4 text-slate-600 capitalize">{p.gender?.replace("_"," ") ?? "—"}</td>
+                <td className="px-6 py-4 text-slate-600">{p.dob ? formatDate(p.dob) : "Not recorded"}</td>
+                <td className="px-6 py-4 text-slate-600 capitalize">{p.gender?.replace("_"," ") ?? "Not recorded"}</td>
                 <td className="px-6 py-4">
                   <StatusBadge tone={p.status === "active" ? "green" : p.status === "pending" ? "amber" : "gray"}>{p.status}</StatusBadge>
                 </td>

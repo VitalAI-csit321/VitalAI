@@ -33,7 +33,9 @@ _PRIORITY = {
 }
 
 # Kinds owned by whoever owns the message itself (spec section 5).
-_FOLLOWS_MESSAGE = frozenset({TaskType.DRAFT_APPROVAL, TaskType.AGENT_HANDOVER})
+_FOLLOWS_MESSAGE = frozenset(
+    {TaskType.DRAFT_APPROVAL, TaskType.AGENT_HANDOVER, TaskType.PRESCRIPTION_REQUEST}
+)
 
 
 async def owner_for(
@@ -42,19 +44,26 @@ async def owner_for(
     """(target_role, assigned_to) for a new item."""
     if kind == TaskType.IDENTITY_REVIEW:
         return UserRole.FRONT_DESK, None
+    if kind == TaskType.CASE_CHOICE:
+        # The open cases may have different doctors; the patient's own decides.
+        case = await db.get(IntakeCase, inbox_task.case_id)
+        doctor = (
+            await booking_service.doctor_for_patient(db, case.patient_id)
+            if case is not None and case.patient_id is not None
+            else None
+        )
+        return (UserRole.DOCTOR, doctor[0]) if doctor else (UserRole.OPERATOR, None)
     if kind not in _FOLLOWS_MESSAGE:
         return UserRole.OPERATOR, None
     role = inbox_task.target_role or UserRole.OPERATOR
     if role != UserRole.DOCTOR:
         return role, None
+    if kind == TaskType.PRESCRIPTION_REQUEST and inbox_task.assigned_to is not None:
+        return UserRole.DOCTOR, inbox_task.assigned_to  # the prescriber
     case = await db.get(IntakeCase, inbox_task.case_id)
-    doctor = (
-        await booking_service.doctor_for_patient(db, case.patient_id)
-        if case is not None and case.patient_id is not None
-        else None
-    )
-    # ponytail: until every patient has a doctor (M4), doctor work for a
-    # patient without one is the operator's.
+    # The case's doctor, else the patient's (M4). Doctor work for a patient
+    # without one (the unidentified, or registered before M4) is the operator's.
+    doctor = await booking_service.doctor_for_contact(db, case) if case is not None else None
     return (UserRole.DOCTOR, doctor[0]) if doctor else (UserRole.OPERATOR, None)
 
 
