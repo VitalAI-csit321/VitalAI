@@ -84,7 +84,7 @@ def start_sign_in(redirect_uri: str, user_id: UUID) -> str:
         SCOPES, redirect_uri=redirect_uri, login_hint=settings.outlook_mailbox_address or None
     )
     _pending[flow["state"]] = (flow, user_id, time.monotonic())
-    return flow["auth_uri"]
+    return str(flow["auth_uri"])
 
 
 def finish_sign_in(params: dict[str, str]) -> tuple[UUID, str]:
