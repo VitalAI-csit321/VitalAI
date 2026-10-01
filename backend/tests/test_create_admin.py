@@ -60,3 +60,18 @@ async def test_refuses_a_short_password_and_creates_nothing(db_session):
         )
         is None
     )
+
+
+async def test_reactivates_a_deactivated_account_so_it_can_log_in(db_session, front_desk_user):
+    """The recovery path: an admin who was switched off can be let back in."""
+    front_desk_user.is_active = False
+    await db_session.commit()
+
+    user = await run(
+        db_session,
+        email=front_desk_user.email,
+        full_name=front_desk_user.full_name,
+        password=None,
+    )
+
+    assert user.is_active is True

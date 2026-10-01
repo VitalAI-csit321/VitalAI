@@ -8,7 +8,7 @@ Usage (on the expo box):
     docker compose -f docker-compose.prod.yml exec api \\
         python -m scripts.create_admin you@example.com "Your Name"
 It asks for a password when the account is new. An existing account keeps its
-password and only becomes an admin.
+password and becomes an active admin, so this also lets a locked-out admin back in.
 """
 
 from __future__ import annotations
@@ -28,7 +28,9 @@ from app.services import audit_service
 
 
 async def run(db: AsyncSession, *, email: str, full_name: str, password: str | None) -> User:
-    """Create an admin, or promote the account with this email. ValueError on bad input."""
+    """Create an admin, or make the account with this email an active admin.
+
+    ValueError on bad input."""
     user = await db.scalar(select(User).where(User.email == email))
     if user is None:
         try:
@@ -46,14 +48,16 @@ async def run(db: AsyncSession, *, email: str, full_name: str, password: str | N
         action = "user.created"
         details = {"user_id": str(user.id), "role": UserRole.ADMIN.value}
     else:
-        old_role = user.role
+        old_role, was_active = user.role, user.is_active
         user.role = UserRole.ADMIN
+        user.is_active = True
         await db.flush()
         action = "user.role_changed"
         details = {
             "user_id": str(user.id),
             "old_role": old_role.value,
             "new_role": UserRole.ADMIN.value,
+            "was_active": was_active,
         }
     await audit_service.record_event(
         db, actor=user, action=action, details=details | {"via": "scripts.create_admin"}

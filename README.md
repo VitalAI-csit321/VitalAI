@@ -314,7 +314,7 @@ docker compose exec api python -m scripts.create_admin you@example.com "Your Nam
 ```
 
 It asks for a password (at least 8 characters). Run against an existing account, it
-keeps that account's password and makes it an admin. Then log in on the frontend's
+keeps that account's password and makes it an active admin. Then log in on the frontend's
 login page, and create everyone else from the Users page.
 
 ## Browsing the database
