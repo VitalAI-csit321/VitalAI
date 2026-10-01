@@ -7,18 +7,30 @@
 # The repo is bind-mounted into the api container, so a code change needs only
 # a restart; the image is rebuilt only when what it installs changes. The
 # frontend is built on the laptop and copied to frontend/frontend/dist (see
-# the expo deployment plan); nothing here builds it.
+# the expo deployment plan); nothing here builds it, but nothing starts
+# without it.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 COMPOSE="docker compose -f docker-compose.prod.yml"
 ENV_FILE="${ENV_FILE:-.env}"
-# What the image installs. A change to any of these needs a rebuild.
-DEPS_RE='^backend/(Dockerfile|\.dockerignore|requirements\.(txt|lock))$'
+# What the image installs. The image carries the last commit that touched any
+# of these as a label, and is rebuilt whenever that differs from the checkout,
+# so a build that failed is simply retried by the next run.
+DEPS=(Dockerfile .dockerignore requirements.txt requirements.lock)
+# Keys in .env that the app does not read: compose interpolation, and the
+# Bedrock API key that botocore reads from the environment.
+NON_SETTINGS_KEYS="SITE_ADDRESS POSTGRES_PASSWORD AWS_BEARER_TOKEN_BEDROCK"
 
 preflight() {
-    local key site cors jwt minio
+    local key site cors jwt minio known unknown
     [ -f "$ENV_FILE" ] || { echo "no $ENV_FILE: copy .env.prod.example to .env and fill it" >&2; return 1; }
+    # Settings ignores unknown keys, so a misspelled flag would silently do
+    # nothing. Every Settings field is a four-space-indented "name:" line.
+    known=$(sed -nE 's/^    ([a-z0-9_]+):.*/\1/p' app/config.py | tr '[:lower:]' '[:upper:]')
+    unknown=$(sed -nE 's/^([A-Za-z_][A-Za-z0-9_]*)=.*/\1/p' "$ENV_FILE" \
+        | grep -vxF -f <(printf '%s\n' $known $NON_SETTINGS_KEYS) || true)
+    [ -z "$unknown" ] || { echo "unknown keys in $ENV_FILE (misspelled?): $(echo $unknown)" >&2; return 1; }
     for key in SITE_ADDRESS CORS_ORIGINS POSTGRES_PASSWORD JWT_SECRET_KEY MINIO_SECRET_KEY; do
         grep -qE "^${key}=.+" "$ENV_FILE" || { echo "$key is empty or missing in $ENV_FILE" >&2; return 1; }
     done
@@ -37,10 +49,8 @@ preflight() {
     fi
 }
 
-# Changed file names on stdin. grep without -q reads all of stdin, so the
-# writer never gets SIGPIPE, which pipefail would turn into a false "no".
-needs_rebuild() {
-    grep -E "$DEPS_RE" >/dev/null
+deps_rev() {
+    git log -1 --format=%H -- "${DEPS[@]}"
 }
 
 case "${1:-}" in
@@ -49,8 +59,8 @@ case "${1:-}" in
         echo "env OK"
         exit 0
         ;;
-    --needs-rebuild)
-        if needs_rebuild; then echo yes; else echo no; fi
+    --deps-rev)
+        deps_rev
         exit 0
         ;;
     "" | -*)
@@ -61,16 +71,22 @@ esac
 TAG=$1
 
 preflight
+# Without it Docker creates an empty root-owned dist, the rsync from the laptop
+# then fails, and Caddy serves a blank site.
+[ -f ../frontend/frontend/dist/index.html ] || {
+    echo "no ../frontend/frontend/dist/index.html: build the frontend and rsync it first" >&2
+    exit 1
+}
 git fetch --tags --quiet origin
-before=$(git rev-parse HEAD)
 git checkout --quiet --detach "refs/tags/$TAG"
 after=$(git rev-parse HEAD)
 
+deps=$(deps_rev)
+built=$(docker image inspect -f '{{index .Config.Labels "vitalai.deps"}}' vitalai-expo-api 2>/dev/null || true)
 rebuilt=no
-if ! docker image inspect vitalai-expo-api >/dev/null 2>&1 \
-    || git diff --name-only "$before" "$after" | needs_rebuild; then
+if [ "$built" != "$deps" ]; then
     echo "==> building the api image"
-    $COMPOSE build api
+    DEPS_REV=$deps $COMPOSE build api
     rebuilt=yes
 fi
 
@@ -79,9 +95,10 @@ $COMPOSE run --rm api alembic upgrade head
 
 echo "==> starting"
 $COMPOSE up -d
-if [ "$rebuilt" = no ] && [ "$before" != "$after" ]; then
-    $COMPOSE restart api
-fi
+# Always, even after a retry: api runs the bind-mounted checkout, and a
+# single-file mount keeps the Caddyfile that git just replaced until caddy
+# restarts.
+$COMPOSE restart api caddy
 
 echo "==> health"
 for _ in $(seq 1 45); do

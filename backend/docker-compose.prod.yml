@@ -40,8 +40,12 @@ services:
       retries: 5
 
   api:
-    build: .
-    # A fixed name: scripts/deploy.sh checks whether this image exists.
+    build:
+      context: .
+      # scripts/deploy.sh sets DEPS_REV and rebuilds when this label differs.
+      labels:
+        vitalai.deps: ${DEPS_REV:-unknown}
+    # A fixed name: scripts/deploy.sh reads the label off this image.
     image: vitalai-expo-api
     restart: unless-stopped
     env_file:
