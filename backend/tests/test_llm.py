@@ -14,13 +14,7 @@ from app.models import User, UserRole
 
 
 async def _register_and_token(client: AsyncClient, role: UserRole) -> dict[str, str]:
-    """Create a user via the register endpoint and return auth headers."""
-    email = f"{role.value}@llmtest.example.com"
-    await client.post(
-        "/api/v1/auth/register",
-        json={"email": email, "password": "pass1234", "full_name": "LLM Tester"},
-    )
-    # Elevate role if needed — use a pre-built admin token from a direct DB user.
+    """Auth headers for a role; no user row is needed for these routes."""
     return {"Authorization": f"Bearer {create_access_token(__import__('uuid').uuid4(), role)}"}
 
 

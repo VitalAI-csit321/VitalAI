@@ -306,25 +306,16 @@ forms) and restarting the `api` container.
 
 ### Creating the first account
 
-The frontend has a login page but no public sign-up page. Every account is created by an
-admin, and the very first admin has to be created by hand, since there is no bootstrap
-step that does it automatically.
+The frontend has a login page but no sign-up page, and `POST /api/v1/auth/register`
+needs a logged-in admin. The very first admin is made from a shell:
 
-1. Open `http://localhost:8000/docs`, find `POST /api/v1/auth/register`, click
-   "Try it out," and register yourself with a real email, a password of at least 8
-   characters, and your name. This always creates a `front_desk` account regardless of
-   what role you send.
-2. Promote that account to admin directly in the database:
+```bash
+docker compose exec api python -m scripts.create_admin you@example.com "Your Name"
+```
 
-   ```bash
-   docker compose exec db psql -U vitalai -d vitalai \
-     -c "UPDATE users SET role = 'admin' WHERE email = 'you@example.com';"
-   ```
-
-3. Go to the frontend's login page and log in with that email and password.
-
-From here, use this admin account to create everyone else, either from the Users page in
-the frontend or by calling `POST /api/v1/auth/users/{user_id}/elevate`.
+It asks for a password (at least 8 characters). Run against an existing account, it
+keeps that account's password and makes it an admin. Then log in on the frontend's
+login page, and create everyone else from the Users page.
 
 ## Browsing the database
 
