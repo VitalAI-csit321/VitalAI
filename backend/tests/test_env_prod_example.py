@@ -35,3 +35,16 @@ def test_the_template_never_claims_production():
     values = _values()
     assert values["APP_ENV"] != "production"
     assert values["SYNTHETIC_ONLY"] == "true"
+
+
+def test_the_expo_stack_pulls_minio_from_the_registry_ci_uses():
+    # quay.io/minio/minio refuses anonymous pulls, so a fresh box could not
+    # start MinIO. CI moved to an image anyone can pull; the box must match.
+    import re
+
+    root = Path(__file__).resolve().parents[2]
+    ci = (root / ".github" / "workflows" / "backend-ci.yml").read_text()
+    compose = (root / "backend" / "docker-compose.prod.yml").read_text()
+    ci_image = re.search(r"(\S+/minio)\s+server /data", ci).group(1)
+    compose_image = re.search(r"image:\s*(\S*minio\S*)", compose).group(1)
+    assert compose_image.split(":")[0] == ci_image
