@@ -1,0 +1,95 @@
+# Expo deployment: one box, synthetic data only.
+# Standalone, not an override of docker-compose.yml: compose cannot drop a
+# service or a published port that a base file declares.
+#
+# `name` keeps this stack's volumes and containers apart from the dev stack,
+# which would otherwise share the project name "backend" and its database.
+name: vitalai-expo
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vitalai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: vitalai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vitalai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: quay.io/minio/minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    command: server /data
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local 2>/dev/null || curl -sf http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    # A fixed name: scripts/deploy.sh checks whether this image exists.
+    image: vitalai-expo-api
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://vitalai:${POSTGRES_PASSWORD}@db:5432/vitalai
+      MINIO_ENDPOINT: http://minio:9000
+      # The image's user has no home directory, so the Nomic and Whisper
+      # downloads need somewhere writable that also survives a rebuild.
+      HF_HOME: /app/.cache/huggingface
+    # --proxy-headers: without it every visitor has Caddy's address and they
+    # all share one login rate limit. Trusting any forwarder is safe here
+    # because this port is not published; only Caddy can reach it.
+    command:
+      - uvicorn
+      - app.main:app
+      - --host=0.0.0.0
+      - --port=8000
+      - --proxy-headers
+      - --forwarded-allow-ips=*
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      # scripts/ingest_org_profile.py looks two levels above scripts/.
+      - "../Organization Profile Review:/Organization Profile Review:ro"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../frontend/frontend/dist:/srv:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  minio_data:
+  caddy_data:
+  caddy_config:
