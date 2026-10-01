@@ -83,7 +83,39 @@ async def _probe_object_storage() -> ServiceStatusOut:
     )
 
 
+def _probe_bedrock_sync() -> None:
+    """One-token Converse call, run in a thread by the caller.
+
+    Proves credentials, model access and the model id in one request.
+    """
+    # ponytail: a real billed call of a few tokens per probe while the ops page
+    # polls. Switch to a control-plane call (bedrock.get_inference_profile) if
+    # that ever shows up on the bill.
+    import boto3
+    from botocore.config import Config
+
+    boto3.client(
+        "bedrock-runtime",
+        region_name=settings.aws_region,
+        config=Config(connect_timeout=2, read_timeout=5, retries={"max_attempts": 0}),
+    ).converse(
+        modelId=settings.bedrock_model_id,
+        messages=[{"role": "user", "content": [{"text": "ping"}]}],
+        inferenceConfig={"maxTokens": 1},
+    )
+
+
 async def _probe_llm() -> ServiceStatusOut:
+    if settings.llm_provider.lower() == "bedrock":
+        ok, ms, err = await _timed(asyncio.to_thread(_probe_bedrock_sync))
+        return ServiceStatusOut(
+            name="LLM provider",
+            detail=f"bedrock: {settings.bedrock_model_id}",
+            status="operational" if ok else "down",
+            latency_ms=round(ms, 1),
+            note=err,
+        )
+
     async def call() -> None:
         async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as http:
             res = await http.get(f"{settings.ollama_base_url}/api/tags")
