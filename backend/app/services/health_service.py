@@ -22,16 +22,20 @@ from app.schemas.health import ServiceStatusOut
 from app.services import outlook_auth, outlook_poller
 
 _TIMEOUT_SECONDS = 3.0
+# A cross-region Converse call on a fresh connection takes 1 to 3 s; the boto
+# client below gives up after 2 s to connect plus 5 s to read.
+_BEDROCK_TIMEOUT_SECONDS = 8.0
 _SESSION_WINDOW_MINUTES = 30
 
 
-async def _timed(coro) -> tuple[bool, float, str | None]:
+async def _timed(coro, timeout: float = _TIMEOUT_SECONDS) -> tuple[bool, float, str | None]:
     start = time.perf_counter()
     try:
-        await asyncio.wait_for(coro, _TIMEOUT_SECONDS)
+        await asyncio.wait_for(coro, timeout)
         return True, (time.perf_counter() - start) * 1000, None
     except Exception as exc:  # noqa: BLE001 - any failure is a failed probe
-        return False, (time.perf_counter() - start) * 1000, str(exc)[:200]
+        # A timeout's message is empty; name the exception instead.
+        return False, (time.perf_counter() - start) * 1000, str(exc)[:200] or type(exc).__name__
 
 
 async def _probe_database(db: AsyncSession) -> ServiceStatusOut:
@@ -94,7 +98,9 @@ def _probe_bedrock_sync() -> None:
     import boto3
     from botocore.config import Config
 
-    boto3.client(
+    # Its own session: boto3's default session is not safe to build clients
+    # from in two threads at once, and the object storage probe runs alongside.
+    boto3.session.Session().client(
         "bedrock-runtime",
         region_name=settings.aws_region,
         config=Config(connect_timeout=2, read_timeout=5, retries={"max_attempts": 0}),
@@ -107,7 +113,7 @@ def _probe_bedrock_sync() -> None:
 
 async def _probe_llm() -> ServiceStatusOut:
     if settings.llm_provider.lower() == "bedrock":
-        ok, ms, err = await _timed(asyncio.to_thread(_probe_bedrock_sync))
+        ok, ms, err = await _timed(asyncio.to_thread(_probe_bedrock_sync), _BEDROCK_TIMEOUT_SECONDS)
         return ServiceStatusOut(
             name="LLM provider",
             detail=f"bedrock: {settings.bedrock_model_id}",

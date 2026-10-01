@@ -108,3 +108,39 @@ async def test_llm_row_is_down_not_an_error_when_bedrock_fails(client, admin_hea
     llm = next(s for s in res.json()["services"] if s["name"] == "LLM provider")
     assert llm["status"] == "down"
     assert "AccessDeniedException" in llm["note"]
+
+
+@pytest.mark.asyncio
+async def test_a_slow_but_working_bedrock_is_operational(client, admin_headers, monkeypatch):
+    """A cross-region call with a fresh connection can take a few seconds; the
+    other services' 3 s cut-off would paint a working model red."""
+    import time
+
+    from app.config import settings
+    from app.services import health_service
+
+    monkeypatch.setattr(settings, "llm_provider", "bedrock")
+    monkeypatch.setattr(health_service, "_probe_bedrock_sync", lambda: time.sleep(3.5))
+
+    res = await client.get("/api/v1/health/detailed", headers=admin_headers)
+
+    llm = next(s for s in res.json()["services"] if s["name"] == "LLM provider")
+    assert llm["status"] == "operational"
+
+
+@pytest.mark.asyncio
+async def test_a_bedrock_timeout_says_so(client, admin_headers, monkeypatch):
+    import time
+
+    from app.config import settings
+    from app.services import health_service
+
+    monkeypatch.setattr(settings, "llm_provider", "bedrock")
+    monkeypatch.setattr(health_service, "_BEDROCK_TIMEOUT_SECONDS", 0.2)
+    monkeypatch.setattr(health_service, "_probe_bedrock_sync", lambda: time.sleep(1))
+
+    res = await client.get("/api/v1/health/detailed", headers=admin_headers)
+
+    llm = next(s for s in res.json()["services"] if s["name"] == "LLM provider")
+    assert llm["status"] == "down"
+    assert llm["note"] == "TimeoutError"
