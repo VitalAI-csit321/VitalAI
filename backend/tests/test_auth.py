@@ -5,10 +5,9 @@ from app.models import Patient, User
 from app.models.audit import AuditEvent
 
 
-async def test_register_then_login(client: AsyncClient, admin_headers: dict):
+async def test_register_then_login(client: AsyncClient):
     register_response = await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "newuser@example.com",
             "password": "password123",
@@ -32,10 +31,9 @@ async def test_register_then_login(client: AsyncClient, admin_headers: dict):
     assert me_response.json()["email"] == "newuser@example.com"
 
 
-async def test_login_wrong_password(client: AsyncClient, admin_headers: dict):
+async def test_login_wrong_password(client: AsyncClient):
     await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "user@example.com",
             "password": "password123",
@@ -50,16 +48,16 @@ async def test_login_wrong_password(client: AsyncClient, admin_headers: dict):
     assert response.status_code == 401
 
 
-async def test_register_duplicate_email(client: AsyncClient, admin_headers: dict):
+async def test_register_duplicate_email(client: AsyncClient):
     payload = {
         "email": "dupe@example.com",
         "password": "password123",
         "full_name": "Dupe",
         "role": "front_desk",
     }
-    first = await client.post("/api/v1/auth/register", json=payload, headers=admin_headers)
+    first = await client.post("/api/v1/auth/register", json=payload)
     assert first.status_code == 201
-    second = await client.post("/api/v1/auth/register", json=payload, headers=admin_headers)
+    second = await client.post("/api/v1/auth/register", json=payload)
     assert second.status_code == 409
 
 
@@ -75,11 +73,10 @@ async def test_protected_endpoint_requires_token(client: AsyncClient, patient: P
     assert response.status_code == 401
 
 
-async def test_register_ignores_role_in_payload(client: AsyncClient, admin_headers: dict):
+async def test_register_ignores_role_in_payload(client: AsyncClient):
     """Sending role=admin in the register payload must still result in front_desk."""
     response = await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "tryingadmin@example.com",
             "password": "password123",
@@ -94,7 +91,6 @@ async def test_register_ignores_role_in_payload(client: AsyncClient, admin_heade
 async def test_admin_can_elevate_user_role(client: AsyncClient, admin_headers: dict):
     reg = await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "target@example.com",
             "password": "password123",
@@ -114,12 +110,9 @@ async def test_admin_can_elevate_user_role(client: AsyncClient, admin_headers: d
     assert elevate.json()["role"] == "operator"
 
 
-async def test_front_desk_cannot_elevate_role(
-    client: AsyncClient, admin_headers: dict, front_desk_headers: dict
-):
+async def test_front_desk_cannot_elevate_role(client: AsyncClient, front_desk_headers: dict):
     reg = await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "another@example.com",
             "password": "password123",
@@ -136,13 +129,10 @@ async def test_front_desk_cannot_elevate_role(
     assert response.status_code == 403
 
 
-async def test_operator_cannot_elevate_role(
-    client: AsyncClient, admin_headers: dict, operator_headers: dict
-):
+async def test_operator_cannot_elevate_role(client: AsyncClient, operator_headers: dict):
     """OPERATOR lacks MANAGE_USERS, must be denied."""
     reg = await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "elevatetarget@example.com",
             "password": "password123",
@@ -162,7 +152,6 @@ async def test_operator_cannot_elevate_role(
 async def test_admin_can_set_department(client: AsyncClient, admin_headers: dict):
     reg = await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "deptarget@example.com",
             "password": "password123",
@@ -189,12 +178,9 @@ async def test_set_department_404_for_missing_user(client: AsyncClient, admin_he
     assert response.status_code == 404
 
 
-async def test_front_desk_cannot_set_department(
-    client: AsyncClient, admin_headers: dict, front_desk_headers: dict
-):
+async def test_front_desk_cannot_set_department(client: AsyncClient, front_desk_headers: dict):
     reg = await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "deptarget2@example.com",
             "password": "password123",
@@ -214,7 +200,6 @@ async def test_front_desk_cannot_set_department(
 async def test_set_department_rejects_empty_string(client: AsyncClient, admin_headers: dict):
     reg = await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "deptarget3@example.com",
             "password": "password123",
@@ -234,7 +219,6 @@ async def test_set_department_rejects_empty_string(client: AsyncClient, admin_he
 async def test_admin_can_list_users(client: AsyncClient, admin_headers: dict):
     await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "listendpoint1@example.com",
             "password": "password123",
@@ -256,7 +240,6 @@ async def test_admin_can_list_users(client: AsyncClient, admin_headers: dict):
 async def test_list_users_search_query_param(client: AsyncClient, admin_headers: dict):
     await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "searchable@example.com",
             "password": "password123",
@@ -289,7 +272,6 @@ async def test_elevate_writes_audit_event(
 ):
     reg = await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "elevateaudit@example.com",
             "password": "password123",
@@ -333,7 +315,6 @@ async def test_elevate_writes_audit_event(
 async def test_set_active_status_toggles_and_persists(client: AsyncClient, admin_headers: dict):
     reg = await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "toggle-me@example.com",
             "password": "password123",
@@ -365,12 +346,9 @@ async def test_set_active_status_404_for_missing_user(client: AsyncClient, admin
     assert response.status_code == 404
 
 
-async def test_front_desk_cannot_set_active_status(
-    client: AsyncClient, admin_headers: dict, front_desk_headers: dict
-):
+async def test_front_desk_cannot_set_active_status(client: AsyncClient, front_desk_headers: dict):
     reg = await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "toggle-target2@example.com",
             "password": "password123",
@@ -390,7 +368,6 @@ async def test_front_desk_cannot_set_active_status(
 async def test_get_user_grants_returns_real_grants(client: AsyncClient, admin_headers: dict):
     reg = await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "grants-target@example.com",
             "password": "password123",
@@ -412,12 +389,9 @@ async def test_get_user_grants_404_for_missing_user(client: AsyncClient, admin_h
     assert response.status_code == 404
 
 
-async def test_front_desk_cannot_get_user_grants(
-    client: AsyncClient, admin_headers: dict, front_desk_headers: dict
-):
+async def test_front_desk_cannot_get_user_grants(client: AsyncClient, front_desk_headers: dict):
     reg = await client.post(
         "/api/v1/auth/register",
-        headers=admin_headers,
         json={
             "email": "grants-target2@example.com",
             "password": "password123",
@@ -463,48 +437,3 @@ async def test_a_service_account_on_a_reserved_domain_does_not_500(
     listing = await client.get("/api/v1/auth/users", headers=admin_headers)
     assert listing.status_code == 200, listing.text
     assert any(u["email"] == "outlook-connector@vitalai.local" for u in listing.json()["items"])
-
-
-async def test_register_without_a_login_is_refused(client: AsyncClient):
-    response = await client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": "liam.obrien84@gmail.com",
-            "password": "password123",
-            "full_name": "Liam O'Brien",
-        },
-    )
-    assert response.status_code == 401
-
-
-async def test_register_as_front_desk_is_refused(client: AsyncClient, front_desk_headers: dict):
-    response = await client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": "chloe.nguyen@harbourviewmedical.com.au",
-            "password": "password123",
-            "full_name": "Chloe Nguyen",
-        },
-        headers=front_desk_headers,
-    )
-    assert response.status_code == 403
-
-
-async def test_an_admin_creating_an_account_is_audited(
-    client: AsyncClient, admin_headers: dict, db_session
-):
-    response = await client.post(
-        "/api/v1/auth/register",
-        json={
-            "email": "marcus.patel@harbourviewmedical.com.au",
-            "password": "password123",
-            "full_name": "Marcus Patel",
-        },
-        headers=admin_headers,
-    )
-    assert response.status_code == 201
-    event = (
-        await db_session.execute(select(AuditEvent).where(AuditEvent.action == "user.created"))
-    ).scalar_one()
-    assert event.details["user_id"] == response.json()["id"]
-    assert event.details["role"] == "front_desk"

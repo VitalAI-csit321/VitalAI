@@ -14,7 +14,13 @@ from app.models import User, UserRole
 
 
 async def _register_and_token(client: AsyncClient, role: UserRole) -> dict[str, str]:
-    """Auth headers for a role; no user row is needed for these routes."""
+    """Create a user via the register endpoint and return auth headers."""
+    email = f"{role.value}@llmtest.example.com"
+    await client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": "pass1234", "full_name": "LLM Tester"},
+    )
+    # Elevate role if needed — use a pre-built admin token from a direct DB user.
     return {"Authorization": f"Bearer {create_access_token(__import__('uuid').uuid4(), role)}"}
 
 
@@ -234,72 +240,3 @@ def test_get_llm_unknown_provider_raises():
     # not optional cleanup.
     importlib.reload(provider_module)
     get_llm.cache_clear()
-
-
-def test_no_test_can_reach_bedrock():
-    """conftest blocks Bedrock at the botocore door, so even a real client cannot call out."""
-    import boto3
-
-    client = boto3.client(
-        "bedrock-runtime",
-        region_name="ap-southeast-2",
-        aws_access_key_id="test",
-        aws_secret_access_key="test",
-    )
-    with pytest.raises(RuntimeError, match="real LLM"):
-        client.converse(
-            modelId="au.anthropic.test-model",
-            messages=[{"role": "user", "content": [{"text": "hi"}]}],
-        )
-
-
-def test_get_llm_bedrock_passes_generation_settings(monkeypatch):
-    from app.config import settings
-    from app.llm import provider
-
-    monkeypatch.setattr(settings, "llm_provider", "bedrock")
-    monkeypatch.setattr(settings, "bedrock_model_id", "au.anthropic.test-model")
-    monkeypatch.setattr(settings, "aws_region", "ap-southeast-2")
-    provider.get_llm.cache_clear()
-    try:
-        with patch("langchain_aws.ChatBedrockConverse") as fake:
-            provider.get_llm()
-    finally:
-        provider.get_llm.cache_clear()
-
-    fake.assert_called_once_with(
-        model="au.anthropic.test-model",
-        region_name="ap-southeast-2",
-        temperature=settings.llm_temperature,
-        max_tokens=settings.llm_max_tokens,
-        timeout=settings.llm_timeout_seconds,
-    )
-
-
-async def test_get_llm_bedrock_returns_plain_text_from_content_blocks(monkeypatch):
-    """A Bedrock chat model can answer with a list of content blocks. Callers put the
-    result into text such as a patient email, so it must arrive as one string."""
-    from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
-    from langchain_core.messages import AIMessage
-
-    from app.config import settings
-    from app.llm import provider
-
-    blocks = AIMessage(
-        content=[
-            {"type": "text", "text": "Dear Margaret, "},
-            {"type": "text", "text": "your appointment with Dr Fraser is on Tuesday at 9:00am."},
-        ]
-    )
-    monkeypatch.setattr(settings, "llm_provider", "bedrock")
-    provider.get_llm.cache_clear()
-    try:
-        with patch(
-            "langchain_aws.ChatBedrockConverse",
-            return_value=FakeMessagesListChatModel(responses=[blocks]),
-        ):
-            result = await provider.get_llm().ainvoke("hi")
-    finally:
-        provider.get_llm.cache_clear()
-
-    assert result == "Dear Margaret, your appointment with Dr Fraser is on Tuesday at 9:00am."

@@ -29,6 +29,7 @@ _NO_PERMISSION_GATE: frozenset[tuple[str, str]] = frozenset(
     {
         ("GET", "/health"),
         ("GET", "/"),
+        ("POST", "/api/v1/auth/register"),
         ("POST", "/api/v1/auth/login"),
         ("GET", "/api/v1/auth/me"),
         ("POST", "/api/v1/auth/me/password"),

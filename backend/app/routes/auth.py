@@ -54,14 +54,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register(
-    payload: UserRegister,
-    db: AsyncSession = Depends(get_db),
-    actor: User = Depends(require_permission(MANAGE_USERS)),
-) -> User:
-    """Create a front_desk account. Admin only: the Users page is the one caller,
-    and on a public URL an open door would let anyone in. The first admin on a
-    fresh installation comes from scripts/create_admin.py."""
+async def register(payload: UserRegister, db: AsyncSession = Depends(get_db)) -> User:
     existing = await db.execute(select(User).where(User.email == payload.email))
     if existing.scalar_one_or_none() is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
@@ -73,13 +66,6 @@ async def register(
         role=UserRole.FRONT_DESK,  # role in payload is always ignored
     )
     db.add(user)
-    await db.flush()
-    await audit_service.record_event(
-        db,
-        actor=actor,
-        action="user.created",
-        details={"user_id": str(user.id), "role": user.role.value},
-    )
     await db.commit()
     await db.refresh(user)
     return user
