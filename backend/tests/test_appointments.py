@@ -116,6 +116,7 @@ async def test_book_appointment_denied_for_other_doctors_calendar(
     case_id = await _create_case(client, admin_headers, patient)
     other_doctor = await client.post(
         "/api/v1/auth/register",
+        headers=admin_headers,
         json={
             "email": "other-doc@example.com",
             "password": "TestPass123!",

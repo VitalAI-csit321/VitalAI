@@ -562,8 +562,9 @@ async def unassigned_doctor_headers(
 # _OllamaCommon._create_stream (requests.post) or _acreate_stream (aiohttp).
 # Building a client stays legal -- test_llm.py builds one and never calls it,
 # and inbox_service evaluates get_llm() even when summarize_call is mocked.
-# ponytail: add the same two lines for ChatBedrock if tests ever run with
-# LLM_PROVIDER=bedrock; today every test path resolves to Ollama.
+# Bedrock is blocked one level lower, at botocore: ChatBedrockConverse and the
+# health probe both call through a boto3 client, and blocking the client call
+# covers every route in. Other AWS-shaped clients (MinIO's S3) pass through.
 _REAL_LLM_CALLED = (
     "A test called the real LLM. Mock it instead: patch the get_llm that the "
     "module under test imported (for example app.services.email_service.get_llm), "
@@ -573,6 +574,7 @@ _REAL_LLM_CALLED = (
 
 @pytest.fixture(autouse=True)
 def _no_real_llm_calls(monkeypatch):
+    import botocore.client
     from langchain_community.llms.ollama import _OllamaCommon
 
     def blocked(*_args, **_kwargs):
@@ -580,6 +582,15 @@ def _no_real_llm_calls(monkeypatch):
 
     monkeypatch.setattr(_OllamaCommon, "_create_stream", blocked)
     monkeypatch.setattr(_OllamaCommon, "_acreate_stream", blocked)
+
+    real_api_call = botocore.client.BaseClient._make_api_call
+
+    def no_bedrock(self, operation_name, api_params):
+        if self.meta.service_model.service_name.startswith("bedrock"):
+            raise RuntimeError(_REAL_LLM_CALLED)
+        return real_api_call(self, operation_name, api_params)
+
+    monkeypatch.setattr(botocore.client.BaseClient, "_make_api_call", no_bedrock)
 
 
 @pytest.fixture(autouse=True)
