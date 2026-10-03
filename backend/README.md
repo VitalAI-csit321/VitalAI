@@ -206,15 +206,14 @@ mypy app
 
 ## API endpoints
 
-Everything under `/api/v1/*` needs a JWT except `POST /api/v1/auth/login`. Registration
-needs an admin and always creates a `front_desk` user regardless of the `role` field in the
-request body. Use the elevate endpoint to promote a user. The first admin on a fresh
-database comes from `python -m scripts.create_admin <email> "<name>"`.
+Everything under `/api/v1/*` needs a JWT except `POST /api/v1/auth/register` and
+`POST /api/v1/auth/login`. Registration always creates a `front_desk` user regardless of
+the `role` field in the request body. Use the elevate endpoint to promote a user.
 
 | Method | Path                                   | Auth | Permission (or Role)       | Description                       |
 |--------|-----------------------------------------|------|------------------------------|------------------------------------|
 | GET    | `/health`                               | No   | Public                       | Health check                       |
-| POST   | `/api/v1/auth/register`                 | Yes  | `MANAGE_USERS`               | Create user, role forced to front_desk |
+| POST   | `/api/v1/auth/register`                 | No   | Public                       | Register user, role forced to front_desk |
 | POST   | `/api/v1/auth/login`                    | No   | Public                       | Get JWT, 5 requests/min per IP    |
 | GET    | `/api/v1/auth/me`                       | Yes  | any                          | Current user                       |
 | POST   | `/api/v1/auth/users/{user_id}/elevate`  | Yes  | MANAGE_USERS                 | Change a user's role, audited       |

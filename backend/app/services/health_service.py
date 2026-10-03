@@ -22,20 +22,16 @@ from app.schemas.health import ServiceStatusOut
 from app.services import outlook_auth, outlook_poller
 
 _TIMEOUT_SECONDS = 3.0
-# A cross-region Converse call on a fresh connection takes 1 to 3 s; the boto
-# client below gives up after 2 s to connect plus 5 s to read.
-_BEDROCK_TIMEOUT_SECONDS = 8.0
 _SESSION_WINDOW_MINUTES = 30
 
 
-async def _timed(coro, timeout: float = _TIMEOUT_SECONDS) -> tuple[bool, float, str | None]:
+async def _timed(coro) -> tuple[bool, float, str | None]:
     start = time.perf_counter()
     try:
-        await asyncio.wait_for(coro, timeout)
+        await asyncio.wait_for(coro, _TIMEOUT_SECONDS)
         return True, (time.perf_counter() - start) * 1000, None
     except Exception as exc:  # noqa: BLE001 - any failure is a failed probe
-        # A timeout's message is empty; name the exception instead.
-        return False, (time.perf_counter() - start) * 1000, str(exc)[:200] or type(exc).__name__
+        return False, (time.perf_counter() - start) * 1000, str(exc)[:200]
 
 
 async def _probe_database(db: AsyncSession) -> ServiceStatusOut:
@@ -87,41 +83,7 @@ async def _probe_object_storage() -> ServiceStatusOut:
     )
 
 
-def _probe_bedrock_sync() -> None:
-    """One-token Converse call, run in a thread by the caller.
-
-    Proves credentials, model access and the model id in one request.
-    """
-    # ponytail: a real billed call of a few tokens per probe while the ops page
-    # polls. Switch to a control-plane call (bedrock.get_inference_profile) if
-    # that ever shows up on the bill.
-    import boto3
-    from botocore.config import Config
-
-    # Its own session: boto3's default session is not safe to build clients
-    # from in two threads at once, and the object storage probe runs alongside.
-    boto3.session.Session().client(
-        "bedrock-runtime",
-        region_name=settings.aws_region,
-        config=Config(connect_timeout=2, read_timeout=5, retries={"max_attempts": 0}),
-    ).converse(
-        modelId=settings.bedrock_model_id,
-        messages=[{"role": "user", "content": [{"text": "ping"}]}],
-        inferenceConfig={"maxTokens": 1},
-    )
-
-
 async def _probe_llm() -> ServiceStatusOut:
-    if settings.llm_provider.lower() == "bedrock":
-        ok, ms, err = await _timed(asyncio.to_thread(_probe_bedrock_sync), _BEDROCK_TIMEOUT_SECONDS)
-        return ServiceStatusOut(
-            name="LLM provider",
-            detail=f"bedrock: {settings.bedrock_model_id}",
-            status="operational" if ok else "down",
-            latency_ms=round(ms, 1),
-            note=err,
-        )
-
     async def call() -> None:
         async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as http:
             res = await http.get(f"{settings.ollama_base_url}/api/tags")
