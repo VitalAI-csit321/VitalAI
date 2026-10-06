@@ -2,11 +2,12 @@ from collections.abc import Awaitable
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_any_permission
 from app.auth.permissions import VIEW_CLINICAL, VIEW_QUEUE
+from app.config import settings
 from app.database import get_db
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.user import User
@@ -166,10 +167,17 @@ async def reroute_endpoint(
 async def link_patient_endpoint(
     task_id: UUID,
     payload: HumanReviewLinkPatientBody,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
 ):
-    return await _run(human_review_service.link_patient(db, task_id, actor, payload.patient_id))
+    item = await _run(human_review_service.link_patient(db, task_id, actor, payload.patient_id))
+    if payload.patient_id is not None and settings.agentic_pipeline_enabled:
+        # Imported here so the flag-off app never loads langgraph.
+        from app.agents import graph as agent_graph
+
+        background_tasks.add_task(agent_graph.rerun_after_link, item.id)
+    return item
 
 
 @router.post("/{task_id}/reassign", response_model=HumanReviewTaskOut)

@@ -1019,6 +1019,218 @@ async def test_the_verification_email_goes_once_per_case_and_never_to_a_machine(
     assert sends == []
 
 
+async def _registered(db, *, email="kartik@example.com") -> Patient:
+    patient = Patient(
+        mrn="MRN-KARTIK01",
+        name="Kartik Sangwan",
+        dob=date(2009, 3, 23),
+        email=email,
+        phone="0470 979 616",
+        status=PatientStatus.ACTIVE,
+    )
+    db.add(patient)
+    await db.commit()
+    return patient
+
+
+async def _identity_item(db, task) -> HumanReviewTask:
+    return (
+        await db.scalars(
+            select(HumanReviewTask).where(
+                HumanReviewTask.inbox_task_id == task.id,
+                HumanReviewTask.task_type == TaskType.IDENTITY_REVIEW,
+            )
+        )
+    ).one()
+
+
+async def test_a_staff_link_carries_on_with_the_original_booking_request(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # A registered patient writing from a new address: the name alone is a
+    # partial match, so they are asked to verify and staff see the item.
+    patient = await _registered(db_session)
+    day = _weekday_ahead()
+    llm.identity = {"name": "Kartik Sangwan", "dob": None, "phone": None}
+    email1, task1 = await _mail(
+        db_session,
+        admin_user,
+        f"Can I book an appointment on {day:%A}? Thanks, Kartik Sangwan",
+        message_id="<k1@example.com>",
+        sender="kartik.work@example.com",
+    )
+    ((_, verification),) = sends
+    assert "verify your profile" in verification
+    item = await _identity_item(db_session, task1)
+
+    from app.services import human_review_service
+
+    await human_review_service.link_patient(db_session, item.id, admin_user, patient.id)
+    llm.booking = [{"preferred_day": day.isoformat(), "intent": "change", "confidence": 0.9}]
+    await agent_graph.rerun_after_link(item.id)
+
+    # Without waiting for the patient: the times for the day they first asked for.
+    assert len(sends) == 2
+    offer = sends[1][1]
+    assert offer.startswith("Hi Kartik,")
+    assert "These times are available" in offer or "nearest available times" in offer
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.patient_id == patient.id
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+    assert conversation.offered_slots
+
+
+async def test_a_reply_after_a_staff_link_is_not_a_failed_verification(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    patient = await _registered(db_session)
+    llm.identity = {"name": "Kartik Sangwan", "dob": None, "phone": None}
+    email1, task1 = await _mail(
+        db_session,
+        admin_user,
+        "I need an appointment. Kartik Sangwan",
+        message_id="<k2@example.com>",
+        sender="kartik.work@example.com",
+    )
+    item = await _identity_item(db_session, task1)
+    from app.services import human_review_service
+
+    await human_review_service.link_patient(db_session, item.id, admin_user, patient.id)
+
+    # The patient answers before (or instead of) the re-run, with no details.
+    llm.booking = [{"intent": "unclear", "confidence": 0.3}]
+    _, task2 = await _mail(
+        db_session,
+        admin_user,
+        "I am a current patient.",
+        message_id="<k3@example.com>",
+        references="<k2@example.com>",
+        sender="kartik.work@example.com",
+    )
+
+    assert task2.handover_context != email_conversation_service.STAFF_REASONS["verification_failed"]
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.patient_id == patient.id
+    assert conversation.stage == ConversationStage.AWAITING_DETAILS
+    assert "the day you would prefer" in sends[-1][1]
+
+
+async def test_the_inbox_shows_each_reply_not_the_first_email(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    from app.services import inbox_service
+
+    await _registered(db_session, email=SENDER)
+    llm.identity = {"name": "Kartik Sangwan", "dob": None, "phone": None}
+    llm.booking = [{"intent": "unclear", "confidence": 0.3}]
+    email1, task1 = await _mail(
+        db_session,
+        admin_user,
+        "Can I get an appointment? Kartik Sangwan",
+        message_id="<i1@example.com>",
+    )
+    email2, task2 = await _mail(
+        db_session,
+        admin_user,
+        "Any time on Friday works.",
+        message_id="<i2@example.com>",
+        references="<i1@example.com>",
+    )
+    assert email2.case_id == email1.case_id
+
+    first = await inbox_service._to_message(db_session, task1, admin_user)
+    reply = await inbox_service._to_message(db_session, task2, admin_user)
+
+    assert first.emailId == str(email1.id)
+    assert reply.emailId == str(email2.id)
+    assert reply.body == "Any time on Friday works."
+
+
+async def test_a_verified_booking_offers_the_day_the_first_email_asked_for(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    """Amin's live run, 2026-10-06: the request for a day was in the first
+    email, the details in the reply, and the clinic asked for the day again.
+    The reply also came from Gmail's main address, not the +alias the first
+    email used, which opened a second case and a second verification."""
+    patient = await _registered(db_session, email="alex.hill@example.com")
+    day = _weekday_ahead(10)
+    llm.identity = {"name": "Kartik Sangwan", "dob": None, "phone": None}
+    email1, _ = await _mail(
+        db_session,
+        admin_user,
+        f"Could I get a booking on {day.day} {day:%B}? Can you let me know the slots? "
+        "Kartik Sangwan",
+        message_id="<h1@example.com>",
+        sender="amin+kartik@example.com",
+    )
+    ((_, verification),) = sends
+    assert "verify your profile" in verification
+
+    llm.booking = [
+        {
+            "name": "Kartik Sangwan",
+            "dob": "2009-03-23",
+            "phone": "0470979616",
+            "preferred_day": day.isoformat(),
+            "intent": "unclear",
+            "confidence": 0.9,
+        }
+    ]
+    email2, _ = await _mail(
+        db_session,
+        admin_user,
+        "Kartik Sangwan 23/03/2009 0470979616",
+        message_id="<h2@example.com>",
+        references="<h1@example.com>",
+        sender="amin@example.com",
+    )
+
+    assert email2.case_id == email1.case_id
+    assert f"{day.day} {day:%B}" in llm.booking_prompts[-1]  # the first email was read
+    assert len(sends) == 2
+    assert "These times are available" in sends[1][1] or "nearest available" in sends[1][1]
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.patient_id == patient.id
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+
+
+def test_a_reply_links_across_plus_aliases_of_one_mailbox_only():
+    who = email_conversation_service._mailbox
+    assert who("Amin+Alexander.Hill@Gmail.com") == who("amin@gmail.com")
+    assert who("amin@gmail.com") != who("amina@gmail.com")
+    assert who("amin+x@gmail.com") != who("amin@outlook.com")
+
+
+async def test_a_day_asked_as_a_question_mid_conversation_is_offered_times(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # Live run: "Can you let me know the available slots on 24th of October?"
+    # read as intent "question" with the day, and went to staff.
+    email1, _ = await _first_turn(db_session, admin_user, llm, sends)
+    day = _weekday_ahead(5)
+    llm.booking = [
+        {
+            "dob": "1990-02-01",
+            "phone": "0412 345 678",
+            "preferred_day": day.isoformat(),
+            "intent": "question",
+            "confidence": 0.95,
+        }
+    ]
+    await _mail(
+        db_session,
+        admin_user,
+        f"DOB 1/2/1990, 0412 345 678. What times do you have on {day.day} {day:%B}?",
+        message_id="<t2@example.com>",
+        references="<t1@example.com>",
+    )
+
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+    assert len(sends) == 2
+
+
 # --- linking and MRN -----------------------------------------------------------------
 
 

@@ -128,6 +128,14 @@ def _who(address: str | None) -> str:
     return (address or "").strip().casefold()
 
 
+def _mailbox(address: str | None) -> str:
+    """The mailbox behind an address: name+tag@host is name@host. Gmail and
+    Outlook deliver both to one inbox, and Gmail replies from the bare
+    address even when the first email went out from the +alias."""
+    local, at, host = _who(address).partition("@")
+    return f"{local.split('+', 1)[0]}{at}{host}"
+
+
 # --- linking a reply to its case ----------------------------------------------
 
 
@@ -139,8 +147,9 @@ async def find_case_for_reply(
     Headers first: our replies are sent with Graph /reply, so the patient's
     reply carries their original Message-ID in References. That links one
     conversation, not one address, which is what keeps two family members on
-    a shared inbox apart. A header match only counts from the address that
-    wrote the earlier email; a forward from someone else starts fresh.
+    a shared inbox apart. A header match only counts from the mailbox that
+    wrote the earlier email (any +alias of it); a forward from someone else
+    starts fresh.
 
     Without headers, the sender address, but only when it has exactly one open
     conversation from the last LINK_FALLBACK_DAYS and at most one patient
@@ -155,7 +164,7 @@ async def find_case_for_reply(
             .all()
         )
         for email in earlier:
-            if _who(email.sender) == who:
+            if _mailbox(email.sender) == _mailbox(sender):
                 return await db.get(IntakeCase, email.case_id)
         if earlier:
             return None
@@ -268,7 +277,8 @@ class BookingExtraction(BaseModel):
 
 
 _EXTRACT_PROMPT = """BOOKING REPLY EXTRACTION. You read a patient's email to a GP clinic \
-about booking an appointment. Extract ONLY what the patient wrote in their NEW MESSAGE. \
+about booking an appointment. Extract ONLY what the patient wrote in their NEW MESSAGE \
+(and in their FIRST EMAIL, when one is shown below). \
 Never extract anything from the clinic's own messages, which are shown for context only. \
 Do not guess: use null for anything the patient did not write.
 
@@ -284,7 +294,7 @@ THE CLINIC'S LAST MESSAGE TO THE PATIENT (context only):
 
 THE PATIENT'S NEW MESSAGE:
 {new}
-{full}
+{full}{earlier}
 Respond with ONLY a JSON object, no other text, in this exact shape:
 {{"name": "<full name or null>", "dob": "<date of birth as YYYY-MM-DD or null>", \
 "phone": "<phone number or null>", "preferred_day": "<YYYY-MM-DD or null>", \
@@ -372,9 +382,14 @@ async def extract(
     email: Email,
     conversation: EmailConversation,
     actor: User,
+    earlier: str | None = None,
 ) -> BookingExtraction | None:
     """None when the input guardrail blocked the reply. Unparseable output is
-    an empty extraction (intent unclear, confidence 0), never an error."""
+    an empty extraction (intent unclear, confidence 0), never an error.
+
+    earlier is the patient's own first email, when this reply answers the
+    verification request and that first email (with its day) is still
+    unanswered."""
     new = email.new_text or reply_parsing.strip_quoted(email.body)
     # strip_quoted already keeps answers written between "> " lines. Only when
     # nothing new is left at all (an inline HTML reply that collapsed onto one
@@ -397,6 +412,13 @@ async def extract(
             "\nTHE FULL EMAIL AS RECEIVED (the patient may have answered between the "
             f"clinic's quoted lines, which start with >):\n{email.body}\n"
             if inline
+            else ""
+        ),
+        earlier=(
+            "\nTHE PATIENT'S FIRST EMAIL, which the clinic has not answered yet. Their new "
+            "message only verified who they are, so take the day, time and doctor they "
+            f"asked for from here when the new message does not give them:\n{earlier}\n"
+            if earlier
             else ""
         ),
     )
@@ -710,6 +732,24 @@ async def _identify(
     return None, result.outcome
 
 
+async def _unanswered_booking(
+    db: AsyncSession, conversation: EmailConversation, email: Email
+) -> str | None:
+    """The booking request a verification reply follows, as the patient wrote
+    it. Without it the clinic asked again for the day the patient had already
+    named in the email it never answered."""
+    if (
+        conversation.stage != ConversationStage.AWAITING_VERIFICATION
+        or conversation.original_intent != TaskCategory.APPOINTMENT_REQUEST.value
+        or conversation.origin_email_id in (None, email.id)
+    ):
+        return None
+    origin = await db.get(Email, conversation.origin_email_id)
+    if origin is None:
+        return None
+    return origin.new_text or reply_parsing.strip_quoted(origin.body)
+
+
 async def handle_turn(
     db: AsyncSession,
     llm: BaseLanguageModel,
@@ -722,7 +762,10 @@ async def handle_turn(
 ) -> Turn:
     """Read the reply, update the record, decide. Audits the raw extraction
     and the decision. Commits."""
-    extraction = await extract(db, llm, email=email, conversation=conversation, actor=actor)
+    earlier = await _unanswered_booking(db, conversation, email)
+    extraction = await extract(
+        db, llm, email=email, conversation=conversation, actor=actor, earlier=earlier
+    )
     await record_event(
         db,
         actor=actor,
@@ -743,6 +786,7 @@ async def handle_turn(
         extraction=extraction,
         first_turn=first_turn,
         known=known or IdentityFields(),
+        earlier=earlier,
     )
     await record_event(
         db,
@@ -773,6 +817,7 @@ async def _decide(
     extraction: BookingExtraction | None,
     first_turn: bool,
     known: IdentityFields,
+    earlier: str | None = None,
 ) -> Turn:
     if extraction is None:
         return _staff(conversation, "input_blocked")
@@ -793,9 +838,17 @@ async def _decide(
         # A sign-up that arrived without a name was asked for these details;
         # the reply starts the provisional record, as a booking's does.
         signup = conversation.original_intent == TaskCategory.NEW_PATIENT_ONBOARDING.value
-        patient, outcome = await _identify(
-            db, conversation, email=email, fields=fields, actor=actor, onboard=booking or signup
-        )
+        case = await db.get(IntakeCase, conversation.case_id)
+        linked = await db.get(Patient, case.patient_id) if case and case.patient_id else None
+        if linked is not None:
+            # Staff already confirmed who this is (Review Queue link): nothing
+            # left to ask, whatever this reply says or leaves out.
+            await _link(db, conversation, linked, actor=actor)
+            patient, outcome = linked, IdentityOutcome.MATCHED
+        else:
+            patient, outcome = await _identify(
+                db, conversation, email=email, fields=fields, actor=actor, onboard=booking or signup
+            )
         if (outcome == IdentityOutcome.MATCHED or (signup and patient)) and not booking:
             conversation.stage = ConversationStage.VERIFIED.value
             return Turn("resume", patient=patient)
@@ -822,7 +875,12 @@ async def _decide(
 
     # On the first turn the classifier already called this a booking request,
     # and "Could I book next Wednesday?" reads as a question to the model.
-    if extraction.intent == "cancel" or (extraction.intent == "question" and not first_turn):
+    # "What times do you have on the 24th?" is a question that books: with a
+    # day or time in it, it carries on below rather than going to staff.
+    asks_a_time = extraction.preferred_day is not None or extraction.chosen_time is not None
+    if extraction.intent == "cancel" or (
+        extraction.intent == "question" and not first_turn and not asks_a_time
+    ):
         return _staff(conversation, extraction.intent)
     # "Thanks, I'll fill it in tonight" while the registration link is open: a
     # note for staff and nothing sent. Asking for details here would ask for
@@ -870,7 +928,7 @@ async def _decide(
     day = named_weekday(
         extraction.preferred_day
         or (extraction.chosen_time.date() if extraction.chosen_time else None),
-        new_text,
+        f"{new_text}\n{earlier}" if earlier else new_text,
         today=today,
     )
     if trusted and day is not None:

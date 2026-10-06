@@ -22,7 +22,6 @@ from app.models.approval import ApprovalStatus
 from app.models.assignment import DoctorPatientAssignment
 from app.models.call import Call
 from app.models.case import IntakeCase
-from app.models.email import Email
 from app.models.episode import Episode, EpisodeStatus
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.task import Task, TaskItemStatus, TaskPriority, TaskSource
@@ -34,6 +33,7 @@ from app.services import (
     human_review_service,
     prescription_service,
     review_routing,
+    task_service,
 )
 
 logger = logging.getLogger(__name__)
@@ -173,18 +173,13 @@ async def _visible_tasks(db: AsyncSession, actor: User, archived: bool = False) 
     return list(result.scalars().all())
 
 
-async def _email_for(db: AsyncSession, task: Task) -> Email | None:
-    result = await db.execute(select(Email).where(Email.case_id == task.case_id))
-    return result.scalars().first()
-
-
 async def _to_message(db: AsyncSession, task: Task, actor: User) -> InboxMessageOut | None:
     priority = _PRIORITY_MAP[task.priority]
     unread = task.read_at is None
     category = task.category.value if task.category else "uncategorized"
 
     if task.source == TaskSource.EMAIL:
-        email = await _email_for(db, task)
+        email = await task_service.email_for(db, task)
         if email is None:
             return None
         return InboxMessageOut(
@@ -368,7 +363,7 @@ async def write_reply(db: AsyncSession, actor: User, task: Task, text: str) -> I
     """
     # Row lock: two sends racing past the draft_sent check would both mail the patient.
     await db.refresh(task, with_for_update=True)
-    email = await _email_for(db, task)
+    email = await task_service.email_for(db, task)
     if email is None or not await write_reply_open(db, task):
         raise WriteReplyClosedError("This message cannot be answered with a written reply")
 
