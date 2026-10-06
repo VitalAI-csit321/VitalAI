@@ -29,6 +29,7 @@ from app.models.user import User, UserRole
 from app.schemas.inbox import InboxMessageOut
 from app.services import (
     approval_service,
+    email_conversation_service,
     email_service,
     human_review_service,
     prescription_service,
@@ -393,6 +394,8 @@ async def write_reply(db: AsyncSession, actor: User, task: Task, text: str) -> I
     except Exception:
         await db.rollback()  # nothing was sent, so the items stay open
         raise
+    if email_conversation_service.enabled():
+        await email_conversation_service.hand_back(db, task.case_id, text)
     message = await _to_message(db, task, actor)
     assert message is not None  # an email task with its email, checked above
     return await _with_review(db, actor, task, message)

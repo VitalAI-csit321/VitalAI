@@ -27,6 +27,7 @@ from app.models.email_conversation import ConversationStage, EmailConversation
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.patient import Patient, PatientStatus
 from app.models.task import Task
+from app.models.user import User, UserRole
 from app.schemas.call import CallRouteRequest
 from app.schemas.email import EmailIngestRequest
 from app.services import (
@@ -691,6 +692,101 @@ async def test_once_staff_have_a_conversation_the_agent_sends_nothing_more(
 
     assert sends == []
     assert task.handover_context == email_conversation_service.STAFF_REASONS["closed"]
+
+
+async def _second_doctor(db) -> User:
+    doctor = User(
+        email="hannah.fitzgerald@example.com",
+        hashed_password="x",
+        full_name="Hannah Fitzgerald",
+        role=UserRole.DOCTOR,
+    )
+    db.add(doctor)
+    await db.commit()
+    return doctor
+
+
+async def _offered_by_own_gp(db, admin, doctor, llm):
+    await _registered_patient(db, admin, doctor)
+    llm.identity = {"name": "Jane Citizen", "dob": "1990-02-01", "phone": None}
+    day = _weekday_ahead()
+    llm.booking = [{"preferred_day": day.isoformat(), "intent": "change", "confidence": 0.9}]
+    email1, _ = await _mail(
+        db, admin, f"Jane Citizen. Any times on {day:%A}?", message_id="<g1@example.com>"
+    )
+    conversation = await _conversation(db, email1.case_id)
+    assert {s["doctor_id"] for s in conversation.offered_slots} == {str(doctor.id)}
+    return email1, day
+
+
+async def test_asking_for_another_gp_offers_the_other_doctors_that_day(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # Live run, Rachel Walker: "is it possible to book another GP?" got her own
+    # GP's six times again, and "any other GP except Dr Priya Menon?" (a
+    # question with no day) went to staff.
+    hannah = await _second_doctor(db_session)
+    email1, day = await _offered_by_own_gp(db_session, admin_user, doctor_user, llm)
+    llm.booking = [{"intent": "question", "other_doctor": True, "confidence": 0.9}]
+
+    await _mail(
+        db_session,
+        admin_user,
+        "Is there any other GP I can book except my usual one?",
+        message_id="<g2@example.com>",
+        references="<g1@example.com>",
+    )
+
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+    assert {s["doctor_id"] for s in conversation.offered_slots} == {str(hannah.id)}
+    assert conversation.preferred_day == day
+    assert "Hannah Fitzgerald" in sends[-1][1]
+
+
+async def test_a_hand_written_reply_hands_the_conversation_back_to_the_agent(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # Live run: staff answered by hand ("you can have Dr Hannah"), and the
+    # patient's "Yes, Dr Hannah works" was closed with nothing sent.
+    from app.services import inbox_service
+
+    await _second_doctor(db_session)
+    email1, day = await _offered_by_own_gp(db_session, admin_user, doctor_user, llm)
+    llm.booking = [{"intent": "question", "confidence": 0.9}]
+    _, task = await _mail(
+        db_session,
+        admin_user,
+        "Is Dr Hannah any good?",
+        message_id="<g3@example.com>",
+        references="<g1@example.com>",
+    )
+    assert (await _conversation(db_session, email1.case_id)).stage == ConversationStage.STAFF
+
+    staff_text = "Hello Jane, yes, you can see Dr Hannah Fitzgerald. Let us know."
+    await inbox_service.write_reply(db_session, admin_user, task, staff_text)
+
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+    assert conversation.last_outbound_text == staff_text
+
+    llm.booking = [{"doctor_name": "Hannah", "intent": "confirm", "confidence": 0.9}]
+    await _mail(
+        db_session,
+        admin_user,
+        "Yes, Dr Hannah works. Same day please.",
+        message_id="<g4@example.com>",
+        references="<g1@example.com>",
+    )
+
+    assert staff_text in llm.booking_prompts[-1]  # the staff reply is the context
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+    assert "Hannah Fitzgerald" in sends[-1][1]
+    assert {s["start"][:10] for s in conversation.offered_slots} <= {
+        day.isoformat(),
+        (day - timedelta(days=1)).isoformat(),  # 8am Sydney is the day before in UTC
+    }
 
 
 async def test_the_patients_own_name_is_not_a_doctor_request(

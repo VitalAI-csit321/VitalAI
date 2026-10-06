@@ -253,6 +253,8 @@ class BookingExtraction(BaseModel):
     chosen_time: datetime | None = None
     doctor_name: str | None = None
     specialisation: str | None = None
+    # "Another GP?", "anyone except Dr Menon": not the doctor(s) just offered.
+    other_doctor: bool | None = None
     intent: Literal["confirm", "change", "cancel", "question", "unclear"] = "unclear"
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
 
@@ -265,6 +267,7 @@ class BookingExtraction(BaseModel):
         "chosen_time",
         "doctor_name",
         "specialisation",
+        "other_doctor",
         mode="before",
     )
     @classmethod
@@ -302,6 +305,8 @@ Respond with ONLY a JSON object, no other text, in this exact shape:
 "chosen_time": "<YYYY-MM-DDTHH:MM copied from the offered list, or null>", \
 "doctor_name": "<a doctor the patient asked for by name, or null>", \
 "specialisation": "<a specialty other than general practice, or null>", \
+"other_doctor": <true if the patient wants a different doctor from the one(s) the clinic \
+offered, else false>, \
 "intent": "<confirm (picks or accepts a time), change (wants another day or time), \
 cancel, question, or unclear>", "confidence": <0.0 to 1.0>}}
 
@@ -875,9 +880,15 @@ async def _decide(
 
     # On the first turn the classifier already called this a booking request,
     # and "Could I book next Wednesday?" reads as a question to the model.
-    # "What times do you have on the 24th?" is a question that books: with a
-    # day or time in it, it carries on below rather than going to staff.
-    asks_a_time = extraction.preferred_day is not None or extraction.chosen_time is not None
+    # "What times do you have on the 24th?" or "any other GP?" is a question
+    # that books: with a day, time or doctor in it, it carries on below
+    # rather than going to staff.
+    asks_a_time = bool(
+        extraction.preferred_day
+        or extraction.chosen_time
+        or extraction.doctor_name
+        or extraction.other_doctor
+    )
     if extraction.intent == "cancel" or (
         extraction.intent == "question" and not first_turn and not asks_a_time
     ):
@@ -931,6 +942,9 @@ async def _decide(
         f"{new_text}\n{earlier}" if earlier else new_text,
         today=today,
     )
+    if day is None and (extraction.doctor_name or extraction.other_doctor):
+        # "Another GP?" or "Dr Hannah works": the same day, another doctor.
+        day = conversation.preferred_day
     if trusted and day is not None:
         if not today <= day <= today + timedelta(days=BOOKING_WINDOW_DAYS):
             return _failure(conversation, "bad_day")
@@ -945,6 +959,11 @@ async def _decide(
             patient.id if patient else None,
             doctor_name=doctor_name,
             specialisation=extraction.specialisation,
+            exclude=(
+                {UUID(s["doctor_id"]) for s in conversation.offered_slots}
+                if extraction.other_doctor
+                else ()
+            ),
         )
         if pool is None:
             return _staff(conversation, "doctor_not_found")
@@ -980,6 +999,30 @@ async def _decide(
             else ConversationStage.AWAITING_DETAILS.value,
         )
     return _failure(conversation, "unclear")
+
+
+async def hand_back(db: AsyncSession, case_id: UUID, text: str) -> None:
+    """A person replied by hand to a conversation handed to staff: they have
+    answered what the agent could not, so the agent takes the patient's next
+    reply, with the person's words as the clinic's last message. Only for a
+    known patient: a sender nobody could identify stays with staff."""
+    conversation = (
+        await db.execute(select(EmailConversation).where(EmailConversation.case_id == case_id))
+    ).scalar_one_or_none()
+    if (
+        conversation is None
+        or conversation.stage != ConversationStage.STAFF
+        or conversation.patient_id is None
+    ):
+        return
+    conversation.stage = (
+        ConversationStage.AWAITING_CHOICE.value
+        if conversation.offered_slots
+        else ConversationStage.AWAITING_DETAILS.value
+    )
+    conversation.clarifications = 0
+    conversation.last_outbound_text = text
+    await db.commit()
 
 
 async def record_sent(
