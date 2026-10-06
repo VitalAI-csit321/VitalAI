@@ -19,8 +19,8 @@ from app.agents.state import CaseState, Context
 from app.config import settings
 from app.database import AsyncSessionLocal
 from app.models.approval import ApprovalRequest
-from app.models.email_conversation import ConversationStage, EmailConversation
-from app.models.human_review import HumanReviewTask
+from app.models.email_conversation import OPEN_STAGES, ConversationStage, EmailConversation
+from app.models.human_review import HumanReviewTask, TaskType
 from app.models.task import Task, TaskCategory, TaskSource
 from app.models.user import User
 from app.services import (
@@ -553,22 +553,25 @@ async def start(
 # What a re-run carries over from the message's first run: the routing it was
 # given at ingest and the reply gate's verdict, neither of which it repeats.
 _CARRIED = ("routing_outcome", "routing_override", "triage_confidence", "reply_verdict")
+# The Review Queue items whose answer is "carry on with the email".
+_CATEGORY_REVIEWS = frozenset({TaskType.INTENT_REVIEW, TaskType.ROUTING_REVIEW})
 
 
-async def rerun_after_link(review_id: UUID) -> None:
-    """Staff linked an unidentified email to a patient (Review Queue): answer
-    what it asked, now that the sender is known, without waiting for them to
-    write again.
+async def rerun_after_review(review_id: UUID) -> None:
+    """A person answered the Review Queue item that stopped an email (linked
+    the sender to a patient, or confirmed or changed its category): run the
+    agent on that email again, so the patient is answered without writing
+    again.
 
-    A fresh thread, not the finished one: that thread's state still holds the
-    verification it sent, and every later key would have to be reset by hand.
-    Nothing runs for a deleted message, one answered by hand, or a
-    conversation that has moved on since the verification request.
+    A fresh thread, not the finished one: that thread's state still holds
+    what the first run did, and every key would have to be reset by hand.
+    Nothing runs for a deleted message, one already answered by hand, or a
+    conversation that has moved on since.
     """
     async with AsyncSessionLocal() as db:
         item = await db.get(HumanReviewTask, review_id)
         task = await db.get(Task, item.inbox_task_id) if item and item.inbox_task_id else None
-        if task is None or task.source != TaskSource.EMAIL or task.deleted_at:
+        if item is None or task is None or task.source != TaskSource.EMAIL or task.deleted_at:
             return
         email = await task_service.email_for(db, task)
         if email is None:
@@ -578,20 +581,38 @@ async def rerun_after_link(review_id: UUID) -> None:
                 select(EmailConversation).where(EmailConversation.case_id == task.case_id)
             )
         ).scalar_one_or_none()
-        if conversation is not None and (
-            conversation.stage != ConversationStage.AWAITING_VERIFICATION
-        ):
-            return  # the patient already replied, or staff took it over
-        if task.draft_sent:
-            # The verification request asked who they are; it answered nothing.
-            # Anything else sent on this task (a hand-written reply) did.
-            if task.draft_text != email_conversation_service.verification_text():
+        overrides: dict[str, Any] = {}
+        if item.task_type == TaskType.IDENTITY_REVIEW:
+            if conversation is not None and (
+                conversation.stage != ConversationStage.AWAITING_VERIFICATION
+            ):
+                return  # the patient already replied, or staff took it over
+            if task.draft_sent:
+                # The verification request asked who they are; it answered
+                # nothing. Anything else sent on this task (a hand-written
+                # reply) did.
+                if task.draft_text != email_conversation_service.verification_text():
+                    return
+                task.draft_sent = False
+        elif item.task_type in _CATEGORY_REVIEWS:
+            if task.draft_sent or task.category in _HUMAN_ONLY:
                 return
-            task.draft_sent = False
-            await db.commit()
+            if conversation is not None and conversation.stage not in OPEN_STAGES:
+                return
+            # A person confirmed the category, so the hold is over. Flagged,
+            # not fully confident: a generated reply still goes to approval,
+            # and only the conversation's fixed templates go out on their own.
+            overrides = {
+                "routing_outcome": TaskRoutingOutcome.AUTO_ROUTED_FLAGGED.value,
+                "routing_override": None,
+            }
+            task.handover_context = None
+        else:
+            return
+        await db.commit()
         task_id, email_id = task.id, email.id
     first = thread_id("email", str(email_id))
-    tid = f"{first}:linked:{review_id}"
+    tid = f"{first}:review:{review_id}"
     try:
         async with open_checkpointer() as saver:
             graph = build_graph().compile(checkpointer=saver)
@@ -603,10 +624,11 @@ async def rerun_after_link(review_id: UUID) -> None:
             "thread": tid,
             "revision_count": 0,
             **{k: before[k] for k in _CARRIED if k in before},
+            **overrides,
         }
         await run(tid, cast(CaseState, graph_input))
     except Exception as exc:
-        logger.exception("Agent re-run after link failed for thread %s", tid)
+        logger.exception("Agent re-run after review failed for thread %s", tid)
         await _record_run_failure("run", exc, task_id=task_id)
 
 

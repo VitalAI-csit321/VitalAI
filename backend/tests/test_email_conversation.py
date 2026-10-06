@@ -1067,7 +1067,7 @@ async def test_a_staff_link_carries_on_with_the_original_booking_request(
 
     await human_review_service.link_patient(db_session, item.id, admin_user, patient.id)
     llm.booking = [{"preferred_day": day.isoformat(), "intent": "change", "confidence": 0.9}]
-    await agent_graph.rerun_after_link(item.id)
+    await agent_graph.rerun_after_review(item.id)
 
     # Without waiting for the patient: the times for the day they first asked for.
     assert len(sends) == 2
@@ -1229,6 +1229,82 @@ async def test_a_day_asked_as_a_question_mid_conversation_is_offered_times(
     conversation = await _conversation(db_session, email1.case_id)
     assert conversation.stage == ConversationStage.AWAITING_CHOICE
     assert len(sends) == 2
+
+
+async def _held(db, admin, llm, *, category="appointment_request"):
+    """Rachel's live email: a plain booking request the classifier was not sure
+    of, so it was held for a person and the agent never ran."""
+    llm.category, llm.confidence = category, 0.5
+    llm.identity = {"name": "Rachel Walker", "dob": None, "phone": None}
+    email, task = await _mail(
+        db,
+        admin,
+        "Hello, my name is Rachel Walker. Could I get a GP booking next week? Thank you.",
+        message_id="<w1@example.com>",
+        sender="rachel.walker@example.com",
+    )
+    (item,) = (
+        await db.scalars(select(HumanReviewTask).where(HumanReviewTask.inbox_task_id == task.id))
+    ).all()
+    assert item.task_type == TaskType.ROUTING_REVIEW
+    return email, task, item
+
+
+async def test_confirming_a_held_category_carries_on_with_the_email(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    from app.services import human_review_service
+
+    email, task, item = await _held(db_session, admin_user, llm)
+    assert sends == []
+
+    await human_review_service.claim_task(db_session, item.id, admin_user)
+    await human_review_service.complete_task(db_session, item.id, admin_user, "Category confirmed")
+    await agent_graph.rerun_after_review(item.id)
+
+    ((_, text),) = sends
+    assert text.startswith("Hi Rachel,")
+    assert "We have received your appointment request" in text
+    await db_session.refresh(task)
+    assert task.handover_context is None  # the hold note no longer applies
+    assert (await _conversation(db_session, email.case_id)).stage == (
+        ConversationStage.AWAITING_DETAILS
+    )
+
+
+async def test_rerouting_a_held_email_runs_it_as_the_new_category(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    from app.models.task import TaskCategory
+    from app.services import human_review_service
+
+    _, _, item = await _held(db_session, admin_user, llm, category="general_administrative")
+
+    await human_review_service.reroute(
+        db_session, item.id, admin_user, TaskCategory.APPOINTMENT_REQUEST
+    )
+    await agent_graph.rerun_after_review(item.id)
+
+    ((_, text),) = sends
+    assert "We have received your appointment request" in text
+
+
+async def test_rerouting_to_urgent_never_runs_the_agent(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    from app.models.task import TaskCategory
+    from app.services import human_review_service
+
+    _, task, item = await _held(db_session, admin_user, llm)
+
+    await human_review_service.reroute(
+        db_session, item.id, admin_user, TaskCategory.URGENT_EMERGENCY
+    )
+    await agent_graph.rerun_after_review(item.id)
+
+    assert sends == []
+    await db_session.refresh(task)
+    assert task.draft_text is None
 
 
 # --- linking and MRN -----------------------------------------------------------------
