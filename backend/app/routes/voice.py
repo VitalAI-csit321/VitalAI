@@ -22,14 +22,15 @@ _ROUTE_ROOT = "/api/v1/voice"
 _LANG = "en-AU"
 _VOICE = "Polly.Nicole"
 
+# "Vital A I" is spelled out so the voice says the letters.
 CLOSED = (
-    "Hi, thanks for calling Green Care Family Medical Clinic. "
+    "Hi, thanks for calling Vital A I Clinic. "
     "We're closed right now, but we're open 8am to 6pm, "
     "Monday to Friday, and we'd love to help then. "
     "If this is an emergency, please hang up and dial triple zero. Take care."
 )
 NOTICE = (
-    "Hi, thanks for calling Green Care Family Medical Clinic. "
+    "Hi, thanks for calling Vital A I Clinic. "
     "If this is an emergency, please hang up and dial triple zero. "
     "Just so you know, this call is recorded so our team can get back to you."
 )

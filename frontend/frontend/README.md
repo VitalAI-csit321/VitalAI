@@ -16,21 +16,22 @@ npm run dev               # http://localhost:5173
 
 ## Screens
 
-All 25 sponsor-approved designs are implemented across two shells:
+All routes are defined in `src/App.tsx`. The app is built for desktop screens.
 
-**Main app**: Login, Forgot password, Dashboard, Patients list, Patient
-onboarding, Patient detail, Case detail, Consent queue, Consent capture,
-Consent success, Records & information retrieval, Inbox, Compose, Review
-queue, Add case, Escalations, Audit log, Audit event detail, Users, and
-Settings.
+**Without signing in**: Login, Forgot password, Reset password, and the patient
+registration form a patient opens from an emailed link (`/register/<token>`).
 
-**Platform Operations**: a separate shell with its own login gate
-(`/platform-ops/login`), System Health, and Model & Risk Configuration.
-It shares the same auth session as the main app but renders its own sidebar
-and layout (`PlatformOpsLayout` in `src/pages/PlatformOps.tsx`).
+**Signed in**: Dashboard, Patients (list, onboarding, detail, edit), Case, Contact,
+Consent (queue, new, capture, view, success), Records & information retrieval,
+Inbox, Review queue, Add case, Escalations, Calendar and appointments (new,
+detail, edit), and Settings. Settings includes the clinic mailbox sign-in, a
+manual import, and an Operations section with the health of the database, object
+storage, LLM provider and mailbox.
 
-Audit and Users are gated to the `admin` role via `<ProtectedRoute roles={["admin"]}>`
-and are hidden from the sidebar for other roles.
+**Restricted**: Users is admin only (`<ProtectedRoute roles={["admin"]}>`). Audit
+log and Audit event detail need the `read_audit` permission
+(`<ProtectedRoute permission="read_audit">`). Escalations is not available to
+doctors. `components/Sidebar.tsx` hides whatever the signed-in user cannot open.
 
 ## Database-agnostic design (the adapter seam)
 
@@ -41,16 +42,25 @@ types, so changing the backend means changing adapter bodies, not components.
 ## Wired to real endpoints
 
 - Auth: login (`/auth/login`, OAuth2 form flow), current user (`/auth/me`),
-  user management (`/auth/users`, elevate/department/active/grants)
+  password change and reset, user management (`/auth/users`,
+  elevate/department/active/grants; inviting a user calls `/auth/register` with
+  the admin's token)
 - Dashboard: count tiles and Pending Reviews list, aggregated from `/intake`,
   `/audit`, and `/human-review`
-- Patients (`/patients`) and Cases/Intake (`/intake`)
+- Patients (`/patients`), Cases (`/cases`) and Intake (`/intake`)
+- Patient registration form (`/public/registration/{token}`), no sign-in
 - Consent (`/consent/*`)
 - Records: clinical documents (`/clinical-documents`) and RAG query (`/rag/query`)
-- Inbox actions: approve draft, escalate, archive (`/approvals`, `/tasks/*`)
-- Review queue (`/human-review/*`): claim, complete, reject, escalate, create
+- Inbox: approve or reject a draft, write a reply, escalate, archive
+  (`/inbox/*`, `/approvals`, `/tasks/*`)
+- Review queue (`/human-review/*`): claim, complete, reject, escalate, reroute,
+  reassign, link patient, create
 - Tasks / Escalations board (`/tasks/*`) with comments
+- Calendar (`/appointments/*`, `/doctors`)
+- Voicemail audio playback (`/calls/{id}/audio`)
 - Audit (`/audit/*`), including chain verification and CSV export
+- Settings (`/settings`), the clinic mailbox (`/integrations/outlook/*`) and
+  system health (`/health/detailed`)
 
 ## Structure
 
@@ -58,12 +68,14 @@ types, so changing the backend means changing adapter bodies, not components.
 src/
   lib/apiClient.ts   single HTTP transport (JWT, form-login, page envelope)
   lib/auth.tsx        session context
+  lib/roles.ts        role labels and permission checks
   api/types.ts        domain model: the stable contract
   api/*.ts             adapters: backend shapes -> domain types
-                        (auth, cases, consent, records, misc, tasks,
-                         reviewTasks, audit)
+                        (auth, cases, episodes, consent, records, tasks,
+                         reviewTasks, appointments, doctors, calls,
+                         registration, settings, integrations, platformOps,
+                         audit, misc)
   components/          Sidebar, Layout, ProtectedRoute, shared UI (ui.tsx)
-  pages/               one file per screen, plus PlatformOps.tsx which
-                        exports the whole Platform Operations shell
-                        (login, layout, System Health, Model Config)
+  pages/               one file per screen
+  pages/settings/      the sections of the Settings page
 ```

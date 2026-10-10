@@ -584,7 +584,8 @@ async def reroute(
 async def link_patient(
     db: AsyncSession, task_id: UUID, actor: User, patient_id: UUID | None
 ) -> HumanReviewTask:
-    """F2: links the case and closes the item. The agent is not re-run."""
+    """F2: links the case and closes the item. The route then re-runs the
+    agent on the linked email (agent_graph.rerun_after_review)."""
     task = await _open_item(db, task_id, actor, {TaskType.IDENTITY_REVIEW})
     if patient_id is None:
         await _audit(db, actor, task, "review.completed", note="None of these")

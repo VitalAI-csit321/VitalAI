@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-997729
 Patient: AUSTIN, Juan
 DOB: 09/01/1991
-Referring Doctor: Dr Marcus O'Connell, GreenCare Family Medical Clinic
+Referring Doctor: Dr Marcus O'Connell, VitalAI Clinic
 
 Exam: MRI - Shoulder
 Date of exam: 01/11/2024

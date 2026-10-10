@@ -10,6 +10,7 @@ is not a thing a model may decide.
 """
 
 import re
+from collections.abc import Collection
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -181,23 +182,28 @@ async def doctor_pool(
     *,
     doctor_name: str | None = None,
     specialisation: str | None = None,
+    exclude: Collection[UUID] = (),
 ) -> tuple[list[Doctor], list[Doctor]] | None:
     """(first choice, fallback). None when the patient asked for a doctor or
     specialisation nobody active matches: that is a question for staff, not a
     reason to offer someone else.
 
     Default: the patient's own doctor first, any doctor as the fallback; with
-    no assigned doctor, any doctor. Every active doctor counts as a GP here,
-    because nothing in the data says otherwise (User.department is empty for
-    the seeded doctors, so a specialisation request finds nobody).
+    no assigned doctor, any doctor. exclude drops doctors the patient turned
+    down, their own included; nobody left offers nothing. Every active doctor
+    is a GP. User.department holds a doctor's special interest (the seed fills
+    it from the clinic's roster), so a request for a kind of doctor gets the
+    doctors whose interest names it, and staff when none does.
     """
-    rows = (
+    found = (
         await db.execute(
             select(User.id, User.full_name, User.department)
             .where(User.role == UserRole.DOCTOR, User.is_active.is_(True))
             .order_by(User.full_name)
         )
     ).all()
+    # Doctors the patient asked not to see ("another GP, not Dr Menon").
+    rows = [r for r in found if r[0] not in exclude]
     if doctor_name:
         wanted = [
             t for t in re.findall(r"[a-z'-]+", doctor_name.casefold()) if t not in {"dr", "doctor"}
@@ -210,6 +216,8 @@ async def doctor_pool(
         return (picked, []) if picked else None
     everyone = [(i, n) for i, n, _ in rows]
     assigned = await doctor_for_patient(db, patient_id) if patient_id else None
+    if assigned and assigned[0] in exclude:
+        assigned = None
     return ([assigned], everyone) if assigned else (everyone, [])
 
 

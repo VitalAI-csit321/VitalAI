@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-120705
 Patient: LOPEZ, Kim
 DOB: 10/05/2000
-Referring Doctor: Dr Marcus O'Connell, GreenCare Family Medical Clinic
+Referring Doctor: Dr Marcus O'Connell, VitalAI Clinic
 
 Exam: MRI - Shoulder
 Date of exam: 27/08/2024

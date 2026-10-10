@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-408467
 Patient: PARSONS, Nicole
 DOB: 02/10/1992
-Referring Doctor: Dr Marcus O'Connell, GreenCare Family Medical Clinic
+Referring Doctor: Dr Marcus O'Connell, VitalAI Clinic
 
 Exam: Ultrasound - Ankle
 Date of exam: 25/02/2025

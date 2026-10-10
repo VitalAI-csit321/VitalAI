@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-944510
 Patient: GROSS, Christina
 DOB: 03/03/2007
-Referring Doctor: Dr Marcus O'Connell, GreenCare Family Medical Clinic
+Referring Doctor: Dr Marcus O'Connell, VitalAI Clinic
 
 Exam: MRI - Shoulder
 Date of exam: 27/05/2025

@@ -30,7 +30,7 @@ ONLINE_REGISTRATION = "online_registration"
 # step with CLAUSES and CHECKS in frontend ConsentCapturePage.tsx.
 CLINIC_CLAUSES = (
     (
-        "I hereby consent to receive medical treatment at GreenCare Family Medical Clinic, "
+        "I hereby consent to receive medical treatment at VitalAI Clinic, "
         "including examination, diagnostic procedures, and treatment deemed necessary by my "
         "healthcare provider."
     ),
@@ -39,7 +39,7 @@ CLINIC_CLAUSES = (
         "healthcare professionals will use their best judgment."
     ),
     (
-        "I authorize GreenCare Family Medical Clinic to disclose my medical information as "
+        "I authorize VitalAI Clinic to disclose my medical information as "
         "necessary for treatment, payment, and healthcare operations."
     ),
 )

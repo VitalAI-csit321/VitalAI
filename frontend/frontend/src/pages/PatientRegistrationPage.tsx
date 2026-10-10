@@ -181,8 +181,15 @@ export function PatientRegistrationPage() {
                 <Field label="Preferred doctor" optional>
                   <select className={input} value={form.preferred_doctor_id} onChange={(e) => update("preferred_doctor_id", e.target.value)}>
                     <option value="">No preference</option>
-                    {link.doctors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    {link.doctors.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.specialInterest ? `${d.name} (${d.specialInterest})` : d.name}
+                      </option>
+                    ))}
                   </select>
+                  <span className="mt-1.5 block text-xs text-slate-500">
+                    Every doctor sees patients for general care. The interest shown is what they see most often.
+                  </span>
                 </Field>
               )}
             </Section>

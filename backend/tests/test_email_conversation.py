@@ -27,6 +27,7 @@ from app.models.email_conversation import ConversationStage, EmailConversation
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.patient import Patient, PatientStatus
 from app.models.task import Task
+from app.models.user import User, UserRole
 from app.schemas.call import CallRouteRequest
 from app.schemas.email import EmailIngestRequest
 from app.services import (
@@ -693,6 +694,101 @@ async def test_once_staff_have_a_conversation_the_agent_sends_nothing_more(
     assert task.handover_context == email_conversation_service.STAFF_REASONS["closed"]
 
 
+async def _second_doctor(db) -> User:
+    doctor = User(
+        email="hannah.fitzgerald@example.com",
+        hashed_password="x",
+        full_name="Hannah Fitzgerald",
+        role=UserRole.DOCTOR,
+    )
+    db.add(doctor)
+    await db.commit()
+    return doctor
+
+
+async def _offered_by_own_gp(db, admin, doctor, llm):
+    await _registered_patient(db, admin, doctor)
+    llm.identity = {"name": "Jane Citizen", "dob": "1990-02-01", "phone": None}
+    day = _weekday_ahead()
+    llm.booking = [{"preferred_day": day.isoformat(), "intent": "change", "confidence": 0.9}]
+    email1, _ = await _mail(
+        db, admin, f"Jane Citizen. Any times on {day:%A}?", message_id="<g1@example.com>"
+    )
+    conversation = await _conversation(db, email1.case_id)
+    assert {s["doctor_id"] for s in conversation.offered_slots} == {str(doctor.id)}
+    return email1, day
+
+
+async def test_asking_for_another_gp_offers_the_other_doctors_that_day(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # Live run, Rachel Walker: "is it possible to book another GP?" got her own
+    # GP's six times again, and "any other GP except Dr Priya Menon?" (a
+    # question with no day) went to staff.
+    hannah = await _second_doctor(db_session)
+    email1, day = await _offered_by_own_gp(db_session, admin_user, doctor_user, llm)
+    llm.booking = [{"intent": "question", "other_doctor": True, "confidence": 0.9}]
+
+    await _mail(
+        db_session,
+        admin_user,
+        "Is there any other GP I can book except my usual one?",
+        message_id="<g2@example.com>",
+        references="<g1@example.com>",
+    )
+
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+    assert {s["doctor_id"] for s in conversation.offered_slots} == {str(hannah.id)}
+    assert conversation.preferred_day == day
+    assert "Hannah Fitzgerald" in sends[-1][1]
+
+
+async def test_a_hand_written_reply_hands_the_conversation_back_to_the_agent(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # Live run: staff answered by hand ("you can have Dr Hannah"), and the
+    # patient's "Yes, Dr Hannah works" was closed with nothing sent.
+    from app.services import inbox_service
+
+    await _second_doctor(db_session)
+    email1, day = await _offered_by_own_gp(db_session, admin_user, doctor_user, llm)
+    llm.booking = [{"intent": "question", "confidence": 0.9}]
+    _, task = await _mail(
+        db_session,
+        admin_user,
+        "Is Dr Hannah any good?",
+        message_id="<g3@example.com>",
+        references="<g1@example.com>",
+    )
+    assert (await _conversation(db_session, email1.case_id)).stage == ConversationStage.STAFF
+
+    staff_text = "Hello Jane, yes, you can see Dr Hannah Fitzgerald. Let us know."
+    await inbox_service.write_reply(db_session, admin_user, task, staff_text)
+
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+    assert conversation.last_outbound_text == staff_text
+
+    llm.booking = [{"doctor_name": "Hannah", "intent": "confirm", "confidence": 0.9}]
+    await _mail(
+        db_session,
+        admin_user,
+        "Yes, Dr Hannah works. Same day please.",
+        message_id="<g4@example.com>",
+        references="<g1@example.com>",
+    )
+
+    assert staff_text in llm.booking_prompts[-1]  # the staff reply is the context
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+    assert "Hannah Fitzgerald" in sends[-1][1]
+    assert {s["start"][:10] for s in conversation.offered_slots} <= {
+        day.isoformat(),
+        (day - timedelta(days=1)).isoformat(),  # 8am Sydney is the day before in UTC
+    }
+
+
 async def test_the_patients_own_name_is_not_a_doctor_request(
     db_session, agent_saver, admin_user, doctor_user, llm, sends
 ):
@@ -1017,6 +1113,294 @@ async def test_the_verification_email_goes_once_per_case_and_never_to_a_machine(
     )
 
     assert sends == []
+
+
+async def _registered(db, *, email="kartik@example.com") -> Patient:
+    patient = Patient(
+        mrn="MRN-KARTIK01",
+        name="Kartik Sangwan",
+        dob=date(2009, 3, 23),
+        email=email,
+        phone="0470 979 616",
+        status=PatientStatus.ACTIVE,
+    )
+    db.add(patient)
+    await db.commit()
+    return patient
+
+
+async def _identity_item(db, task) -> HumanReviewTask:
+    return (
+        await db.scalars(
+            select(HumanReviewTask).where(
+                HumanReviewTask.inbox_task_id == task.id,
+                HumanReviewTask.task_type == TaskType.IDENTITY_REVIEW,
+            )
+        )
+    ).one()
+
+
+async def test_a_staff_link_carries_on_with_the_original_booking_request(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # A registered patient writing from a new address: the name alone is a
+    # partial match, so they are asked to verify and staff see the item.
+    patient = await _registered(db_session)
+    day = _weekday_ahead()
+    llm.identity = {"name": "Kartik Sangwan", "dob": None, "phone": None}
+    email1, task1 = await _mail(
+        db_session,
+        admin_user,
+        f"Can I book an appointment on {day:%A}? Thanks, Kartik Sangwan",
+        message_id="<k1@example.com>",
+        sender="kartik.work@example.com",
+    )
+    ((_, verification),) = sends
+    assert "verify your profile" in verification
+    item = await _identity_item(db_session, task1)
+
+    from app.services import human_review_service
+
+    await human_review_service.link_patient(db_session, item.id, admin_user, patient.id)
+    llm.booking = [{"preferred_day": day.isoformat(), "intent": "change", "confidence": 0.9}]
+    await agent_graph.rerun_after_review(item.id)
+
+    # Without waiting for the patient: the times for the day they first asked for.
+    assert len(sends) == 2
+    offer = sends[1][1]
+    assert offer.startswith("Hi Kartik,")
+    assert "These times are available" in offer or "nearest available times" in offer
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.patient_id == patient.id
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+    assert conversation.offered_slots
+
+
+async def test_a_reply_after_a_staff_link_is_not_a_failed_verification(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    patient = await _registered(db_session)
+    llm.identity = {"name": "Kartik Sangwan", "dob": None, "phone": None}
+    email1, task1 = await _mail(
+        db_session,
+        admin_user,
+        "I need an appointment. Kartik Sangwan",
+        message_id="<k2@example.com>",
+        sender="kartik.work@example.com",
+    )
+    item = await _identity_item(db_session, task1)
+    from app.services import human_review_service
+
+    await human_review_service.link_patient(db_session, item.id, admin_user, patient.id)
+
+    # The patient answers before (or instead of) the re-run, with no details.
+    llm.booking = [{"intent": "unclear", "confidence": 0.3}]
+    _, task2 = await _mail(
+        db_session,
+        admin_user,
+        "I am a current patient.",
+        message_id="<k3@example.com>",
+        references="<k2@example.com>",
+        sender="kartik.work@example.com",
+    )
+
+    assert task2.handover_context != email_conversation_service.STAFF_REASONS["verification_failed"]
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.patient_id == patient.id
+    assert conversation.stage == ConversationStage.AWAITING_DETAILS
+    assert "the day you would prefer" in sends[-1][1]
+
+
+async def test_the_inbox_shows_each_reply_not_the_first_email(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    from app.services import inbox_service
+
+    await _registered(db_session, email=SENDER)
+    llm.identity = {"name": "Kartik Sangwan", "dob": None, "phone": None}
+    llm.booking = [{"intent": "unclear", "confidence": 0.3}]
+    email1, task1 = await _mail(
+        db_session,
+        admin_user,
+        "Can I get an appointment? Kartik Sangwan",
+        message_id="<i1@example.com>",
+    )
+    email2, task2 = await _mail(
+        db_session,
+        admin_user,
+        "Any time on Friday works.",
+        message_id="<i2@example.com>",
+        references="<i1@example.com>",
+    )
+    assert email2.case_id == email1.case_id
+
+    first = await inbox_service._to_message(db_session, task1, admin_user)
+    reply = await inbox_service._to_message(db_session, task2, admin_user)
+
+    assert first.emailId == str(email1.id)
+    assert reply.emailId == str(email2.id)
+    assert reply.body == "Any time on Friday works."
+
+
+async def test_a_verified_booking_offers_the_day_the_first_email_asked_for(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    """Amin's live run, 2026-10-06: the request for a day was in the first
+    email, the details in the reply, and the clinic asked for the day again.
+    The reply also came from Gmail's main address, not the +alias the first
+    email used, which opened a second case and a second verification."""
+    patient = await _registered(db_session, email="alex.hill@example.com")
+    day = _weekday_ahead(10)
+    llm.identity = {"name": "Kartik Sangwan", "dob": None, "phone": None}
+    email1, _ = await _mail(
+        db_session,
+        admin_user,
+        f"Could I get a booking on {day.day} {day:%B}? Can you let me know the slots? "
+        "Kartik Sangwan",
+        message_id="<h1@example.com>",
+        sender="amin+kartik@example.com",
+    )
+    ((_, verification),) = sends
+    assert "verify your profile" in verification
+
+    llm.booking = [
+        {
+            "name": "Kartik Sangwan",
+            "dob": "2009-03-23",
+            "phone": "0470979616",
+            "preferred_day": day.isoformat(),
+            "intent": "unclear",
+            "confidence": 0.9,
+        }
+    ]
+    email2, _ = await _mail(
+        db_session,
+        admin_user,
+        "Kartik Sangwan 23/03/2009 0470979616",
+        message_id="<h2@example.com>",
+        references="<h1@example.com>",
+        sender="amin@example.com",
+    )
+
+    assert email2.case_id == email1.case_id
+    assert f"{day.day} {day:%B}" in llm.booking_prompts[-1]  # the first email was read
+    assert len(sends) == 2
+    assert "These times are available" in sends[1][1] or "nearest available" in sends[1][1]
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.patient_id == patient.id
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+
+
+def test_a_reply_links_across_plus_aliases_of_one_mailbox_only():
+    who = email_conversation_service._mailbox
+    assert who("Amin+Alexander.Hill@Gmail.com") == who("amin@gmail.com")
+    assert who("amin@gmail.com") != who("amina@gmail.com")
+    assert who("amin+x@gmail.com") != who("amin@outlook.com")
+
+
+async def test_a_day_asked_as_a_question_mid_conversation_is_offered_times(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    # Live run: "Can you let me know the available slots on 24th of October?"
+    # read as intent "question" with the day, and went to staff.
+    email1, _ = await _first_turn(db_session, admin_user, llm, sends)
+    day = _weekday_ahead(5)
+    llm.booking = [
+        {
+            "dob": "1990-02-01",
+            "phone": "0412 345 678",
+            "preferred_day": day.isoformat(),
+            "intent": "question",
+            "confidence": 0.95,
+        }
+    ]
+    await _mail(
+        db_session,
+        admin_user,
+        f"DOB 1/2/1990, 0412 345 678. What times do you have on {day.day} {day:%B}?",
+        message_id="<t2@example.com>",
+        references="<t1@example.com>",
+    )
+
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+    assert len(sends) == 2
+
+
+async def _held(db, admin, llm, *, category="appointment_request"):
+    """Rachel's live email: a plain booking request the classifier was not sure
+    of, so it was held for a person and the agent never ran."""
+    llm.category, llm.confidence = category, 0.5
+    llm.identity = {"name": "Rachel Walker", "dob": None, "phone": None}
+    email, task = await _mail(
+        db,
+        admin,
+        "Hello, my name is Rachel Walker. Could I get a GP booking next week? Thank you.",
+        message_id="<w1@example.com>",
+        sender="rachel.walker@example.com",
+    )
+    (item,) = (
+        await db.scalars(select(HumanReviewTask).where(HumanReviewTask.inbox_task_id == task.id))
+    ).all()
+    assert item.task_type == TaskType.ROUTING_REVIEW
+    return email, task, item
+
+
+async def test_confirming_a_held_category_carries_on_with_the_email(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    from app.services import human_review_service
+
+    email, task, item = await _held(db_session, admin_user, llm)
+    assert sends == []
+
+    await human_review_service.claim_task(db_session, item.id, admin_user)
+    await human_review_service.complete_task(db_session, item.id, admin_user, "Category confirmed")
+    await agent_graph.rerun_after_review(item.id)
+
+    ((_, text),) = sends
+    assert text.startswith("Hi Rachel,")
+    assert "We have received your appointment request" in text
+    await db_session.refresh(task)
+    assert task.handover_context is None  # the hold note no longer applies
+    assert (await _conversation(db_session, email.case_id)).stage == (
+        ConversationStage.AWAITING_DETAILS
+    )
+
+
+async def test_rerouting_a_held_email_runs_it_as_the_new_category(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    from app.models.task import TaskCategory
+    from app.services import human_review_service
+
+    _, _, item = await _held(db_session, admin_user, llm, category="general_administrative")
+
+    await human_review_service.reroute(
+        db_session, item.id, admin_user, TaskCategory.APPOINTMENT_REQUEST
+    )
+    await agent_graph.rerun_after_review(item.id)
+
+    ((_, text),) = sends
+    assert "We have received your appointment request" in text
+
+
+async def test_rerouting_to_urgent_never_runs_the_agent(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    from app.models.task import TaskCategory
+    from app.services import human_review_service
+
+    _, task, item = await _held(db_session, admin_user, llm)
+
+    await human_review_service.reroute(
+        db_session, item.id, admin_user, TaskCategory.URGENT_EMERGENCY
+    )
+    await agent_graph.rerun_after_review(item.id)
+
+    assert sends == []
+    await db_session.refresh(task)
+    assert task.draft_text is None
 
 
 # --- linking and MRN -----------------------------------------------------------------

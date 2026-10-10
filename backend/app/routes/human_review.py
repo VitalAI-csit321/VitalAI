@@ -2,11 +2,12 @@ from collections.abc import Awaitable
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_any_permission
 from app.auth.permissions import VIEW_CLINICAL, VIEW_QUEUE
+from app.config import settings
 from app.database import get_db
 from app.models.human_review import HumanReviewTask, TaskStatus, TaskType
 from app.models.user import User
@@ -47,6 +48,21 @@ async def _run(action: Awaitable[HumanReviewTask]) -> HumanReviewTask:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)
         ) from exc
+
+
+# The items whose answer lets the agent carry on with the email it stopped.
+_RERUN_AFTER = frozenset(
+    {TaskType.IDENTITY_REVIEW, TaskType.INTENT_REVIEW, TaskType.ROUTING_REVIEW}
+)
+
+
+def _rerun(background_tasks: BackgroundTasks, item: HumanReviewTask) -> HumanReviewTask:
+    if settings.agentic_pipeline_enabled and item.task_type in _RERUN_AFTER:
+        # Imported here so the flag-off app never loads langgraph.
+        from app.agents import graph as agent_graph
+
+        background_tasks.add_task(agent_graph.rerun_after_review, item.id)
+    return item
 
 
 @router.get("", response_model=HumanReviewTaskListResponse)
@@ -126,10 +142,12 @@ async def claim_task_endpoint(
 async def complete_task_endpoint(
     task_id: UUID,
     payload: HumanReviewCompleteBody,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
 ):
-    return await _run(human_review_service.complete_task(db, task_id, actor, notes=payload.notes))
+    item = await _run(human_review_service.complete_task(db, task_id, actor, notes=payload.notes))
+    return _rerun(background_tasks, item)
 
 
 @router.post("/{task_id}/reject", response_model=HumanReviewTaskOut)
@@ -156,20 +174,25 @@ async def escalate_task_endpoint(
 async def reroute_endpoint(
     task_id: UUID,
     payload: HumanReviewRerouteBody,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
 ):
-    return await _run(human_review_service.reroute(db, task_id, actor, payload.category))
+    item = await _run(human_review_service.reroute(db, task_id, actor, payload.category))
+    return _rerun(background_tasks, item)
 
 
 @router.post("/{task_id}/link-patient", response_model=HumanReviewTaskOut)
 async def link_patient_endpoint(
     task_id: UUID,
     payload: HumanReviewLinkPatientBody,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
 ):
-    return await _run(human_review_service.link_patient(db, task_id, actor, payload.patient_id))
+    item = await _run(human_review_service.link_patient(db, task_id, actor, payload.patient_id))
+    # "None of these" leaves the sender unknown: nothing to carry on with.
+    return _rerun(background_tasks, item) if payload.patient_id is not None else item
 
 
 @router.post("/{task_id}/reassign", response_model=HumanReviewTaskOut)

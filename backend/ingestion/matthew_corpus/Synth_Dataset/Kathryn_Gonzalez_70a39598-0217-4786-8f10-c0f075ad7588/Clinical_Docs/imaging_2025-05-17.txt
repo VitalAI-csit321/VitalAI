@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-663718
 Patient: GONZALEZ, Kathryn
 DOB: 17/05/2006
-Referring Doctor: Dr Aisha Rahman, GreenCare Family Medical Clinic
+Referring Doctor: Dr Aisha Rahman, VitalAI Clinic
 
 Exam: Ultrasound - Obstetric Morphology Scan
 Date of exam: 17/05/2025
