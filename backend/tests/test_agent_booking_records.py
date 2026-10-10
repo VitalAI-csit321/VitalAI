@@ -172,10 +172,15 @@ async def test_matched_patient_gets_three_clinic_local_proposals_and_one_approva
     slots = [datetime.fromisoformat(s).astimezone(SYDNEY) for s in values["proposed_slots"]]
     assert [(s.hour, s.minute) for s in slots] == [(8, 0), (8, 30), (9, 0)]
     assert len({s.date() for s in slots}) == 1
-    first_day = slots[0].date()
-    assert first_day > datetime.now(SYDNEY).date()
-    assert first_day.weekday() < 5
-    assert first_day - datetime.now(SYDNEY).date() <= timedelta(days=3)
+    # Nothing is booked yet, so the offer starts on the next clinic day. A
+    # day count would break across a long weekend (Friday to Tuesday is 4).
+    today = datetime.now(SYDNEY).date()
+    next_clinic_day = next(
+        day
+        for day in (today + timedelta(days=n) for n in range(1, 15))
+        if appointment_service.is_clinic_day(day)
+    )
+    assert slots[0].date() == next_clinic_day
 
     assert values["risk_tier"] == "high"
     draft = approval.payload["draft"]

@@ -29,14 +29,23 @@ def get_llm() -> BaseLanguageModel:
         )
 
     if provider == "bedrock":
-        from langchain_aws import ChatBedrock
+        from langchain_aws import ChatBedrockConverse
+        from langchain_core.output_parsers import StrOutputParser
 
+        # Converse is Bedrock's model-agnostic chat API, the same for every model.
+        # The parser makes ainvoke() return text, as Ollama's does: the model can
+        # answer with a list of content blocks, and every caller puts the result
+        # into text such as a patient email.
         return cast(
             BaseLanguageModel,
-            ChatBedrock(
+            ChatBedrockConverse(
                 model=settings.bedrock_model_id,
-                region=settings.aws_region,
-            ),
+                region_name=settings.aws_region,
+                temperature=settings.llm_temperature,
+                max_tokens=settings.llm_max_tokens,
+                timeout=settings.llm_timeout_seconds,
+            )
+            | StrOutputParser(),
         )
 
     raise ValueError(f"Unknown LLM_PROVIDER '{settings.llm_provider}'. Use 'ollama' or 'bedrock'.")
