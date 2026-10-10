@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from app.config import settings
-from app.services import settings_service
+from app.services import appointment_service, settings_service
 
 pytestmark = pytest.mark.asyncio
 
@@ -182,10 +182,12 @@ async def test_the_day_view_covers_the_clinic_local_day(
 
 
 async def test_confirmed_today_counts_the_clinic_local_today(
-    client, admin_headers, seeded_doctor, seeded_case
+    client, admin_headers, seeded_doctor, seeded_case, monkeypatch
 ):
     """An appointment at 09:00 clinic local is always on the previous UTC date
     in Sydney, so a bare .date() on time_slot never counts it."""
+    # Today can be a weekend or a public holiday, when nothing can be booked.
+    monkeypatch.setattr(appointment_service, "is_clinic_day", lambda day: True)
     today = datetime.now(SYDNEY).date()
     nine_am = datetime.combine(today, datetime.min.time(), tzinfo=SYDNEY).replace(hour=9)
     await _book(
