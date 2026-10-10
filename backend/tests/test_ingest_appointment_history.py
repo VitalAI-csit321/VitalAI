@@ -91,12 +91,20 @@ def test_the_roster_is_read_from_the_table_patients_are_quoted_from():
 async def test_every_roster_doctor_gets_an_account_with_their_special_interest(db_session):
     """Two roster doctors have no corpus visits, so only this creates them. An
     interest an admin has set since is not overwritten by a later seed."""
+    roster = clinic_roster()
+
+    async def accounts() -> list[User]:
+        # Only the roster's own names: the database may hold other users.
+        found = await db_session.scalars(select(User).where(User.full_name.in_(roster)))
+        return list(found.all())
+
     await apply_roster(db_session)
-    doctors = (await db_session.scalars(select(User).where(User.role == UserRole.DOCTOR))).all()
-    assert {d.full_name: d.department for d in doctors} == clinic_roster()
+    doctors = await accounts()
+    assert {d.full_name: d.department for d in doctors} == roster
+    assert {d.role for d in doctors} == {UserRole.DOCTOR}
 
     edited = next(d for d in doctors if d.full_name == "Dr Rohan Iyer")
     edited.department = "Travel medicine"
     await apply_roster(db_session)
     assert edited.department == "Travel medicine"
-    assert await db_session.scalar(select(func.count()).select_from(User)) == 8
+    assert len(await accounts()) == 8
