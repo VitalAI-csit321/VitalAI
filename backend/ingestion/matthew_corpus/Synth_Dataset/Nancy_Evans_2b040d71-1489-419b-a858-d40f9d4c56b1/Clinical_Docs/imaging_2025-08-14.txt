@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-581294
 Patient: EVANS, Nancy
 DOB: 23/05/2008
-Referring Doctor: Dr Aisha Rahman, GreenCare Family Medical Clinic
+Referring Doctor: Dr Aisha Rahman, VitalAI Clinic
 
 Exam: Ultrasound - Obstetric Morphology Scan
 Date of exam: 14/08/2025

@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-234443
 Patient: COLE, Angela
 DOB: 18/11/1991
-Referring Doctor: Dr Aisha Rahman, GreenCare Family Medical Clinic
+Referring Doctor: Dr Aisha Rahman, VitalAI Clinic
 
 Exam: Ultrasound - Obstetric Morphology Scan
 Date of exam: 27/10/2025

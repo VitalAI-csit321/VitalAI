@@ -55,7 +55,7 @@ def test_a_placeholder_inside_a_sentence_is_rejected(draft):
 
 def test_a_sign_off_placeholder_on_its_own_line_passes():
     """Dropped at automatic send, filled by the human on the approval path."""
-    draft = "Hi,\n\nWe open at nine.\n\nSincerely,\n[Your Name]\nGreenCare"
+    draft = "Hi,\n\nWe open at nine.\n\nSincerely,\n[Your Name]\nVitalAI Clinic"
     assert critique(draft) is None
 
 

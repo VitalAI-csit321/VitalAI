@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-462351
 Patient: SIMS, Joseph
 DOB: 09/01/2002
-Referring Doctor: Dr Marcus O'Connell, GreenCare Family Medical Clinic
+Referring Doctor: Dr Marcus O'Connell, VitalAI Clinic
 
 Exam: X-Ray - Knee
 Date of exam: 26/06/2026

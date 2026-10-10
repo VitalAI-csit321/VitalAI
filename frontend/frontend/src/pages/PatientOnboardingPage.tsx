@@ -198,7 +198,7 @@ export function PatientOnboardingPage() {
             <h2 className="text-lg font-semibold text-slate-900 mb-5">Contact details</h2>
             <div className="grid grid-cols-2 gap-5">
               <Field label="Phone"><input className={inputClass} placeholder="+61 4XX XXX XXX" value={form.phone} onChange={e => update("phone", e.target.value)} /></Field>
-              <Field label="Email"><input className={inputClass} placeholder="patient@email.com" value={form.email} onChange={e => update("email", e.target.value)} /></Field>
+              <Field label="Email"><input className={inputClass} placeholder="patient@example.com" value={form.email} onChange={e => update("email", e.target.value)} /></Field>
               <Field label="Emergency contact name"><input className={inputClass} value={form.emergencyContactName} onChange={e => update("emergencyContactName", e.target.value)} /></Field>
               <Field label="Emergency contact phone"><input className={inputClass} value={form.emergencyContactPhone} onChange={e => update("emergencyContactPhone", e.target.value)} /></Field>
               <Field label="Preferred communication">

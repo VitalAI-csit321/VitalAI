@@ -735,7 +735,7 @@ RADIOLOGY REPORT
 Accession No: {accession}
 Patient: {lastname_first}
 DOB: {ddmmyyyy(patient.dob)}
-Referring Doctor: {gp_doctor['name']}, GreenCare Family Medical Clinic
+Referring Doctor: {gp_doctor['name']}, VitalAI Clinic
 
 Exam: {modality} - {body_part}
 Date of exam: {date.strftime('%d/%m/%Y')}
@@ -770,7 +770,7 @@ Findings: {findings}
 
 Management: {management}
 
-Discharge plan: Follow up with regular GP within one week. Copy forwarded to GreenCare Family Medical Clinic.
+Discharge plan: Follow up with regular GP within one week. Copy forwarded to VitalAI Clinic.
 """
 
     # ----------------------------

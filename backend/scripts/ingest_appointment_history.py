@@ -30,7 +30,7 @@ from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.auth.security import hash_password
 from app.models.appointment import Appointment, AppointmentStatus, AppointmentType
@@ -85,6 +85,29 @@ def parse_history(text: str) -> list[ParsedVisit]:
 def _reference_code(patient_id: uuid.UUID, visit: ParsedVisit) -> str:
     seed = f"{patient_id}{visit.visit_date}{visit.doctor_name}"
     return f"APT-{hashlib.sha256(seed.encode()).hexdigest()[:6].upper()}"
+
+
+# On the clinic's roster ("Organization Profile Review/01_Clinic_Identity.md")
+# but with no visits in the corpus, so nothing above would create them and a
+# patient asking for one by name would be told the clinic has no such doctor.
+ROSTER_ONLY_DOCTORS = ("Dr Elena Kowalski", "Dr Rohan Iyer")
+
+
+async def doctor_user_id(session: AsyncSession, name: str) -> uuid.UUID:
+    """The doctor account for this name, created on first sight."""
+    email = re.sub(r"[^a-z0-9]+", ".", name.lower()).strip(".") + "@corpus.vitalai.example"
+    found = (await session.execute(select(User.id).where(User.email == email))).scalar_one_or_none()
+    if found is not None:
+        return found
+    doctor = User(
+        email=email,
+        hashed_password=hash_password(uuid.uuid4().hex),
+        full_name=name,
+        role=UserRole.DOCTOR,
+    )
+    session.add(doctor)
+    await session.flush()
+    return doctor.id
 
 
 async def ingest() -> None:
@@ -144,24 +167,9 @@ async def ingest() -> None:
                     continue
 
                 if visit.doctor_name not in doctor_cache:
-                    email = (
-                        re.sub(r"[^a-z0-9]+", ".", visit.doctor_name.lower()).strip(".")
-                        + "@corpus.vitalai.example"
+                    doctor_cache[visit.doctor_name] = await doctor_user_id(
+                        session, visit.doctor_name
                     )
-                    resolved_doctor_id = (
-                        await session.execute(select(User.id).where(User.email == email))
-                    ).scalar_one_or_none()
-                    if resolved_doctor_id is None:
-                        doctor = User(
-                            email=email,
-                            hashed_password=hash_password(uuid.uuid4().hex),
-                            full_name=visit.doctor_name,
-                            role=UserRole.DOCTOR,
-                        )
-                        session.add(doctor)
-                        await session.flush()
-                        resolved_doctor_id = doctor.id
-                    doctor_cache[visit.doctor_name] = resolved_doctor_id
                 doctor_id = doctor_cache[visit.doctor_name]
 
                 # Incremented for every visit seen for this (doctor, day),
@@ -196,6 +204,9 @@ async def ingest() -> None:
                     )
                 )
                 created += 1
+
+        for name in ROSTER_ONLY_DOCTORS:
+            await doctor_user_id(session, name)
 
         await session.commit()
         print(f"inserted {created} historical appointments, skipped {skipped} future-dated")

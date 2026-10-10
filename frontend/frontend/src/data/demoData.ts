@@ -7,7 +7,7 @@ import type {
 } from "../api/types";
 
 export const demoUser: CurrentUser = {
-  id: "demo-user-1", email: "s.kapoor@royalmelb.health", fullName: "S. Kapoor",
+  id: "demo-user-1", email: "s.kapoor@example.com", fullName: "S. Kapoor",
   role: "admin", department: "Administration", isActive: true, grantedPermissions: [],
 };
 
@@ -81,7 +81,7 @@ export function demoAppointmentDetail(id: string): AppointmentDetail {
     patient: { id: "patient-1", mrn: a.patientMrn, name: a.patientName ?? "Unknown", dob: "1979-03-04", gender: "female" },
     consent: { status: "captured", capturedAt: a.createdAt },
     history: [
-      { action: "appointment.booked", label: "Appointment booked", actorLabel: "s.kapoor@royalmelb.health", timestamp: a.createdAt, details: {} },
+      { action: "appointment.booked", label: "Appointment booked", actorLabel: "s.kapoor@example.com", timestamp: a.createdAt, details: {} },
       { action: "consent.captured", label: "Consent completed", actorLabel: "front desk", timestamp: a.createdAt, details: {} },
     ],
   };

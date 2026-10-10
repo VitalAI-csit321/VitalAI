@@ -1,6 +1,15 @@
 from datetime import date
 
-from scripts.ingest_appointment_history import ParsedVisit, parse_history
+import pytest
+from sqlalchemy import func, select
+
+from app.models.user import User, UserRole
+from scripts.ingest_appointment_history import (
+    ROSTER_ONLY_DOCTORS,
+    ParsedVisit,
+    doctor_user_id,
+    parse_history,
+)
 
 _SAMPLE = """Appointment History
 
@@ -42,3 +51,20 @@ def test_handles_apostrophes_and_hyphens_in_doctor_names():
     visits = parse_history("09/12/2024 - Follow-Up Visit - Dr Mary-Jane O'Neill")
     assert visits[0].doctor_name == "Dr Mary-Jane O'Neill"
     assert visits[0].visit_type == "Follow-Up Visit"
+
+
+@pytest.mark.asyncio
+async def test_a_roster_doctor_gets_one_account_however_often_the_seed_runs(db_session):
+    """The roster-only doctors have no corpus visits to create them, and a
+    second seed run must find the account, not add a twin."""
+    name = ROSTER_ONLY_DOCTORS[0]
+    first = await doctor_user_id(db_session, name)
+    second = await doctor_user_id(db_session, name)
+
+    assert first == second
+    doctor = await db_session.get(User, first)
+    assert (doctor.full_name, doctor.role) == (name, UserRole.DOCTOR)
+    count = await db_session.scalar(
+        select(func.count()).select_from(User).where(User.full_name == name)
+    )
+    assert count == 1

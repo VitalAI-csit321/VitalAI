@@ -1,6 +1,6 @@
-# GreenCare Organisation Profile: Ingestion Manifest
+# VitalAI Clinic Organisation Profile: Ingestion Manifest
 
-This corpus is the demo grounding data for VitalAI. It describes a fictional clinic, GreenCare Family Medical Clinic, and the administrative rules the system operates under. Every document here is either patient-facing knowledge (safe to surface in responses) or internal policy (grounds behaviour, never echoed to patients).
+This corpus is the demo grounding data for VitalAI. It describes a fictional clinic, VitalAI Clinic, and the administrative rules the system operates under. Every document here is either patient-facing knowledge (safe to surface in responses) or internal policy (grounds behaviour, never echoed to patients).
 
 ## Canonical vocabulary (do not diverge)
 
@@ -68,10 +68,11 @@ Retrieval rule: `general` chunks are patient-facing and quotable. `sensitive` ch
 
 If any of these change, update every file. They are referenced in more than one place.
 
-- Clinic: GreenCare Family Medical Clinic, ABN 83 456 729 114
-- Address: Suite 4, Level 2, 215 Liverpool Street, Sydney NSW 2000
-- Phone: (02) 9123 4567, Email: reception@greencareclinic.com.au
-- Doctors (6): Dr Aisha Rahman (doctor01, women's health), Dr David Nguyen (doctor02, chronic disease), Dr Priya Menon (doctor03, mental health/skin checks), Dr Marcus O'Connell (doctor04, men's health/sports medicine), Dr Hannah Fitzgerald (doctor05, paediatrics), Dr Samuel Osei (doctor06, aged care, waitlist only)
+- Clinic: VitalAI Clinic, ABN 83 456 729 114
+- Address: University of Wollongong, Wollongong Campus, Northfields Avenue, Wollongong NSW 2522
+- Phone: (02) 4602 1313 (the clinic's Twilio number, +61246021313; it only answers while `TWILIO_ENABLED=true` and its webhooks point at the running deployment), Email: vitalai.clinic@outlook.com
+- Hours: Monday to Friday, 8:00 AM to 6:00 PM. Closed weekends and NSW public holidays. These match `clinic_open_hour`, `clinic_close_hour` and `clinic_holiday_region` in `backend/app/config.py`, which is what the booking code enforces.
+- Doctors (8): Dr Aisha Rahman (doctor01, women's health), Dr David Nguyen (doctor02, chronic disease), Dr Priya Menon (doctor03, mental health/skin checks), Dr Marcus O'Connell (doctor04, men's health/sports medicine), Dr Hannah Fitzgerald (doctor05, paediatrics), Dr Samuel Osei (doctor06, aged care, waitlist only), Dr Elena Kowalski (doctor07, student and sexual health), Dr Rohan Iyer (doctor08, travel medicine). The last two have no visits in the synthetic corpus; `backend/scripts/ingest_appointment_history.py` creates their accounts (`ROSTER_ONLY_DOCTORS`), so a new doctor here needs adding there too.
 - The clinic is in-person only. No telehealth is offered or should be referenced.
 - Front desk: Sarah Khan (frontdesk01), James Li (frontdesk02)
 - Operators: Emily Carter (operator01), Daniel Singh (operator02)
@@ -94,6 +95,16 @@ Clinic Identity and Policies & FAQ describe appointment types/lengths, doctor we
 6. Rewrote the routing table in Contact Routing Rules against the real 10-value `TaskCategory` enum and the real category-to-role mapping in `app/services/task_routing_rules.py` (a direct one-role lookup, not the two-step "OPERATOR then DOCTOR" or the billing dispute/query split the earlier draft invented).
 7. Resolved the structural blocker that made this corpus unable to reach RAG at all: `chunks.patient_id` is now nullable, `NULL` = org-wide. See "How org-wide content reaches RAG" above.
 8. Re-derived the `doc_type` → `access_scope` mapping against the real reachability of `retrieve()`'s two current callers, splitting clinical-patient-data scope (`restricted`) from internal-operations scope (`sensitive`) rather than reusing one tier for both.
+
+## Revision 4 (2026-10-11): renamed, moved, and matched to the running system
+
+9. Clinic renamed from GreenCare Family Medical Clinic to VitalAI Clinic, here and in the consent clauses, the phone greeting and the synthetic patient corpus.
+10. Clinic moved to the University of Wollongong's Wollongong campus. Transport and parking text rewritten for that location.
+11. Opening hours changed to Monday to Friday, 8:00 AM to 6:00 PM, the hours the booking code enforces. The Saturday and late Thursday hours, and the per-doctor weekly timetable, were removed because the system does not hold them and would have contradicted the times it offers.
+12. Booking text now describes booking by email from offered times. The online booking website and SMS confirmations were removed; neither exists.
+13. Two doctors added (doctor07, doctor08).
+14. Added to the patient-facing documents: who can attend, international students and OSHC, test results, medical certificates, walk-ins, what to bring, travel vaccinations, sexual health, emailing a doctor, and the after-hours advice line.
+15. Phone number changed to the clinic's Twilio voicemail line, so the number quoted to patients is one the system answers.
 
 ## Open items (unchanged, still open)
 

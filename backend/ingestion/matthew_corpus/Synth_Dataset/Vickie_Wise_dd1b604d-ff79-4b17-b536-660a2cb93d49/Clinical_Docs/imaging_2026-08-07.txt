@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-764259
 Patient: WISE, Vickie
 DOB: 23/03/2009
-Referring Doctor: Dr Marcus O'Connell, GreenCare Family Medical Clinic
+Referring Doctor: Dr Marcus O'Connell, VitalAI Clinic
 
 Exam: Ultrasound - Ankle
 Date of exam: 07/08/2026
