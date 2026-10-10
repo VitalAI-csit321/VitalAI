@@ -190,10 +190,10 @@ async def doctor_pool(
 
     Default: the patient's own doctor first, any doctor as the fallback; with
     no assigned doctor, any doctor. exclude drops doctors the patient turned
-    down, their own included; nobody left offers nothing. Every
-    active doctor counts as a GP here, because nothing in the data says
-    otherwise (User.department is empty for the seeded doctors, so a
-    specialisation request finds nobody).
+    down, their own included; nobody left offers nothing. Every active doctor
+    is a GP. User.department holds a doctor's special interest (the seed fills
+    it from the clinic's roster), so a request for a kind of doctor gets the
+    doctors whose interest names it, and staff when none does.
     """
     found = (
         await db.execute(

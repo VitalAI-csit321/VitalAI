@@ -25,10 +25,12 @@ _PHONE = re.compile(r"[0-9 +()\-]+")
 
 
 class RegistrationDoctor(BaseModel):
-    """A doctor the patient may prefer. Name and id only: the form is public."""
+    """A doctor the patient may prefer. The form is public, so only what the
+    clinic already tells patients: the name and the special interest."""
 
     id: UUID
     name: str
+    special_interest: str | None = None
 
 
 class RegistrationLinkOut(BaseModel):

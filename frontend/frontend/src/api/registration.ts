@@ -10,8 +10,9 @@ export interface RegistrationLink {
   // The clinic's own consent: optional here, finished at the clinic.
   clauses: string[];
   clinicChecks: string[];
-  // Active doctors the patient may prefer (name and id only).
-  doctors: { id: string; name: string }[];
+  // Active doctors the patient may prefer, with the special interest the
+  // clinic publishes for each, so the patient can tell them apart.
+  doctors: { id: string; name: string; specialInterest: string | null }[];
 }
 
 export interface RegistrationForm {
@@ -38,7 +39,7 @@ export async function getRegistrationLink(token: string): Promise<RegistrationLi
     statements: string[];
     clauses: string[];
     clinic_checks: string[];
-    doctors: { id: string; name: string }[];
+    doctors: { id: string; name: string; special_interest?: string | null }[];
   }>(path(token));
   return {
     email: raw.email,
@@ -46,7 +47,9 @@ export async function getRegistrationLink(token: string): Promise<RegistrationLi
     statements: raw.statements,
     clauses: raw.clauses,
     clinicChecks: raw.clinic_checks,
-    doctors: raw.doctors ?? [],
+    doctors: (raw.doctors ?? []).map((d) => ({
+      id: d.id, name: d.name, specialInterest: d.special_interest ?? null,
+    })),
   };
 }
 
