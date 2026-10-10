@@ -872,15 +872,21 @@ async def _gone_doctor(db):
     return gone
 
 
-async def test_the_form_lists_only_active_doctors_by_name(
+async def test_the_form_lists_only_active_doctors_with_their_special_interest(
     client, db_session, admin_user, doctor_user, llm, sends
 ):
     _, _, token = await _link_sent(db_session, admin_user, llm, sends)
     await _gone_doctor(db_session)
 
     doctors = (await client.get(f"{URL}/{token}")).json()["doctors"]
+    assert doctors == [
+        {"id": str(doctor_user.id), "name": doctor_user.full_name, "special_interest": None}
+    ]
 
-    assert doctors == [{"id": str(doctor_user.id), "name": doctor_user.full_name}]
+    doctor_user.department = "Travel medicine and minor procedures"
+    await db_session.commit()
+    doctors = (await client.get(f"{URL}/{token}")).json()["doctors"]
+    assert doctors[0]["special_interest"] == "Travel medicine and minor procedures"
 
 
 async def test_a_preferred_doctor_on_the_form_waits_for_registration(

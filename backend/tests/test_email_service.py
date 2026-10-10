@@ -703,8 +703,8 @@ def test_auto_send_eligible_needs_every_one_of_its_six_conditions(
     ("draft", "expected"),
     [
         (
-            "Hi,\n\nWe open at nine.\n\nSincerely,\n[Your Name]\nGreenCare",
-            "Hi,\n\nWe open at nine.\n\nSincerely,\nGreenCare",
+            "Hi,\n\nWe open at nine.\n\nSincerely,\n[Your Name]\nVitalAI Clinic",
+            "Hi,\n\nWe open at nine.\n\nSincerely,\nVitalAI Clinic",
         ),
         # Only whole lines. An inline placeholder would leave a hole in the
         # sentence, and that draft belongs in front of a human.

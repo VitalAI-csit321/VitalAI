@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-663123
 Patient: PARSONS, Nicole
 DOB: 02/10/1992
-Referring Doctor: Dr Marcus O'Connell, GreenCare Family Medical Clinic
+Referring Doctor: Dr Marcus O'Connell, VitalAI Clinic
 
 Exam: MRI - Shoulder
 Date of exam: 02/06/2025

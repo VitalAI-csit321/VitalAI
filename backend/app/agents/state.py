@@ -29,6 +29,9 @@ class CaseState(TypedDict, total=False):
     task_id: str
     channel: str
     source_id: str
+    # Set only when the run is not the message's own first thread (a re-run
+    # after a staff link): the thread an approval must resume.
+    thread: str | None
     sender_identifier: str | None
     # Voicemail only: process() already wrote the urgent script, so the graph
     # stops after consent.

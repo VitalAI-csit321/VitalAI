@@ -112,6 +112,27 @@ async def test_family_one_members_full_details_matches_that_member_only(db_sessi
     assert result.patient.id == jane.id
 
 
+async def test_name_from_the_patients_own_address_matches_without_a_dob(db_session):
+    """Most patients never put a DOB in a booking email. Their own name from
+    the address on their record, when nobody else uses that address, is them."""
+    kartik = await _patient(db_session, "Kartik Sangwan", dob=JANE_DOB, email="kartik@example.com")
+
+    result = await _resolve(db_session, "Kartik@Example.com", name="kartik  sangwan")
+
+    assert result.outcome == IdentityOutcome.MATCHED
+    assert result.patient.id == kartik.id
+
+
+async def test_own_address_and_name_with_a_different_dob_is_not_a_match(db_session):
+    await _patient(db_session, "Kartik Sangwan", dob=JANE_DOB, email="kartik@example.com")
+
+    result = await _resolve(
+        db_session, "kartik@example.com", name="Kartik Sangwan", dob=date(1990, 1, 1)
+    )
+
+    assert result.outcome == IdentityOutcome.AMBIGUOUS
+
+
 async def test_name_and_dob_without_email_or_phone_is_not_a_match(db_session):
     await _patient(db_session, "Jane Smith", dob=JANE_DOB, email="jane@example.com")
 

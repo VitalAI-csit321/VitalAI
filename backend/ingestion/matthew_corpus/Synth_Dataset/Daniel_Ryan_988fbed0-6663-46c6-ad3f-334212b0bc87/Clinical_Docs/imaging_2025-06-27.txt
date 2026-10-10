@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-225710
 Patient: RYAN, Daniel
 DOB: 22/12/1987
-Referring Doctor: Dr Marcus O'Connell, GreenCare Family Medical Clinic
+Referring Doctor: Dr Marcus O'Connell, VitalAI Clinic
 
 Exam: X-Ray - Knee
 Date of exam: 27/06/2025

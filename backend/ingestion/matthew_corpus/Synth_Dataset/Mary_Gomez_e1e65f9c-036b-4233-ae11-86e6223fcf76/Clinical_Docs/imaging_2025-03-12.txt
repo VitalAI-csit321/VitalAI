@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-793655
 Patient: GOMEZ, Mary
 DOB: 03/08/1998
-Referring Doctor: Dr Marcus O'Connell, GreenCare Family Medical Clinic
+Referring Doctor: Dr Marcus O'Connell, VitalAI Clinic
 
 Exam: Ultrasound - Ankle
 Date of exam: 12/03/2025

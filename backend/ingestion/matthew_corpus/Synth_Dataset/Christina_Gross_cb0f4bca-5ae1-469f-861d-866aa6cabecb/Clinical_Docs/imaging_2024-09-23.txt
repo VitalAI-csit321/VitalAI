@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-450741
 Patient: GROSS, Christina
 DOB: 03/03/2007
-Referring Doctor: Dr Marcus O'Connell, GreenCare Family Medical Clinic
+Referring Doctor: Dr Marcus O'Connell, VitalAI Clinic
 
 Exam: X-Ray - Knee
 Date of exam: 23/09/2024

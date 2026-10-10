@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-230182
 Patient: GONZALEZ, Scott
 DOB: 24/05/1993
-Referring Doctor: Dr Marcus O'Connell, GreenCare Family Medical Clinic
+Referring Doctor: Dr Marcus O'Connell, VitalAI Clinic
 
 Exam: X-Ray - Knee
 Date of exam: 14/08/2025

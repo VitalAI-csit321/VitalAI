@@ -50,6 +50,11 @@ class Task(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     call_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("calls.id", ondelete="CASCADE"), nullable=True, index=True
     )
+    # The email this task was opened for. A case holds the whole thread, so
+    # case_id alone cannot say which message a reply's task is about.
+    email_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("emails.id", ondelete="SET NULL"), nullable=True
+    )
     assigned_to: Mapped[UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )

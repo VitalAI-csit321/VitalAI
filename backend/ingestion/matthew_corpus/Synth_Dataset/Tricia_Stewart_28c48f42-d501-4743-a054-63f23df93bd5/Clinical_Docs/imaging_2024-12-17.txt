@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-550418
 Patient: STEWART, Tricia
 DOB: 15/09/1991
-Referring Doctor: Dr Aisha Rahman, GreenCare Family Medical Clinic
+Referring Doctor: Dr Aisha Rahman, VitalAI Clinic
 
 Exam: Ultrasound - Obstetric Morphology Scan
 Date of exam: 17/12/2024

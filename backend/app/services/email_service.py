@@ -181,6 +181,7 @@ async def ingest_email(
 
     task = Task(
         case_id=case.id,
+        email_id=email.id,
         source=TaskSource.EMAIL,
         category=category,
         target_role=target_role,

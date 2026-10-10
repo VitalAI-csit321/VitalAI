@@ -51,10 +51,10 @@ async def open_registration_link(
         clauses=list(consent_service.CLINIC_CLAUSES),
         clinic_checks=list(consent_service.CLINIC_CHECKS),
         doctors=[
-            RegistrationDoctor(id=doctor_id, name=name)
-            for doctor_id, name in (
+            RegistrationDoctor(id=doctor_id, name=name, special_interest=interest)
+            for doctor_id, name, interest in (
                 await db.execute(
-                    select(User.id, User.full_name)
+                    select(User.id, User.full_name, User.department)
                     .where(User.role == UserRole.DOCTOR, User.is_active.is_(True))
                     .order_by(User.full_name)
                 )

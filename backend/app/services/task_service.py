@@ -105,14 +105,29 @@ async def get_task(db: AsyncSession, task_id: UUID) -> Task | None:
     return await db.get(Task, task_id)
 
 
+async def email_for(db: AsyncSession, task: Task) -> Email | None:
+    """The email this task was opened for. Tasks from before tasks.email_id
+    (and internal ones, such as a prescriber's task) fall back to the last
+    email on the case that was already there when the task was made."""
+    if task.email_id is not None:
+        return await db.get(Email, task.email_id)
+    return (
+        await db.execute(
+            select(Email)
+            .where(Email.case_id == task.case_id, Email.created_at <= task.created_at)
+            .order_by(Email.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+
 async def _identify(db: AsyncSession, task: Task) -> tuple[str | None, str | None]:
     """Subject/from_name for the linked Email or Call, so a list of tasks
     can be told apart; the Task row itself carries no human-readable
     content, only foreign keys and enums.
     """
     if task.source == TaskSource.EMAIL:
-        result = await db.execute(select(Email).where(Email.case_id == task.case_id))
-        email = result.scalars().first()
+        email = await email_for(db, task)
         return (email.subject, email.sender) if email is not None else (None, None)
 
     call = await db.get(Call, task.call_id) if task.call_id else None

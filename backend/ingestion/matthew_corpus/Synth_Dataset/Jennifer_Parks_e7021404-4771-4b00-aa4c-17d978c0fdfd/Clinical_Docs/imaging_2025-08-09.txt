@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-561859
 Patient: PARKS, Jennifer
 DOB: 30/10/1976
-Referring Doctor: Dr Marcus O'Connell, GreenCare Family Medical Clinic
+Referring Doctor: Dr Marcus O'Connell, VitalAI Clinic
 
 Exam: Ultrasound - Ankle
 Date of exam: 09/08/2025

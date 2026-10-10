@@ -213,3 +213,30 @@ async def test_the_one_off_script_assigns_each_doctorless_patient_once(
     assert await _doctors_of(db_session, patient.id) == {quiet.id}
     assert await _doctors_of(db_session, provisional.id) == set()
     assert await assign_missing_doctors.run(db_session, actor=admin_user, apply=True) == []
+
+
+def test_the_corpus_names_a_doctor_for_every_patient():
+    named = assign_missing_doctors.documented_doctors()
+    assert len(named) == 100
+    assert "Dr David Nguyen" in set(named.values())
+
+
+async def test_the_script_gives_a_corpus_patient_the_doctor_their_documents_name(
+    db_session, patient, admin_user, monkeypatch
+):
+    """Least-loaded alone gave each patient a doctor at random, so the system's
+    doctor contradicted the registration form and every visit on record."""
+    theirs = await _doctor(db_session, "theirs")
+    await _busy(db_session, theirs, 3)
+    await _doctor(db_session, "quiet")  # the least-loaded pick
+    monkeypatch.setattr(
+        assign_missing_doctors, "documented_doctors", lambda: {patient.id: theirs.full_name}
+    )
+
+    planned = await assign_missing_doctors.run(db_session, actor=admin_user, apply=False)
+    assert (patient.id, theirs.id) in planned
+    assert patient.preferred_doctor_id is None  # a dry run changes nothing
+
+    done = await assign_missing_doctors.run(db_session, actor=admin_user, apply=True)
+    assert (patient.id, theirs.id) in done
+    assert patient.preferred_doctor_id == theirs.id

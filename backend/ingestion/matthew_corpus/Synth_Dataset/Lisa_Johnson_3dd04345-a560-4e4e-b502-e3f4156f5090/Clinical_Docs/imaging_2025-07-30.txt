@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-497108
 Patient: JOHNSON, Lisa
 DOB: 30/01/1994
-Referring Doctor: Dr Marcus O'Connell, GreenCare Family Medical Clinic
+Referring Doctor: Dr Marcus O'Connell, VitalAI Clinic
 
 Exam: MRI - Shoulder
 Date of exam: 30/07/2025

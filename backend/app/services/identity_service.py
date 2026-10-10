@@ -201,8 +201,9 @@ async def resolve_patient(
     db: AsyncSession, *, sender: str | None, fields: IdentityFields
 ) -> IdentityResult:
     """Exact, normalised matching only. Full match = name AND DOB AND (sender
-    email OR phone). Exactly one full match is MATCHED; more than one, or a
-    partial match on name, sender email or phone, is AMBIGUOUS.
+    email OR phone), or, with no DOB given, name AND a sender address that
+    only that one record uses. Exactly one full match is MATCHED; more than
+    one, or a partial match on name, sender email or phone, is AMBIGUOUS.
 
     An MRN is the one shortcut: it matches only when the sender writes from
     the address on that patient's record. Anyone can copy an MRN out of a
@@ -227,6 +228,11 @@ async def resolve_patient(
     patients = (
         (await db.execute(select(Patient).where(Patient.purged_at.is_(None)))).scalars().all()
     )
+    # The sender's address when exactly one live record uses it. A shared
+    # family inbox has several, and there a name is not enough: John can write
+    # as "Jane" from it.
+    owners = [p for p in patients if email is not None and _email(p.email) == email]
+    sole_owner = owners[0] if len(owners) == 1 else None
     full: list[Patient] = []
     partial: list[Patient] = []
     for p in patients:
@@ -234,6 +240,10 @@ async def resolve_patient(
         email_hit = email is not None and _email(p.email) == email
         phone_hit = phone is not None and _phone(p.phone) == phone
         if name_hit and fields.dob is not None and p.dob == fields.dob and (email_hit or phone_hit):
+            full.append(p)
+        elif name_hit and fields.dob is None and p is sole_owner:
+            # Their own name from their own address: patients rarely put a DOB
+            # in an email, and asking every one of them to verify is the bug.
             full.append(p)
         elif name_hit or email_hit or phone_hit:
             partial.append(p)

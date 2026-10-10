@@ -28,15 +28,18 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.auth.security import hash_password
+from app.config import settings
 from app.models.appointment import Appointment, AppointmentStatus, AppointmentType
 from app.models.case import IntakeCase
 from app.models.patient import Patient
 from app.models.user import User, UserRole
+from app.services.appointment_service import clinic_date
 
 _CORPUS_DIR = Path(__file__).resolve().parents[1] / "ingestion" / "matthew_corpus" / "Synth_Dataset"
 _UUID_RE = re.compile(
@@ -87,6 +90,65 @@ def _reference_code(patient_id: uuid.UUID, visit: ParsedVisit) -> str:
     return f"APT-{hashlib.sha256(seed.encode()).hexdigest()[:6].upper()}"
 
 
+# The roster patients are quoted from. Reading it here keeps one list of the
+# clinic's doctors: a doctor added to that table gets an account on the next
+# seed, with no second list to update.
+_ROSTER_FILE = (
+    Path(__file__).resolve().parents[2] / "Organization Profile Review" / "01_Clinic_Identity.md"
+)
+_ROSTER_ROW = re.compile(r"^\|\s*(Dr [^|]+?)\s*\|\s*([^|]+?)\s*\|", re.MULTILINE)
+
+
+def clinic_roster() -> dict[str, str]:
+    """Doctor name -> special interest, from the Practitioners table."""
+    if not _ROSTER_FILE.is_file():
+        print(f"no roster at {_ROSTER_FILE}: doctors come from the corpus only")
+        return {}
+    section = _ROSTER_FILE.read_text(encoding="utf-8").partition("## Practitioners")[2]
+    return dict(_ROSTER_ROW.findall(section.partition("\n## ")[0]))
+
+
+async def apply_roster(session: AsyncSession) -> None:
+    """Every doctor on the roster has an account and their special interest.
+
+    Some roster doctors have no visits in the corpus, so nothing else would
+    create them and a patient asking for one by name would be told the clinic
+    has no such doctor. The interest goes in User.department, which is what
+    the registration form shows and what a request for a kind of doctor is
+    matched against. One an admin has already set is left alone.
+    """
+    for name, interest in clinic_roster().items():
+        doctor = await session.get(User, await doctor_user_id(session, name))
+        assert doctor is not None  # doctor_user_id found or flushed it
+        if not doctor.department:
+            doctor.department = interest
+
+
+def visit_slot(visit_date: date, earlier_that_day: int) -> datetime:
+    """When a corpus visit is filed: 09:00 at the clinic on the visit's own
+    date, half an hour later for each visit that doctor already has that day.
+    The corpus gives a date and no time. Returned as a UTC instant."""
+    start = datetime.combine(visit_date, time(hour=9), tzinfo=ZoneInfo(settings.clinic_timezone))
+    return (start + timedelta(minutes=30 * earlier_that_day)).astimezone(UTC)
+
+
+async def doctor_user_id(session: AsyncSession, name: str) -> uuid.UUID:
+    """The doctor account for this name, created on first sight."""
+    email = re.sub(r"[^a-z0-9]+", ".", name.lower()).strip(".") + "@corpus.vitalai.example"
+    found = (await session.execute(select(User.id).where(User.email == email))).scalar_one_or_none()
+    if found is not None:
+        return found
+    doctor = User(
+        email=email,
+        hashed_password=hash_password(uuid.uuid4().hex),
+        full_name=name,
+        role=UserRole.DOCTOR,
+    )
+    session.add(doctor)
+    await session.flush()
+    return doctor.id
+
+
 async def ingest() -> None:
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
@@ -96,7 +158,7 @@ async def ingest() -> None:
 
     engine = create_async_engine(database_url)
     sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
-    today = datetime.now(UTC).date()
+    today = clinic_date(datetime.now(UTC))
 
     async with sessionmaker() as session:
         doctor_cache: dict[str, uuid.UUID] = {}
@@ -144,24 +206,9 @@ async def ingest() -> None:
                     continue
 
                 if visit.doctor_name not in doctor_cache:
-                    email = (
-                        re.sub(r"[^a-z0-9]+", ".", visit.doctor_name.lower()).strip(".")
-                        + "@corpus.vitalai.example"
+                    doctor_cache[visit.doctor_name] = await doctor_user_id(
+                        session, visit.doctor_name
                     )
-                    resolved_doctor_id = (
-                        await session.execute(select(User.id).where(User.email == email))
-                    ).scalar_one_or_none()
-                    if resolved_doctor_id is None:
-                        doctor = User(
-                            email=email,
-                            hashed_password=hash_password(uuid.uuid4().hex),
-                            full_name=visit.doctor_name,
-                            role=UserRole.DOCTOR,
-                        )
-                        session.add(doctor)
-                        await session.flush()
-                        resolved_doctor_id = doctor.id
-                    doctor_cache[visit.doctor_name] = resolved_doctor_id
                 doctor_id = doctor_cache[visit.doctor_name]
 
                 # Incremented for every visit seen for this (doctor, day),
@@ -184,8 +231,7 @@ async def ingest() -> None:
                     Appointment(
                         doctor_id=doctor_id,
                         case_id=case_id,
-                        time_slot=datetime.combine(visit.visit_date, time(hour=9), tzinfo=UTC)
-                        + timedelta(minutes=30 * offset),
+                        time_slot=visit_slot(visit.visit_date, offset),
                         duration_minutes=30,
                         appointment_type=_TYPE_MAP.get(
                             visit.visit_type.lower(), AppointmentType.OTHER
@@ -196,6 +242,8 @@ async def ingest() -> None:
                     )
                 )
                 created += 1
+
+        await apply_roster(session)
 
         await session.commit()
         print(f"inserted {created} historical appointments, skipped {skipped} future-dated")

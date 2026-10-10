@@ -6,7 +6,7 @@ RADIOLOGY REPORT
 Accession No: RAD-991884
 Patient: SHIELDS, Richard
 DOB: 05/02/1995
-Referring Doctor: Dr Marcus O'Connell, GreenCare Family Medical Clinic
+Referring Doctor: Dr Marcus O'Connell, VitalAI Clinic
 
 Exam: X-Ray - Knee
 Date of exam: 23/01/2025

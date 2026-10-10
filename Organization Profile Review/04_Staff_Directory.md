@@ -20,8 +20,10 @@ Internal document. Demo login accounts and RBAC mapping. Never surfaced to patie
 | Dr Marcus O'Connell | General Practitioner | DOCTOR | doctor04 | (clinical by role) | Special interest: men's health, sports medicine |
 | Dr Hannah Fitzgerald | General Practitioner | DOCTOR | doctor05 | (clinical by role) | Special interest: paediatrics, child health |
 | Dr Samuel Osei | General Practitioner | DOCTOR | doctor06 | (clinical by role) | Special interest: aged care, home medicine reviews. Waitlist only for new patients |
+| Dr Elena Kowalski | General Practitioner | DOCTOR | doctor07 | (clinical by role) | Special interest: student and young adult health, sexual and reproductive health |
+| Dr Rohan Iyer | General Practitioner | DOCTOR | doctor08 | (clinical by role) | Special interest: travel medicine, minor procedures |
 
-All six doctors are read-only inside VitalAI, manage their own calendar, and are scoped to their own assigned patients through `doctor_patient_assignments`. Full weekly schedules and special interest detail live in Clinic Identity, since that document is patient-facing; this directory holds the RBAC and login mapping only.
+All eight doctors are read-only inside VitalAI, manage their own calendar, and are scoped to their own assigned patients through `doctor_patient_assignments`. Special interest detail lives in Clinic Identity, since that document is patient-facing; this directory holds the RBAC and login mapping only.
 
 The display label "Back Office" or "Operations" corresponds to the system role `OPERATOR`. The token stored and matched by the system is always `OPERATOR`, never `OPS`.
 
