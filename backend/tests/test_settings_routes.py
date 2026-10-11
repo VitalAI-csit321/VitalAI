@@ -85,3 +85,31 @@ async def test_writing_a_read_only_setting_returns_422(client, admin_headers):
         "/api/v1/settings", json={"values": {"sufficiency_floor": 0.2}}, headers=admin_headers
     )
     assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_under_bedrock_the_model_shown_is_the_one_in_use(client, admin_headers, monkeypatch):
+    """A deployment on Bedrock showed the unused local model name (gemma). The
+    page shows the Bedrock model, read-only, and refuses an edit to it."""
+    monkeypatch.setattr(settings, "llm_provider", "bedrock")
+    monkeypatch.setattr(settings, "bedrock_model_id", "au.example.model-v1:0")
+
+    res = await client.get("/api/v1/settings", headers=admin_headers)
+    entry = next(i for i in res.json()["items"] if i["key"] == "llm_model")
+    assert entry["value"] == entry["default"] == "au.example.model-v1:0"
+    assert entry["editable"] is False
+
+    res = await client.patch(
+        "/api/v1/settings", headers=admin_headers, json={"values": {"llm_model": "gemma2:2b"}}
+    )
+    assert res.status_code == 422
+    assert settings.llm_model != "au.example.model-v1:0"  # the local name is untouched
+
+
+@pytest.mark.asyncio
+async def test_under_ollama_the_local_model_stays_editable(client, admin_headers, monkeypatch):
+    monkeypatch.setattr(settings, "llm_provider", "ollama")
+    res = await client.get("/api/v1/settings", headers=admin_headers)
+    entry = next(i for i in res.json()["items"] if i["key"] == "llm_model")
+    assert entry["value"] == settings.llm_model
+    assert entry["editable"] is True
