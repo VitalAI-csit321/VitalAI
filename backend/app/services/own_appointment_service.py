@@ -226,12 +226,21 @@ def confirmed_action(written: str, conversation_id: UUID, appointment_id: UUID) 
     """ "cancel" or "move" when what the sender wrote carries that request's
     code and does not read as a refusal; None otherwise. written is the new
     text of the reply, never the quoted email under it, which holds the code.
+
+    Exactly one six-digit number, or it is not an answer: a forged reply
+    cannot see the code, but it could list thousands and have it among them.
+    One email is one guess, and the caller spends the request on a miss.
     """
     if _DECLINES.search(written):
         return None
-    codes = set(re.findall(r"\b\d{6}\b", written))
+    candidates = set(re.findall(r"\b\d{6}\b", written))
+    if len(candidates) != 1:
+        return None
+    (candidate,) = candidates
     for action in ("cancel", "move"):
-        if confirmation_code(conversation_id, appointment_id, action) in codes:
+        if hmac.compare_digest(
+            candidate, confirmation_code(conversation_id, appointment_id, action)
+        ):
             return action
     return None
 

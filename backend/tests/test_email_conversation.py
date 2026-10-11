@@ -2012,3 +2012,21 @@ def test_only_a_general_email_is_rerouted_as_health_information(intent, expected
     state = {"intent": intent, "identity_outcome": "no_match", "clinical_info": True}
 
     assert route_identity(state) == expected
+
+
+def test_a_reply_listing_many_codes_confirms_nothing():
+    """A forged reply cannot see the code, but it could list a great many six
+    digit numbers and have the right one among them. Only a reply carrying
+    exactly one candidate is read as an answer; anything else is a failed
+    attempt, and a failed attempt hands the request to the front desk."""
+    conversation_id, appointment_id = uuid4(), uuid4()
+    right = own_appointment_service.confirmation_code(conversation_id, appointment_id, "cancel")
+    other = "000000" if right != "000000" else "111111"
+
+    def read(written: str) -> str | None:
+        return own_appointment_service.confirmed_action(written, conversation_id, appointment_id)
+
+    assert read(f"yes please {right}") == "cancel"
+    assert read(f"{right} {right}") == "cancel"
+    assert read(f"{other} {right}") is None
+    assert read(" ".join(f"{n:06d}" for n in range(0, 1000)) + f" {right}") is None
