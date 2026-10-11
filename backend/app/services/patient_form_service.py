@@ -110,10 +110,14 @@ async def find_open(
     return row
 
 
-def link_text(link: str) -> str:
+def link_text(link: str, answer: str | None = None) -> str:
+    """answer is what the sender also asked, already checked
+    (email_service.answer_for_form_link)."""
     return (
         "Hello,\n\n"
-        "Thank you for contacting the clinic. To register with us, please fill in "
+        "Thank you for contacting the clinic. "
+        + (f"{answer}\n\n" if answer else "")
+        + "To register with us, please fill in "
         "this short form:\n\n"
         f"{link}\n\n"
         "It asks for your name, date of birth, phone number, the day you would prefer "

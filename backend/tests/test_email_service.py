@@ -298,6 +298,8 @@ async def test_org_grounded_reply_includes_retrieved_context_when_sufficient(
 
     class _CapturingLLM:
         async def ainvoke(self, prompt: str) -> str:
+            if "DRAFT REPLY" in prompt:
+                return '{"supported": true, "promises_action": false, "problem": ""}'
             captured_prompt["text"] = prompt
             return "Our hours are Mon-Fri 8:30-6:00."
 
@@ -308,13 +310,104 @@ async def test_org_grounded_reply_includes_retrieved_context_when_sufficient(
     monkeypatch.setattr("app.services.email_service.get_llm", lambda: _CapturingLLM())
 
     email = type("E", (), {"subject": "Hours?", "body": "What are your opening hours?"})()
+    notes = email_service.DraftNotes()
     draft, grounded = await email_service._generate_org_grounded_reply(
-        db_session, email, front_desk_user
+        db_session, email, front_desk_user, notes=notes
     )
 
     assert "8:30 AM to 6:00 PM" in captured_prompt["text"]
     assert draft == "Our hours are Mon-Fri 8:30-6:00."
     assert grounded is True
+    assert notes.hold_reason is None
+
+
+@pytest.mark.asyncio
+async def test_reply_prompt_asks_for_a_greeting_with_no_placeholder(
+    db_session, front_desk_user, monkeypatch
+):
+    """Most senders do not sign their email, and with no instruction the model
+    opened "Dear [Patient Name]". The critic rejects that, and a rewritten
+    draft always waits for approval: 17 of 18 held general enquiries on
+    2026-10-11. The prompt has to say what to write when the name is unknown."""
+    captured_prompt = {}
+
+    class _CapturingLLM:
+        async def ainvoke(self, prompt: str) -> str:
+            captured_prompt["text"] = prompt
+            return "Hello,\n\nWe are open on Saturday.\n\nKind regards,\nThe clinic team"
+
+    monkeypatch.setattr("app.services.email_service.get_llm", lambda: _CapturingLLM())
+
+    email = type("E", (), {"subject": "open sat?", "body": "r u guys open saturday"})()
+    await email_service._generate_plain_reply(db_session, email, front_desk_user)
+
+    assert 'open with "Hello,"' in captured_prompt["text"]
+    assert "square brackets" in captured_prompt["text"]
+
+
+_UNDER_16_ONLY = (
+    "Bulk billing applies only to children under 16, pensioners and concession holders."
+)
+_WRONG_FOR_A_17_YEAR_OLD = "As you're 17, you're eligible for bulk billing."
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("verdict", "grounded", "reason"),
+    [
+        ('{"supported": true, "promises_action": false, "problem": ""}', True, None),
+        (
+            '{"supported": false, "promises_action": false, "problem": "Bulk billing is under 16."}',
+            False,
+            "It says something the clinic documents do not: Bulk billing is under 16.",
+        ),
+        # "We'll update your records" contradicts nothing, and nobody does it.
+        (
+            '{"supported": true, "promises_action": true, "problem": "Says the record is updated."}',
+            False,
+            "It promises an action someone has to carry out: Says the record is updated.",
+        ),
+        # Fail safe: a check that cannot be read never lets a reply auto-send.
+        ("I think the reply looks fine.", False, email_service.UNREADABLE_CHECK_REASON),
+        ('{"supported": true, "problem": ""}', False, email_service.UNREADABLE_CHECK_REASON),
+    ],
+    ids=["supported", "unsupported-claim", "promises-action", "unreadable", "half-an-answer"],
+)
+async def test_org_grounded_reply_is_grounded_only_when_the_check_clears_it(
+    db_session, front_desk_user, monkeypatch, verdict, grounded, reason
+):
+    """Retrieval finding the billing policy is not the model using it: on
+    2026-10-11 a 17-year-old was told they are bulk billed, from chunks that
+    say under 16, and a bereaved daughter was told her father's appointments
+    would be cancelled when nothing cancels them. A second call reads the
+    draft against the same clinic info; only a draft it clears counts as
+    grounded, which is what auto-send requires (auto_send_eligible). The draft
+    is kept, with the reason, for the person who approves it."""
+    prompts = []
+
+    class _LLM:
+        async def ainvoke(self, prompt: str) -> str:
+            prompts.append(prompt)
+            return verdict if "DRAFT REPLY" in prompt else _WRONG_FOR_A_17_YEAR_OLD
+
+    monkeypatch.setattr(
+        "app.rag.retrieval.retrieve", AsyncMock(return_value=[_org_chunk(_UNDER_16_ONLY, 0.70)])
+    )
+    monkeypatch.setattr("app.services.email_service.get_llm", lambda: _LLM())
+
+    email = type("E", (), {"subject": "cost", "body": "I'm 17, is it bulk billed?"})()
+    notes = email_service.DraftNotes()
+    draft, is_grounded = await email_service._generate_org_grounded_reply(
+        db_session, email, front_desk_user, notes=notes
+    )
+
+    assert draft == _WRONG_FOR_A_17_YEAR_OLD
+    assert is_grounded is grounded
+    assert notes.hold_reason == reason
+    check_prompt = prompts[-1]
+    assert _UNDER_16_ONLY in check_prompt
+    assert _WRONG_FOR_A_17_YEAR_OLD in check_prompt
+    assert "I'm 17, is it bulk billed?" in check_prompt
 
 
 @pytest.mark.asyncio
@@ -337,13 +430,15 @@ async def test_org_grounded_reply_falls_back_when_retrieval_insufficient(
     monkeypatch.setattr("app.services.email_service.get_llm", lambda: _CapturingLLM())
 
     email = type("E", (), {"subject": "Random", "body": "Do you sell parking permits?"})()
+    notes = email_service.DraftNotes()
     draft, grounded = await email_service._generate_org_grounded_reply(
-        db_session, email, front_desk_user
+        db_session, email, front_desk_user, notes=notes
     )
 
     assert "CLINIC INFO" not in captured_prompt["text"]
     assert draft == "Thank you for your email, we'll be in touch."
     assert grounded is False
+    assert notes.hold_reason == email_service.NOTHING_TO_GROUND_ON_REASON
 
 
 @pytest.mark.asyncio
@@ -648,12 +743,11 @@ async def test_an_urgent_word_in_the_subject_alone_forces_human_review(
     assert gate.override_reason == "urgent_keyword"
 
 
-# The control: every one of the six conditions satisfied. Flipping exactly one
+# The control: every one of the five conditions satisfied. Flipping exactly one
 # of them must turn auto-send off, which is what pins each condition alone.
 _AUTO_SEND_CONTROL = {
     "verdict": ReplyWorthiness.WORTHY,
     "gate_outcome": TaskRoutingOutcome.AUTO_ROUTED,
-    "confidence": 0.99,
     "grounded": True,
     "category": TaskCategory.GENERAL_ADMINISTRATIVE,
 }
@@ -666,8 +760,10 @@ _AUTO_SEND_CONTROL = {
         (False, {}, False),
         (True, {"verdict": ReplyWorthiness.UNCERTAIN}, False),
         (True, {"gate_outcome": TaskRoutingOutcome.HUMAN_REVIEW}, False),
-        # settings.task_routing_auto_threshold is 0.90.
-        (True, {"confidence": 0.5}, False),
+        # 0.70 to 0.90 routing confidence. Amin's call (2026-10-11): a reply
+        # grounded in the clinic documents may go out without full confidence
+        # in which queue the email belongs to.
+        (True, {"gate_outcome": TaskRoutingOutcome.AUTO_ROUTED_FLAGGED}, True),
         (True, {"grounded": False}, False),
         (True, {"category": TaskCategory.PRESCRIPTION_RENEWAL}, False),
     ],
@@ -676,22 +772,22 @@ _AUTO_SEND_CONTROL = {
         "flag-off",
         "verdict-uncertain",
         "gate-human-review",
-        "confidence-below-threshold",
+        "gate-flagged",
         "not-grounded",
         "clinical-category",
     ],
 )
-def test_auto_send_eligible_needs_every_one_of_its_six_conditions(
+def test_auto_send_eligible_needs_every_one_of_its_five_conditions(
     monkeypatch, enabled, override, expected
 ):
     """The one definition both the flag-off draft_reply and the agent graph
     call, so the two paths can never disagree about what auto-sends. It had no
-    unit test of any kind; all six conditions were unpinned individually.
+    unit test of any kind; its conditions were unpinned individually.
 
     email_auto_send_enabled is monkeypatched explicitly, control included:
     conftest pins it "true" for the whole suite, so a control that merely
     inherited that pin would pass today and go vacuous the day that line
-    changes. A control returning False would make the other six rows prove
+    changes. A control returning False would make the other rows prove
     nothing.
     """
     monkeypatch.setattr(settings, "email_auto_send_enabled", enabled)
@@ -717,3 +813,28 @@ def test_an_unfilled_placeholder_line_is_dropped(draft, expected):
     the approval path does not, so a human still sees the placeholder they are
     the one to fill in."""
     assert email_service._drop_placeholder_lines(draft) == expected
+
+
+@pytest.mark.parametrize(
+    ("answer", "kept"),
+    [
+        (
+            "A new patient health check is $145. To book an appointment for Wednesday, "
+            "please provide your date of birth and contact details.",
+            "A new patient health check is $145.",
+        ),
+        (
+            "Overseas visitors are seen as private patients. A standard consultation is $85. "
+            "We can arrange an appointment for next week, please contact us to book.",
+            "Overseas visitors are seen as private patients. A standard consultation is $85.",
+        ),
+        ("Please call us to book.", ""),
+    ],
+    ids=["asks-for-details", "says-how-to-book", "nothing-left"],
+)
+def test_the_answer_above_the_registration_link_never_competes_with_the_form(answer, kept):
+    """Live run, 2026-10-11: told not to, the model still closed its answer
+    with "please provide your date of birth", in the email whose next line
+    says there is no need to send details by email. The prompt asks; this
+    makes sure."""
+    assert email_service.answer_sentences(answer) == kept

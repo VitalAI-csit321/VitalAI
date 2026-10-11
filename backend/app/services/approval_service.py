@@ -19,6 +19,8 @@ def _draft_reason(payload: dict) -> str:
         return f"The reply could not be sent automatically: {payload['delivery_error']}"
     if payload.get("critic_reason"):
         return f"The policy check held this reply: {payload['critic_reason']}"
+    if payload.get("hold_reason"):
+        return f"Not sent automatically. {payload['hold_reason']}"
     return "A drafted reply is waiting for approval before it is sent."
 
 

@@ -78,6 +78,7 @@ async def open_item(
     details: dict | None = None,
     priority: TaskPriority | None = None,
     owner: UserRole | None = None,
+    assigned_to: UUID | None = None,
 ) -> HumanReviewTask:
     """The one open item for this message and kind, created if missing.
 
@@ -100,7 +101,7 @@ async def open_item(
         return existing
 
     target_role, assigned_to = (
-        (owner, None)
+        (owner, assigned_to)
         if owner is not None
         else await owner_for(db, inbox_task=inbox_task, kind=kind)
     )

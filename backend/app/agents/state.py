@@ -64,6 +64,16 @@ class CaseState(TypedDict, total=False):
     # urgent_category); None when HUMAN_REVIEW was only low confidence.
     routing_override: str | None
     reply_verdict: str
+    # The reply gate's second answer (reply_gate.ReplyGateResult).
+    general_question: bool
+    asks_question: bool
+    # "ask", "cancel" or "move": about an appointment the sender already has.
+    # Cleared by nodes.own_appointment once it has dealt with it or passed.
+    own_appointment: str | None
+    # Health information sent for a doctor to see (nodes.clinical_info).
+    clinical_info: bool
+    # The checked answer inside a registration-link email (nodes.form_link).
+    answer_text: str | None
 
     retrieval_results: list[dict]
     retrieval_sufficient: bool | None
@@ -105,6 +115,8 @@ class CaseState(TypedDict, total=False):
     grounded: bool | None
     critic_verdict: str | None
     critic_reason: str | None
+    # Why a generated draft may not go out unread (email_service._auto_send_blocker).
+    hold_reason: str | None
     revision_count: int
 
     risk_tier: str | None

@@ -36,7 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.llm.guardrail import InputBlockedError, guarded_invoke
-from app.models.appointment import AppointmentType
+from app.models.appointment import Appointment, AppointmentStatus, AppointmentType
 from app.models.case import IntakeCase
 from app.models.email import Email
 from app.models.email_conversation import OPEN_STAGES, ConversationStage, EmailConversation
@@ -461,6 +461,48 @@ def verification_text() -> str:
     )
 
 
+# What the doctor's (or operator's) Review Queue item says.
+CLINICAL_INFO_REASON = (
+    "The sender gave health information for a doctor to see (readings, how they are "
+    "feeling, or a change in their care). No reply was written for it: they were told "
+    "it has been passed on. Read it and act on it."
+)
+
+
+def clinical_info_text(name: str | None, doctor: str | None) -> str:
+    """To someone who sent readings or other health information. Fixed, so no
+    model comments on what they sent."""
+    reader = booking_service.titled(doctor) if doctor else "the clinic team"
+    return (
+        f"{_hi(name)}\n\n"
+        f"Thank you, we have received your message and passed it to {reader} to read. "
+        "We cannot give medical advice by email. If you need to speak to someone, please "
+        "call the clinic.\n\n"
+        "If this is an emergency, call 000 or go to your nearest hospital emergency "
+        "department." + _SIGN_OFF
+    )
+
+
+# What the Task says once the notice below has gone out.
+URGENT_NOTICE_SENT = (
+    "The sender was sent the urgent notice automatically. It answers nothing: "
+    "this email still needs a person."
+)
+
+
+def urgent_notice_text() -> str:
+    """To the sender of an email held as urgent. Fixed, so no model words it,
+    and it names nobody and judges nothing: the urgent scan also fires on
+    "please change my emergency contact", and this reads sensibly there too.
+    Amin's wording (2026-10-11)."""
+    return (
+        "Hello,\n\n"
+        "We have received your email and our team will contact you as soon as they can.\n\n"
+        "If this is an emergency, call 000 or go to your nearest hospital emergency "
+        "department. For health advice at any time, call healthdirect on 1800 022 222." + _SIGN_OFF
+    )
+
+
 def ask_details_text(*, name: str | None, missing: list[str], mrn: str | None, day_known: bool):
     items = [FIELD_LABELS[f] for f in missing]
     if not day_known:
@@ -585,13 +627,26 @@ def registered_text(
     return "\n".join(lines) + _SIGN_OFF
 
 
-def confirmation_text(*, name: str | None, start: datetime, doctor: str, first_visit: bool):
+def confirmation_text(
+    *,
+    name: str | None,
+    start: datetime,
+    doctor: str,
+    first_visit: bool,
+    moved_from: datetime | None = None,
+):
     lines = [
         _hi(name),
         "",
         f"Your appointment is booked for {booking_service.format_slot(start)} with "
         f"{booking_service.titled(doctor)}.",
     ]
+    if moved_from is not None:
+        lines += [
+            "",
+            f"Your earlier appointment on {booking_service.format_slot(moved_from)} "
+            "has been cancelled.",
+        ]
     if first_visit:
         lines += [
             "",
@@ -1112,11 +1167,47 @@ async def book_choice(
         conversation = await _conversation(db, conversation_id)
         return _staff(conversation, "slot_taken")
     conversation.stage = ConversationStage.BOOKED.value
+    moved_from = await _cancel_replaced(db, conversation, patient, actor)
     conversation.appointment_id = appointment.id
     return Turn(
         "booked",
         text=confirmation_text(
-            name=patient.name, start=start, doctor=doctor[1], first_visit=first_visit
+            name=patient.name,
+            start=start,
+            doctor=doctor[1],
+            first_visit=first_visit,
+            moved_from=moved_from,
         ),
         patient=patient,
     )
+
+
+async def _cancel_replaced(
+    db: AsyncSession, conversation: EmailConversation, patient: Patient, actor: User
+) -> datetime | None:
+    """A move: cancel the appointment this conversation replaces, now that the
+    new one is booked, and return when it was. None when there is none, or it
+    is no longer this patient's live appointment (staff got there first)."""
+    old = (
+        await db.get(Appointment, conversation.appointment_id)
+        if conversation.appointment_id
+        else None
+    )
+    if old is None or old.status not in (AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED):
+        return None
+    case = await db.get(IntakeCase, old.case_id)
+    if case is None or case.patient_id != patient.id:
+        return None
+    old.status = AppointmentStatus.CANCELLED
+    await record_event(
+        db,
+        case_id=old.case_id,
+        actor=actor,
+        action="appointment.cancelled",
+        details={
+            "appointment_id": str(old.id),
+            "cancel_reason": "Moved by the agent at the patient's emailed request.",
+            "notify_patient": False,
+        },
+    )
+    return old.time_slot

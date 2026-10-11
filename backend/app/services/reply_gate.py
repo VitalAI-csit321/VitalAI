@@ -47,8 +47,30 @@ Decide whether this email deserves a reply from the clinic (a patient question,
 request, or complaint) versus not (a promotional/marketing email, an automated
 notification, spam, or anything with no request to respond to).
 
+Also say whether it is only a general question. general_question is true when
+the sender asks for information about the clinic that anyone could be told
+(services, hours, costs, how something works) and does not ask the clinic to do
+anything (book, register, cancel, send something), and does not ask about one
+person's appointments, results or records.
+
+asks_question is true when the email contains at least one question about the
+clinic (services, hours, costs, whether they can be seen today or soon, how
+something works), even if it also asks the clinic to do something.
+
+own_appointment says what the sender wants with an appointment they already
+have at the clinic: "ask" (when or with whom it is), "cancel" (cancel it and not
+rebook), "move" (change it to another time), or "none" for everything else,
+including asking for a new appointment.
+
+clinical_info is true when the sender is giving the clinic health information
+for a doctor or nurse to see: readings or measurements, how they are feeling, a
+side effect, a hospital visit, or a change to their medicines. A question about
+the clinic's services is not clinical_info.
+
 Respond with ONLY a JSON object, no other text, in this exact shape:
-{{"worthy": <true or false>, "reason": "<one short sentence>"}}
+{{"worthy": <true or false>, "reason": "<one short sentence>", "general_question": <true or false>,
+"asks_question": <true or false>, "own_appointment": "<ask, cancel, move or none>",
+"clinical_info": <true or false>}}
 
 SUBJECT: {subject}
 BODY: {body}
@@ -62,9 +84,25 @@ class ReplyWorthiness(enum.StrEnum):
     UNCERTAIN = "uncertain"
 
 
+_OWN = ("ask", "cancel", "move")
+
+
 class ReplyGateResult(BaseModel):
     verdict: ReplyWorthiness
     reason: str
+    # The sender wants information, not an action: graph.route_identity answers
+    # it instead of sending the registration form. False unless the model says
+    # a clear yes, which is the routing from before the field existed.
+    general_question: bool = False
+    # A question about the clinic, asked alone or alongside a request: the
+    # registration link email answers it as well (nodes.form_link).
+    asks_question: bool = False
+    # "ask", "cancel" or "move" when the email is about an appointment the
+    # sender already has (own_appointment_service); None otherwise.
+    own_appointment: str | None = None
+    # Health information for a doctor to see (readings, a side effect): no
+    # reply is generated, it goes to the doctor (nodes.clinical_info).
+    clinical_info: bool = False
 
 
 class _ParseError(Exception):
@@ -92,7 +130,12 @@ def _parse_verdict(raw: str) -> ReplyGateResult:
     except (KeyError, ValueError, json.JSONDecodeError) as exc:
         raise _ParseError(f"Malformed payload: {raw!r}") from exc
     return ReplyGateResult(
-        verdict=ReplyWorthiness.WORTHY if worthy else ReplyWorthiness.NOT_WORTHY, reason=reason
+        verdict=ReplyWorthiness.WORTHY if worthy else ReplyWorthiness.NOT_WORTHY,
+        reason=reason,
+        general_question=parsed.get("general_question") is True,
+        asks_question=parsed.get("asks_question") is True,
+        own_appointment=own if (own := parsed.get("own_appointment")) in _OWN else None,
+        clinical_info=parsed.get("clinical_info") is True,
     )
 
 

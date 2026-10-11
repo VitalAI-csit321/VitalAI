@@ -45,7 +45,7 @@ Patients can book by email, by phone, or in person at the front desk. The clinic
 - Late cancellation (under 24 hours) may incur a $40 fee (demo value). This fee is not covered by Medicare and is charged directly to the patient.
 - No-shows may be recorded and may incur a $40 fee (demo value). Three or more no-shows within 12 months move the patient to same-day-only booking, reviewed by an administrator.
 - Fee waivers for genuine emergencies are handled by an administrator on request, not applied automatically.
-- Patients can cancel or reschedule by phone, by email, or in person. A cancellation or change asked for by email is handled by the front desk, not automatically.
+- Patients can cancel or reschedule by phone, by email, or in person. A request emailed from the address on the patient's record is handled automatically when it is clear which appointment is meant and it is more than 24 hours away: a cancellation is confirmed by reply, and for a reschedule the patient is offered new times and the earlier appointment is cancelled once the new one is booked. A request inside 24 hours, or one where it is not clear which appointment is meant, is handled by the front desk.
 - Confirmation of the change is sent to the patient by the same channel they booked in.
 
 ## New Patient Registration Policy

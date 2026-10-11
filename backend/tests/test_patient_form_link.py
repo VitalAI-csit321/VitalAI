@@ -36,6 +36,7 @@ from app.services import (
     email_service,
     patient_form_service,
 )
+from tests.agent_fakes import DRAFT
 
 SYDNEY = ZoneInfo("Australia/Sydney")
 SENDER = "jane@example.com"
@@ -152,6 +153,22 @@ def test_only_unknown_bookers_and_sign_ups_are_sent_the_form(intent, outcome, ex
     assert route_identity(state) == expected
 
 
+@pytest.mark.parametrize("intent", ["appointment_request", "new_patient_onboarding"])
+def test_an_unknown_sender_who_only_asks_a_question_is_answered_not_sent_the_form(intent):
+    """The category says what an email is about, not what the sender wants:
+    "do you do phone consults for people who haven't been before?" is about
+    appointments, and on 2026-10-11 six such questions got the registration
+    link and no answer."""
+    state = {
+        "intent": intent,
+        "identity_outcome": "no_match",
+        "identity_fields": {},
+        "general_question": True,
+    }
+
+    assert route_identity(state) == "draft"
+
+
 @pytest.mark.parametrize(
     ("intent", "fields", "expected"),
     [
@@ -210,6 +227,99 @@ async def test_a_sign_up_request_gets_the_same_link(
     await _link_sent(db_session, admin_user, llm, sends, category="new_patient_onboarding")
 
     assert LINK.search(sends[-1][1])
+
+
+async def test_a_question_about_appointments_gets_a_drafted_answer_and_no_link(
+    db_session, agent_saver, admin_user, llm, sends
+):
+    llm.general_question = True
+    email, task = await _mail(
+        db_session,
+        admin_user,
+        "Do you do phone consults for people who haven't been before?",
+        message_id="<q1@example.com>",
+    )
+
+    assert not any(LINK.search(text) for _, text in sends)
+    assert task.draft_text == DRAFT
+    conversation = (
+        await db_session.execute(
+            select(EmailConversation).where(EmailConversation.case_id == email.case_id)
+        )
+    ).scalar_one_or_none()
+    assert conversation is None or conversation.form_token_hash is None
+
+
+FEE = "A new patient appointment is $145, bulk billed through Medicare if you are eligible."
+
+
+@pytest.fixture
+def clinic_info(monkeypatch):
+    """Retrieval finds something relevant, so an answer can be grounded."""
+    from app.rag.retrieval import RetrievedChunk
+
+    chunk = RetrievedChunk(
+        chunk_id=uuid4(),
+        patient_id=None,
+        access_scope="general",
+        source_document_id=uuid4(),
+        doc_type="org_profile",
+        chunk_index=0,
+        attachment_uri=None,
+        content="New patient health check: $145. Bulk billed if eligible.",
+        score=settings.sufficiency_floor + 0.1,
+        distance=0.5,
+    )
+    monkeypatch.setattr("app.rag.retrieval.retrieve", AsyncMock(return_value=[chunk]))
+
+
+async def _asks_the_fee(db, admin, llm):
+    llm.asks_question = True
+    llm.replies = [FEE]
+    return await _mail(
+        db,
+        admin,
+        "how much for a new patient appointment? book me in for wednesday",
+        message_id="<fee@example.com>",
+    )
+
+
+async def test_a_new_patient_who_also_asks_a_question_gets_the_answer_with_the_link(
+    db_session, agent_saver, admin_user, llm, sends, clinic_info
+):
+    """Six new-patient emails on 2026-10-11 asked the price or whether they
+    could be seen today and got the form link alone. One email now carries
+    both. The answer mentions Medicare, which the rest of this template must
+    not: it states the clinic's fee, it does not ask for a card number."""
+    email, task = await _asks_the_fee(db_session, admin_user, llm)
+
+    ((_, text),) = sends
+    assert FEE in text
+    assert LINK.search(text)
+    assert text.index(FEE) < text.index("/register/")
+    assert task.draft_sent is True
+    assert task.handover_context == patient_form_service.WAITING_REASON
+
+
+async def test_an_answer_the_check_does_not_clear_is_left_out_and_staff_are_told(
+    db_session, agent_saver, admin_user, llm, sends, clinic_info
+):
+    llm.supported = False
+    email, task = await _asks_the_fee(db_session, admin_user, llm)
+
+    ((_, text),) = sends
+    assert FEE not in text
+    assert LINK.search(text)
+    assert task.handover_context.startswith(patient_form_service.WAITING_REASON)
+    assert "Their question was not answered" in task.handover_context
+
+
+async def test_a_booking_request_with_no_question_makes_no_extra_model_call(
+    db_session, agent_saver, admin_user, llm, sends, clinic_info
+):
+    await _link_sent(db_session, admin_user, llm, sends)
+
+    assert llm.draft_prompts == []
 
 
 async def test_an_automatic_message_gets_no_link(db_session, agent_saver, admin_user, llm, sends):
