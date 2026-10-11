@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_permission
 from app.auth.permissions import CONFIGURE_GOVERNANCE
-from app.config import settings as live_settings
 from app.database import get_db
 from app.models.app_setting import AppSetting
 from app.models.user import User
@@ -18,13 +17,14 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 async def _build_list(db: AsyncSession) -> SettingListResponse:
     rows = {r.key: r for r in (await db.execute(select(AppSetting))).scalars().all()}
     items = []
-    for key, spec in settings_service.SETTINGS_REGISTRY.items():
+    for key in settings_service.SETTINGS_REGISTRY:
         row = rows.get(key)
+        value, default, spec = settings_service.shown(key)
         items.append(
             SettingOut(
                 key=key,
-                value=getattr(live_settings, key),
-                default=settings_service.ENV_DEFAULTS[key],
+                value=value,
+                default=default,
                 type=spec.type.__name__,
                 group=spec.group,
                 label=spec.label,

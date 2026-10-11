@@ -14,7 +14,7 @@ appointment_service, email_service) byte-for-byte unchanged.
 """
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from sqlalchemy import select
@@ -165,6 +165,30 @@ ENV_DEFAULTS: dict[str, Any] = {key: getattr(settings, key) for key in SETTINGS_
 _LLM_KEYS = {"llm_model", "llm_temperature", "llm_max_tokens", "llm_timeout_seconds"}
 
 
+def shown(key: str) -> tuple[Any, Any, SettingSpec]:
+    """(value, default, spec) for a setting as the Settings page shows it.
+
+    llm_model names the local Ollama model, and get_llm() reads it only when
+    Ollama is the provider. Under Bedrock the page once showed that unused
+    name, so a deployment running Haiku said it was running gemma. There it
+    shows the model in use instead, read-only, because the model id comes
+    from the server's environment (BEDROCK_MODEL_ID), not from this page.
+    """
+    spec = SETTINGS_REGISTRY[key]
+    if key == "llm_model" and settings.llm_provider.lower() == "bedrock":
+        in_use = settings.bedrock_model_id
+        return (
+            in_use,
+            in_use,
+            replace(
+                spec,
+                help="The Amazon Bedrock model in use. Set on the server, not here.",
+                editable=False,
+            ),
+        )
+    return getattr(settings, key), ENV_DEFAULTS[key], spec
+
+
 def _coerce(key: str, spec: SettingSpec, value: Any) -> Any:
     if spec.type is bool:
         if not isinstance(value, bool):
@@ -233,9 +257,9 @@ def validate(values: dict[str, Any]) -> dict[str, Any]:
     """Validate a whole batch. Raises before anything is written."""
     cleaned: dict[str, Any] = {}
     for key, value in values.items():
-        spec = SETTINGS_REGISTRY.get(key)
-        if spec is None:
+        if key not in SETTINGS_REGISTRY:
             raise SettingsValidationError(f"Unknown setting '{key}'")
+        spec = shown(key)[2]
         if not spec.editable:
             raise SettingsValidationError(f"'{key}' is read-only")
         cleaned[key] = _coerce(key, spec, value)
