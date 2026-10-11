@@ -4,7 +4,9 @@ Draft-reply generation (FR-EMAIL-03) is a separate step (draft_reply()), kept
 out of this function so ingestion and drafting can be tested independently.
 """
 
+import json
 import logging
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -18,7 +20,7 @@ from app.config import settings
 from app.database import AsyncSessionLocal
 from app.llm import get_llm
 from app.llm.guardrail import InputBlockedError, guarded_invoke
-from app.llm.output_guardrail import OutputBlockedError, check_output
+from app.llm.output_guardrail import OutputBlockedError, check_output, restricted_term
 from app.models.case import IntakeCase, IntakeStatus
 from app.models.email import Email
 from app.models.human_review import TaskType
@@ -245,6 +247,7 @@ async def _generate_plain_reply(
     actor: User,
     context_text: str = "",
     feedback: str | None = None,
+    answer_only: bool = False,
 ) -> str:
     from app.rag.answer import revision_block
 
@@ -255,9 +258,24 @@ async def _generate_plain_reply(
         if context_text
         else ""
     )
+    # The answer that goes above the registration link (answer_for_form_link):
+    # that email has its own greeting, sign-off and way to book.
+    shape = (
+        "Write only the answer to what the sender asked, in one to four plain "
+        "sentences. No greeting and no sign-off. Do not ask for any details and do "
+        "not say how to book or register. Never write a placeholder in square "
+        "brackets: if a detail is unknown, leave it out.\n\n"
+        if answer_only
+        # Without this the model opens "Dear [Patient Name]" for every sender
+        # who did not sign, the critic rejects it, and the rewrite is HIGH risk.
+        else "If the sender signed their name, greet them by it; otherwise open with "
+        '"Hello,". Sign off as "The clinic team". Never write a placeholder in '
+        "square brackets: if a detail is unknown, leave it out.\n\n"
+    )
     prompt = (
         "You are a clinic administrator replying to a patient email. Write a short, "
-        "polite, professional reply. Do not mention any clinical details.\n\n"
+        "polite, professional reply. Do not mention any clinical details.\n"
+        f"{shape}"
         f"{context_block}"
         f"ORIGINAL EMAIL SUBJECT: {email.subject}\n"
         f"ORIGINAL EMAIL BODY: {email.body}\n\n"
@@ -271,22 +289,106 @@ async def _generate_plain_reply(
     return result if isinstance(result, str) else getattr(result, "content", str(result))
 
 
+_SUPPORT_CHECK_PROMPT = """You are checking a GP clinic's draft email reply against the
+clinic's own information.
+
+CLINIC INFO:
+{context}
+
+EMAIL FROM THE SENDER:
+{body}
+
+DRAFT REPLY:
+{draft}
+
+1. supported: does the draft state anything about the clinic (opening hours,
+fees, who is bulk billed, services, policies, contact details) that CLINIC INFO
+does not say, or that is wrong for this sender given what they wrote about
+themselves? If so it is not supported. Courtesy, and telling the sender to
+contact the clinic, need no support.
+
+2. promises_action: does the draft say the clinic will do, is doing or has done
+something for this sender or their family (update a record, cancel or change an
+appointment, add something to a file, pass a message to a doctor, call back,
+stop reminders)? Telling the sender what they can do, or how the clinic works,
+is not a promise.
+
+Respond with ONLY a JSON object, no other text, in this exact shape:
+{{"supported": <true or false>, "promises_action": <true or false>, "problem": "<the
+unsupported statement or the promised action in one short sentence, or empty>"}}
+
+JSON:"""
+
+# Why a draft waits for a person instead of going out, in the words the
+# reviewer reads (approval_service._draft_reason).
+NOTHING_TO_GROUND_ON_REASON = "The clinic documents had nothing to base this reply on."
+UNREADABLE_CHECK_REASON = "The check of this reply against the clinic documents could not be read."
+
+
+async def _auto_send_blocker(
+    db: AsyncSession, email: Email, actor: User, context_text: str, draft: str
+) -> str | None:
+    """Why this draft must not go out unread, or None when it may.
+
+    Retrieval clearing the floor proves relevant chunks were found, not that
+    the model used them: a 17-year-old was told they are bulk billed from
+    chunks that say under 16. And a reply can contradict nothing and still
+    commit the clinic: "we will cancel your father's appointments" went to a
+    bereaved daughter with nobody told to cancel them. Anything but a clear
+    pass on both is a reason, a blocked or unreadable check included.
+    """
+    prompt = _SUPPORT_CHECK_PROMPT.format(context=context_text, body=email.body, draft=draft)
+    try:
+        raw = await guarded_invoke(
+            db, get_llm(), prompt, actor=actor, route="email.draft_support_check"
+        )
+    except InputBlockedError:
+        return UNREADABLE_CHECK_REASON
+    text = raw if isinstance(raw, str) else getattr(raw, "content", str(raw))
+    try:
+        verdict = json.loads(text[text.find("{") : text.rfind("}") + 1])
+        supported = verdict["supported"] is True
+        promises = verdict["promises_action"] is not False
+        problem = str(verdict.get("problem") or "").strip()
+    except (ValueError, KeyError, TypeError):
+        logger.warning("draft support check: unreadable verdict %r", text[:200])
+        return UNREADABLE_CHECK_REASON
+    if not supported:
+        return f"It says something the clinic documents do not: {problem}"
+    if promises:
+        return f"It promises an action someone has to carry out: {problem}"
+    return None
+
+
+@dataclass
+class DraftNotes:
+    """What drafting learned besides the text, for a caller that passes one in."""
+
+    # Why the draft may not go out unread, in the reviewer's words. None when
+    # it is grounded, and for the clinical path, which never auto-sends anyway.
+    hold_reason: str | None = None
+
+
 async def _generate_org_grounded_reply(
     db: AsyncSession,
     email: Email,
     actor: User,
     feedback: str | None = None,
     reformulate: "Reformulator | None" = None,
+    notes: DraftNotes | None = None,
+    answer_only: bool = False,
 ) -> tuple[str, bool]:
     """Non-clinical reply, grounded in the org-wide profile corpus (clinic
     hours, policies) when retrieval clears the same sufficiency_floor gate
     RAG patient queries use. Falls back to the plain ungrounded reply when
     nothing relevant is retrieved.
 
-    Returns (text, grounded) -- grounded is False on the fallback path, so
+    Returns (text, grounded) -- grounded is False on the fallback path and
+    when the check of the draft does not clear it (_auto_send_blocker), so
     draft_reply's auto-send check can tell a fact-grounded reply from a
-    generic guess.
+    generic guess. notes.hold_reason says which, for the person who approves it.
     """
+    notes = notes or DraftNotes()
     from app.rag.answer import CONTEXT_SCORE_MARGIN
     from app.rag.retrieval import RetrievalContext
     from app.rag.retry import retrieve_gated
@@ -296,6 +398,9 @@ async def _generate_org_grounded_reply(
     )
     gate_outcome = await retrieve_gated(db, email.body, ctx, reformulate=reformulate)
     if gate_outcome.decision == "manual_handling":
+        notes.hold_reason = NOTHING_TO_GROUND_ON_REASON
+        if answer_only:
+            return "", False  # an ungrounded answer is never used: no call for one
         return await _generate_plain_reply(db, email, actor, feedback=feedback), False
 
     assert gate_outcome.top_score is not None
@@ -304,9 +409,59 @@ async def _generate_org_grounded_reply(
     ]
     context_text = "\n\n".join(c.content for c in context_chunks)
     text = await _generate_plain_reply(
-        db, email, actor, context_text=context_text, feedback=feedback
+        db, email, actor, context_text=context_text, feedback=feedback, answer_only=answer_only
     )
-    return text, True
+    notes.hold_reason = await _auto_send_blocker(db, email, actor, context_text, text)
+    return text, notes.hold_reason is None
+
+
+# What the email around the answer already does, or tells the reader not to
+# do: "there is no need to send those details by email".
+_FORM_DOES_THIS = re.compile(
+    r"\b(book|booking|register|registration|provide|date of birth|contact details|"
+    r"contact us|call us|reply|get in touch)\b",
+    re.IGNORECASE,
+)
+
+
+def answer_sentences(answer: str) -> str:
+    """The answer without any sentence about booking, registering or sending
+    details. The prompt asks for none; the model writes them anyway.
+
+    ponytail: a word list over naive sentence splits. It can drop a sentence
+    that only mentions "booking fee"; losing a sentence is the safe direction.
+    """
+    sentences = re.split(r"(?<=[.!?])\s+", answer.strip())
+    return " ".join(s for s in sentences if s and not _FORM_DOES_THIS.search(s))
+
+
+async def answer_for_form_link(
+    db: AsyncSession, email: Email, actor: User
+) -> tuple[str | None, str | None]:
+    """The answer to a question a new patient asked alongside a booking or
+    sign-up request, to go above the registration link: (answer, None), or
+    (None, why not) when there is nothing that may go out unread.
+
+    Held to what a reply sent by itself is held to: grounded in the clinic
+    documents, cleared by _auto_send_blocker, and passing the critic's general
+    rules and the output guardrail. Never raises: the link is fixed text and
+    goes out whether or not an answer could be written.
+    """
+    notes = DraftNotes()
+    try:
+        text, grounded = await _generate_org_grounded_reply(
+            db, email, actor, notes=notes, answer_only=True
+        )
+    except Exception:
+        logger.exception("answer for the registration link email failed")
+        return None, UNREADABLE_CHECK_REASON
+    if not grounded:
+        return None, notes.hold_reason
+    text = answer_sentences(text)
+    reason = critique(text)
+    if reason is None and restricted_term(text):
+        reason = "It uses wording the clinic does not send without a person reading it."
+    return (None, reason) if reason else (text, None)
 
 
 def approval_payload(
@@ -315,8 +470,11 @@ def approval_payload(
     draft: str | None,
     delivery_error: str | None,
     critic_reason: str | None = None,
+    hold_reason: str | None = None,
 ) -> dict:
     payload = {"email_id": str(email_id), "task_id": str(task_id), "draft": draft}
+    if hold_reason is not None:
+        payload["hold_reason"] = hold_reason
     if delivery_error is not None:
         payload["delivery_error"] = delivery_error
     if critic_reason is not None:
@@ -346,7 +504,6 @@ def auto_send_eligible(
     *,
     verdict: ReplyWorthiness,
     gate_outcome: TaskRoutingOutcome,
-    confidence: float,
     grounded: bool,
     category: TaskCategory | None,
 ) -> bool:
@@ -358,17 +515,20 @@ def auto_send_eligible(
     With the Outlook connector live, "sent" stops being a DB-level simulation
     and becomes a real message leaving for a real patient inbox, so confidence
     alone is not enough. Every one of these must hold: the LLM judged the email
-    worth replying to (not merely UNCERTAIN), the routing gate is fully
-    confident (not just flagged), the draft is grounded in retrieved org
-    content rather than a generic guess, and the category isn't clinical --
-    prescription/results/referral replies never auto-send regardless of
-    confidence, per Amin's explicit call.
+    worth replying to (not merely UNCERTAIN), the routing gate did not hold it
+    for a person, the draft is grounded in retrieved org content rather than a
+    generic guess, and the category isn't clinical -- prescription/results/
+    referral replies never auto-send regardless of confidence, per Amin's
+    explicit call.
+
+    A flagged routing outcome (0.70 to 0.90) is enough, Amin's call 2026-10-11:
+    routing confidence says which queue the email belongs to, not whether the
+    reply is right, and it held 13 of 18 good replies to general enquiries.
     """
     return (
         settings.email_auto_send_enabled
         and verdict == ReplyWorthiness.WORTHY
-        and gate_outcome == TaskRoutingOutcome.AUTO_ROUTED
-        and confidence >= settings.task_routing_auto_threshold
+        and gate_outcome != TaskRoutingOutcome.HUMAN_REVIEW
         and grounded
         and category not in _clinical_categories()
     )
@@ -595,6 +755,7 @@ async def generate_draft(
     actor: User,
     feedback: str | None = None,
     reformulate: "Reformulator | None" = None,
+    notes: DraftNotes | None = None,
 ) -> tuple[str, bool]:
     """Draft a reply. Returns (text, grounded).
 
@@ -628,7 +789,7 @@ async def generate_draft(
             )
             return result.answer, True
     return await _generate_org_grounded_reply(
-        db, email, actor, feedback=feedback, reformulate=reformulate
+        db, email, actor, feedback=feedback, reformulate=reformulate, notes=notes
     )
 
 
@@ -737,12 +898,13 @@ async def draft_reply(
         await _persist_draft(db, task, outcome)
         return outcome
 
+    notes = DraftNotes()
     try:
         reply_verdict = await check_reply_worthiness(db, email, actor)
         if reply_verdict.verdict == ReplyWorthiness.NOT_WORTHY:
             await mark_not_worthy(db, task, reply_verdict.reason)
             return EmailDraftOutcome(draft_text=None, approval_id=None, sent=False, blocked=False)
-        draft_text, grounded = await generate_draft(db, task, email, actor)
+        draft_text, grounded = await generate_draft(db, task, email, actor, notes=notes)
     except InputBlockedError:
         # Held, not crashed: the Task ingest_email created is the human review
         # item, and it says why. No draft, because the model was never called.
@@ -786,7 +948,6 @@ async def draft_reply(
     if critic_reason is None and auto_send_eligible(
         verdict=reply_verdict.verdict,
         gate_outcome=gate.outcome,
-        confidence=confidence,
         grounded=grounded,
         category=task.category,
     ):
@@ -816,7 +977,9 @@ async def draft_reply(
     approval = await approval_service.create_approval_request(
         db,
         action_type="email.draft_reply",
-        payload=approval_payload(email.id, task.id, draft_text, delivery_error, critic_reason),
+        payload=approval_payload(
+            email.id, task.id, draft_text, delivery_error, critic_reason, notes.hold_reason
+        ),
         case_id=email.case_id,
         requested_by=actor,
     )

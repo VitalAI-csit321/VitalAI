@@ -5,7 +5,7 @@ and the real graph. The model is FakeLLM: tests decide what it "read", and the
 code under test decides what that is allowed to mean.
 """
 
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
@@ -16,7 +16,7 @@ from sqlalchemy import select
 from app.agents import graph as agent_graph
 from app.agents.graph import route_identity
 from app.config import settings
-from app.models.appointment import Appointment
+from app.models.appointment import Appointment, AppointmentStatus
 from app.models.approval import ApprovalRequest
 from app.models.assignment import DoctorPatientAssignment
 from app.models.audit import AuditEvent
@@ -32,10 +32,12 @@ from app.schemas.call import CallRouteRequest
 from app.schemas.email import EmailIngestRequest
 from app.services import (
     appointment_service,
+    booking_service,
     call_service,
     email_conversation_service,
     email_service,
     identity_service,
+    own_appointment_service,
     patient_service,
 )
 from app.services.identity_service import IdentityFields, IdentityOutcome
@@ -522,7 +524,10 @@ async def test_a_red_flag_in_an_open_conversation_still_goes_to_a_person(
     )
 
     assert (await _conversation(db_session, email1.case_id)).stage != ConversationStage.BOOKED
-    assert len(sends) == sent_before
+    # Nothing from the booking flow; only the fixed urgent notice goes out.
+    assert [text for _, text in sends[sent_before:]] == [
+        email_conversation_service.urgent_notice_text()
+    ]
 
 
 async def test_the_slot_the_patient_names_is_booked_whatever_the_model_picked(
@@ -1552,3 +1557,375 @@ async def test_with_the_flag_off_nothing_new_happens(db_session, admin_user, mon
     state = {"intent": "medical_records_request", "identity_outcome": "ambiguous"}
     assert route_identity(state) == "staff"
     assert email_service.reply_risk_tier(revision_count=0, branch="booking_conversation") == "low"
+
+
+# --- the urgent notice -------------------------------------------------------------
+
+
+async def test_an_urgent_email_is_acknowledged_and_still_waits_for_a_person(
+    db_session, agent_saver, admin_user, llm, sends
+):
+    """Chest pain by email went to the queue and the sender heard nothing
+    (2026-10-11). The clinic's policy is an immediate 000 redirect; the notice
+    is fixed text, so no model words it, and it answers nothing: the task is
+    not marked replied and a person still has to read the email."""
+    email, task = await _mail(
+        db_session,
+        admin_user,
+        "got a tight chest since this morning and feeling sweaty. any appointments today?",
+        message_id="<urgent1@example.com>",
+    )
+
+    ((message_id, text),) = sends
+    assert message_id == email.external_id
+    assert text == email_conversation_service.urgent_notice_text()
+    assert "our team will contact you as soon as they can" in text
+    assert "call 000" in text
+    assert task.draft_sent is False
+    assert task.handover_context == email_conversation_service.URGENT_NOTICE_SENT
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [{"auto_submitted": True}, {"sender": "no-reply@pathology.example"}],
+    ids=["out-of-office", "automated-sender"],
+)
+async def test_an_urgent_looking_automatic_email_gets_no_notice(
+    db_session, agent_saver, admin_user, llm, sends, extra
+):
+    await _mail(
+        db_session,
+        admin_user,
+        "URGENT: critical result available, chest pain clinic closed today.",
+        message_id="<urgent2@example.com>",
+        **extra,
+    )
+
+    assert sends == []
+
+
+async def test_with_auto_send_off_an_urgent_email_gets_no_notice(
+    db_session, agent_saver, admin_user, llm, sends, monkeypatch
+):
+    monkeypatch.setattr(settings, "email_auto_send_enabled", False)
+
+    await _mail(
+        db_session, admin_user, "I have chest pain right now.", message_id="<urgent3@example.com>"
+    )
+
+    assert sends == []
+
+
+# --- a patient's own appointment ----------------------------------------------------
+
+
+async def _with_appointment(db, admin, doctor, *days_ahead: int):
+    """Jane, registered at SENDER, with an appointment at 10am on each given day."""
+    patient = await _registered_patient(db, admin, doctor)
+    booked = []
+    for days in days_ahead:
+        case = IntakeCase(
+            patient_id=patient.id, contact_reason="booked by phone", contact_channel="phone"
+        )
+        db.add(case)
+        await db.commit()
+        when = datetime.combine(_weekday_ahead(days), time(10, 0), tzinfo=SYDNEY)
+        booked.append(
+            await appointment_service.book_appointment(
+                db, doctor_id=doctor.id, case_id=case.id, time_slot=when, actor=admin
+            )
+        )
+    return patient, booked
+
+
+async def test_a_patient_asking_when_their_appointment_is_gets_it_from_the_diary(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    """ "When is my appointment?" was answered "tell us the day you would
+    prefer" (2026-10-11): the category said appointment, so it was a booking.
+    The reply is filled from the diary; no model writes the time."""
+    _, (appointment,) = await _with_appointment(db_session, admin_user, doctor_user, 5)
+    llm.own_appointment = "ask"
+
+    await _mail(
+        db_session, admin_user, "what day and time is my appointment?", message_id="<own1@x>"
+    )
+
+    ((_, text),) = sends
+    assert booking_service.format_slot(appointment.time_slot) in text
+    assert booking_service.titled(doctor_user.full_name) in text
+    assert "prefer" not in text
+    assert llm.booking_prompts == []
+
+
+async def test_a_patient_cancelling_their_only_appointment_has_it_cancelled(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    """Amin's call (2026-10-11): the agent cancels by itself when there is one
+    appointment it can mean, more than a day away, asked for from the address
+    on the patient's record."""
+    _, (appointment,) = await _with_appointment(db_session, admin_user, doctor_user, 5)
+    llm.own_appointment = "cancel"
+
+    await _mail(db_session, admin_user, "pls cancel my appointment", message_id="<own2@x>")
+
+    await db_session.refresh(appointment)
+    assert appointment.status == AppointmentStatus.CANCELLED
+    ((_, text),) = sends
+    assert "has been cancelled" in text
+    assert booking_service.format_slot(appointment.time_slot) in text
+
+
+async def test_a_cancellation_inside_the_notice_period_is_left_to_the_front_desk(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends, monkeypatch
+):
+    _, (appointment,) = await _with_appointment(db_session, admin_user, doctor_user, 5)
+    monkeypatch.setattr(own_appointment_service, "MIN_NOTICE", timedelta(days=30))
+    llm.own_appointment = "cancel"
+
+    _, task = await _mail(
+        db_session, admin_user, "pls cancel my appointment", message_id="<own3@x>"
+    )
+
+    await db_session.refresh(appointment)
+    assert appointment.status != AppointmentStatus.CANCELLED
+    ((_, text),) = sends
+    assert "front desk will confirm" in text
+    items = (
+        (
+            await db_session.execute(
+                select(HumanReviewTask).where(HumanReviewTask.case_id == task.case_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert [i.notes for i in items] == [
+        own_appointment_service.late_reason(appointment, doctor_user.full_name)
+    ]
+
+
+async def test_with_two_appointments_the_one_named_is_cancelled_and_an_unclear_one_is_asked(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    _, (first, second) = await _with_appointment(db_session, admin_user, doctor_user, 5, 9)
+    llm.own_appointment = "cancel"
+
+    await _mail(db_session, admin_user, "cancel my appointment please", message_id="<own4@x>")
+
+    await db_session.refresh(first)
+    await db_session.refresh(second)
+    assert AppointmentStatus.CANCELLED not in (first.status, second.status)
+    assert "more than one" in sends[-1][1]
+
+    weekday = f"{second.time_slot.astimezone(SYDNEY):%A}"
+    assert weekday != f"{first.time_slot.astimezone(SYDNEY):%A}"
+    await _mail(
+        db_session,
+        admin_user,
+        f"cancel the {weekday} one please",
+        message_id="<own5@x>",
+        sender=SENDER,
+    )
+
+    await db_session.refresh(first)
+    await db_session.refresh(second)
+    assert (first.status, second.status) != (AppointmentStatus.CANCELLED, second.status)
+    assert second.status == AppointmentStatus.CANCELLED
+
+
+async def test_an_address_that_is_on_no_patient_record_cancels_nothing(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    _, (appointment,) = await _with_appointment(db_session, admin_user, doctor_user, 5)
+    llm.own_appointment = "cancel"
+
+    await _mail(
+        db_session,
+        admin_user,
+        "cancel Jane Citizen's appointment",
+        message_id="<own6@x>",
+        sender="someone.else@example.com",
+    )
+
+    await db_session.refresh(appointment)
+    assert appointment.status != AppointmentStatus.CANCELLED
+    assert all("cancelled" not in text for _, text in sends)
+
+
+async def test_moving_an_appointment_books_the_new_time_and_cancels_the_old_one(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    """A move ran the booking conversation and left the patient with two
+    appointments. The conversation now remembers which one it replaces, and
+    the old one is cancelled only once the new one is booked."""
+    _, (old,) = await _with_appointment(db_session, admin_user, doctor_user, 9)
+    llm.identity = {"name": "Jane Citizen", "dob": "1990-02-01", "phone": None}
+    llm.own_appointment = "move"
+    day = _weekday_ahead()
+    llm.booking = [{"preferred_day": day.isoformat(), "intent": "change", "confidence": 0.9}]
+
+    email1, _ = await _mail(
+        db_session,
+        admin_user,
+        f"Jane Citizen. I can't make my appointment, can I come on {day:%A} instead?",
+        message_id="<m1@example.com>",
+    )
+
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.appointment_id == old.id
+    await db_session.refresh(old)
+    assert old.status != AppointmentStatus.CANCELLED
+
+    pick = conversation.offered_slots[0]
+    llm.booking = [
+        {"chosen_time": _local_value(pick["start"]), "intent": "confirm", "confidence": 0.95}
+    ]
+    await _mail(
+        db_session,
+        admin_user,
+        "The first one please.",
+        message_id="<m2@example.com>",
+        references="<m1@example.com>",
+    )
+
+    await db_session.refresh(old)
+    conversation = await _conversation(db_session, email1.case_id)
+    assert conversation.stage == ConversationStage.BOOKED
+    assert conversation.appointment_id != old.id
+    assert old.status == AppointmentStatus.CANCELLED
+    text = sends[-1][1]
+    assert f"Your earlier appointment on {booking_service.format_slot(old.time_slot)}" in text
+    assert "has been cancelled" in text
+
+
+async def test_a_cancellation_naming_a_day_they_have_nothing_on_is_checked_first(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    _, (appointment,) = await _with_appointment(db_session, admin_user, doctor_user, 5)
+    other_day = next(
+        d
+        for d in ("monday", "tuesday", "wednesday", "thursday", "friday")
+        if d != f"{appointment.time_slot.astimezone(SYDNEY):%A}".lower()
+    )
+    llm.own_appointment = "cancel"
+
+    await _mail(db_session, admin_user, f"cancel my {other_day} appointment", message_id="<own7@x>")
+
+    await db_session.refresh(appointment)
+    assert appointment.status != AppointmentStatus.CANCELLED
+    ((_, text),) = sends
+    assert booking_service.format_slot(appointment.time_slot) in text
+    assert "more than one" not in text
+    assert "is that the one" in text.lower()
+
+
+async def test_a_move_with_two_appointments_goes_to_the_front_desk_and_marks_neither(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    """Live run, 2026-10-11: "anything on Thursday instead?" was read as "my
+    Thursday appointment", which was not the one being moved. A day in a move
+    is as likely the day they want as the day they have, so with more than one
+    appointment a person decides."""
+    _, (first, second) = await _with_appointment(db_session, admin_user, doctor_user, 5, 9)
+    llm.identity = {"name": "Jane Citizen", "dob": "1990-02-01", "phone": None}
+    llm.own_appointment = "move"
+    wanted = f"{second.time_slot.astimezone(SYDNEY):%A}"
+
+    email, task = await _mail(
+        db_session,
+        admin_user,
+        f"Jane Citizen. can't make it, anything on {wanted} instead?",
+        message_id="<m3@example.com>",
+    )
+
+    ((_, text),) = sends
+    assert "front desk will be in touch" in text
+    assert booking_service.format_slot(first.time_slot) in text
+    conversation = (
+        await db_session.execute(
+            select(EmailConversation).where(EmailConversation.case_id == email.case_id)
+        )
+    ).scalar_one_or_none()
+    assert conversation is None
+    (item,) = (
+        (
+            await db_session.execute(
+                select(HumanReviewTask).where(HumanReviewTask.case_id == task.case_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert item.notes == own_appointment_service.MOVE_REASON
+
+
+# --- health information sent for a doctor -----------------------------------------
+
+READINGS = "Mon 148/92, Tue 151/95, Fri 162/101. The doctor asked me to send these."
+
+
+async def _review_items(db, task):
+    return (
+        (await db.execute(select(HumanReviewTask).where(HumanReviewTask.case_id == task.case_id)))
+        .scalars()
+        .all()
+    )
+
+
+async def test_readings_from_a_known_patient_go_to_their_own_doctor_unanswered(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    """Readings one of which was 162/101 got a generated reply and sat with
+    the front desk as answered. Now nothing is generated: the patient's own
+    doctor gets a Review Queue item and the patient is told who has it."""
+    patient = await _registered_patient(db_session, admin_user, doctor_user)
+    llm.category = "general_administrative"
+    llm.clinical_info = True
+
+    email, task = await _mail(db_session, admin_user, READINGS, message_id="<bp1@example.com>")
+
+    (item,) = await _review_items(db_session, task)
+    assert (item.target_role, item.assigned_to) == (UserRole.DOCTOR, doctor_user.id)
+    assert item.notes == email_conversation_service.CLINICAL_INFO_REASON
+    case = await db_session.get(IntakeCase, email.case_id)
+    assert case.patient_id == patient.id
+    ((_, text),) = sends
+    assert text == email_conversation_service.clinical_info_text(
+        patient.name, doctor_user.full_name
+    )
+    assert booking_service.titled(doctor_user.full_name) in text
+    assert "call 000" in text
+    assert llm.draft_prompts == []
+
+
+async def test_readings_from_an_unknown_sender_go_to_the_operator_queue(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends
+):
+    llm.category = "general_administrative"
+    llm.clinical_info = True
+
+    _, task = await _mail(
+        db_session,
+        admin_user,
+        READINGS,
+        message_id="<bp2@example.com>",
+        sender="nobody.we.know@example.com",
+    )
+
+    (item,) = await _review_items(db_session, task)
+    assert (item.target_role, item.assigned_to) == (UserRole.OPERATOR, None)
+    ((_, text),) = sends
+    assert text == email_conversation_service.clinical_info_text(None, None)
+    assert "the clinic team" in text
+
+
+@pytest.mark.parametrize(
+    ("intent", "expected"),
+    [("general_administrative", "clinical_info"), ("billing_insurance_enquiry", "draft")],
+)
+def test_only_a_general_email_is_rerouted_as_health_information(intent, expected):
+    """The clinical categories already reach a doctor by their own routes."""
+    state = {"intent": intent, "identity_outcome": "no_match", "clinical_info": True}
+
+    assert route_identity(state) == expected

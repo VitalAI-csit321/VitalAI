@@ -15,6 +15,7 @@ from app.agents.graph import build_graph, run_config, thread_id
 from app.config import settings
 from app.llm import guardrail
 from app.models.approval import ApprovalRequest
+from app.models.human_review import HumanReviewTask
 from app.models.task import Task
 from app.rag import retry
 from app.rag.retrieval import RetrievalContext, RetrievedChunk
@@ -135,10 +136,12 @@ async def test_a_first_attempt_that_clears_the_floor_never_reformulates(
 # --- through the graph --------------------------------------------------------------
 
 
-async def _graph_run(db_session, agent_saver, monkeypatch, retrieve_results, reformulation):
+async def _graph_run(
+    db_session, agent_saver, monkeypatch, retrieve_results, reformulation, supported=True
+):
     """An email that meets every other auto-send condition: fully confident,
     worthy, non-clinical. Only grounding decides."""
-    llm = FakeLLM(reformulation=reformulation)
+    llm = FakeLLM(reformulation=reformulation, supported=supported)
     monkeypatch.setattr("app.services.email_service.get_llm", lambda: llm)
     retrieve = AsyncMock(side_effect=retrieve_results)
     monkeypatch.setattr("app.rag.retrieval.retrieve", retrieve)
@@ -192,6 +195,34 @@ async def test_grounded_on_attempt_one_still_auto_sends(
     assert approvals == []
     outlook.assert_awaited_once()
     assert retrieve.await_count == 1
+
+
+async def test_a_draft_the_check_does_not_clear_waits_for_approval_and_says_why(
+    db_session, agent_saver, monkeypatch, outlook
+):
+    """Same email as the control above, except the check of the draft against
+    the clinic info fails. The reviewer is told what the check found, not just
+    that a draft is waiting."""
+    snapshot, approvals, task, _ = await _graph_run(
+        db_session, agent_saver, monkeypatch, [ABOVE], REWRITE, supported=False
+    )
+
+    assert snapshot.values["grounded"] is False
+    assert snapshot.next == ("await_approval",)
+    outlook.assert_not_awaited()
+    (approval,) = approvals
+    reason = "It says something the clinic documents do not: A wrong fee."
+    assert approval.payload["hold_reason"] == reason
+    (item,) = (
+        (
+            await db_session.execute(
+                select(HumanReviewTask).where(HumanReviewTask.case_id == task.case_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert item.notes == f"Not sent automatically. {reason}"
 
 
 async def test_both_attempts_failing_is_todays_ungrounded_fallback(

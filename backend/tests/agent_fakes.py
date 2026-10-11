@@ -19,9 +19,10 @@ DRAFT = "Thanks, we have your request."
 
 
 class FakeLLM:
-    """Answers each of the pipeline's three prompt kinds: the reply-worthiness
-    gate, a draft (plain reply or RAG answer), and the classifier. Records
-    every prompt so a test can see what the model was asked."""
+    """Answers each of the pipeline's prompt kinds: the reply-worthiness gate,
+    a draft (plain reply or RAG answer), the check of that draft against the
+    clinic info, and the classifier. Records every prompt so a test can see
+    what the model was asked."""
 
     def __init__(
         self,
@@ -32,6 +33,11 @@ class FakeLLM:
         reformulation: str = "",
         identity: dict | str | None = None,
         booking: list[dict] | None = None,
+        supported: bool = True,
+        general_question: bool = False,
+        asks_question: bool = False,
+        own_appointment: str = "none",
+        clinical_info: bool = False,
     ):
         self.category = category
         self.confidence = confidence
@@ -49,6 +55,16 @@ class FakeLLM:
         # order, the last one repeating. None or empty answers "{}", the
         # empty extraction (intent unclear, confidence 0).
         self.booking = list(booking or [])
+        # email_service._auto_send_blocker's verdict on a grounded draft.
+        self.supported = supported
+        # The reply gate's second answer: the sender only wants information.
+        self.general_question = general_question
+        # ...or wants something done and asks a question as well.
+        self.asks_question = asks_question
+        # ...or it is about an appointment they already have: ask, cancel, move.
+        self.own_appointment = own_appointment
+        # ...or it reports health information for a doctor to see.
+        self.clinical_info = clinical_info
         self.prompts: list[str] = []
 
     @property
@@ -72,8 +88,21 @@ class FakeLLM:
         if _is_booking(prompt):
             answer = self.booking.pop(0) if len(self.booking) > 1 else next(iter(self.booking), {})
             return json.dumps(answer)
+        if "DRAFT REPLY:" in prompt:
+            return json.dumps(
+                {"supported": self.supported, "promises_action": False, "problem": "A wrong fee."}
+            )
         if "worthy" in prompt.lower():
-            return json.dumps({"worthy": self.worthy, "reason": "test verdict"})
+            return json.dumps(
+                {
+                    "worthy": self.worthy,
+                    "reason": "test verdict",
+                    "general_question": self.general_question,
+                    "asks_question": self.asks_question,
+                    "own_appointment": self.own_appointment,
+                    "clinical_info": self.clinical_info,
+                }
+            )
         if _is_draft(prompt):
             # One reply per draft, the last one repeating.
             return self.replies.pop(0) if len(self.replies) > 1 else self.replies[0]

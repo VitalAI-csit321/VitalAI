@@ -141,3 +141,120 @@ async def test_sender_prefilter_patterns_are_the_agreed_set():
         "postmaster",
         "bounce",
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("extra", "expected"),
+    [
+        ({"general_question": True}, True),
+        ({"general_question": False}, False),
+        ({}, False),
+        ({"general_question": "yes"}, False),
+    ],
+    ids=["yes", "no", "missing", "not-a-boolean"],
+)
+async def test_the_gate_reports_a_general_question_only_on_a_clear_yes(
+    db_session, front_desk_user, extra, expected
+):
+    """A general question from a stranger is answered instead of being sent
+    the registration form (graph.route_identity). Anything but a JSON true is
+    a no, which keeps the routing it had before the field existed."""
+    llm = _FakeLLM(json.dumps({"worthy": True, "reason": "a question", **extra}))
+
+    result = await evaluate_reply_worthiness(
+        db_session,
+        llm,
+        sender="tom.whitfield@example.com",
+        subject="quick question",
+        body="Are you taking new patients at the moment? Not booking yet, just asking.",
+        actor=front_desk_user,
+    )
+
+    assert result.general_question is expected
+    assert "general_question" in llm.calls[0]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("extra", "expected"),
+    [({"asks_question": True}, True), ({"asks_question": False}, False), ({}, False)],
+    ids=["yes", "no", "missing"],
+)
+async def test_the_gate_reports_a_question_asked_alongside_a_request(
+    db_session, front_desk_user, extra, expected
+):
+    """ "How much is a new patient appointment? Book me in for Wednesday": the
+    registration link answers the second half only (graph form_link)."""
+    llm = _FakeLLM(json.dumps({"worthy": True, "reason": "a request", **extra}))
+
+    result = await evaluate_reply_worthiness(
+        db_session,
+        llm,
+        sender="callum.reid@example.com",
+        subject="cost + booking",
+        body="how much for a new patient appointment? book me in for wednesday",
+        actor=front_desk_user,
+    )
+
+    assert result.asks_question is expected
+    assert "asks_question" in llm.calls[0]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("extra", "expected"),
+    [
+        ({"own_appointment": "ask"}, "ask"),
+        ({"own_appointment": "cancel"}, "cancel"),
+        ({"own_appointment": "move"}, "move"),
+        ({"own_appointment": "none"}, None),
+        ({"own_appointment": "delete"}, None),
+        ({}, None),
+    ],
+)
+async def test_the_gate_reports_what_the_sender_wants_with_an_appointment_they_have(
+    db_session, front_desk_user, extra, expected
+):
+    """ "When is my appointment?" is about appointments and is not a request
+    for a new one (graph own_appointment). Anything but the three known
+    answers is None, which is the routing from before the field existed."""
+    llm = _FakeLLM(json.dumps({"worthy": True, "reason": "a request", **extra}))
+
+    result = await evaluate_reply_worthiness(
+        db_session,
+        llm,
+        sender="dorothy.hensley@example.com",
+        subject="when is my appointment",
+        body="I have an appointment this week I think but I lost the card.",
+        actor=front_desk_user,
+    )
+
+    assert result.own_appointment == expected
+    assert "own_appointment" in llm.calls[0]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("extra", "expected"),
+    [({"clinical_info": True}, True), ({"clinical_info": False}, False), ({}, False)],
+    ids=["yes", "no", "missing"],
+)
+async def test_the_gate_reports_health_information_sent_for_a_doctor(
+    db_session, front_desk_user, extra, expected
+):
+    """Blood pressure readings a doctor asked for were answered "bring them
+    to your next appointment" and filed as a general enquiry (2026-10-11)."""
+    llm = _FakeLLM(json.dumps({"worthy": True, "reason": "readings", **extra}))
+
+    result = await evaluate_reply_worthiness(
+        db_session,
+        llm,
+        sender="linda.achterberg@example.com",
+        subject="BP readings as requested",
+        body="Mon 148/92, Tue 151/95, Fri 162/101. The doctor asked me to send these.",
+        actor=front_desk_user,
+    )
+
+    assert result.clinical_info is expected
+    assert "clinical_info" in llm.calls[0]

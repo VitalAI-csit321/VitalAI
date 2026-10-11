@@ -412,6 +412,7 @@ async def hold_for_staff(
     review_kind: TaskType | None = TaskType.AGENT_HANDOVER,
     details: dict | None = None,
     owner: UserRole | None = None,
+    assigned_to: UUID | None = None,
 ) -> None:
     """No draft: say why on the message, and put it in its owner's Review Queue
     (review queue spec F1). review_kind None for an automatic message, which
@@ -428,6 +429,7 @@ async def hold_for_staff(
                 actor=None,
                 details=details,
                 owner=owner,
+                assigned_to=assigned_to,
             )
         await db.commit()
 

@@ -113,7 +113,8 @@ async def test_consent_without_a_record_reads_none_and_does_not_block(
     ("intent", "outcome", "expected"),
     [
         # No agent, no draft, at any confidence and whatever the gate said.
-        ("urgent_emergency", "auto_routed", "human_review"),
+        # An urgent one is also sent the fixed notice on its way to a person.
+        ("urgent_emergency", "auto_routed", "urgent_notice"),
         ("complaint_escalation", "auto_routed", "human_review"),
         ("general_administrative", "human_review", "human_review"),
         # Placeholder edges until §9-§12 build these agents.
@@ -127,6 +128,27 @@ async def test_consent_without_a_record_reads_none_and_does_not_block(
 )
 def test_route_intent(intent, outcome, expected):
     assert route_intent({"intent": intent, "routing_outcome": outcome}) == expected
+
+
+@pytest.mark.parametrize(
+    ("override", "expected"),
+    [
+        ("urgent_keyword", "urgent_notice"),
+        ("urgent_category", "urgent_notice"),
+        # A complaint is read by a person too, but is not told to call 000.
+        ("complaint_category", "human_review"),
+        # Low confidence alone: nothing urgent about it.
+        (None, "human_review"),
+    ],
+)
+def test_only_an_urgent_hold_gets_the_urgent_notice(override, expected):
+    state = {
+        "intent": "appointment_request",
+        "routing_outcome": "human_review",
+        "routing_override": override,
+    }
+
+    assert route_intent(state) == expected
 
 
 async def test_reply_gate_parks_a_not_worthy_email(detached_sessionmaker, db_session, llm):
@@ -151,6 +173,7 @@ async def test_draft_returns_text_and_grounding(detached_sessionmaker, db_sessio
     assert update == {
         "draft_text": DRAFT,
         "grounded": False,
+        "hold_reason": email_service.NOTHING_TO_GROUND_ON_REASON,
         "retrieval_attempts": 2,
         "reformulated_query": None,
         "retrieval_sufficient": False,

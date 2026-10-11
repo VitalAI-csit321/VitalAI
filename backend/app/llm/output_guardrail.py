@@ -18,6 +18,7 @@ matching. Flagged, not silently dropped.
 from __future__ import annotations
 
 import logging
+import re
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,6 +76,20 @@ RESTRICTED_TERMS: tuple[str, ...] = (
 )
 
 
+# Amin's call (2026-10-11): the clinic's own documents say "call 000 in an
+# emergency", so a word match on "emergency" threw away correct replies to
+# "what do I do after hours?". These are the clinic stating its own facts, not
+# the model judging a patient's condition. Every other term still applies to
+# the same sentence.
+_SAFE_WORDING = re.compile(r"emergency (?:department|contact|care)|mental health treatment plan")
+_SENTENCE_WITH_000 = re.compile(r"[^.!?\n]*\b000\b[^.!?\n]*")
+
+
+def _without_safe_wording(text: str) -> str:
+    text = _SAFE_WORDING.sub("", text.lower())
+    return _SENTENCE_WITH_000.sub(lambda m: m.group(0).replace("emergency", ""), text)
+
+
 class OutputBlockedError(Exception):
     """Raised when check_output() blocks a draft. Carries the matched term
     for the caller's own logging/testing only -- never surface matched_term
@@ -94,6 +109,12 @@ def _first_match(text: str, terms: tuple[str, ...]) -> str | None:
     return None
 
 
+def restricted_term(text: str) -> str | None:
+    """The first restricted term in text, or None. No audit event: for a
+    caller deciding whether to use a piece of text at all."""
+    return _first_match(_without_safe_wording(text), RESTRICTED_TERMS)
+
+
 async def check_output(db: AsyncSession, text: str, *, actor: User, case_id: UUID | None) -> None:
     """Raise OutputBlockedError if text contains a restricted term.
 
@@ -104,7 +125,7 @@ async def check_output(db: AsyncSession, text: str, *, actor: User, case_id: UUI
     fail-safe shape: a genuine block must always still raise, never surface
     as an unrelated audit-write 500.
     """
-    matched = _first_match(text.lower(), RESTRICTED_TERMS)
+    matched = restricted_term(text)
     if matched is None:
         return
     try:

@@ -1,7 +1,7 @@
 """The agent graph: thread identity, run context, nodes, and how a run is invoked."""
 
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Hashable
 from typing import Any, cast
 from uuid import UUID
 
@@ -105,6 +105,8 @@ async def create_approval(state: CaseState, runtime: Runtime[Context]) -> dict:
                     if state.get("delivery_error")
                     else {}
                 ),
+                # Why a draft the critic passed still did not go out by itself.
+                **({"hold_reason": state["hold_reason"]} if state.get("hold_reason") else {}),
             },
             case_id=UUID(state["case_id"]) if state.get("case_id") else None,
             requested_by=actor,
@@ -176,7 +178,11 @@ def route_intent(state: CaseState) -> str:
     intent = TaskCategory(i) if (i := state.get("intent")) else None
     review = state.get("routing_outcome") == TaskRoutingOutcome.HUMAN_REVIEW
     if intent in _HUMAN_ONLY or (review and state.get("routing_override")):
-        return "human_review"
+        urgent = intent == TaskCategory.URGENT_EMERGENCY or state.get("routing_override") in (
+            "urgent_keyword",
+            "urgent_category",
+        )
+        return "urgent_notice" if urgent else "human_review"
     # A reply in an open email conversation (set by load only with the flag
     # on) skips the reply gate, which would judge "Tuesday 10am works" not
     # worth answering, and identity, which the conversation already settled.
@@ -222,6 +228,19 @@ def after_booking(state: CaseState) -> str:
     return END if state.get("dispatch_result") == "booking_hold" else "draft"
 
 
+_OWN_APPOINTMENT_INTENTS = frozenset(
+    {TaskCategory.APPOINTMENT_REQUEST, TaskCategory.GENERAL_ADMINISTRATIVE}
+)
+
+
+def after_own_appointment(state: CaseState) -> str:
+    """Its fixed text goes out as a template; anything it passed on is routed
+    the way it was before the node existed."""
+    if state.get("dispatch_result") == "own_appointment":
+        return "draft"
+    return route_identity(state)
+
+
 def route_identity(state: CaseState) -> str:
     """§8.2, after the reply gate: intent x identity outcome x provisional.
 
@@ -230,6 +249,20 @@ def route_identity(state: CaseState) -> str:
     identity can link a provisional patient that load did not know about.
     """
     intent = TaskCategory(i) if (i := state.get("intent")) else None
+    # About an appointment they already have, whichever of the two categories
+    # the classifier gave it ("cancel my appointment" comes out as general).
+    # Before the general-question exit below, which would draft it.
+    if (
+        state.get("own_appointment")
+        and intent in _OWN_APPOINTMENT_INTENTS
+        and email_conversation_service.enabled()
+    ):
+        return "own_appointment"
+    # Readings or a side effect, filed as a general enquiry: not a question to
+    # answer from the clinic documents. The clinical categories already reach
+    # a doctor by their own routes.
+    if state.get("clinical_info") and intent == TaskCategory.GENERAL_ADMINISTRATIVE:
+        return "clinical_info"
     if intent not in identity_service.PATIENT_SPECIFIC:
         return "draft"
     outcome = identity_service.IdentityOutcome(state["identity_outcome"])
@@ -249,6 +282,11 @@ def route_identity(state: CaseState) -> str:
         outcome == identity_service.IdentityOutcome.NO_MATCH
         and intent in identity_service.ONBOARDING_INTENTS
     ):
+        # The category is what the email is about, not what the sender wants:
+        # "do you do phone consults for new patients?" is answered from the
+        # clinic documents, not sent a form to fill in.
+        if state.get("general_question"):
+            return "draft"
         # The registration form replaces asking for details by email, for a
         # booking and a sign-up alike (patient_form_service).
         if patient_form_service.enabled():
@@ -290,7 +328,6 @@ def auto_send_or_approve(state: CaseState) -> str:
     eligible = email_service.auto_send_eligible(
         verdict=ReplyWorthiness(state["reply_verdict"]),
         gate_outcome=TaskRoutingOutcome(state["routing_outcome"]),
-        confidence=state["triage_confidence"],
         grounded=bool(state.get("grounded")),
         category=TaskCategory(i) if (i := state.get("intent")) else None,
     )
@@ -367,6 +404,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
     for name, fn in (
         ("load", nodes.load),
         ("consent", nodes.consent),
+        ("urgent_notice", nodes.urgent_notice),
         ("reply_gate", nodes.reply_gate),
         ("identity", nodes.identity),
         ("onboarding", nodes.onboarding),
@@ -376,6 +414,8 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         ("identity_hold", nodes.identity_hold),
         ("conversation", nodes.conversation),
         ("book", nodes.book),
+        ("own_appointment", nodes.own_appointment),
+        ("clinical_info", nodes.clinical_info),
         ("request_verification", nodes.request_verification),
         ("form_link", nodes.form_link),
         ("draft", nodes.draft),
@@ -402,6 +442,7 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
         _unless_failed(route_after_consent),
         {
             "human_review": END,
+            "urgent_notice": "urgent_notice",
             "retrieval": "reply_gate",
             # Placeholder edges, see _AGENT_FOR_INTENT.
             "booking": "reply_gate",
@@ -413,25 +454,37 @@ def build_graph() -> StateGraph[CaseState, Context, CaseState, CaseState]:
             END: END,
         },
     )
+    builder.add_edge("urgent_notice", END)
     builder.add_conditional_edges(
         "reply_gate",
         _unless_failed(lambda s: END if s.get("dispatch_result") == "not_worthy" else "identity"),
     )
+    identified: dict[Hashable, str] = {
+        "draft": "draft",
+        "staff": "identity_hold",
+        "onboarding": "onboarding",
+        "booking": "booking",
+        "records": "records",
+        "prescription": "prescription",
+        "conversation": "conversation",
+        "request_verification": "request_verification",
+        "form_link": "form_link",
+        "clinical_info": "clinical_info",
+        END: END,
+    }
     builder.add_conditional_edges(
         "identity",
         _unless_failed(route_identity),
-        {
-            "draft": "draft",
-            "staff": "identity_hold",
-            "onboarding": "onboarding",
-            "booking": "booking",
-            "records": "records",
-            "prescription": "prescription",
-            "conversation": "conversation",
-            "request_verification": "request_verification",
-            "form_link": "form_link",
-            END: END,
-        },
+        identified | {"own_appointment": "own_appointment"},
+    )
+    builder.add_conditional_edges(
+        "own_appointment", _unless_failed(after_own_appointment), identified
+    )
+    builder.add_conditional_edges(
+        "clinical_info",
+        _unless_failed(
+            lambda s: END if s.get("dispatch_result") == "conversation_hold" else "draft"
+        ),
     )
     builder.add_conditional_edges(
         "conversation",
@@ -552,7 +605,14 @@ async def start(
 
 # What a re-run carries over from the message's first run: the routing it was
 # given at ingest and the reply gate's verdict, neither of which it repeats.
-_CARRIED = ("routing_outcome", "routing_override", "triage_confidence", "reply_verdict")
+_CARRIED = (
+    "routing_outcome",
+    "routing_override",
+    "triage_confidence",
+    "reply_verdict",
+    "general_question",
+    "asks_question",
+)
 # The Review Queue items whose answer is "carry on with the email".
 _CATEGORY_REVIEWS = frozenset({TaskType.INTENT_REVIEW, TaskType.ROUTING_REVIEW})
 
@@ -599,9 +659,9 @@ async def rerun_after_review(review_id: UUID) -> None:
                 return
             if conversation is not None and conversation.stage not in OPEN_STAGES:
                 return
-            # A person confirmed the category, so the hold is over. Flagged,
-            # not fully confident: a generated reply still goes to approval,
-            # and only the conversation's fixed templates go out on their own.
+            # A person confirmed the category, so the hold is over and the
+            # email carries on as any flagged one does: a grounded reply the
+            # critic passed first time may go out (auto_send_eligible).
             overrides = {
                 "routing_outcome": TaskRoutingOutcome.AUTO_ROUTED_FLAGGED.value,
                 "routing_override": None,
