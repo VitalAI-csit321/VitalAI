@@ -9,6 +9,7 @@ re-fetches its rows by id, because a row loaded in one node's session is
 detached in the next.
 """
 
+import logging
 from datetime import date
 from uuid import UUID
 
@@ -50,6 +51,8 @@ from app.services.draft_critic import critique
 from app.services.email_service import EmailSendError
 from app.services.outlook_auth import OutlookAuthRequiredError
 from app.services.reply_gate import ReplyWorthiness
+
+logger = logging.getLogger(__name__)
 
 
 async def _rows(
@@ -587,9 +590,14 @@ async def _confirm_own_appointment(
         and appointment.status in (AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED)
         and email.sender.strip().casefold() == (patient.email or "").strip().casefold()
     ):
-        action = own_appointment_service.confirmed_action(
-            email.new_text or reply_parsing.strip_quoted(email.body), row.id, appointment.id
-        )
+        try:
+            action = own_appointment_service.confirmed_action(
+                email.new_text or reply_parsing.strip_quoted(email.body), row.id, appointment.id
+            )
+        except Exception:
+            # Fail closed: a reply that cannot be read is a miss like any
+            # other, so the request is spent below rather than left open.
+            logger.exception("confirmation reply could not be read")
     if action is None or patient is None or appointment is None:
         row.stage = ConversationStage.STAFF.value
         await task_service.hold_for_staff(

@@ -233,14 +233,16 @@ def confirmed_action(written: str, conversation_id: UUID, appointment_id: UUID) 
     """
     if _DECLINES.search(written):
         return None
-    candidates = set(re.findall(r"\b\d{6}\b", written))
+    # re.ASCII: \d otherwise matches every script's digits, and a code is
+    # only ever 0-9. Compared as bytes, which compare_digest takes whatever
+    # the text holds; on a str it raises for anything outside ASCII.
+    candidates = set(re.findall(r"\b\d{6}\b", written, re.ASCII))
     if len(candidates) != 1:
         return None
     (candidate,) = candidates
     for action in ("cancel", "move"):
-        if hmac.compare_digest(
-            candidate, confirmation_code(conversation_id, appointment_id, action)
-        ):
+        code = confirmation_code(conversation_id, appointment_id, action)
+        if hmac.compare_digest(candidate.encode(), code.encode()):
             return action
     return None
 

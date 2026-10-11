@@ -2030,3 +2030,41 @@ def test_a_reply_listing_many_codes_confirms_nothing():
     assert read(f"{right} {right}") == "cancel"
     assert read(f"{other} {right}") is None
     assert read(" ".join(f"{n:06d}" for n in range(0, 1000)) + f" {right}") is None
+
+
+@pytest.mark.parametrize(
+    "written",
+    ["١٢٣٤٥٦", "１２３４５６", "code: ٤١٥٢٣٣ please", "\x00\udcff 123", ""],
+    ids=["arabic-indic", "fullwidth", "mixed", "junk", "empty"],
+)
+def test_a_reply_in_other_digits_or_junk_is_a_miss_not_a_crash(written):
+    """\\d matches every script's digits, and comparing a non-ASCII string in
+    constant time raises. A crash would leave the request open, where a miss
+    hands it to the front desk."""
+    assert own_appointment_service.confirmed_action(written, uuid4(), uuid4()) is None
+
+
+async def test_a_confirmation_reply_that_cannot_be_read_is_a_miss(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends, mails, monkeypatch
+):
+    """Whatever goes wrong reading the reply, the request is spent and a
+    person takes over. Left open, it could be answered again."""
+    _, (appointment,) = await _with_appointment(db_session, admin_user, doctor_user, 5)
+    llm.own_appointment = "cancel"
+    email1, _ = await _mail(
+        db_session, admin_user, "pls cancel my appointment", message_id="<own9@x>"
+    )
+    code = _code(mails[-1][1])
+
+    def boom(*args):
+        raise ValueError("unreadable")
+
+    monkeypatch.setattr(own_appointment_service, "confirmed_action", boom)
+    _, task = await _mail(db_session, admin_user, code, message_id="<own9b@x>")
+
+    await db_session.refresh(appointment)
+    assert appointment.status != AppointmentStatus.CANCELLED
+    assert (await _conversation(db_session, email1.case_id)).stage == ConversationStage.STAFF
+    assert own_appointment_service.UNCONFIRMED_REASON in [
+        i.notes for i in await _review_items(db_session, task)
+    ]
