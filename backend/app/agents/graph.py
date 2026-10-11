@@ -234,10 +234,11 @@ _OWN_APPOINTMENT_INTENTS = frozenset(
 
 
 def after_own_appointment(state: CaseState) -> str:
-    """Its fixed text goes out as a template; anything it passed on is routed
-    the way it was before the node existed."""
+    """It sent its own email (to the address on the patient's record, not as
+    a reply); anything it passed on is routed the way it was before the node
+    existed."""
     if state.get("dispatch_result") == "own_appointment":
-        return "draft"
+        return END
     return route_identity(state)
 
 

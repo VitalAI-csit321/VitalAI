@@ -18,10 +18,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.state import CaseState, Context
 from app.config import settings
 from app.llm.output_guardrail import OutputBlockedError, check_output
+from app.models.appointment import Appointment, AppointmentStatus
 from app.models.call import Call
 from app.models.case import IntakeCase
 from app.models.email import Email
-from app.models.email_conversation import OPEN_STAGES, ConversationStage
+from app.models.email_conversation import (
+    OPEN_STAGES,
+    ConversationStage,
+    EmailConversation,
+)
 from app.models.patient import Patient
 from app.models.task import Task, TaskCategory
 from app.models.user import User, UserRole
@@ -36,6 +41,7 @@ from app.services import (
     patient_form_service,
     prescription_service,
     records_service,
+    reply_parsing,
     task_service,
     voicemail_service,
 )
@@ -364,11 +370,13 @@ async def conversation(state: CaseState, runtime: Runtime[Context]) -> dict:
             stage=ConversationStage.AWAITING_DETAILS,
         )
         conversation_id = str(row.id)
-        # A move (nodes.own_appointment). Until the new time is booked this
-        # column holds the appointment being replaced; book_choice cancels it
-        # and puts the new one here.
-        if created and state.get("replaces_appointment_id"):
-            row.appointment_id = UUID(state["replaces_appointment_id"])
+        if not created and row.stage == ConversationStage.AWAITING_CONFIRMATION.value:
+            if await _confirm_own_appointment(db, state, row, email, actor):
+                return {"conversation_id": conversation_id, "dispatch_result": "conversation_hold"}
+            # A confirmed move: the booking flow starts here, on the email
+            # that asked for it and named the day they want.
+            email = await db.get(Email, row.origin_email_id) or email
+            created = True
         if not created and row.stage not in OPEN_STAGES:
             # Booked, or already with staff: the agent's part is over. Without
             # this a matched patient's reply re-entered the automated turn and
@@ -464,20 +472,43 @@ async def book(state: CaseState, runtime: Runtime[Context]) -> dict:
     }
 
 
+async def _mail_patient(
+    db: AsyncSession, state: CaseState, patient: Patient, email: Email, text: str, actor: User
+) -> None:
+    """A new email to the address on the patient's record, shown on the Task
+    as its reply. Not a reply to `email`: a reply follows that email's
+    Reply-To, and the From address that matched this patient can be forged."""
+    assert patient.email is not None  # patient_for_sender matched on it
+    await email_service.deliver_new_message(
+        db,
+        to_address=patient.email,
+        subject=f"Re: {email.subject}",
+        body=text,
+        actor=actor,
+        case_id=_case_id(state),
+        action="email.sent",
+        details={"email_id": str(email.id), "to": "address_on_record"},
+    )
+    await email_service.persist_draft(db, state["task_id"], text, sent=True)
+
+
 async def own_appointment(state: CaseState, runtime: Runtime[Context]) -> dict:
     """The email is about an appointment the sender already has
-    (own_appointment_service): say when it is, or cancel it.
+    (own_appointment_service): say when it is, or ask them to confirm a cancel
+    or a move with the code this sends.
 
-    Returns fixed text for the template send path, or clears own_appointment
-    so route_identity routes the email as it always did: a sender who is not
-    the one patient on that address, a machine, or a move, which the booking
-    conversation handles.
+    Everything goes to the address on the patient's record, and nothing is
+    cancelled or moved here: conversation() does that when the code comes
+    back. Clears own_appointment so that a sender who is not the one patient
+    on that address, or a machine, is routed as it always was.
     """
     want = state.get("own_appointment")
     passed: dict = {"own_appointment": None}
     async with runtime.context.session_factory() as db:
         task, email, actor = await _rows(db, state, runtime)
-        if not email_conversation_service.can_auto_reply(email):
+        if not settings.email_auto_send_enabled or not email_conversation_service.can_auto_reply(
+            email
+        ):
             return passed
         patient = await own_appointment_service.patient_for_sender(db, email.sender)
         if patient is None:
@@ -486,41 +517,110 @@ async def own_appointment(state: CaseState, runtime: Runtime[Context]) -> dict:
         described = [await own_appointment_service.describe(db, a) for a in appointments]
         moving = want == "move"
         chosen = own_appointment_service.target(email.body, appointments, moving=moving)
-        if moving and (chosen is not None or not appointments):
-            # The booking conversation offers the new time (route_identity);
-            # it cancels this one when the new one is booked, never before.
-            return passed | ({"replaces_appointment_id": str(chosen.id)} if chosen else {})
+        if moving and not appointments:
+            return passed  # nothing to move: an ordinary booking request
         if want == "ask" or not appointments:
             text = own_appointment_service.when_text(patient.name, described)
-        elif moving:
+        elif moving and chosen is None:
             await task_service.hold_for_staff(
                 db, state["task_id"], own_appointment_service.MOVE_REASON, owner=UserRole.FRONT_DESK
             )
             text = own_appointment_service.move_staff_text(patient.name, described)
         elif chosen is None:
             text = own_appointment_service.which_text(patient.name, described)
+        elif not moving and own_appointment_service.is_late(chosen):
+            doctor = await db.get(User, chosen.doctor_id)
+            await task_service.hold_for_staff(
+                db,
+                state["task_id"],
+                own_appointment_service.late_reason(
+                    chosen, doctor.full_name if doctor else "the doctor"
+                ),
+                owner=UserRole.FRONT_DESK,
+            )
+            text = own_appointment_service.late_text(
+                patient.name, described[appointments.index(chosen)]
+            )
         else:
-            one = described[appointments.index(chosen)]
-            if own_appointment_service.is_late(chosen):
-                doctor = await db.get(User, chosen.doctor_id)
-                await task_service.hold_for_staff(
-                    db,
-                    state["task_id"],
-                    own_appointment_service.late_reason(
-                        chosen, doctor.full_name if doctor else "the doctor"
-                    ),
-                    owner=UserRole.FRONT_DESK,
-                )
-                text = own_appointment_service.late_text(patient.name, one)
-            else:
-                await own_appointment_service.cancel(db, chosen, actor)
-                text = own_appointment_service.cancelled_text(patient.name, one)
-        await db.commit()
-    return passed | {
-        "dispatch_result": "own_appointment",
-        "branch": email_conversation_service.BRANCH,
-        "template_text": text,
-    }
+            row, created = await email_conversation_service.get_or_create(
+                db,
+                case_id=UUID(state["case_id"]),
+                intent=TaskCategory.APPOINTMENT_REQUEST.value,
+                origin_email_id=email.id,
+                patient_id=patient.id,
+                stage=ConversationStage.AWAITING_CONFIRMATION,
+            )
+            if not created:
+                return passed
+            # The appointment this conversation is about. For a move it stays
+            # here until the new time is booked, when book_choice cancels it
+            # and puts the new one in its place.
+            row.appointment_id = chosen.id
+            action = "move" if moving else "cancel"
+            text = own_appointment_service.confirm_text(
+                patient.name,
+                described[appointments.index(chosen)],
+                action,
+                own_appointment_service.confirmation_code(row.id, chosen.id, action),
+            )
+        await _mail_patient(db, state, patient, email, text, actor)
+    return passed | {"dispatch_result": "own_appointment"}
+
+
+async def _confirm_own_appointment(
+    db: AsyncSession, state: CaseState, row: EmailConversation, email: Email, actor: User
+) -> bool:
+    """The reply to a confirmation code (own_appointment). True when the turn
+    is over: cancelled, or left to the front desk. False for a confirmed move,
+    which carries on into the booking conversation.
+
+    Only what the sender wrote counts, never the quoted email under it, which
+    holds the code. Anything short of the right code from the patient's own
+    address changes nothing and goes to a person.
+    """
+    patient = await db.get(Patient, row.patient_id) if row.patient_id else None
+    appointment = await db.get(Appointment, row.appointment_id) if row.appointment_id else None
+    action = None
+    if (
+        patient is not None
+        and appointment is not None
+        and appointment.status in (AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED)
+        and email.sender.strip().casefold() == (patient.email or "").strip().casefold()
+    ):
+        action = own_appointment_service.confirmed_action(
+            email.new_text or reply_parsing.strip_quoted(email.body), row.id, appointment.id
+        )
+    if action is None or patient is None or appointment is None:
+        row.stage = ConversationStage.STAFF.value
+        await task_service.hold_for_staff(
+            db,
+            state["task_id"],
+            own_appointment_service.UNCONFIRMED_REASON,
+            owner=UserRole.FRONT_DESK,
+        )
+        return True
+    if action == "move":
+        row.stage = ConversationStage.AWAITING_DETAILS.value
+        return False
+    described = await own_appointment_service.describe(db, appointment)
+    if own_appointment_service.is_late(appointment):
+        doctor = await db.get(User, appointment.doctor_id)
+        row.stage = ConversationStage.STAFF.value
+        await task_service.hold_for_staff(
+            db,
+            state["task_id"],
+            own_appointment_service.late_reason(
+                appointment, doctor.full_name if doctor else "the doctor"
+            ),
+            owner=UserRole.FRONT_DESK,
+        )
+        text = own_appointment_service.late_text(patient.name, described)
+    else:
+        await own_appointment_service.cancel(db, appointment, actor)
+        row.stage = ConversationStage.CLOSED.value
+        text = own_appointment_service.cancelled_text(patient.name, described)
+    await _mail_patient(db, state, patient, email, text, actor)
+    return True
 
 
 async def clinical_info(state: CaseState, runtime: Runtime[Context]) -> dict:
@@ -548,11 +648,24 @@ async def clinical_info(state: CaseState, runtime: Runtime[Context]) -> dict:
         )
         if not email_conversation_service.can_auto_reply(email):
             return {"dispatch_result": "conversation_hold"}
+        if patient is not None:
+            # It names their doctor, so it goes to the address on the record,
+            # never as a reply to an email whose From may be forged.
+            if settings.email_auto_send_enabled:
+                await _mail_patient(
+                    db,
+                    state,
+                    patient,
+                    email,
+                    email_conversation_service.clinical_info_text(
+                        patient.name, doctor[1] if doctor else None
+                    ),
+                    actor,
+                )
+            return {"dispatch_result": "conversation_hold"}
     return {
         "branch": email_conversation_service.BRANCH,
-        "template_text": email_conversation_service.clinical_info_text(
-            patient.name if patient else None, doctor[1] if doctor else None
-        ),
+        "template_text": email_conversation_service.clinical_info_text(None, None),
     }
 
 

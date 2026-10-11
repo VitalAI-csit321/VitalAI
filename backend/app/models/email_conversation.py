@@ -22,7 +22,12 @@ class ConversationStage(enum.StrEnum):
     AWAITING_VERIFICATION = "awaiting_verification"
     AWAITING_DETAILS = "awaiting_details"
     AWAITING_CHOICE = "awaiting_choice"
+    # A cancel or move of an existing appointment, waiting for the one-time
+    # code sent to the address on the patient's record (own_appointment_service).
+    AWAITING_CONFIRMATION = "awaiting_confirmation"
     BOOKED = "booked"
+    # Finished with nothing booked: a confirmed cancellation.
+    CLOSED = "closed"
     # A verification reply identified the sender and the original inquiry
     # carried on down its own path.
     VERIFIED = "verified"
@@ -34,6 +39,7 @@ OPEN_STAGES = frozenset(
         ConversationStage.AWAITING_VERIFICATION,
         ConversationStage.AWAITING_DETAILS,
         ConversationStage.AWAITING_CHOICE,
+        ConversationStage.AWAITING_CONFIRMATION,
     }
 )
 

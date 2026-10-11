@@ -6,14 +6,23 @@ appointment?" was a booking request because its category said appointment
 (2026-10-11 test run). Moving one is the booking conversation's job; this
 module only finds which appointment is meant.
 
-Amin's calls (2026-10-11): the sender is trusted as the patient only when the
+Amin's calls (2026-10-11): the sender is taken to be the patient only when the
 email comes from the address on exactly one patient record, and the agent
 cancels by itself when one appointment can be meant and it is more than
 MIN_NOTICE away. Everything else is the front desk's.
+
+A From address can be forged, so that match proves little by itself. Two rules
+follow (security review of the first version, same day). Nothing here is sent
+as a reply, which would follow a forged email's Reply-To: it goes as a new
+email to the address on the record. And a cancel or move is not carried out
+on the email that asks: that email earns a one-time code, sent to the same
+address, and only a reply carrying the code is acted on.
 """
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import re
 from datetime import timedelta
 from uuid import UUID
@@ -21,6 +30,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.base import utcnow
 from app.models.case import IntakeCase
@@ -191,6 +201,60 @@ def late_reason(appointment: Appointment, doctor_name: str) -> str:
         f"{slot_text(appointment, doctor_name)}, which is inside the notice period. "
         "They were told the front desk will confirm it. Cancel it and decide on the fee."
     )
+
+
+def confirmation_code(conversation_id: UUID, appointment_id: UUID, action: str) -> str:
+    """Six digits for one request to cancel or move one appointment.
+
+    Derived, not stored: an HMAC of the request under the app's secret, so
+    there is no column to add and nothing to read out of the database. It is
+    spent when the conversation leaves AWAITING_CONFIRMATION.
+    """
+    digest = hmac.new(
+        settings.jwt_secret_key.encode(),
+        f"{conversation_id}:{appointment_id}:{action}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    return f"{int(digest[:12], 16) % 1_000_000:06d}"
+
+
+# "That was not me", with the code quoted underneath by the mail client.
+_DECLINES = re.compile(r"\b(no|not|never|didn'?t|don'?t|wrong|mistake)\b", re.IGNORECASE)
+
+
+def confirmed_action(written: str, conversation_id: UUID, appointment_id: UUID) -> str | None:
+    """ "cancel" or "move" when what the sender wrote carries that request's
+    code and does not read as a refusal; None otherwise. written is the new
+    text of the reply, never the quoted email under it, which holds the code.
+    """
+    if _DECLINES.search(written):
+        return None
+    codes = set(re.findall(r"\b\d{6}\b", written))
+    for action in ("cancel", "move"):
+        if confirmation_code(conversation_id, appointment_id, action) in codes:
+            return action
+    return None
+
+
+def confirm_text(name: str | None, described: str, action: str, code: str) -> str:
+    asked = "cancel" if action == "cancel" else "change"
+    then = (
+        "and we will cancel it."
+        if action == "cancel"
+        else "and we will send you the times available."
+    )
+    return (
+        f"{_hi(name)}\n\nWe received an email asking to {asked} your appointment on "
+        f"{described}.\n\nTo confirm, reply to this email with the code {code} {then} "
+        "Nothing has been changed yet.\n\n"
+        "If you did not ask for this, you do not need to do anything." + _SIGN_OFF
+    )
+
+
+UNCONFIRMED_REASON = (
+    "The patient was sent a code to confirm cancelling or changing an appointment, and "
+    "their reply did not confirm it. Nothing was changed. Check with the patient."
+)
 
 
 def is_late(appointment: Appointment) -> bool:

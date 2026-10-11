@@ -72,8 +72,6 @@ class CaseState(TypedDict, total=False):
     own_appointment: str | None
     # Health information sent for a doctor to see (nodes.clinical_info).
     clinical_info: bool
-    # A move: the appointment the booking conversation is to replace.
-    replaces_appointment_id: str | None
     # The checked answer inside a registration-link email (nodes.form_link).
     answer_text: str | None
 
