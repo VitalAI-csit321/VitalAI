@@ -2068,3 +2068,107 @@ async def test_a_confirmation_reply_that_cannot_be_read_is_a_miss(
     assert own_appointment_service.UNCONFIRMED_REASON in [
         i.notes for i in await _review_items(db_session, task)
     ]
+
+
+# --- a first-visit patient changing the appointment they just booked ------------------
+#
+# The confirmation says "If you need to change it, reply to this email". On the
+# deployed system (2026-10-12) that reply got "we need more information to
+# verify your profile". A first-visit patient is provisional until they attend,
+# and own_appointment only knew registered patients, so the reply fell through:
+# to a verification request when it was not linked to its thread, and to no
+# response and no staff item at all when it was.
+
+
+async def _booked_first_visit(db, admin, llm, sends):
+    """Jane books her first appointment by email. Returns (first email, slots)."""
+    email1, _, _ = await _offer(db, admin, llm, sends, _weekday_ahead())
+    slots = (await _conversation(db, email1.case_id)).offered_slots
+    llm.booking = [
+        {"chosen_time": _local_value(slots[0]["start"]), "intent": "confirm", "confidence": 0.95}
+    ]
+    await _mail(
+        db,
+        admin,
+        "The first one please",
+        message_id="<t3@example.com>",
+        references="<t1@example.com> <t2@example.com> <reply2@clinic>",
+    )
+    assert (await _conversation(db, email1.case_id)).stage == ConversationStage.BOOKED
+    return email1, slots
+
+
+THREAD = "<t1@example.com> <t2@example.com> <t3@example.com> <reply3@clinic>"
+
+
+@pytest.mark.parametrize("references", [THREAD, None], ids=["in-thread", "not-linked"])
+async def test_a_first_visit_patient_can_move_the_appointment_they_just_booked(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends, mails, references
+):
+    email1, slots = await _booked_first_visit(db_session, admin_user, llm, sends)
+    old = (
+        await db_session.execute(select(Appointment).where(Appointment.case_id == email1.case_id))
+    ).scalar_one()
+    replies = len(sends)
+    llm.own_appointment = "move"
+    llm.identity = {"name": None, "dob": None, "phone": None}
+
+    email4, task4 = await _mail(
+        db_session,
+        admin_user,
+        "Hi, sorry for the trouble but is it possible to change the appointment time?",
+        message_id="<t4@example.com>",
+        references=references,
+        sender_name="Md Aminul Islam Rupom",
+    )
+
+    assert sends[replies:] == []  # no verification request
+    ((to, asked),) = mails
+    assert to == SENDER
+    assert booking_service.format_slot(old.time_slot) in asked
+    assert TaskType.IDENTITY_REVIEW not in [
+        i.task_type for i in await _review_items(db_session, task4)
+    ]
+    conversation = await _conversation(db_session, email4.case_id)
+    assert conversation.stage == ConversationStage.AWAITING_CONFIRMATION
+    assert conversation.appointment_id == old.id
+
+    day = datetime.fromisoformat(slots[1]["start"]).astimezone(SYDNEY).date()
+    llm.booking = [{"preferred_day": day.isoformat(), "intent": "change", "confidence": 0.9}]
+    await _mail(db_session, admin_user, _code(asked), message_id="<t5@example.com>")
+
+    conversation = await _conversation(db_session, email4.case_id)
+    assert conversation.stage == ConversationStage.AWAITING_CHOICE
+    pick = next(s for s in conversation.offered_slots if s["start"] != old.time_slot.isoformat())
+    llm.booking = [
+        {"chosen_time": _local_value(pick["start"]), "intent": "confirm", "confidence": 0.95}
+    ]
+    await _mail(db_session, admin_user, "That one please.", message_id="<t6@example.com>")
+
+    await db_session.refresh(old)
+    conversation = await _conversation(db_session, email4.case_id)
+    assert conversation.stage == ConversationStage.BOOKED
+    assert old.status == AppointmentStatus.CANCELLED
+    assert conversation.appointment_id != old.id
+    assert "has been cancelled" in sends[-1][1]
+
+
+async def test_a_first_visit_patients_other_reply_to_a_booked_thread_is_never_dropped(
+    db_session, agent_saver, admin_user, doctor_user, llm, sends, mails
+):
+    """Read as an ordinary booking email, it ended at the provisional rule with
+    no note and no Review Queue item: nobody was told it had arrived."""
+    await _booked_first_visit(db_session, admin_user, llm, sends)
+    replies = len(sends)
+
+    _, task = await _mail(
+        db_session,
+        admin_user,
+        "Thanks. Can my husband come with me?",
+        message_id="<t7@example.com>",
+        references=THREAD,
+    )
+
+    assert sends[replies:] == []
+    assert task.handover_context == email_conversation_service.STAFF_REASONS["closed"]
+    assert await _review_items(db_session, task)

@@ -554,7 +554,17 @@ async def own_appointment(state: CaseState, runtime: Runtime[Context]) -> dict:
                 stage=ConversationStage.AWAITING_CONFIRMATION,
             )
             if not created:
-                return passed
+                # A reply in the thread of an appointment booked, or cancelled,
+                # by email: that case's conversation takes the request. One
+                # that staff hold is not the agent's to restart.
+                if row.stage not in (ConversationStage.BOOKED, ConversationStage.CLOSED):
+                    return passed
+                row.stage = ConversationStage.AWAITING_CONFIRMATION.value
+                row.origin_email_id = email.id
+                row.patient_id = patient.id
+                row.preferred_day = None
+                row.offered_slots = []
+                row.clarifications = 0
             # The appointment this conversation is about. For a move it stays
             # here until the new time is booked, when book_choice cancels it
             # and puts the new one in its place.
