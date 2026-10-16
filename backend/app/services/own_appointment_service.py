@@ -48,15 +48,20 @@ _WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
 
 
 async def patient_for_sender(db: AsyncSession, sender: str) -> Patient | None:
-    """The one registered patient whose record has this address. A shared
-    family inbox (two records) is nobody: the email does not say which."""
+    """The one patient whose record has this address. A shared family inbox
+    (two records) is nobody: the email does not say which.
+
+    Provisional records count. A first-visit patient is provisional until
+    they attend, and the appointment they booked by email is theirs to ask
+    about and change: left out, their reply to "if you need to change it,
+    reply to this email" was answered with a request to verify who they are.
+    """
     rows = (
         (
             await db.execute(
                 select(Patient).where(
                     func.lower(func.trim(Patient.email)) == sender.strip().casefold(),
                     Patient.purged_at.is_(None),
-                    Patient.is_provisional.is_(False),
                 )
             )
         )

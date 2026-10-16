@@ -195,7 +195,13 @@ def route_intent(state: CaseState) -> str:
         return "human_review"
     agent = _AGENT_FOR_INTENT.get(intent, "retrieval") if intent else "retrieval"
     if state.get("is_provisional") and agent in _NOT_FOR_PROVISIONAL:
-        return "human_review"
+        # With conversations on, a provisional patient's appointment email
+        # carries on to the reply gate: it may be about the appointment they
+        # just booked (route_identity, own_appointment), and anything else is
+        # held there with a reason. Ending here left a reply to a booked
+        # thread with no note and no Review Queue item.
+        if not (agent == "booking" and email_conversation_service.enabled()):
+            return "human_review"
     return agent
 
 

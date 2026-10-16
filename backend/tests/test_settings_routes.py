@@ -107,6 +107,29 @@ async def test_under_bedrock_the_model_shown_is_the_one_in_use(client, admin_hea
 
 
 @pytest.mark.asyncio
+async def test_under_bedrock_the_page_shows_the_name_bedrock_gives(
+    client, admin_headers, monkeypatch
+):
+    import botocore.client
+
+    def bedrock(self, operation_name, api_params):
+        assert operation_name == "GetInferenceProfile"
+        return {"inferenceProfileName": "AU Anthropic Claude Haiku 4.5"}
+
+    monkeypatch.setattr(botocore.client.BaseClient, "_make_api_call", bedrock)
+    monkeypatch.setattr(settings, "llm_provider", "bedrock")
+    monkeypatch.setattr(settings, "bedrock_model_id", "au.anthropic.claude-haiku-4-5-20251001-v1:0")
+    settings_service.bedrock_model_name.cache_clear()
+
+    res = await client.get("/api/v1/settings", headers=admin_headers)
+    entry = next(i for i in res.json()["items"] if i["key"] == "llm_model")
+    assert entry["value"] == entry["default"] == "AU Anthropic Claude Haiku 4.5"
+    assert entry["help"] == ""
+    assert entry["editable"] is False
+    settings_service.bedrock_model_name.cache_clear()
+
+
+@pytest.mark.asyncio
 async def test_under_ollama_the_local_model_stays_editable(client, admin_headers, monkeypatch):
     monkeypatch.setattr(settings, "llm_provider", "ollama")
     res = await client.get("/api/v1/settings", headers=admin_headers)
