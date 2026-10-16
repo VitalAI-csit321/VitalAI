@@ -13,6 +13,7 @@ appointment_service, email_service) byte-for-byte unchanged.
 # worker's write until restart. Add pub/sub invalidation if we ever run >1.
 """
 
+import functools
 import re
 from dataclasses import dataclass, replace
 from typing import Any
@@ -177,16 +178,42 @@ def shown(key: str) -> tuple[Any, Any, SettingSpec]:
     spec = SETTINGS_REGISTRY[key]
     if key == "llm_model" and settings.llm_provider.lower() == "bedrock":
         in_use = settings.bedrock_model_id
-        return (
-            in_use,
-            in_use,
-            replace(
-                spec,
-                help="The Amazon Bedrock model in use. Set on the server, not here.",
-                editable=False,
-            ),
-        )
+        name = bedrock_model_name(in_use)
+        return name, name, replace(spec, editable=False)
     return getattr(settings, key), ENV_DEFAULTS[key], spec
+
+
+@functools.cache
+def bedrock_model_name(model_id: str) -> str:
+    """The name Bedrock gives a model id, or the id itself when Bedrock will not say.
+
+    An id like au.anthropic.* is an inference profile, a bare one is a
+    foundation model. Both lookups need IAM read rights
+    (bedrock:GetInferenceProfile, bedrock:GetFoundationModel) on top of invoke.
+    """
+    # ponytail: cached for the life of the process, a failure included, so a
+    # missing permission costs one round trip, not one per page load. A restart
+    # (every deploy does one) retries.
+    import boto3
+    from botocore.config import Config
+
+    client = boto3.session.Session().client(
+        "bedrock",
+        region_name=settings.aws_region,
+        config=Config(connect_timeout=2, read_timeout=5, retries={"max_attempts": 0}),
+    )
+    lookups = (
+        lambda: client.get_inference_profile(inferenceProfileIdentifier=model_id)[
+            "inferenceProfileName"
+        ],
+        lambda: client.get_foundation_model(modelIdentifier=model_id)["modelDetails"]["modelName"],
+    )
+    for lookup in lookups:
+        try:
+            return str(lookup())
+        except Exception:
+            continue
+    return model_id
 
 
 def _coerce(key: str, spec: SettingSpec, value: Any) -> Any:

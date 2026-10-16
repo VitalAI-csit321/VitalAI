@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,10 +18,13 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 
 async def _build_list(db: AsyncSession) -> SettingListResponse:
     rows = {r.key: r for r in (await db.execute(select(AppSetting))).scalars().all()}
+    # In a thread: under Bedrock the model's name is a (cached) AWS call.
+    shown = await asyncio.to_thread(
+        lambda: {key: settings_service.shown(key) for key in settings_service.SETTINGS_REGISTRY}
+    )
     items = []
-    for key in settings_service.SETTINGS_REGISTRY:
+    for key, (value, default, spec) in shown.items():
         row = rows.get(key)
-        value, default, spec = settings_service.shown(key)
         items.append(
             SettingOut(
                 key=key,
