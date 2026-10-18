@@ -197,7 +197,7 @@ mypy app
 
 ```
 backend/
-├── docker-compose.yml         development stack: api, db, redis, minio, ollama, adminer
+├── docker-compose.yml         development stack: api, db, minio, ollama, adminer
 ├── docker-compose.prod.yml    deployment stack: caddy, api, db, minio
 ├── Caddyfile                  HTTPS, the built frontend, and the proxy to the API
 ├── Dockerfile                 Python 3.13 image, CPU-only torch
@@ -506,9 +506,6 @@ The development compose file pulls MinIO from `quay.io/minio/minio`, which now r
 anonymous pulls. A machine that does not already have that image cannot start the
 development stack as written. CI and `docker-compose.prod.yml` use
 `cgr.dev/chainguard/minio`.
-
-Redis is started by the development compose file, and `REDIS_URL` is a setting, but no
-application code uses it yet.
 
 ## Constraints
 

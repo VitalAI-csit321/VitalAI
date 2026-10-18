@@ -1,3 +1,5 @@
+import re
+
 from httpx import AsyncClient
 
 from app.models import Patient
@@ -84,7 +86,14 @@ async def test_list_audit_events_csv_export(
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/csv")
     body = response.text
-    assert (
-        "id,timestamp,actor_label,actor_role,action,case_id,risk_score,risk_level,outcome" in body
+    header, *rows = body.strip().splitlines()
+    assert header == (
+        "id,timestamp,actor_label,actor_role,action,case_id,risk_score,risk_level,outcome,"
+        "event_hash,predecessor_hash,sequence_number"
     )
-    assert "intake.created" in body
+    # FR-DASH-02: the export carries the integrity metadata, so a saved file
+    # can be checked against the chain, not only the live Verify endpoint.
+    (intake_row,) = [r for r in rows if ",intake.created," in r]
+    *_, event_hash, _predecessor_hash, sequence_number = intake_row.split(",")
+    assert re.fullmatch(r"[0-9a-f]{64}", event_hash)
+    assert sequence_number.isdigit()

@@ -141,7 +141,7 @@ new work there.
 └── backend/
     ├── README.md                  backend setup, tests, and the API endpoint table
     ├── Dockerfile                 Python 3.13 image, CPU-only torch
-    ├── docker-compose.yml         development stack: api, db (Postgres + pgvector), redis,
+    ├── docker-compose.yml         development stack: api, db (Postgres + pgvector),
     │                              minio, ollama, adminer
     ├── docker-compose.prod.yml    deployment stack: caddy, api, db, minio
     ├── Caddyfile                  HTTPS, the built frontend, and the proxy to the API
@@ -244,8 +244,7 @@ Bedrock.
 
 **Testing and CI:** pytest, ruff, mypy, GitHub Actions.
 
-The development compose file also starts Redis and Adminer. Adminer is for browsing the
-database. Redis is not used by the application code yet.
+The development compose file also starts Adminer, for browsing the database.
 
 ## Getting started
 

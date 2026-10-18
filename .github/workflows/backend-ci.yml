@@ -91,11 +91,16 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://vitalai:vitalai@localhost:5432/vitalai
           JWT_SECRET_KEY: ci-test-secret
           MINIO_ENDPOINT: http://localhost:9000
-          # The cross-process approval test commits audit rows nothing can
-          # delete, so it only runs on a throwaway database. This one is.
-          AGENT_XPROC: "1"
         run: |
-          coverage run -m pytest tests/
+          # The cross-process approval test commits audit rows the audit
+          # trigger makes undeletable, and seventeen tests count rows across
+          # the whole database. One database serves the whole run, so the
+          # test is left out here and goes last, in its own invocation,
+          # after every one of them. Deselected rather than skipped, so the
+          # first summary reports what actually ran.
+          coverage run -m pytest tests/ \
+            --deselect tests/test_agent_approval_interrupt.py::test_pause_in_one_process_decide_and_resume_in_another
+          AGENT_XPROC=1 coverage run --append -m pytest tests/test_agent_approval_interrupt.py
           coverage report --fail-under=80 --include="app/services/*"
           coverage report --fail-under=70 --include="app/routes/*"
           coverage xml

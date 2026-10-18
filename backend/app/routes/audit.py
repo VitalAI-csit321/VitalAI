@@ -61,6 +61,9 @@ async def list_audit_events(
                 "risk_score",
                 "risk_level",
                 "outcome",
+                "event_hash",
+                "predecessor_hash",
+                "sequence_number",
             ]
         )
         for event in items:
@@ -75,6 +78,9 @@ async def list_audit_events(
                     event.risk_score if event.risk_score is not None else "",
                     audit_service.risk_level_from_score(event.risk_score),
                     event.outcome or "",
+                    event.event_hash or "",
+                    event.predecessor_hash or "",
+                    event.sequence_number if event.sequence_number is not None else "",
                 ]
             )
         buffer.seek(0)

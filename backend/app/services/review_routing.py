@@ -158,6 +158,42 @@ async def close_for_approval(
     )
 
 
+# Items an archive must not close: a held draft is settled only by approve or
+# reject (close_for_approval, where the clinical-approver rule applies, and the
+# ApprovalRequest would otherwise stay pending unseen); a case choice is about
+# filing the contact, which outlives the inbox message.
+_SETTLED_ELSEWHERE = (TaskType.DRAFT_APPROVAL, TaskType.CASE_CHOICE)
+
+
+async def close_for_message(
+    db: AsyncSession, *, task_id: UUID, actor: User | None, note: str
+) -> int:
+    """Close the open items that exist only because this inbox message needed
+    a person: it was archived or deleted, so nothing is left to review. The
+    caller has already checked the actor may act on the message. Returns how
+    many closed. Flushes, never commits."""
+    items = (
+        await db.scalars(
+            select(HumanReviewTask).where(
+                HumanReviewTask.inbox_task_id == task_id,
+                HumanReviewTask.status.in_(OPEN_STATUSES),
+                HumanReviewTask.task_type.not_in(_SETTLED_ELSEWHERE),
+            )
+        )
+    ).all()
+    for item in items:
+        item.status = TaskStatus.COMPLETED
+        await record_event(
+            db,
+            actor=actor,
+            case_id=item.case_id,
+            action="review.completed",
+            details={"review_id": str(item.id), "kind": item.task_type.value, "note": note},
+        )
+    await db.flush()
+    return len(items)
+
+
 async def complete_open(
     db: AsyncSession, *, case_id: UUID, kind: TaskType, actor: User | None, note: str
 ) -> None:
