@@ -17,7 +17,9 @@ function InviteModal({onClose,onDone}:{onClose:()=>void;onDone:()=>void}) {
   async function submit() {
     if(!form.email||!form.fullName){setError("Name and email required.");return;}
     setBusy(true);setError(null);
-    const tempPassword="TempPass123!";
+    // Random per invite: the admin reads it off this screen once. Every
+    // account used to start with the same fixed password.
+    const tempPassword=crypto.randomUUID().replace(/-/g,"").slice(0,16);
     try {
       const user = await registerUser({email:form.email,password:tempPassword,full_name:form.fullName});
       if (form.department) {
@@ -35,7 +37,7 @@ function InviteModal({onClose,onDone}:{onClose:()=>void;onDone:()=>void}) {
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
         <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
           <h2 className="text-lg font-bold text-slate-900 mb-2">User created</h2>
-          <p className="text-sm text-slate-600 mb-4">Share these credentials with {created.email} out of band. This password will not be shown again.</p>
+          <p className="text-sm text-slate-600 mb-4">Share these credentials with {created.email} out of band. This password will not be shown again. Ask them to change it from Settings, Reset password, when they first sign in.</p>
           <div className="rounded-lg bg-slate-50 p-4 space-y-2 text-sm font-mono">
             <div>{created.email}</div>
             <div>{created.tempPassword}</div>

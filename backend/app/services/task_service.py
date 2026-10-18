@@ -319,6 +319,9 @@ async def archive_task(db: AsyncSession, task_id: UUID, actor: User) -> Task:
 
     task.status = TaskItemStatus.COMPLETED
     await db.flush()
+    await review_routing.close_for_message(
+        db, task_id=task.id, actor=actor, note="Message archived"
+    )
 
     await record_event(
         db,
@@ -346,6 +349,7 @@ async def soft_delete_task(db: AsyncSession, task_id: UUID, actor: User) -> Task
     task.deleted_at = datetime.now(UTC)
     task.deleted_by = actor.id
     await db.flush()
+    await review_routing.close_for_message(db, task_id=task.id, actor=actor, note="Message deleted")
 
     await record_event(
         db,

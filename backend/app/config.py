@@ -56,9 +56,6 @@ class Settings(BaseSettings):
     aws_region: str = "ap-southeast-2"
     bedrock_model_id: str = "au.anthropic.claude-haiku-4-5-20251001-v1:0"
 
-    # Cache
-    redis_url: str = "redis://redis:6379/0"
-
     # Object storage
     minio_endpoint: str = "http://minio:9000"
     minio_access_key: str = "minioadmin"
