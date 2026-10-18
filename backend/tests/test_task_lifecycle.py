@@ -331,3 +331,43 @@ async def test_deleting_a_message_closes_its_review_queue_items(
     assert delete.status_code in (200, 204)
 
     assert await _open_items_for(db_session, task.id) == []
+
+
+async def test_archiving_leaves_a_held_draft_and_a_case_choice_open(
+    db_session, client: AsyncClient, front_desk_headers: dict
+):
+    """A held draft is settled only by approve or reject (the clinical-approver
+    rule lives there), and a case choice is about filing the contact, which
+    outlives the inbox message. Neither is closed by an archive."""
+    from app.models.approval import ApprovalStatus
+    from app.models.human_review import TaskType
+    from app.models.task import TaskCategory
+    from app.services import approval_service, review_routing
+    from tests.test_inbox import _held
+
+    task = await _held(db_session, TaskCategory.GENERAL_ADMINISTRATIVE)
+    draft_item = await review_routing.open_item(
+        db_session,
+        kind=TaskType.DRAFT_APPROVAL,
+        inbox_task=task,
+        reason="held",
+        actor=None,
+        approval_id=task.draft_approval_id,
+    )
+    choice_item = await review_routing.open_item(
+        db_session, kind=TaskType.CASE_CHOICE, inbox_task=task, reason="which case", actor=None
+    )
+    intent_item = await review_routing.open_item(
+        db_session, kind=TaskType.INTENT_REVIEW, inbox_task=task, reason="unsure", actor=None
+    )
+    await db_session.commit()
+
+    archive = await client.post(f"/api/v1/tasks/{task.id}/archive", headers=front_desk_headers)
+    assert archive.status_code == 200
+
+    still_open = {i.id for i in await _open_items_for(db_session, task.id)}
+    assert still_open == {draft_item.id, choice_item.id}
+    assert intent_item.id not in still_open
+    await db_session.refresh(task)
+    approval = await approval_service.get_approval(db_session, task.draft_approval_id)
+    assert approval.status == ApprovalStatus.PENDING
