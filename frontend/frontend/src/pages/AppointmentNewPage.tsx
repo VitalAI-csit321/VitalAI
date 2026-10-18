@@ -179,7 +179,7 @@ export function AppointmentNewPage() {
                     {patientResults.map(p => (
                       <button key={p.id} onClick={() => { setSelectedPatient(p); setPatientResults([]); }}
                         className="block w-full px-3.5 py-2 text-left text-sm hover:bg-slate-50">
-                        {p.name} <span className="text-slate-400">({p.mrn})</span>
+                        {p.name} <span className="text-slate-500">({p.mrn})</span>
                       </button>
                     ))}
                   </div>
@@ -287,7 +287,7 @@ export function AppointmentNewPage() {
                   </button>
                 );
               })}
-              {!availability && <p className="col-span-2 text-xs text-slate-400">Pick a provider and date to see availability.</p>}
+              {!availability && <p className="col-span-2 text-xs text-slate-500">Pick a provider and date to see availability.</p>}
             </div>
           </div>
 

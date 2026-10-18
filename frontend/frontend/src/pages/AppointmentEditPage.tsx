@@ -99,7 +99,7 @@ export function AppointmentEditPage() {
         <Link to="/calendar" className="hover:text-slate-700">Calendar</Link> / <Link to={`/calendar/${id}`} className="hover:text-slate-700">{patientDisplayName(original)}</Link> / <span className="text-slate-700">Edit appointment</span>
       </div>
       <h1 className="mt-3 text-2xl font-bold text-slate-900">Edit appointment</h1>
-      <p className="mt-1 text-xs text-slate-400">{original.referenceCode}</p>
+      <p className="mt-1 text-xs text-slate-500">{original.referenceCode}</p>
 
       <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
         Editing this appointment will notify the patient by email if the toggles below are on.
@@ -155,7 +155,7 @@ export function AppointmentEditPage() {
               <option value="pending">Pending</option>
               <option value="confirmed">Confirmed</option>
             </select>
-            <p className="mt-1 text-xs text-slate-400">Use the Cancel/Mark Complete buttons on the appointment page to change those states.</p>
+            <p className="mt-1 text-xs text-slate-500">Use the Cancel/Mark Complete buttons on the appointment page to change those states.</p>
           </div>
           <div>
             <label htmlFor="appt-edit-reason-for-visit" className="mb-1.5 block text-sm font-medium text-slate-700">Reason for visit</label>
@@ -188,7 +188,7 @@ export function AppointmentEditPage() {
                   </button>
                 );
               })}
-              {!availability && <p className="col-span-2 text-xs text-slate-400">Pick a provider and date to see availability.</p>}
+              {!availability && <p className="col-span-2 text-xs text-slate-500">Pick a provider and date to see availability.</p>}
             </div>
             <label className="mt-4 flex items-center justify-between text-sm text-slate-700">
               Notify patient by email
@@ -204,7 +204,7 @@ export function AppointmentEditPage() {
                 <textarea id="appt-edit-reschedule-reason-optional" value={rescheduleReason} onChange={e => setRescheduleReason(e.target.value)} rows={2} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand" />
               </div>
             )}
-            <p className="mt-3 text-xs text-slate-400">All changes to this appointment are logged in the VitalAI audit trail.</p>
+            <p className="mt-3 text-xs text-slate-500">All changes to this appointment are logged in the VitalAI audit trail.</p>
           </div>
         </div>
       </div>

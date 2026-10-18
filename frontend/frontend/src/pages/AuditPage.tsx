@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatDateTime, humanize } from "../lib/format";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Download } from "lucide-react";
 import { downloadAuditCsv, listAuditEvents } from "../api/audit";
 import type { AuditEvent } from "../api/types";
@@ -117,7 +117,10 @@ export function AuditPage() {
                       className="border-b border-slate-100 last:border-0 hover:bg-slate-50 cursor-pointer"
                       onClick={() => navigate(`/audit/${e.id}`)}
                     >
-                      <td className="whitespace-nowrap px-6 py-4 text-slate-700">{formatDateTime(e.timestamp)}</td>
+                      {/* The link gives keyboard and screen reader users a way in; the row click is for the mouse. */}
+                      <td className="whitespace-nowrap px-6 py-4 text-slate-700">
+                        <Link to={`/audit/${e.id}`} onClick={ev => ev.stopPropagation()} className="hover:underline">{formatDateTime(e.timestamp)}</Link>
+                      </td>
                       <td className="px-6 py-4 text-slate-700">{e.actorLabel ?? "system"}</td>
                       <td className="px-6 py-4">
                         <span className={`font-semibold ${ACTION_COLOR[e.action] ?? "text-slate-700"}`}>
@@ -150,7 +153,7 @@ export function AuditPage() {
             </table>
             <div className="flex items-center justify-between px-6 py-3 border-t border-slate-100 text-sm text-brand">
               <span className="font-medium">{latestHash ? "Hash chain verified" : "Recorded before the hash chain, not verified"}</span>
-              <span className="text-slate-400">
+              <span className="text-slate-500">
                 {latestHash ? `Last hash: ${latestHash.slice(0, 8)}...` : "No hashed events yet"}
               </span>
             </div>

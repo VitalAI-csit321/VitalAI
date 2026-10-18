@@ -136,7 +136,7 @@ export function ConsentViewPage() {
             ) : consent.formSnapshot?.signature ? (
               <img src={consent.formSnapshot.signature} alt="Patient signature" className="h-40 w-full rounded-lg border border-slate-200 bg-slate-50 object-contain" />
             ) : (
-              <div className="flex h-40 w-full items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-400">No signature recorded</div>
+              <div className="flex h-40 w-full items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-500">No signature recorded</div>
             )}
           </div>
           {online && consent.status === "pending" && (

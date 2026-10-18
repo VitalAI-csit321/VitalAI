@@ -12,8 +12,8 @@ export default {
         },
         brand: {
           // teal primary used on all primary buttons and active accents
-          DEFAULT: "#0d9488",
-          hover: "#0f8177",
+          DEFAULT: "#0f766e",
+          hover: "#115e59",
           light: "#14b8a6",
         },
       },

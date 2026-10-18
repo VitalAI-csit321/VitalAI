@@ -82,7 +82,7 @@ export function ReviewQueueDetailModal({ item, onClose, onDone }: { item: RawRev
                 ? <p className="text-sm text-slate-500">Contact C-{item.case_id.slice(0, 8)}</p>
                 : item.episode_id && <Link to={`/cases/${item.episode_id}`} className="text-sm text-brand hover:underline">Case: {item.case_title}</Link>}
             </div>
-            <button onClick={onClose} aria-label="Close" className="text-xl text-slate-400 hover:text-slate-600">×</button>
+            <button onClick={onClose} aria-label="Close" className="text-xl text-slate-500 hover:text-slate-600">×</button>
           </div>
           <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
             <div className="space-y-5">

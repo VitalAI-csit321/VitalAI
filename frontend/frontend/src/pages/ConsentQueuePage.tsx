@@ -18,7 +18,7 @@ const STATUS_LABEL: Record<ConsentQueueStatus, string> = {
   review: "Needs review",
 };
 
-const AVATAR_COLORS = ["#0d9488", "#eab308", "#7c3aed", "#db2777", "#0891b2", "#f97316"];
+const AVATAR_COLORS = ["#0f766e", "#a16207", "#7c3aed", "#db2777", "#0e7490", "#c2410c"];
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);

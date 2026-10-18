@@ -184,9 +184,9 @@ export function PatientDetailPage() {
           <h1 className="text-2xl font-bold text-slate-900">{patient.name}</h1>
           <p className="mt-1 text-sm text-slate-600">
             <span className="font-mono">{patient.mrn}</span>
-            <span className="text-slate-400"> | </span>
+            <span className="text-slate-500"> | </span>
             {patient.dob ? `${formatDate(patient.dob)}${age !== null ? ` (${age})` : ""}` : "Date of birth not recorded"}
-            <span className="text-slate-400"> | </span>
+            <span className="text-slate-500"> | </span>
             <span className="capitalize">{patient.gender?.replace("_", " ") ?? "Gender not recorded"}</span>
           </p>
           <p className="mt-1 text-sm text-slate-600">
@@ -227,7 +227,7 @@ export function PatientDetailPage() {
             {tabs.map(t => (
               <button key={t.key} role="tab" aria-selected={activeTab === t.key} onClick={() => setTab(t.key)}
                 className={`-mb-px border-b-2 pb-2.5 text-sm font-medium ${activeTab === t.key ? "border-brand text-slate-900" : "border-transparent text-slate-500 hover:text-slate-700"}`}>
-                {t.label} <span className="text-slate-400">{t.count}</span>
+                {t.label} <span className="text-slate-500">{t.count}</span>
               </button>
             ))}
           </div>
@@ -349,7 +349,7 @@ export function PatientDetailPage() {
                   return (
                     <div key={def.key}>
                       <dt className="text-xs text-slate-500">{def.label}</dt>
-                      <dd className={`mt-0.5 whitespace-pre-line ${!v ? "text-slate-400" : flagged ? "font-semibold text-red-700" : "font-medium text-slate-900"}`}>
+                      <dd className={`mt-0.5 whitespace-pre-line ${!v ? "text-slate-500" : flagged ? "font-semibold text-red-700" : "font-medium text-slate-900"}`}>
                         {v || (def.key === "allergies" ? "None recorded" : "Not provided")}
                       </dd>
                     </div>

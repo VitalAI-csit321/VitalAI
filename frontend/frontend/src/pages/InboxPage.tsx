@@ -379,14 +379,14 @@ export function InboxPage() {
                       <div className="truncate text-sm text-slate-600">{m.subject}</div>
                       <div className="mt-1 flex items-center gap-2">
                         {categoryBadge(m.category)}
-                        <span className="text-xs text-slate-400">{m.receivedLabel}</span>
+                        <span className="text-xs text-slate-500">{m.receivedLabel}</span>
                       </div>
                     </div>
                   </button>
                 );
               })}
               {filtered.length === 0 && (
-                <p className="px-4 py-6 text-center text-sm text-slate-400">Nothing here.</p>
+                <p className="px-4 py-6 text-center text-sm text-slate-500">Nothing here.</p>
               )}
             </div>
           </div>
@@ -404,7 +404,7 @@ export function InboxPage() {
                       {categoryBadge(selected.category)}
                     </div>
                     <div className="text-xs text-slate-500">To: {selected.toName}</div>
-                    <div className="text-xs text-slate-400">{selected.receivedLabel}</div>
+                    <div className="text-xs text-slate-500">{selected.receivedLabel}</div>
                   </div>
                 </div>
 
@@ -604,7 +604,7 @@ export function InboxPage() {
                   )}
                 </div>
 
-                <div className="mt-6 border-t border-slate-100 pt-4 text-xs text-slate-400">
+                <div className="mt-6 border-t border-slate-100 pt-4 text-xs text-slate-500">
                   Thread reference: {selected.threadReference}
                 </div>
               </>

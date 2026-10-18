@@ -106,13 +106,13 @@ export function AppointmentDetailPage() {
           <div className="rounded-xl border border-slate-200 bg-white p-5">
             <h2 className="text-sm font-semibold text-slate-900">Appointment details</h2>
             <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
-              <div><div className="text-xs text-slate-400">Date</div><div className="mt-0.5 font-medium text-slate-900">{formatDateLong(a.timeSlot)}</div></div>
-              <div><div className="text-xs text-slate-400">Time</div><div className="mt-0.5 font-medium text-slate-900">{formatTime(a.timeSlot)} to {formatTime(a.endTime)}</div></div>
-              <div><div className="text-xs text-slate-400">Duration</div><div className="mt-0.5 font-medium text-slate-900">{a.durationMinutes} minutes</div></div>
-              <div><div className="text-xs text-slate-400">Type</div><div className="mt-0.5 font-medium text-slate-900">{TYPE_LABEL[a.appointmentType]}</div></div>
-              <div><div className="text-xs text-slate-400">Location</div><div className="mt-0.5 font-medium text-slate-900">{a.location ?? "Not set"}</div></div>
-              <div><div className="text-xs text-slate-400">Doctor</div><div className="mt-0.5 font-medium text-slate-900">{a.doctorName ?? "Unassigned"}</div></div>
-              <div><div className="text-xs text-slate-400">Reference</div><div className="mt-0.5 font-mono text-xs font-medium text-slate-700">{a.referenceCode}</div></div>
+              <div><div className="text-xs text-slate-500">Date</div><div className="mt-0.5 font-medium text-slate-900">{formatDateLong(a.timeSlot)}</div></div>
+              <div><div className="text-xs text-slate-500">Time</div><div className="mt-0.5 font-medium text-slate-900">{formatTime(a.timeSlot)} to {formatTime(a.endTime)}</div></div>
+              <div><div className="text-xs text-slate-500">Duration</div><div className="mt-0.5 font-medium text-slate-900">{a.durationMinutes} minutes</div></div>
+              <div><div className="text-xs text-slate-500">Type</div><div className="mt-0.5 font-medium text-slate-900">{TYPE_LABEL[a.appointmentType]}</div></div>
+              <div><div className="text-xs text-slate-500">Location</div><div className="mt-0.5 font-medium text-slate-900">{a.location ?? "Not set"}</div></div>
+              <div><div className="text-xs text-slate-500">Doctor</div><div className="mt-0.5 font-medium text-slate-900">{a.doctorName ?? "Unassigned"}</div></div>
+              <div><div className="text-xs text-slate-500">Reference</div><div className="mt-0.5 font-mono text-xs font-medium text-slate-700">{a.referenceCode}</div></div>
             </div>
           </div>
 
@@ -133,13 +133,13 @@ export function AppointmentDetailPage() {
           <div className="rounded-xl border border-slate-200 bg-white p-5">
             <h2 className="text-sm font-semibold text-slate-900">Appointment history</h2>
             <div className="mt-3 space-y-3">
-              {a.history.length === 0 && <p className="text-sm text-slate-400">No history yet.</p>}
+              {a.history.length === 0 && <p className="text-sm text-slate-500">No history yet.</p>}
               {a.history.map((h, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />
                   <div>
                     <div className="text-sm text-slate-900">{h.label}</div>
-                    <div className="text-xs text-slate-400">{formatDateTime(h.timestamp)}{h.actorLabel ? `, ${h.actorLabel}` : ""}</div>
+                    <div className="text-xs text-slate-500">{formatDateTime(h.timestamp)}{h.actorLabel ? `, ${h.actorLabel}` : ""}</div>
                   </div>
                 </div>
               ))}
@@ -159,8 +159,8 @@ export function AppointmentDetailPage() {
           {a.patient?.id && <Link to={`/patients/${a.patient.id}`} className="mt-2 inline-block text-sm text-brand hover:underline">View full patient record</Link>}
 
           <dl className="mt-4 space-y-2.5 text-sm">
-            {a.patient?.dob && <div><dt className="text-xs text-slate-400">Date of birth</dt><dd className="mt-0.5 font-medium text-slate-900">{formatDate(a.patient.dob)}</dd></div>}
-            {a.patient?.gender && <div><dt className="text-xs text-slate-400">Gender</dt><dd className="mt-0.5 font-medium capitalize text-slate-900">{a.patient.gender.replace("_", " ")}</dd></div>}
+            {a.patient?.dob && <div><dt className="text-xs text-slate-500">Date of birth</dt><dd className="mt-0.5 font-medium text-slate-900">{formatDate(a.patient.dob)}</dd></div>}
+            {a.patient?.gender && <div><dt className="text-xs text-slate-500">Gender</dt><dd className="mt-0.5 font-medium capitalize text-slate-900">{a.patient.gender.replace("_", " ")}</dd></div>}
           </dl>
 
           {a.consent && (

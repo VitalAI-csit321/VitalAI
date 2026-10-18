@@ -50,7 +50,7 @@ export function Avatar({
       style={{
         width: size,
         height: size,
-        backgroundColor: color ?? "#0d9488",
+        backgroundColor: color ?? "#0f766e",
         fontSize: size * 0.4,
       }}
     >

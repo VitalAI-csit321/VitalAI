@@ -91,7 +91,7 @@ export function PatientSearch({
       <label htmlFor={id} className={LABEL}>{label}</label>
       {selected ? (
         <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm">
-          <span className="text-slate-900">{selected.name} <span className="text-slate-400">({selected.mrn})</span></span>
+          <span className="text-slate-900">{selected.name} <span className="text-slate-500">({selected.mrn})</span></span>
           <button type="button" onClick={() => { onSelect(null); setQuery(""); }} className="text-xs text-brand hover:underline">Change</button>
         </div>
       ) : (
@@ -102,7 +102,7 @@ export function PatientSearch({
               {results.map(p => (
                 <button type="button" key={p.id} onClick={() => { onSelect(p); setResults([]); }}
                   className="block w-full px-3.5 py-2 text-left text-sm hover:bg-slate-50">
-                  {p.name} <span className="text-slate-400">({p.mrn})</span>
+                  {p.name} <span className="text-slate-500">({p.mrn})</span>
                 </button>
               ))}
             </div>

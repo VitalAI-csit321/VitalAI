@@ -85,7 +85,7 @@ export function EscalationTaskDetail({ task: initialTask, onClose, onUpdated }: 
               <div className="flex items-center gap-2">
                 {isEscalated && <span className="rounded bg-red-100 px-2.5 py-1 text-xs font-bold text-red-600">Escalated</span>}
                 {isHighPriority && <span className="rounded bg-orange-100 px-2.5 py-1 text-xs font-bold text-orange-600">High priority</span>}
-                <button onClick={onClose} className="ml-4 text-slate-400 hover:text-slate-600 text-xl">×</button>
+                <button onClick={onClose} className="ml-4 text-slate-500 hover:text-slate-600 text-xl">×</button>
               </div>
             </div>
 
@@ -123,7 +123,7 @@ export function EscalationTaskDetail({ task: initialTask, onClose, onUpdated }: 
                 <div className="rounded-xl border border-slate-200 p-5">
                   <h2 className="text-base font-semibold text-slate-900 mb-4">Comments</h2>
                   {comments.length === 0 ? (
-                    <p className="text-sm text-slate-400 mb-4">No comments yet.</p>
+                    <p className="text-sm text-slate-500 mb-4">No comments yet.</p>
                   ) : (
                     <div className="space-y-3 mb-4">
                       {comments.map(c => (
