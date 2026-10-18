@@ -91,6 +91,9 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://vitalai:vitalai@localhost:5432/vitalai
           JWT_SECRET_KEY: ci-test-secret
           MINIO_ENDPOINT: http://localhost:9000
+          # The cross-process approval test commits audit rows nothing can
+          # delete, so it only runs on a throwaway database. This one is.
+          AGENT_XPROC: "1"
         run: |
           coverage run -m pytest tests/
           coverage report --fail-under=80 --include="app/services/*"
