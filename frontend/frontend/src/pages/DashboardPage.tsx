@@ -98,7 +98,7 @@ export function DashboardPage() {
                     formatter={(value: number) => [`${value} appointment${value === 1 ? "" : "s"}`, "Scheduled"]}
                   />
                   <Bar
-                    dataKey="value" name="Appointments" fill="#0d9488" radius={[3,3,0,0]} barSize={40} cursor="pointer"
+                    dataKey="value" name="Appointments" fill="#0f766e" radius={[3,3,0,0]} barSize={40} cursor="pointer"
                     onClick={(entry: { payload?: { date: string } }) =>
                       entry.payload && navigate("/calendar", { state: { date: entry.payload.date } })}
                   />
@@ -156,7 +156,9 @@ export function DashboardPage() {
               <tbody className="divide-y divide-slate-100">
                 {data.today.map(a => (
                   <tr key={a.id} onClick={() => navigate(`/calendar/${a.id}`)} className="cursor-pointer hover:bg-slate-50">
-                    <td className="whitespace-nowrap py-2.5 pr-4 font-medium text-slate-900">{formatTime(a.timeSlot)}</td>
+                    <td className="whitespace-nowrap py-2.5 pr-4 font-medium text-slate-900">
+                      <Link to={`/calendar/${a.id}`} onClick={e => e.stopPropagation()} className="hover:underline">{formatTime(a.timeSlot)}</Link>
+                    </td>
                     <td className="py-2.5 pr-4 text-slate-700">{patientDisplayName(a)}</td>
                     <td className="py-2.5 pr-4 text-slate-700">{a.doctorName ?? "Unassigned"}</td>
                     <td className="py-2.5 pr-4 text-slate-700">{TYPE_LABEL[a.appointmentType]}</td>

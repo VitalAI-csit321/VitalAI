@@ -138,7 +138,7 @@ export function RecordsPage() {
       <h1 className="text-2xl font-bold text-slate-900">Record and information retrieval</h1>
 
       <div className="mt-4 relative max-w-md">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
         <input aria-label="Patient" 
           value={selectedPatient ? selectedPatient.name : patientSearch}
           onChange={e => { setPatientSearch(e.target.value); setSelectedPatient(null); }}
@@ -218,7 +218,7 @@ export function RecordsPage() {
                       <p>{turn.answer.answer}</p>
                       {turn.answer.citations.length > 0 && (
                         <div className="mt-2 space-y-1 border-t border-slate-200 pt-2">
-                          <p className="text-xs font-medium text-slate-400">Sources</p>
+                          <p className="text-xs font-medium text-slate-500">Sources</p>
                           {turn.answer.citations.map(c => (
                             <div key={c.chunkId} className="flex items-baseline justify-between gap-3 text-xs text-slate-500">
                               <span className="truncate">
@@ -255,22 +255,22 @@ export function RecordsPage() {
                 {filterOpen && (
                   <div className="absolute bottom-full right-0 z-10 mb-1 w-64 space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-lg">
                     <div>
-                      <label className="block text-xs font-medium text-slate-500">Source</label>
-                      <select aria-label="Source" value={source} onChange={e => setSource(e.target.value)} className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm">
+                      <label htmlFor="records-source" className="block text-xs font-medium text-slate-500">Source</label>
+                      <select id="records-source" value={source} onChange={e => setSource(e.target.value)} className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm">
                         <option value="">Any</option>
                         {SOURCE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-500">Date range</label>
-                      <select aria-label="Date range" value={dateRange} onChange={e => setDateRange(e.target.value)} className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm">
+                      <label htmlFor="records-date-range" className="block text-xs font-medium text-slate-500">Date range</label>
+                      <select id="records-date-range" value={dateRange} onChange={e => setDateRange(e.target.value)} className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm">
                         <option value="">Any</option>
                         {DATE_RANGE_OPTIONS.map(d => <option key={d} value={d}>{d}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-500">Type</label>
-                      <select aria-label="Document type" value={docType} onChange={e => setDocType(e.target.value)} className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm capitalize">
+                      <label htmlFor="records-doc-type" className="block text-xs font-medium text-slate-500">Type</label>
+                      <select id="records-doc-type" value={docType} onChange={e => setDocType(e.target.value)} className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 text-sm capitalize">
                         <option value="">Any</option>
                         {TYPE_OPTIONS.map(t => <option key={t} value={t}>{humanize(t)}</option>)}
                       </select>

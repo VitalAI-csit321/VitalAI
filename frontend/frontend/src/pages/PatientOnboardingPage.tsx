@@ -52,11 +52,11 @@ function Stepper({ current }: { current: number }) {
           <div key={label} className="flex items-center">
             <div className="flex flex-col items-center">
               <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors ${
-                done ? "border-brand bg-brand text-white" : active ? "border-brand text-brand" : "border-slate-300 text-slate-400"
+                done ? "border-brand bg-brand text-white" : active ? "border-brand text-brand" : "border-slate-300 text-slate-500"
               }`}>
                 {done ? <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg> : i + 1}
               </div>
-              <span className={`mt-1.5 text-xs font-medium ${active ? "text-slate-900" : done ? "text-brand" : "text-slate-400"}`}>{label}</span>
+              <span className={`mt-1.5 text-xs font-medium ${active ? "text-slate-900" : done ? "text-brand" : "text-slate-500"}`}>{label}</span>
             </div>
             {i < STEPS.length - 1 && <div className={`mx-2 h-0.5 w-16 sm:w-24 ${done ? "bg-brand" : "bg-slate-200"}`} />}
           </div>
@@ -171,7 +171,7 @@ export function PatientOnboardingPage() {
               </Field>
             </div>
             <div className="mt-5">
-              <Field label="MRN"><input className={`${inputClass} bg-slate-50 text-slate-400`} value="Assigned automatically after submission" disabled /></Field>
+              <Field label="MRN"><input className={`${inputClass} bg-slate-50 text-slate-500`} value="Assigned automatically after submission" disabled /></Field>
             </div>
             <div className="mt-5">
               <Field label="Address"><input className={inputClass} value={form.address} onChange={e => update("address", e.target.value)} /></Field>

@@ -13,7 +13,7 @@ const COL_CONFIG = [
   { key: "completed", label: "Resolved", dot: "bg-brand" },
 ];
 
-const AVATAR_COLORS = ["#0d9488", "#eab308", "#7c3aed", "#db2777", "#0891b2", "#f97316"];
+const AVATAR_COLORS = ["#0f766e", "#a16207", "#7c3aed", "#db2777", "#0e7490", "#c2410c"];
 
 function relativeAge(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -54,7 +54,7 @@ function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
       )}
       <div className="mt-3 flex items-center justify-between">
         <Avatar initials={initials} color={color} size={32} />
-        <span className="text-xs text-slate-400">{relativeAge(task.createdAt)}</span>
+        <span className="text-xs text-slate-500">{relativeAge(task.createdAt)}</span>
       </div>
     </button>
   );
@@ -105,7 +105,7 @@ export function EscalationsPage() {
             </div>
             <div className="space-y-3">
               {(board.columns[col.key] ?? []).length === 0 ? (
-                <p className="text-xs text-slate-400">Nothing here.</p>
+                <p className="text-xs text-slate-500">Nothing here.</p>
               ) : (board.columns[col.key] ?? []).map(task => (
                 <TaskCard key={task.id} task={task} onClick={() => setSelected(task)} />
               ))}

@@ -46,7 +46,7 @@ function Field({ label, optional, children }: { label: string; optional?: boolea
     <label className="block">
       <span className="mb-1.5 block text-sm font-medium text-slate-700">
         {label}
-        {optional && <span className="font-normal text-slate-400"> (optional)</span>}
+        {optional && <span className="font-normal text-slate-500"> (optional)</span>}
       </span>
       {children}
     </label>

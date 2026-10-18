@@ -137,12 +137,12 @@ export function ManualImportSection() {
 
       <form onSubmit={onUpload} className="mt-5 space-y-4 rounded-xl border border-slate-200 p-5">
         <div>
-          <label className="block text-xs font-bold text-brand mb-1.5">Patient</label>
-          <input type="search" value={patientSearch} onChange={e => setPatientSearch(e.target.value)}
+          <label htmlFor="import-patient" className="block text-xs font-bold text-brand mb-1.5">Patient</label>
+          <input type="search" aria-label="Search patients" value={patientSearch} onChange={e => setPatientSearch(e.target.value)}
             placeholder="Search by name to narrow the list"
             className="mb-2 w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand" />
           {patientsLoading ? <Spinner label="Loading patients" /> : (
-            <select value={patientId} onChange={e => setPatientId(e.target.value)}
+            <select id="import-patient" value={patientId} onChange={e => setPatientId(e.target.value)}
               className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand">
               <option value="">Select a patient</option>
               {patients.map(p => <option key={p.id} value={p.id}>{p.name} ({p.mrn})</option>)}
@@ -154,16 +154,16 @@ export function ManualImportSection() {
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-brand mb-1.5">Document type</label>
-          <select value={docType} onChange={e => setDocType(e.target.value as ClinicalDocType)}
+          <label htmlFor="import-doc-type" className="block text-xs font-bold text-brand mb-1.5">Document type</label>
+          <select id="import-doc-type" value={docType} onChange={e => setDocType(e.target.value as ClinicalDocType)}
             className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand">
             {DOC_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
           </select>
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-brand mb-1.5">File</label>
-          <input ref={fileInputRef} type="file" accept="application/pdf" onChange={onFileChange}
+          <label htmlFor="import-file" className="block text-xs font-bold text-brand mb-1.5">File</label>
+          <input id="import-file" ref={fileInputRef} type="file" accept="application/pdf" onChange={onFileChange}
             className="w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200" />
           <p className="mt-1 text-xs text-slate-500">PDF only, up to 20 MB.</p>
         </div>
@@ -180,7 +180,7 @@ export function ManualImportSection() {
         <div className="mt-6 rounded-xl border border-slate-200 overflow-hidden">
           <div className="flex items-baseline justify-between px-5 py-3 border-b border-slate-100">
             <h3 className="text-sm font-semibold text-slate-900">Documents</h3>
-            {!canViewClinical && <span className="text-xs text-slate-400">Uploaded this session</span>}
+            {!canViewClinical && <span className="text-xs text-slate-500">Uploaded this session</span>}
           </div>
           <table className="w-full text-sm">
             <thead>
@@ -195,7 +195,7 @@ export function ManualImportSection() {
                   <td className="px-5 py-3 text-slate-600">{d.docType.replace(/_/g, " ")}</td>
                   <td className="px-5 py-3 text-slate-600">
                     {d.ingestedAt ? "Ingested" : "Not ingested"}
-                    {ingestNote[d.id] && <span className="ml-2 text-xs text-slate-400">{ingestNote[d.id]}</span>}
+                    {ingestNote[d.id] && <span className="ml-2 text-xs text-slate-500">{ingestNote[d.id]}</span>}
                   </td>
                   <td className="px-5 py-3 text-right">
                     {!d.ingestedAt && (
