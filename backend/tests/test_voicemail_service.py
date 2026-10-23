@@ -346,7 +346,7 @@ async def test_low_confidence_voicemail_opens_a_routing_item(db_session, storage
 
 async def test_pressed_nine_hang_up_is_escalated_at_task_creation(db_session):
     """No recording ever comes, so process() never runs: only ensure_task can
-    put this in the Escalated column (D9)."""
+    put this in the Escalated column."""
     actor = await voicemail_service.intake_actor(db_session)
     call = await create_voicemail(
         db_session, from_number="+61412345678", actor=actor, urgent_pressed=True

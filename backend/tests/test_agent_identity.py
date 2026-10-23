@@ -1,4 +1,4 @@
-"""Identity resolution (build spec §8).
+"""Identity resolution.
 
 The LLM extracts, code decides. Attaching a stranger's request to a real
 patient discloses PHI and cannot be undone, so every doubt is AMBIGUOUS.
@@ -30,7 +30,7 @@ from tests.agent_fakes import DRAFT, FakeLLM, seed_email
 @pytest.fixture(autouse=True)
 def _conversation_flow_off(monkeypatch):
     """These tests pin the routing that email_booking_conversation_enabled
-    replaces (onboarding, the §10 proposal, a silent staff hold). The flag-on
+    replaces (onboarding, the booking proposal, a silent staff hold). The flag-on
     versions are in tests/test_email_conversation.py."""
     monkeypatch.setattr(settings, "email_booking_conversation_enabled", False)
 
@@ -115,19 +115,19 @@ async def test_family_one_members_full_details_matches_that_member_only(db_sessi
 async def test_name_from_the_patients_own_address_matches_without_a_dob(db_session):
     """Most patients never put a DOB in a booking email. Their own name from
     the address on their record, when nobody else uses that address, is them."""
-    kartik = await _patient(db_session, "Kartik Sangwan", dob=JANE_DOB, email="kartik@example.com")
+    liam = await _patient(db_session, "Liam Fletcher", dob=JANE_DOB, email="liam@example.com")
 
-    result = await _resolve(db_session, "Kartik@Example.com", name="kartik  sangwan")
+    result = await _resolve(db_session, "Liam@Example.com", name="liam  fletcher")
 
     assert result.outcome == IdentityOutcome.MATCHED
-    assert result.patient.id == kartik.id
+    assert result.patient.id == liam.id
 
 
 async def test_own_address_and_name_with_a_different_dob_is_not_a_match(db_session):
-    await _patient(db_session, "Kartik Sangwan", dob=JANE_DOB, email="kartik@example.com")
+    await _patient(db_session, "Liam Fletcher", dob=JANE_DOB, email="liam@example.com")
 
     result = await _resolve(
-        db_session, "kartik@example.com", name="Kartik Sangwan", dob=date(1990, 1, 1)
+        db_session, "liam@example.com", name="Liam Fletcher", dob=date(1990, 1, 1)
     )
 
     assert result.outcome == IdentityOutcome.AMBIGUOUS
@@ -422,7 +422,7 @@ async def test_ambiguous_family_request_goes_to_staff_unlinked(
 async def test_flag_off_never_resolves_identity_even_for_a_records_request(
     client, front_desk_headers, db_session, monkeypatch
 ):
-    """Gate (a): identity is graph-only. Flag off, a records request from an
+    """Identity is graph-only. Flag off, a records request from an
     unknown sender is drafted and queued exactly as it was before."""
     monkeypatch.setattr(settings, "agentic_pipeline_enabled", False)
     monkeypatch.setattr("app.rag.retrieval.retrieve", AsyncMock(return_value=[]))
@@ -462,7 +462,7 @@ async def test_flag_off_never_resolves_identity_even_for_a_records_request(
 async def test_general_question_from_unknown_sender_no_patient_no_extraction(
     client, front_desk_headers, db_session, agent_saver, monkeypatch, flag
 ):
-    """Gate (d): same auto-send decision both ways, no extraction call, no
+    """Same auto-send decision both ways, no extraction call, no
     patient row. The email meets every auto-send condition."""
     monkeypatch.setattr(settings, "agentic_pipeline_enabled", flag)
     monkeypatch.setattr(settings, "outlook_enabled", True)

@@ -1,4 +1,4 @@
-"""The registration form link (spec 2026-09-28-patient-registration-form-link).
+"""The registration form link.
 
 An unknown sender who asks to book or to sign up gets a link to a web form
 instead of an email asking them to type their details. What they type is
@@ -76,7 +76,7 @@ def issue_link(conversation: EmailConversation) -> str:
     opens once record_sent has stamped form_sent_at."""
     token = secrets.token_urlsafe(32)
     conversation.form_token_hash = token_hash(token)
-    # ponytail: the first CORS origin is the frontend, as for the password
+    # Limitation: the first CORS origin is the frontend, as for the password
     # reset link; add a dedicated setting when that stops being true.
     return f"{settings.cors_origins_list[0]}/register/{token}"
 

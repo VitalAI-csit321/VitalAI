@@ -42,7 +42,7 @@ class RegistrationLinkOut(BaseModel):
     statements: list[str]
     clauses: list[str]
     clinic_checks: list[str]
-    # Active doctors only (M4, E6): "No preference" is the default.
+    # Active doctors only: "No preference" is the default.
     doctors: list[RegistrationDoctor]
 
 

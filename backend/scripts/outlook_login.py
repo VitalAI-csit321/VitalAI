@@ -10,9 +10,8 @@ clinic reads from, then writes the MSAL token cache to
 settings.outlook_token_cache_path. From then on the app refreshes silently
 via app.services.outlook_auth.get_access_token().
 
-The device-code flow itself is Matthew's, from
-Inbox_Handling/Outlook_Authentication.py; what is added here is persisting
-the resulting cache so a server process never has to run this flow inline.
+The device-code flow itself is MSAL's standard one; what is added here is
+persisting the resulting cache so a server process never has to run this flow inline.
 
 Re-run when the refresh token lapses (roughly 90 days of no use, or after the
 account revokes consent). The symptom is OutlookAuthRequiredError in the

@@ -177,7 +177,7 @@ def upgrade() -> None:
 
     # DB-LEVEL APPEND-ONLY ENFORCEMENT.
     # Block UPDATE and DELETE on audit_events via a trigger.
-    # The "tamper-evident artefact" claim in the design doc rests on this.
+    # The audit log's "tamper-evident artefact" claim rests on this.
     op.execute(
         """
         CREATE OR REPLACE FUNCTION block_audit_modification()

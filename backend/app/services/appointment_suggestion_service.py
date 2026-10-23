@@ -1,6 +1,6 @@
 """Propose appointment slots. Never books one.
 
-RBAC report section 11, invariant 2: "AI never commits appointments. Suggest
+RBAC invariant: "AI never commits appointments. Suggest
 only; a human accepts." That is enforced structurally here, not by convention:
 this module can only write AppointmentStatus.PENDING, and pending rows are
 excluded from the excl_doctor_overlap constraint (ADR-003), so a suggestion

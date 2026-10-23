@@ -70,7 +70,7 @@ BLOCKED_SUMMARY = "Summary unavailable. Open the call to read the transcript."
 async def summarize_call(
     db: AsyncSession, llm: BaseLanguageModel, transcript: str, actor: User
 ) -> str:
-    """One inbox preview line. Through the choke point (spec G.2): a call
+    """One inbox preview line. Through the choke point: a call
     transcript is untrusted external text, same as an email body.
 
     A block shows a fixed placeholder rather than raising, so one hostile
@@ -134,16 +134,16 @@ def _scoped(query, actor: User):
 
 
 async def can_act_on_task(db: AsyncSession, actor: User, task: Task) -> bool:
-    """Spec section 7 on the message itself, so it holds with no review item
+    """The review queue's can_act rule on the message itself, so it holds with no review item
     too: what the actor's own inbox shows (the admin sees everything), plus
-    the front desk's messages for the operator (D6)."""
+    the front desk's messages for the operator."""
     if actor.role == UserRole.OPERATOR and task.target_role == UserRole.FRONT_DESK:
         return True
     return await db.scalar(_scoped(select(Task.id).where(Task.id == task.id), actor)) is not None
 
 
 async def write_reply_open(db: AsyncSession, task: Task) -> bool:
-    """Write reply (D14): an email nothing was sent on, with no AI draft
+    """Write reply: an email nothing was sent on, with no AI draft
     awaiting approval. Covers no draft, a blocked one, a rejected one, and an
     approved one whose delivery failed."""
     # Archived (completed) messages were usually answered outside the system.
@@ -233,7 +233,7 @@ async def _to_message(db: AsyncSession, task: Task, actor: User) -> InboxMessage
 
 
 async def _case_chip(db: AsyncSession, task: Task) -> dict:
-    """Who the message is from (once confirmed) and the case it is in (M4)."""
+    """Who the message is from (once confirmed) and the case it is in."""
     contact = await db.get(IntakeCase, task.case_id)
     episode = await db.get(Episode, contact.episode_id) if contact and contact.episode_id else None
     return {
@@ -253,7 +253,7 @@ async def _with_review(
     db: AsyncSession, actor: User, task: Task, message: InboxMessageOut
 ) -> InboxMessageOut:
     """canApprove and reviewItemId: server-decided, never inferred by the UI
-    from the actor's role (review queue spec section 7). Also the case chip."""
+    from the actor's role. Also the case chip."""
     item = (
         await db.execute(
             select(HumanReviewTask)
@@ -302,7 +302,7 @@ async def _with_review(
 
 async def openable_task(db: AsyncSession, actor: User, task_id: UUID) -> Task | None:
     """The inbox's own message, or one a review item links the actor to
-    (e.g. an operator opening a front desk item via D6, or a doctor a
+    (e.g. an operator opening a front desk item, or a doctor a
     reassigned draft)."""
     task = await db.get(Task, task_id)
     if task is None or task.deleted_at is not None:
@@ -355,7 +355,7 @@ _ANSWERED_BY_A_REPLY = (TaskType.AGENT_FAILURE, TaskType.AGENT_HANDOVER, TaskTyp
 
 
 async def write_reply(db: AsyncSession, actor: User, task: Task, text: str) -> InboxMessageOut:
-    """Send a person's own reply (D14) through deliver_reply, the only send
+    """Send a person's own reply through deliver_reply, the only send
     path: no approval and no critic, a person wrote it. The linked items it
     answers close in the same commit. The caller checks can_act_on_task.
 

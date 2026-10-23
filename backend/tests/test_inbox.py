@@ -236,7 +236,7 @@ async def test_inbox_surfaces_not_worthy_reason_via_handover_context(
 async def test_a_blocked_transcript_shows_a_placeholder_rather_than_crashing_the_inbox(
     db_session, operator_user
 ):
-    """Gate (f), spec G.2. summarize_call called llm.ainvoke directly. It now
+    """summarize_call called llm.ainvoke directly. It now
     goes through the choke point, and a block degrades to a fixed placeholder:
     one hostile transcript must not take down the whole inbox listing."""
     from app.services import inbox_service

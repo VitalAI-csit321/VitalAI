@@ -1,4 +1,4 @@
-"""Purge after 90 days = anonymise in place (build spec §9.1).
+"""Purge after 90 days = anonymise in place.
 
 Never a DELETE: no FK referencing patients.id declares an ondelete, and rows
 referenced from audit details must stay where the hash chain expects them.

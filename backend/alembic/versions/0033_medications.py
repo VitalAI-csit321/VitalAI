@@ -1,4 +1,4 @@
-"""medications table (build spec §12.1)
+"""medications table
 
 Reading this table is clinical access, enforced in medication_service rather
 than at a route, because the agent graph never passes through one.

@@ -190,7 +190,7 @@ async def book_appointment(
         notify_provider=notify_provider,
         series_id=series_id,
         # The case (episode) its contact is in: the agent's booking and a
-        # staff booking against a chosen case both land there (M4).
+        # staff booking against a chosen case both land there.
         episode_id=case.episode_id,
     )
     db.add(appointment)
@@ -390,7 +390,7 @@ async def reschedule_appointment(
     if enforce_hours:
         assert_within_clinic_hours(new_time_slot, appointment.duration_minutes)
     appointment.time_slot = new_time_slot
-    # The reminder that went out described the old time (spec §16.2).
+    # The reminder that went out described the old time.
     appointment.reminder_sent_at = None
     try:
         await db.flush()
@@ -432,7 +432,7 @@ async def update_appointment(
     # doctor_id/status are pulled out before the blanket setattr loop below so
     # each gets its own validation -- book_appointment's checks for doctor_id,
     # and an explicit allow-list for status -- before being applied. Both were
-    # excluded from `changes` entirely by Task 9's fix for a real bypass (PATCH
+    # excluded from `changes` entirely by an earlier fix for a real bypass (PATCH
     # silently writing an unvalidated doctor_id/status straight onto the row);
     # that exclusion still stands, this just makes the two fields usable again
     # instead of being silently dropped, since the Edit page always sends both.
@@ -469,7 +469,7 @@ async def update_appointment(
     for field, value in changes.items():
         setattr(appointment, field, value)
     # A PATCH moves the appointment just as much as /reschedule does, and the
-    # reminder already sent named the old time (spec §16.2).
+    # reminder already sent named the old time.
     #
     # Placed after the setattr loop defensively, not because it has to be:
     # AppointmentUpdate has no reminder_sent_at field, so `changes` cannot

@@ -92,7 +92,7 @@ def _probe_bedrock_sync() -> None:
 
     Proves credentials, model access and the model id in one request.
     """
-    # ponytail: a real billed call of a few tokens per probe while the ops page
+    # Limitation: a real billed call of a few tokens per probe while the ops page
     # polls. Switch to a control-plane call (bedrock.get_inference_profile) if
     # that ever shows up on the bill.
     import boto3

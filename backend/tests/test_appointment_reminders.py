@@ -1,4 +1,4 @@
-"""Appointment reminders, 24 hours before (build spec §16).
+"""Appointment reminders, 24 hours before.
 
 Not an agent: no model, no critic, no approval. This is the one outbound
 path in the system that reaches a patient with nobody clicking, so what it
@@ -174,9 +174,9 @@ async def test_the_window_and_the_flags_exclude_these(db_session, setup, sends, 
         pytest.param(False, {"email": None}, id="patient_has_no_email"),
         # Applied after booking on purpose: book_appointment calls
         # assert_not_provisional, so a provisional patient cannot be booked at
-        # all (§9). The guard exists for a patient who becomes provisional or
-        # is purged after the booking was made, which is exactly the case
-        # §16.4 says "should never fire, which is why it is worth a guard".
+        # all. The guard exists for a patient who becomes provisional or
+        # is purged after the booking was made: it should never fire, which
+        # is why it is worth a guard.
         pytest.param(False, {"is_provisional": True}, id="provisional_after_booking"),
         pytest.param(False, {"purged_at": datetime.now(UTC)}, id="purged_after_booking"),
     ],
@@ -458,10 +458,10 @@ async def test_a_restricted_term_in_the_location_sends_nothing(db_session, setup
 
 async def test_a_screened_out_body_writes_no_per_appointment_event(db_session, setup, sends):
     """Only the one aggregate event for the cycle, the same as every other
-    permanent skip: one bad row must not write 96 audit rows a day (§16.6)."""
+    permanent skip: one bad row must not write 96 audit rows a day."""
     admin, doctor, patient = setup
-    # "cancer" is in RESTRICTED_TERMS; "oncology", the word G.20 uses as its
-    # example, is not (F.89): the screen catches the list, not the concept.
+    # "cancer" is in RESTRICTED_TERMS; "oncology", an equally clinical
+    # word, is not: the screen catches the list, not the concept.
     appointment = await _appointment(
         db_session, admin, doctor, patient, location="Cancer Care Centre"
     )
@@ -485,7 +485,7 @@ async def test_a_screened_out_body_names_neither_the_term_nor_the_patient(
     db_session, setup, sends, caplog
 ):
     """The appointment id is enough for anyone entitled to look the record up
-    (F.81). The matched clinical word never reaches the log or the audit row,
+    The matched clinical word never reaches the log or the audit row,
     and neither does the recipient."""
     import logging
 

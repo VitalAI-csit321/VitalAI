@@ -1,4 +1,4 @@
-"""A case: one clinical problem being handled, an episode of care (M4).
+"""A case: one clinical problem being handled, an episode of care.
 
 Distinct from IntakeCase, which is one message or call (the UI calls it a
 "contact"). An episode groups a patient's contacts, appointments and consents

@@ -1,9 +1,9 @@
-"""Remind a patient the day before their appointment (build spec §16).
+"""Remind a patient the day before their appointment.
 
 A reminder is a scheduled outbound message, not a reply to an inbound one.
 It is not part of the agent graph and not an agent: no model, no critic, no
-approval. A fixed template with no clinical content in it is low-risk
-auto-send in the sense §4 defines, so it goes out without a human clicking,
+approval. A fixed template with no clinical content in it counts as low-risk
+auto-send, so it goes out without a human clicking,
 through the same delivery module as every other outbound message.
 
 Ownership of the idempotency guard lives here and nowhere else: this module
@@ -49,7 +49,7 @@ SKIPPED_ACTION = "appointment.reminders_skipped"
 
 # Named, never quoted: the reason must not carry the term that matched. A
 # restricted clinical word beside an appointment id in the log is the same
-# leak the recipient address was taken out of these logs for (F.81).
+# leak the recipient address was taken out of these logs for.
 RESTRICTED_REASON = "body contains a restricted term"
 
 
@@ -58,7 +58,7 @@ def render_reminder(appointment: Appointment, *, name: str | None) -> str:
 
     `reason` and `internal_notes` are deliberately not read here at all: both
     are staff-facing free text that can carry clinical detail, and an email
-    can be read by anyone with access to that inbox (§16.5).
+    can be read by anyone with access to that inbox.
 
     The time is the clinic's local time, via format_slot, which is the same
     helper the booking proposals use. A reminder saying "03:00" to a patient
@@ -81,9 +81,9 @@ def _skip_reason(patient: Patient | None) -> str | None:
 
     The recipient is the patient's recorded address and never the inbound
     Email.sender: that address came from an unverified message, and a
-    reminder goes only to a contact the clinic actually holds (§16.4).
+    reminder goes only to a contact the clinic actually holds.
 
-    Provisional patients cannot be booked at all (§9), so that guard should
+    Provisional patients cannot be booked at all, so that guard should
     never fire, which is exactly why it is worth having.
     """
     if patient is None:
@@ -133,12 +133,12 @@ async def send_due_reminders(db: AsyncSession, actor: User) -> list[UUID]:
             logger.info("No reminder for appointment %s: %s", appointment.id, reason)
             skipped.append(str(appointment.id))
             continue
-        # location is staff-writable free text (§16.5 keeps reason and
-        # internal_notes out for that reason; location is interpolated), so
+        # location is staff-writable free text (reason and internal_notes
+        # are kept out for that reason; location is interpolated), so
         # the body that goes out is the body that was screened. Not
         # check_output: that is async, raises instead of skipping, and audits
         # once per call, which at a 15 minute interval is 96 rows a day for
-        # one permanently bad row (§16.6).
+        # one permanently bad row.
         body = render_reminder(appointment, name=patient.name)
         if matches_any(body.lower(), RESTRICTED_TERMS):
             logger.info("No reminder for appointment %s: %s", appointment.id, RESTRICTED_REASON)

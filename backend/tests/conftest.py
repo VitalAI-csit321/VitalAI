@@ -293,7 +293,7 @@ def doctor_headers(doctor_user: User) -> dict[str, str]:
 
 @pytest_asyncio.fixture
 def seeded_doctor(doctor_user: User) -> User:
-    """Alias for doctor_user to match task brief naming."""
+    """Alias for doctor_user."""
     return doctor_user
 
 
@@ -418,8 +418,7 @@ async def pg_appointment_fixture(pg_session):
     pg_session.add(doctor)
     await pg_session.flush()
 
-    # contact_channel is NOT NULL on IntakeCase; the brief's fixture snippet
-    # omitted it. Added per the brief's own escape hatch instruction.
+    # contact_channel is NOT NULL on IntakeCase.
     case = IntakeCase(contact_reason="fixture", contact_channel="test", patient_id=None)
     pg_session.add(case)
     await pg_session.flush()
@@ -448,7 +447,7 @@ async def pg_client(pg_session):
 async def pg_admin_headers(pg_make_user) -> dict[str, str]:
     """admin_headers's real-Postgres equivalent -- pair with pg_client.
 
-    C1 (final appointments review): the double-booking constraint added in
+    The double-booking constraint added in
     migration 0026 is a Postgres-only EXCLUDE USING gist with no SQLite
     equivalent, so tests that must exercise it need the whole request bound
     to pg_session regardless of what DATABASE_URL the rest of the suite runs
@@ -469,8 +468,7 @@ async def pg_doctor_user(pg_make_user) -> User:
 async def booked_appointment(client, admin_headers, doctor_user, patient):
     """One confirmed appointment created through the real API.
 
-    `seeded_doctor`/`seeded_case` (as named in the task brief) don't exist in
-    this file; this reuses the real `doctor_user`/`patient` fixtures above and
+    This reuses the real `doctor_user`/`patient` fixtures above and
     builds a case over HTTP the same way tests/test_appointments.py's own
     `_create_case` helper does (contact_channel is NOT NULL on IntakeCase).
     """
@@ -554,7 +552,7 @@ async def unassigned_doctor_headers(
     return doctor_headers
 
 
-# --- no test may reach a real model (spec G.3) --------------------------------
+# --- no test may reach a real model -------------------------------------------
 # Five modules import get_llm under their own name, so patching any one of them
 # leaves four doors open. Block the shared client's own network door instead.
 # Verified by introspecting the installed langchain-community 0.4.2: every route

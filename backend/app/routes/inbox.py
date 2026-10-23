@@ -49,7 +49,7 @@ async def write_reply_endpoint(
     db: AsyncSession = Depends(get_db),
     actor: User = Depends(require_any_permission(VIEW_QUEUE, VIEW_CLINICAL)),
 ):
-    """Write reply (review queue spec D14): a person's own answer, sent as written."""
+    """Write reply: a person's own answer, sent as written."""
     task = await inbox_service.openable_task(db, actor, task_id)
     if task is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")

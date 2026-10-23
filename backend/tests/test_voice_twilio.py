@@ -1,4 +1,4 @@
-"""The Twilio voicemail line (voicemail spec §4, §11), driven by signed fake requests."""
+"""The Twilio voicemail line, driven by signed fake requests."""
 
 from unittest.mock import AsyncMock
 

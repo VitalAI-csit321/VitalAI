@@ -1,4 +1,4 @@
-"""Cases: episodes of care (M4 spec section 5). The UI's "case"; the older
+"""Cases: episodes of care. The UI's "case"; the older
 per-message IntakeCase is a "contact" and stays under /intake.
 
 Reading is for everyone who reads patient records, a doctor only their

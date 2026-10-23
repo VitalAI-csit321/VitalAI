@@ -76,7 +76,7 @@ async def test_result_without_access_token_raises(monkeypatch):
 
 
 def test_scopes_cover_read_write_and_send():
-    """Matthew's original requested Mail.Read only, which is why its
+    """The original client requested Mail.Read only, which is why its
     mark_as_read call 403s. Both extra scopes are load-bearing here."""
     assert "Mail.ReadWrite" in outlook_auth.SCOPES
     assert "Mail.Send" in outlook_auth.SCOPES

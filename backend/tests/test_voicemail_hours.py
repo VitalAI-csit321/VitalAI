@@ -1,4 +1,4 @@
-"""clinic_is_open: Mon-Fri 08:00-18:00 clinic time, public holidays closed (spec D3, D10)."""
+"""clinic_is_open: Mon-Fri 08:00-18:00 clinic time, public holidays closed."""
 
 from datetime import datetime
 from zoneinfo import ZoneInfo

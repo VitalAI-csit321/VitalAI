@@ -3,7 +3,7 @@
 Deliberately not a metrics library. This feeds two tiles on one page, so a
 bounded deque is the whole implementation.
 
-# ponytail: per-process, in-memory, lost on restart. If we ever need real
+# Limitation: per-process, in-memory, lost on restart. If we ever need real
 # historical metrics or more than one worker, this is the seam to replace with
 # Prometheus rather than something to grow.
 """

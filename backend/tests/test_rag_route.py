@@ -107,8 +107,8 @@ async def test_rag_query_allowed_for_clinical_granted_operator_without_assignmen
     await db_session.commit()
     # get_current_user's db.get() would otherwise return the identity-mapped
     # `operator` object as it was on first load (permission_grants selectin
-    # empty), never seeing the grant just committed above, the same
-    # stale-identity-map shape flagged during Phase 1 (see project memory).
+    # empty), never seeing the grant just committed above (a stale identity
+    # map).
     await db_session.refresh(operator, attribute_names=["permission_grants"])
     token = create_access_token(operator.id, operator.role)
     headers = {"Authorization": f"Bearer {token}"}

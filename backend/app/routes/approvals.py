@@ -128,7 +128,7 @@ _ACTION_EXECUTORS = {
 async def _check_may_decide(
     db: AsyncSession, approval_id: UUID, actor: User, *, approving: bool
 ) -> None:
-    """Row-level gate (review queue spec section 7). A draft is decided by
+    """Row-level gate. A draft is decided by
     whoever may act on its review item, and clinical text is approved only by
     its doctor or the admin. An approval with no item keeps the old rule:
     operator and admin."""
@@ -229,7 +229,7 @@ async def approve_endpoint(
                     "draft": (approved.resolved_payload or approved.payload).get("draft"),
                 },
             )
-            # ponytail: no retry endpoint for this. Re-approving is refused
+            # Limitation: no retry endpoint for this. Re-approving is refused
             # (409), so the reply is sent by hand; the reopened review item
             # says so. Add a retry path only if this turns
             # out to be a recurring failure in practice, not preemptively.

@@ -1,4 +1,4 @@
-"""Plain-Python PDF text extraction for the clinical upload path (RBAC report section 8).
+"""Plain-Python PDF text extraction for the clinical upload path.
 
 Mirrors ingestion/matthew_corpus/ingestion/Loader.py's PDF branch (page join)
 and Cleaner.py's whitespace normalization, as plain functions instead of Ray

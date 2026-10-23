@@ -1,12 +1,11 @@
 """Systematic RBAC enforcement: every route is either RBAC-gated or on an
 explicit, reviewed allowlist (test_every_route_has_an_rbac_gate_or_is_explicitly_allowlisted),
 and every route's gate behaves correctly for all 4 roles via real HTTP
-(test_route_permission_enforcement, added in the next task).
+(test_route_permission_enforcement).
 
 Both derive expected behavior from live code (app.auth.rbac_registry,
 app.auth.permissions.ROLE_PERMISSIONS); there is no hand-maintained
-route-to-permission mapping to keep in sync. See
-docs/superpowers/specs/2026-07-24-sec-rbac-enforcement-tests-design.md.
+route-to-permission mapping to keep in sync.
 """
 
 import re

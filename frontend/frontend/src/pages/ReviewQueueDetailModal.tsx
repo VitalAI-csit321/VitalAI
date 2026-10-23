@@ -26,7 +26,7 @@ export function ReviewQueueDetailModal({ item, onClose, onDone }: { item: RawRev
   const [patientId, setPatientId] = useState("");
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [doctorId, setDoctorId] = useState("");
-  // Cases (M4): the chosen case ("" = a new one) and the outcome note to close one.
+  // Cases: the chosen case ("" = a new one) and the outcome note to close one.
   const [caseChoice, setCaseChoice] = useState(item.details?.suggested_episode_id ?? "");
   const [outcome, setOutcome] = useState("");
   const [busy, setBusy] = useState(false);
@@ -36,7 +36,7 @@ export function ReviewQueueDetailModal({ item, onClose, onDone }: { item: RawRev
   const canReassign = kind === "draft_approval" && (user?.role === "operator" || user?.role === "admin");
   // Re-route acts on the message, so a manual routing case (no message) is closed with Done.
   const rerouting = (kind === "routing_review" || kind === "intent_review") && !!item.inbox_task_id;
-  // Write reply (D14): server-decided, and never alongside a draft awaiting approval.
+  // Write reply: server-decided, and never alongside a draft awaiting approval.
   const writing = message?.canWriteReply ?? false;
   const caseKind = kind === "case_choice" || kind === "case_close";
 

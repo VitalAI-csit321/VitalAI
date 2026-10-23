@@ -92,7 +92,7 @@ async def hold_undrafted(
     db: AsyncSession, task: Task, actor: User, reason: str, *, handover: str | None = None
 ) -> None:
     """No draft to approve, so a person answers: the reason on the message and
-    an agent_failure item for the operator (review queue spec section 6).
+    an agent_failure item for the operator.
     Flushes, never commits."""
     task.handover_context = handover or reason
     await review_routing.open_item(
@@ -166,7 +166,7 @@ async def ingest_email(
     await db.flush()
 
     llm = get_llm()
-    # One text for both readers (spec G.2). The classifier missed an injection
+    # One text for both readers. The classifier missed an injection
     # in the subject, and the routing gate's URGENT_KEYWORDS scan missed a
     # sender who put "urgent" in the subject line, which is where people put
     # it. Building it once is what stops the two drifting apart again.
@@ -282,7 +282,7 @@ async def _generate_plain_reply(
         f"{revision_block(feedback)}"
         "REPLY:"
     )
-    # The choke point every live LLM call is supposed to use (spec G.2). The
+    # The choke point every live LLM call is supposed to use. The
     # prompt embeds the patient's own subject and body, which is exactly the
     # untrusted text the input guardrail exists to catch.
     result = await guarded_invoke(db, llm, prompt, actor=actor, route="email.draft_reply")
@@ -428,7 +428,7 @@ def answer_sentences(answer: str) -> str:
     """The answer without any sentence about booking, registering or sending
     details. The prompt asks for none; the model writes them anyway.
 
-    ponytail: a word list over naive sentence splits. It can drop a sentence
+    Limitation: a word list over naive sentence splits. It can drop a sentence
     that only mentions "booking fee"; losing a sentence is the safe direction.
     """
     sentences = re.split(r"(?<=[.!?])\s+", answer.strip())
@@ -518,10 +518,10 @@ def auto_send_eligible(
     worth replying to (not merely UNCERTAIN), the routing gate did not hold it
     for a person, the draft is grounded in retrieved org content rather than a
     generic guess, and the category isn't clinical -- prescription/results/
-    referral replies never auto-send regardless of confidence, per Amin's
-    explicit call.
+    referral replies never auto-send regardless of confidence, a deliberate
+    choice.
 
-    A flagged routing outcome (0.70 to 0.90) is enough, Amin's call 2026-10-11:
+    Deliberate choice: a flagged routing outcome (0.70 to 0.90) is enough;
     routing confidence says which queue the email belongs to, not whether the
     reply is right, and it held 13 of 18 good replies to general enquiries.
     """
@@ -535,12 +535,12 @@ def auto_send_eligible(
 
 
 # Agent branches whose reply states something the clinic is committing to: a
-# time to attend (§10), or what happens to a patient's records (§11). Literal
+# time to attend, or what happens to a patient's records. Literal
 # names rather than an import, so this module does not import the branches.
 _ALWAYS_HUMAN_BRANCHES = frozenset({"booking", "records", "prescription"})
 # The conversation flow's fixed texts (email_conversation_service): a request
 # for verification details, the booking acknowledgement, offered times and a
-# booking confirmation. Amin's call (2026-09-24): these go out with nobody
+# booking confirmation. Deliberate choice: these go out with nobody
 # approving them, so a patient is never left waiting on the queue for a form
 # letter. The critic and output guardrail still run on every one.
 TEMPLATE_BRANCHES = frozenset({"verification", "booking_conversation"})
@@ -557,7 +557,7 @@ def reply_risk_tier(
 
     Not the audit log's severity scorer (audit_service._compute_risk_score):
     "how alarming is this log entry" and "must a human approve this reply" are
-    different questions. Tiers, not a score (build spec §5 option (a)); later
+    different questions. Tiers, not a score; later
     branches add rules here rather than new thresholds.
     """
     # A draft the critic had to correct never goes out without a human. The
@@ -572,12 +572,12 @@ def reply_risk_tier(
         return "template"
     # Chunks found by an LLM's rewrite cleared the floor against the rewrite,
     # not against what the patient wrote: weaker evidence. Drafted, never
-    # auto-sent (spec §7). Flag off the same email is ungrounded, so it goes
+    # auto-sent. Flag off the same email is ungrounded, so it goes
     # to approval there too.
     if grounded_on_retry:
         return "high"
     # A provisional patient is whoever the last email said they were. Their
-    # onboarding reply always reaches a human (spec §9.0).
+    # onboarding reply always reaches a human.
     if is_provisional:
         return "high"
     if branch in _ALWAYS_HUMAN_BRANCHES:
@@ -607,8 +607,8 @@ async def deliver_reply(
     `automated` means nobody read this before it left: the model's sign-off
     placeholder is dropped (see draft_critic.drop_placeholder_lines). On the approval path
     it stays in, because the human editing the draft is the one who fills it.
-    `manual` marks a reply a person wrote themselves (Write reply, review
-    queue spec D14) in the audit event.
+    `manual` marks a reply a person wrote themselves (Write reply) in the
+    audit event.
 
     With the Outlook connector disabled "sent" is DB-level state and no message
     leaves the system. With it enabled the draft is delivered through Graph
@@ -773,7 +773,7 @@ async def generate_draft(
             from app.rag.answer import answer_question
             from app.rag.retrieval import RetrievalContext
 
-            # general only (spec G.1). referral_request and medical_records_request
+            # general only. referral_request and medical_records_request
             # route to OPERATOR and admins see every queue, and neither role holds
             # VIEW_CLINICAL by default, so restricted clinical documents must not
             # reach a draft. A draft with nothing general to ground on becomes
@@ -886,7 +886,7 @@ async def draft_reply(
 ) -> EmailDraftOutcome:
     """Generate and gate a reply for an auto-routed email. No draft is
     attempted for a human_review outcome -- that email already sits in the
-    queue as-is, per the spec. Whatever outcome results is persisted onto
+    queue as-is. Whatever outcome results is persisted onto
     the task row (draft_text/draft_approval_id/draft_sent) so it survives
     past this one request and can be surfaced later by the inbox.
 

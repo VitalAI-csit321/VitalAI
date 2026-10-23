@@ -1,4 +1,4 @@
-"""Booking (build spec §10) and records (§11) branches of the agent graph.
+"""Booking and records branches of the agent graph.
 
 Both are reached only from route_identity, after the sender is known, and
 both draft from a template: no model decides what time a patient was told to
@@ -35,7 +35,7 @@ from tests.agent_fakes import FakeLLM, seed_email
 @pytest.fixture(autouse=True)
 def _conversation_flow_off(monkeypatch):
     """These tests pin the routing that email_booking_conversation_enabled
-    replaces (onboarding, the §10 proposal, a silent staff hold). The flag-on
+    replaces (onboarding, the booking proposal, a silent staff hold). The flag-on
     versions are in tests/test_email_conversation.py."""
     monkeypatch.setattr(settings, "email_booking_conversation_enabled", False)
 
@@ -90,7 +90,7 @@ async def _patient(db, name="Jane Smith", **extra) -> Patient:
 
 async def _linked_case(db, patient: Patient) -> IntakeCase:
     """A case staff already attached to the patient: MATCHED, no extraction
-    call (Appendix F.36)."""
+    call."""
     case = IntakeCase(
         patient_id=patient.id,
         patient_name=patient.name,
@@ -145,7 +145,6 @@ def _assert_no_invention(text: str) -> None:
 async def test_matched_patient_gets_three_clinic_local_proposals_and_one_approval(
     db_session, agent_saver, guards, admin_user, doctor_user
 ):
-    """Gate (d)."""
     llm, sends = guards
     patient = await _patient(db_session)
     await _assign(db_session, doctor_user, patient, admin_user)
@@ -222,7 +221,7 @@ async def test_a_full_diary_proposes_what_exists_and_never_pads(
 async def test_no_assigned_doctor_is_a_hold_with_a_reason_and_no_draft(
     db_session, agent_saver, guards, admin_user
 ):
-    """Gate (e), first half. Proposing a doctor the patient has no care
+    """Proposing a doctor the patient has no care
     relationship with is worse than saying nothing."""
     _, sends = guards
     patient = await _patient(db_session)
@@ -245,7 +244,7 @@ async def test_no_assigned_doctor_is_a_hold_with_a_reason_and_no_draft(
 async def test_no_free_slot_in_the_horizon_is_a_hold_not_an_empty_proposal(
     db_session, agent_saver, guards, admin_user, doctor_user, monkeypatch
 ):
-    """Gate (e), second half. A clinic day with no bookable hours has no free
+    """A clinic day with no bookable hours has no free
     slot on any of the fourteen days scanned."""
     _, sends = guards
     monkeypatch.setattr(settings, "clinic_close_hour", 8)
@@ -269,7 +268,7 @@ async def test_no_free_slot_in_the_horizon_is_a_hold_not_an_empty_proposal(
 async def test_unknown_sender_asking_to_book_reaches_onboarding_not_slots(
     db_session, agent_saver, guards, doctor_user
 ):
-    """Gate (f), first half. Identity runs after the reply gate: wiring booking
+    """Identity runs after the reply gate: wiring booking
     at route_intent would propose times to someone nobody has identified."""
     llm, sends = guards
     llm.identity = {"name": "Alex Stranger", "dob": "1990-01-01"}
@@ -294,7 +293,6 @@ async def test_unknown_sender_asking_to_book_reaches_onboarding_not_slots(
 async def test_a_provisional_patient_asking_to_book_reaches_staff(
     db_session, agent_saver, guards, admin_user, doctor_user
 ):
-    """Gate (f), second half."""
     _, sends = guards
     patient = await _patient(db_session, is_provisional=True, status=PatientStatus.PENDING)
     await _assign(db_session, doctor_user, patient, admin_user)
@@ -320,7 +318,7 @@ async def test_a_failing_booking_node_takes_the_failure_path(
     await _assign(db_session, doctor_user, patient, admin_user)
     case = await _linked_case(db_session, patient)
     # Already in an open case, so identity files the message without looking
-    # up a doctor for a new case (M4) and the booking node is the first to
+    # up a doctor for a new case and the booking node is the first to
     # hit the failing lookup.
     from app.models.episode import Episode, EpisodeStatus
 
@@ -354,9 +352,9 @@ async def test_a_failing_booking_node_takes_the_failure_path(
 
 
 def test_nothing_in_the_agent_layer_books_an_appointment():
-    """Gate (j). The §10 agent proposes; a human confirming is the only way in.
+    """The booking agent proposes; a human confirming is the only way in.
 
-    One deliberate exception (Amin, 2026-09-24): the email booking
+    One deliberate exception: the email booking
     conversation books a time the patient confirmed in writing, behind
     email_booking_conversation_enabled, through
     email_conversation_service.book_choice. Exactly one call there, and still
@@ -414,8 +412,8 @@ async def _assert_one_approval_no_send(db_session, task, snapshot, sends, llm) -
 
 
 async def test_records_request_without_consent_asks_for_it(db_session, agent_saver, guards):
-    """Gate (g). Email cases usually have no consent record at all; that is an
-    outcome here, not an error (Appendix F.2)."""
+    """Email cases usually have no consent record at all; that is an
+    outcome here, not an error."""
     llm, sends = guards
     patient = await _patient(db_session)
     case = await _linked_case(db_session, patient)
@@ -432,7 +430,7 @@ async def test_records_request_without_consent_asks_for_it(db_session, agent_sav
 async def test_an_implied_consent_record_is_not_consent(
     db_session, agent_saver, guards, admin_user, captured
 ):
-    """Gate (g). Implied consent is the clinic noting that someone emailed.
+    """Implied consent is the clinic noting that someone emailed.
     capture_consent accepts any PENDING record, including an implied one, so
     the type is checked as well as the status."""
     llm, sends = guards
@@ -457,7 +455,6 @@ async def test_an_implied_consent_record_is_not_consent(
 async def test_records_request_with_explicit_consent_gets_the_release_acknowledgement(
     db_session, agent_saver, guards, admin_user
 ):
-    """Gate (h)."""
     llm, sends = guards
     patient = await _patient(db_session)
     case = await _linked_case(db_session, patient)
@@ -477,7 +474,7 @@ async def test_records_request_with_explicit_consent_gets_the_release_acknowledg
 async def test_consent_captured_on_another_case_of_the_same_patient_counts(
     db_session, agent_saver, guards, admin_user
 ):
-    """Gate (d), spec G.11. Real mail can never put the consent on the email's
+    """Real mail can never put the consent on the email's
     own case: ingest_email opens a new case per message and the Outlook
     connector passes no case_id. The question is about the patient."""
     llm, sends = guards
@@ -500,7 +497,7 @@ async def test_consent_captured_on_another_case_of_the_same_patient_counts(
 async def test_an_implied_record_on_another_case_is_still_not_consent(
     db_session, agent_saver, guards, admin_user
 ):
-    """Gate (d), the other half: asking the patient-level question must not
+    """Asking the patient-level question must not
     turn the clinic noting an inbound email into authority to release a file."""
     llm, sends = guards
     patient = await _patient(db_session)

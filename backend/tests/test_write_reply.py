@@ -1,4 +1,4 @@
-"""Write reply (review queue spec D14, test 1c): staff send their own answer to
+"""Write reply: staff send their own answer to
 an email when no AI draft is waiting on approval."""
 
 from unittest.mock import AsyncMock
@@ -137,7 +137,7 @@ async def test_refused_on_the_prescribers_request(db_session, client, admin_head
 
 async def test_operator_writes_on_a_front_desk_message(db_session, client, operator_headers):
     task = await inbox_task(db_session)  # front desk's
-    # The operator reaches a front desk message through its review item (D6).
+    # The operator reaches a front desk message through its review item.
     item = await review_routing.open_item(
         db_session, kind=TaskType.AGENT_HANDOVER, inbox_task=task, reason="why", actor=None
     )

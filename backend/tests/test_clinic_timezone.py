@@ -1,4 +1,4 @@
-"""The clinic runs in a timezone, not in UTC (build spec section 10.0).
+"""The clinic runs in a timezone, not in UTC.
 
 `time_slot` stays UTC-aware in the database. What changes is interpretation:
 `settings.clinic_open_hour` is an hour in `settings.clinic_timezone`, and an
@@ -78,7 +78,7 @@ def test_the_clinic_hours_say_they_are_local_time():
 async def test_the_first_slot_of_a_day_is_the_opening_hour_in_clinic_local_time(
     client, admin_headers, seeded_doctor, monkeypatch
 ):
-    """Gate (b). With clinic_open_hour 8 the day starts at 08:00 Sydney, which
+    """With clinic_open_hour 8 the day starts at 08:00 Sydney, which
     is 22:00 UTC the day before, not 08:00 UTC."""
     monkeypatch.setattr(settings, "clinic_open_hour", 8)
     monkeypatch.setattr(settings, "clinic_close_hour", 18)
@@ -130,7 +130,7 @@ async def _calendar(client, headers, doctor, year: int, month: int, path: str = 
 async def test_an_early_morning_appointment_is_filed_on_its_clinic_local_date(
     client, admin_headers, seeded_doctor, seeded_case
 ):
-    """Gate (c). Bucketing by the UTC date files this one on 2026-08-31, and
+    """Bucketing by the UTC date files this one on 2026-08-31, and
     a September window built in UTC never fetches it at all."""
     booked = await _book(client, admin_headers, seeded_doctor, seeded_case, LOCAL_MORNING)
 

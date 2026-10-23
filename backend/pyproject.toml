@@ -30,7 +30,7 @@ exclude = ["alembic/versions"]
 
 [tool.coverage.run]
 source = ["app"]
-# A4 reported a branch figure nobody measured; CI now reports it.
+# Branch coverage is measured in CI, not just line coverage.
 branch = true
 concurrency = ["greenlet"]
 omit = [

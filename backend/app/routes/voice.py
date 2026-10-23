@@ -1,4 +1,4 @@
-"""Twilio voicemail webhooks (voicemail spec §4). Mounted only when
+"""Twilio voicemail webhooks. Mounted only when
 twilio_enabled. Every handler is cheap DB work and TwiML: Twilio waits about
 15 seconds before the caller hears an application error. Call state lives on
 the Call row keyed by CallSid, never in URLs, so no DOB reaches a log."""

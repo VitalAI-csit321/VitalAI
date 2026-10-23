@@ -11,7 +11,7 @@ Plan, fixed in advance:
   It is reported as indicative only. The clean measure needs emails nobody here has seen.
 
     cd backend
-    ../../CSIT321_Capstone/backend/.venv/bin/python -m scripts.intent_classifier.evaluate_v2
+    .venv/bin/python -m scripts.intent_classifier.evaluate_v2
 """
 
 from __future__ import annotations

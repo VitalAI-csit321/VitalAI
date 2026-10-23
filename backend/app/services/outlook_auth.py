@@ -1,6 +1,6 @@
 """Microsoft Graph token acquisition for the inbound mail connector.
 
-Ported from Matthew's Inbox_Handling/Outlook_Authentication.py, split in two:
+Ported from an earlier standalone prototype script, split in two:
 the interactive device-code flow lives in scripts/outlook_login.py and runs
 once by hand, while this module only ever refreshes silently from the cache
 that script wrote. The split exists because a device-code flow blocks on a
@@ -23,7 +23,7 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Mail.ReadWrite (not Matthew's Mail.Read) because the connector marks messages
+# Mail.ReadWrite (not the prototype's Mail.Read) because the connector marks messages
 # read after ingesting them, and Mail.Send because an approved draft reply is
 # sent through Graph. Requesting Mail.Read alone is why mark_as_read returns 403
 # in the original script.
@@ -73,7 +73,7 @@ def build_app(cache: SerializableTokenCache) -> PublicClientApplication:
 # "Sign in with Microsoft" from Settings: the auth-code flow with PKCE, which a
 # public client may use once its redirect URI is registered in Azure (Mobile and
 # desktop platform). Pending sign-ins are keyed by the OAuth state.
-# ponytail: process-local; a sign-in must finish on the worker that started it.
+# Limitation: process-local; a sign-in must finish on the worker that started it.
 # Move to Redis if the API ever runs more than one worker.
 SIGN_IN_TTL_SECONDS = 600
 _pending: dict[str, tuple[dict, UUID, float]] = {}

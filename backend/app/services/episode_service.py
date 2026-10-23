@@ -1,8 +1,8 @@
-"""Cases as episodes of care (M4 spec, 2026-09-29). Every Episode write is here.
+"""Cases as episodes of care. Every Episode write is here.
 
 A case is one clinical problem for one patient. Its contacts (IntakeCase rows:
 one per email, call or voicemail), appointments and consents point at it
-through episode_id. attach_contact is the E4 rule every identity point calls
+through episode_id. attach_contact is the attach rule every identity point calls
 once a contact has a real patient; the rest are staff actions.
 
 Flushes, never commits: the caller's commit keeps the case change and the
@@ -75,7 +75,7 @@ def category_label(category: TaskCategory) -> str:
 
 
 async def _real_patient(db: AsyncSession, patient_id: UUID | None) -> Patient | None:
-    """Cases are for registered patients only (E2): never provisional or purged."""
+    """Cases are for registered patients only: never provisional or purged."""
     patient = await db.get(Patient, patient_id) if patient_id is not None else None
     if patient is None or patient.is_provisional or patient.purged_at is not None:
         return None
@@ -264,10 +264,10 @@ async def attach_contact(
     actor: User,
     category: TaskCategory | None = None,
 ) -> Episode | None:
-    """The E4 rule. Returns the case the contact is now in, or None.
+    """The attach rule. Returns the case the contact is now in, or None.
 
     No-op for a contact with no registered patient or a non-clinical category
-    (E2, E3). A contact already in a case only marks that case active: a
+    A contact already in a case only marks that case active: a
     reply in a conversation is activity, not a new problem. Otherwise: no
     open case opens one, one open case takes it, several open a case_choice
     Review Queue item and leave it unattached.

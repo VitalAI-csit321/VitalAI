@@ -122,7 +122,7 @@ async def test_book_appointment_missing_case_raises(db_session: AsyncSession):
 
 
 async def test_book_appointment_duplicate_slot_raises(pg_session: AsyncSession):
-    """C1: forced onto real Postgres (pg_session) so this always exercises
+    """Forced onto real Postgres (pg_session) so this always exercises
     migration 0026's EXCLUDE USING gist constraint, regardless of what
     DATABASE_URL the rest of the suite runs under -- SQLite has no
     equivalent, so on the default backend this would pass without testing
@@ -266,7 +266,7 @@ async def test_reschedule_cancelled_appointment_raises(db_session: AsyncSession)
 
 
 async def test_reschedule_into_taken_slot_raises(pg_session: AsyncSession):
-    """C1: forced onto real Postgres (pg_session) -- see
+    """Forced onto real Postgres (pg_session) -- see
     test_book_appointment_duplicate_slot_raises above for why.
     """
     admin = _user(UserRole.ADMIN)
@@ -370,7 +370,7 @@ async def _remindable(db_session: AsyncSession):
 
 
 async def test_rescheduling_clears_the_reminder_guard(db_session: AsyncSession):
-    """Spec §16.2. The reminder that went out named the old time, so the new
+    """The reminder that went out named the old time, so the new
     one has to be reminded again: a patient moved from Tuesday to Friday
     after Tuesday's reminder would otherwise never hear about Friday."""
     admin, appointment = await _remindable(db_session)

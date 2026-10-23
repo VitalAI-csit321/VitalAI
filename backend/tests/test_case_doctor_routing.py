@@ -1,5 +1,5 @@
 """Doctor work for a message in a case goes to the case's doctor, falling back
-to the patient's doctor (M4 spec section 5, R5 in the plan)."""
+to the patient's doctor."""
 
 from uuid import uuid4
 

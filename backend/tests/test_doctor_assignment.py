@@ -1,4 +1,4 @@
-"""Every staff-created or promoted patient gets a doctor (M4 spec, E6)."""
+"""Every staff-created or promoted patient gets a doctor."""
 
 from datetime import date
 from uuid import uuid4

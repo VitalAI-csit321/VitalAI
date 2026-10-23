@@ -1,5 +1,5 @@
-"""What the routing gate opens on arrival, per intake path (review queue spec
-section 6, D9, D10). Voicemail's cases live in test_voicemail_service.py."""
+"""What the routing gate opens on arrival, per intake path. Voicemail's cases
+live in test_voicemail_service.py."""
 
 import json
 
@@ -226,7 +226,7 @@ async def test_agent_failure_opens_an_operator_item(db_session, operator_user):
 async def test_urgent_mail_is_operator_work_whatever_its_category(
     db_session, client, monkeypatch, front_desk_user, operator_headers
 ):
-    # D9: urgent operator work, not the category's own queue.
+    # Urgent operator work, not the category's own queue.
     task, _ = await _ingest(
         db_session,
         monkeypatch,

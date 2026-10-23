@@ -122,7 +122,7 @@ async def test_front_desk_rejects_its_own_draft_only(client, db_session, front_d
 async def test_approve_cannot_redirect_delivery_via_resolved_payload(
     client, db_session, front_desk_headers
 ):
-    """Regression, Task 4 fix round 1 CRITICAL 2. resolved_payload is a
+    """Regression. resolved_payload is a
     free-form dict the approver may edit (e.g. to fix a typo in the draft),
     but email_id/task_id must always come from the original request.payload -
     otherwise an approver authorised only on their own item could redirect
@@ -165,7 +165,7 @@ async def test_approve_cannot_redirect_delivery_via_resolved_payload(
 async def test_operator_cannot_approve_clinical_draft_after_category_override(
     client, db_session, operator_headers, operator_user
 ):
-    """Regression, Task 4 fix round 1 IMPORTANT 3. The clinical check must
+    """Regression. The clinical check must
     not look only at the inbox task's CURRENT category - an operator can
     retarget it after the draft is drawn up (POST /tasks/{id}/override) and
     launder a clinical reply through the relabel."""

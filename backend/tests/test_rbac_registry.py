@@ -60,12 +60,12 @@ def test_total_route_count():
     # went stale.
     # 74 as of the inbox delete/read feature: +2 for DELETE /api/v1/tasks/{task_id}
     # and POST /api/v1/tasks/{task_id}/read.
-    # 82 as of the appointments calendar feature (Plan 2): +8 for GET /doctors,
+    # 82 as of the appointments calendar feature: +8 for GET /doctors,
     # GET /appointments/calendar, GET /appointments/calendar/markers,
     # GET /appointments/day, GET /appointments/availability,
     # GET /appointments/{appointment_id}, PATCH /appointments/{appointment_id},
     # and POST /appointments/{appointment_id}/complete.
-    # 83 as of the appointments data-paths feature (Plan 3): +1 for
+    # 83 as of the appointments data-paths feature: +1 for
     # POST /appointments/suggest.
     # 84 as of the dashboard workflow-status fix: +1 for GET /human-review/stats/daily.
     # 89 as of the settings page work: +5 for GET /settings, PATCH /settings,
@@ -73,7 +73,7 @@ def test_total_route_count():
     # 91 as of the consent form snapshot work: +2 for
     # POST /consent/{consent_id}/resolve-review and GET /audit/verify.
     # 92 as of the corpus-as-documents work: +1 for GET /rag/documents.
-    # 93 as of the provisional-patient work (build spec 9.0b): +1 for
+    # 93 as of the provisional-patient work: +1 for
     # POST /patients/{patient_id}/promote, which requires REGISTER_PATIENT.
     # 94 as of the consent queue fix: +1 for GET /consent/queue, which requires
     # CAPTURE_CONSENT (front desk, operators and admins, not clinicians) and
@@ -91,8 +91,8 @@ def test_total_route_count():
     # 104 as of the review queue: +3 for POST /human-review/{task_id}/reroute,
     # /link-patient and /reassign.
     # 105: +1 for GET /inbox/{task_id}.
-    # 106: +1 for POST /inbox/{task_id}/reply (Write reply, D14).
-    # 117 as of cases as episodes of care (M4): +8 for /cases (GET and POST,
+    # 106: +1 for POST /inbox/{task_id}/reply (Write reply).
+    # 117 as of cases as episodes of care: +8 for /cases (GET and POST,
     # GET and PATCH /{episode_id}, POST /{episode_id}/close, /reopen and
     # /contact, POST /move), +2 for POST /human-review/{task_id}/choose-case and
     # /case-close, +1 for PUT /patients/{patient_id}/doctor (ASSIGN_PATIENTS).

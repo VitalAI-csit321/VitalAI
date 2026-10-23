@@ -5,7 +5,7 @@ is read from vitalai_qa in a read-only session and never written to disk, becaus
 real addresses. No retraining: model.joblib is used as saved.
 
     cd backend
-    ../../CSIT321_Capstone/backend/.venv/bin/python -m scripts.intent_classifier.evaluate_real
+    .venv/bin/python -m scripts.intent_classifier.evaluate_real
 """
 
 from __future__ import annotations

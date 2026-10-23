@@ -6,7 +6,7 @@ label is ground truth by construction. The model never labels existing text.
 Resumable: re-running tops each category up to PER_CATEGORY from dataset.jsonl.
 
     cd backend
-    ../../CSIT321_Capstone/backend/.venv/bin/python -m scripts.intent_classifier.generate
+    .venv/bin/python -m scripts.intent_classifier.generate
 """
 
 from __future__ import annotations

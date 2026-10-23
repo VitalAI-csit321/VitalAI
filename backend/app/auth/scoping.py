@@ -1,7 +1,7 @@
-"""Row-level scoping helpers (RBAC report §6-7).
+"""Row-level scoping helpers.
 
-One shared implementation per check, reused by every call site, the report
-explicitly warns against inlining these per endpoint, since that's how a
+One shared implementation per check, reused by every call site. Never inline
+these per endpoint, since that's how a
 boundary check silently drifts out of sync (see app/rag/retrieval.py's
 _security_filter for the same principle applied to chunk retrieval).
 """

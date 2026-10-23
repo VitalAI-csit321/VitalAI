@@ -56,6 +56,6 @@ Access is not role alone. It is three layers combined:
 This directory supports:
 
 - RBAC enforcement (which role reaches which data).
-- Security testing (SEC-RBAC validation, and Ariana's threat model and adversarial corpus).
+- Security testing (SEC-RBAC validation, the threat model and the adversarial test corpus).
 - Demo login accounts for the presentation.
 - Access control validation across workflows, including the per-user grant and row-level scoping paths, not just role checks.

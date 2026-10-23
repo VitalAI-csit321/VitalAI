@@ -48,7 +48,7 @@ export interface Patient {
   medicareNumber: string | null;
   concessionCard: string | null;
   missingFields: string[];
-  // The patient's doctor (every registered patient has one, M4) and their preference.
+  // The patient's doctor (every registered patient has one) and their preference.
   preferredDoctorId?: string | null; doctorId?: string | null; doctorName?: string | null;
 }
 
@@ -135,11 +135,11 @@ export interface Message {
   draftText: string | null; draftApprovalId: string | null; draftSent: boolean;
   taskStatus: TaskStatus; emailId: string | null; handoverContext: string | null;
   callId?: string | null; hasAudio?: boolean;
-  // Server-decided (review queue spec section 7): the UI never infers approve rights.
+  // Server-decided: the UI never infers approve rights.
   canApprove?: boolean; reviewItemId?: string | null;
-  // Write reply (D14): no AI draft awaits approval and nothing was sent yet.
+  // Write reply: no AI draft awaits approval and nothing was sent yet.
   canWriteReply?: boolean;
-  // The case chip (M4): the confirmed patient and the case the message is in.
+  // The case chip: the confirmed patient and the case the message is in.
   patientId?: string | null; episodeId?: string | null; episodeTitle?: string | null;
 }
 

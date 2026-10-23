@@ -3,19 +3,17 @@
 Operates on HumanReviewTask (app/models/human_review.py), the low-confidence/
 escalated tier's work queue. Distinct from ApprovalRequest
 (app/services/approval_service.py), which is a binary governance decision,
-not a claim/work queue; see
-docs/superpowers/specs/2026-07-24-fr-gov-01-approval-gate-design.md section 3.
+not a claim/work queue.
 
 A DOCTOR-targeted task is actionable by the doctor it is already assigned_to
 (e.g. one they previously claimed), or otherwise only by a doctor actually
 assigned to the task's case's patient (app/auth/scoping.py's
-assigned_patient_ids_subquery(), the same row-level scoping Phase 3 built for
-/patients, /consent, /rag/query), see
-docs/superpowers/specs/2026-07-25-governance-follow-ups-design.md section 1,
+assigned_patient_ids_subquery(), the same row-level scoping used by
+/patients, /consent, /rag/query),
 or by the doctor who logged that case (_doctor_case_filter()).
 
 Visibility and action authority are otherwise scoped by can_act(): own role
-only, except an operator also works the front desk's items (D6), a doctor
+only, except an operator also works the front desk's items, a doctor
 only for items assigned to them or about their patients, and actors holding
 VIEW_ALL_QUEUES (app/auth/permissions.py) who see and can act on every role's
 queue - currently ADMIN only. See can_act().
@@ -42,13 +40,13 @@ from app.services.audit_service import record_event
 from app.services.task_routing_rules import resolve_target_role
 
 _ACTIONABLE = (TaskStatus.IN_PROGRESS, TaskStatus.ESCALATED)
-# D11: one level up. The admin is the top.
+# One level up. The admin is the top.
 _NEXT_LEVEL = {
     UserRole.FRONT_DESK: UserRole.OPERATOR,
     UserRole.DOCTOR: UserRole.OPERATOR,
     UserRole.OPERATOR: UserRole.ADMIN,
 }
-# D7: what the queue shows when an item has no named owner yet.
+# What the queue shows when an item has no named owner yet.
 _QUEUE_LABEL: dict[UserRole | None, str] = {
     UserRole.FRONT_DESK: "Front desk queue",
     UserRole.OPERATOR: "Operator queue",
@@ -58,7 +56,7 @@ _QUEUE_LABEL: dict[UserRole | None, str] = {
 
 
 def due_at(item: HumanReviewTask) -> datetime:
-    """D7: over SLA past this. High priority gets the shorter, editable window."""
+    """Over SLA past this. High priority gets the shorter, editable window."""
     hours = (
         settings.review_sla_hours_high
         if item.priority == TaskPriority.HIGH
@@ -175,7 +173,7 @@ async def describe_tasks(db: AsyncSession, tasks: list[HumanReviewTask]) -> dict
         ).tuples()
     }
 
-    # Cases (M4): the case a "Close this case?" item is about, and the open
+    # Cases: the case a "Close this case?" item is about, and the open
     # cases a "Which case?" item offers.
     episode_ids = {t.episode_id for t in tasks if t.episode_id} | {
         UUID(c)
@@ -339,9 +337,9 @@ async def _doctor_sees_case(db: AsyncSession, case_id: UUID, doctor_id: UUID) ->
 
 
 async def can_act(db: AsyncSession, actor: User, item: HumanReviewTask) -> bool:
-    """Spec section 7. Admin: everything. Own role: yes, and a doctor only for
+    """Admin: everything. Own role: yes, and a doctor only for
     items assigned to them or about their patients. The operator also works
-    the front desk's items (D6)."""
+    the front desk's items."""
     if VIEW_ALL_QUEUES in effective_permissions(actor):
         return True
     if item.target_role == actor.role:
@@ -552,7 +550,7 @@ async def reroute(
     previous = inbox.category.value if inbox.category else None
     inbox.category = category
     inbox.target_role = resolve_target_role(category)
-    # What intake does for these categories (D9, D10).
+    # What intake does for these categories.
     if category == TaskCategory.URGENT_EMERGENCY:
         await task_service.mark_escalated(
             db, inbox, actor=actor, reason="rerouted: urgent_category"
@@ -584,7 +582,7 @@ async def reroute(
 async def link_patient(
     db: AsyncSession, task_id: UUID, actor: User, patient_id: UUID | None
 ) -> HumanReviewTask:
-    """F2: links the case and closes the item. The route then re-runs the
+    """Links the case and closes the item. The route then re-runs the
     agent on the linked email (agent_graph.rerun_after_review)."""
     task = await _open_item(db, task_id, actor, {TaskType.IDENTITY_REVIEW})
     if patient_id is None:
@@ -600,7 +598,7 @@ async def link_patient(
             raise HumanReviewTaskWrongStateError("The case is already linked to another patient")
         intake.patient_id, intake.patient_name = patient.id, patient.name
         await _audit(db, actor, task, "review.patient_linked", patient_id=str(patient.id))
-        # Staff confirmed who it is: a clinical message now joins a case (M4).
+        # Staff confirmed who it is: a clinical message now joins a case.
         await episode_service.attach_contact(db, intake, actor=actor)
     task.status = TaskStatus.COMPLETED
     await db.commit()

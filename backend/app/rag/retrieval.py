@@ -1,14 +1,8 @@
 """Provenance-tagged chunk retrieval (FR-RAG-01), vector + Postgres full-text
 hybrid by default.
 
-BASELINE, reconcile with Matthew's ingestion schema: this module is built
-against a baseline `chunks` table (see alembic/versions/0005_baseline_chunks.py
-and app/models/chunk.py). The shapes of patient_id, doc_type, and access_scope
-are placeholders invented to unblock retrieval on synthetic data — see
-docs/FR-RAG-01_handoff.md for the reconciliation list. The public interface
-below (RetrievalContext, RetrievedChunk, _security_filter, retrieve) is meant
-to survive that reconciliation unchanged; only the underlying table/columns
-should need to move.
+Reads the `chunks` table (app/models/chunk.py). What ingestion must write for
+retrieval to work is in docs/retrieval_contract.md.
 
 Hybrid strategy (default, alembic 0023_chunks_hybrid_search): runs a vector
 (cosine distance) query and a Postgres full-text (`search_vector @@
@@ -53,7 +47,7 @@ MIN_CANDIDATE_POOL = 50
 class RetrievalContext:
     """Security/audit context for a retrieval call.
 
-    BASELINE, reconcile with Matthew's ingestion schema: patient_id shape and
+    BASELINE, to reconcile with the ingestion schema: patient_id shape and
     the allowed_scopes vocabulary are placeholders.
     """
 

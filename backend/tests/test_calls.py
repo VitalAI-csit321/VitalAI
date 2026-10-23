@@ -246,7 +246,7 @@ async def test_call_routing_override_is_reversible_and_audited(
 async def test_call_escalation_transitions_the_routed_task_to_escalated(
     client: AsyncClient, operator_headers: dict, patient: Patient, monkeypatch
 ):
-    # An urgent call is escalated on routing (review queue spec D9); this is the manual path.
+    # An urgent call is escalated on routing; this is the manual path.
     _mock_classifier(monkeypatch, "billing_insurance_enquiry", 0.95)
     case_id = await _create_case(client, operator_headers, patient)
     await _capture_consent(client, operator_headers, case_id)
@@ -280,7 +280,7 @@ async def test_call_escalation_transitions_the_routed_task_to_escalated(
 async def test_call_escalation_prevents_duplicate_active_handover(
     client: AsyncClient, operator_headers: dict, patient: Patient, monkeypatch
 ):
-    # An urgent call is escalated on routing (review queue spec D9); this is the manual path.
+    # An urgent call is escalated on routing; this is the manual path.
     _mock_classifier(monkeypatch, "billing_insurance_enquiry", 0.95)
     case_id = await _create_case(client, operator_headers, patient)
     await _capture_consent(client, operator_headers, case_id)

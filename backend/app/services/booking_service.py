@@ -1,8 +1,8 @@
-"""Proposing appointment times to a patient we have identified (build spec §10).
+"""Proposing appointment times to a patient we have identified.
 
 Proposes and stops. Nothing here books anything: `book_appointment` keeps
 exactly one caller in the whole app, and a human confirming a time is the only
-path into a real booking (RBAC report §11, invariant 2).
+path into a real booking (the RBAC invariant: AI never commits appointments).
 
 Every time in the draft is rendered in clinic local time, and the draft itself
 is a template, not a generation. What time the clinic told a patient to turn up
@@ -66,7 +66,7 @@ async def doctor_for_patient(db: AsyncSession, patient_id: UUID) -> tuple[UUID, 
 
 
 async def doctor_for_episode(db: AsyncSession, episode: Episode) -> tuple[UUID, str] | None:
-    """Who does a case's doctor work (M4): its doctor while they are active and
+    """Who does a case's doctor work: its doctor while they are active and
     still assigned to the patient, else the patient's doctor. inbox_service._scoped
     applies the same rule in SQL."""
     if episode.doctor_id is not None:

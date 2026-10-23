@@ -111,7 +111,7 @@ async def lifespan(application: FastAPI):
 
         purge_task = asyncio.create_task(run_purge())
 
-    # Appointment reminders (spec §16). Its own flag, not the agent one: this
+    # Appointment reminders. Its own flag, not the agent one: this
     # is the one background job that emails patients with nobody approving
     # it, so pulling the branch must not be enough to start it.
     reminder_task: asyncio.Task | None = None
@@ -126,7 +126,7 @@ async def lifespan(application: FastAPI):
 
     voicemail_task: asyncio.Task | None = asyncio.create_task(run_voicemail_sweep())
 
-    # "Close this case?" for quiet cases (M4). Always on and not tied to the
+    # "Close this case?" for quiet cases. Always on and not tied to the
     # reminders flag: it only opens Review Queue items, it emails nobody.
     from app.services.case_nudge import run_case_nudges
 

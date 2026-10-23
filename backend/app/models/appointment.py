@@ -70,14 +70,14 @@ class Appointment(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     # otherwise hit reference_code's NOT NULL constraint and have it
     # mis-reported as SlotTakenError by that function's catch-all
     # `except IntegrityError`.
-    # ponytail: 6 hex chars = ~16.7M values, no uniqueness retry on collision;
+    # Limitation: 6 hex chars = ~16.7M values, no uniqueness retry on collision;
     # fine at this volume, add a retry-on-IntegrityError loop if reference
     # codes ever get generated at real scale.
     reference_code: Mapped[str] = mapped_column(
         String(16), nullable=False, default=lambda: f"APT-{secrets.token_hex(3).upper()}"
     )
     notify_patient: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    # Idempotency guard for the reminder sweep (spec §16.2), the role
+    # Idempotency guard for the reminder sweep, the role
     # draft_sent plays for replies. Owned by appointment_reminders, which
     # sets it only after a successful send; cleared again by every path that
     # moves time_slot. Declared here as well as in migration 0032 because the

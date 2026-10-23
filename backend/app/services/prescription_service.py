@@ -1,4 +1,4 @@
-"""Repeat prescription requests (build spec §12.3, as narrowed by G.16).
+"""Repeat prescription requests.
 
 **The patient-facing draft names no medicine.** Not a stylistic choice: the
 output guardrail's RESTRICTED_TERMS contains "prescription", "dosage
@@ -15,8 +15,8 @@ prescribing doctor. Reading clinical data and putting clinical data in an
 email are different things: the agent does the first and never the second.
 
 The request to the doctor is an internal Task, not mail. That keeps clinical
-detail inside the system, and keeps outlook_client.send_mail at the single
-caller §16 gives it.
+detail inside the system, and keeps outlook_client.send_mail at its single
+caller.
 """
 
 from __future__ import annotations
@@ -117,7 +117,7 @@ async def handle_renewal(db: AsyncSession, *, case_id: UUID, patient_id: UUID, a
     """Read the history, raise the internal request, and say which reply applies.
 
     Returns review_due. Raises ClinicalAccessDeniedError when the actor may
-    not read clinical data, which is the whole point of §12.2.
+    not read clinical data, which is the whole point of the clinical access rule.
     """
     history = await medication_service.get_medication_history(db, patient_id, actor=actor)
     review_due = medication_service.check_last_review_date(history)

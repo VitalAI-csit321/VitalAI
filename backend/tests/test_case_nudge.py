@@ -1,4 +1,4 @@
-"""The close nudge and the two case items in the Review Queue (M4 spec, E4, E5)."""
+"""The close nudge and the two case items in the Review Queue."""
 
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4

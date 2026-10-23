@@ -1,6 +1,6 @@
 """A doctor may only see appointments for patients assigned to them.
 
-Every endpoint added in Plan 2 must inherit PR #16's row scoping. A gap here
+Every appointment endpoint must inherit PR #16's row scoping. A gap here
 leaks one patient's schedule to an unrelated doctor.
 """
 

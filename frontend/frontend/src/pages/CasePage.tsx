@@ -23,7 +23,7 @@ function openLink(e: TimelineEntry): string | null {
   return "/review-queue";
 }
 
-// A case: one clinical problem, its contacts, bookings and consents (M4).
+// A case: one clinical problem, its contacts, bookings and consents.
 export function CasePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();

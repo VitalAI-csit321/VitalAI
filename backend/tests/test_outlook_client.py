@@ -1,8 +1,7 @@
 """Graph message parsing and transport contract.
 
-Every case here is a real defect found while porting Matthew's
-Inbox_Handling/Email_Parser.py, plus the request shapes his Outlook_Reader.py
-established. No live Graph calls: transport is exercised through
+Every case here is a real defect found while porting an earlier email parser
+prototype, plus the request shapes its Outlook reader established. No live Graph calls: transport is exercised through
 httpx.MockTransport.
 """
 

@@ -1,10 +1,10 @@
 """add baseline chunks table (FR-RAG-01)
 
-BASELINE, reconcile with Matthew's ingestion schema. Every column shape below
+BASELINE, a placeholder until the ingestion schema was settled. Every column shape below
 (patient_id as a bare UUID with no patient entity, doc_type/access_scope as
 unconstrained text, source_document_id with no documents table to reference)
 is a placeholder invented to unblock vector retrieval on synthetic data. None
-of it is ratified. See docs/FR-RAG-01_handoff.md for the reconciliation list.
+of it was ratified at the time; later migrations (0022, 0023) changed it.
 """
 from typing import Sequence, Union
 
@@ -19,11 +19,11 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
     # No CHECK constraints on doc_type / access_scope: the vocab is placeholder
-    # (BASELINE, reconcile with  ingestion schema), not yet ratified.
+    # (BASELINE placeholder), not yet ratified.
     # patient_id is a bare UUID, not a FK, there is no separate patient entity
-    # in this codebase yet (BASELINE, reconcile with Matthew's ingestion schema).
+    # in this codebase yet (BASELINE placeholder).
     # source_document_id is likewise a bare UUID, no documents table exists to
-    # reference (BASELINE, reconcile with ingestion schema).
+    # reference (BASELINE placeholder).
     op.execute("""
         CREATE TABLE chunks (
             id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),

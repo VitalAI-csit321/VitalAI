@@ -1,4 +1,4 @@
-"""Voicemail on the agent graph (voicemail spec §8). Flag on throughout."""
+"""Voicemail on the agent graph. Flag on throughout."""
 
 import json
 import re
@@ -76,13 +76,13 @@ async def test_unique_phone_and_dob_names_a_probable_patient(db_session):
     assert "Probable patient: Jane Smith" in script
     assert "Confirm the caller's full name and date of birth" in script
     assert "Offer" not in script
-    # Probable only: the case is never linked (spec global constraint).
+    # Probable only: the case is never linked.
     case = await db_session.get(IntakeCase, call.case_id)
     assert case.patient_id is None
 
 
 async def test_a_probable_match_never_opens_a_case(db_session):
-    # M4: a voicemail joins a case only once staff confirm the caller.
+    # A voicemail joins a case only once staff confirm the caller.
     from app.models.episode import Episode
 
     await _patient(db_session)
@@ -166,7 +166,7 @@ async def test_complaint_gets_a_callback_script(db_session, monkeypatch):
     assert "Call back +61412345678." in task.handover_context
 
 
-# Onboarding an unknown caller, the voicemail twin of the email §9.0 path.
+# Onboarding an unknown caller, the voicemail twin of the email onboarding path.
 
 
 class _FakeExtractor:

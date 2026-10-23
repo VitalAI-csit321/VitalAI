@@ -1,8 +1,7 @@
 """Seed the baseline `chunks` table with the FR-RAG-01 synthetic corpus.
 
-SYNTHETIC DATA ONLY: see scripts/synthetic_corpus/manifest.py. BASELINE,
-reconcile with Matthew's ingestion schema: this seeds the placeholder
-`chunks` table (alembic/versions/0005_baseline_chunks.py)
+SYNTHETIC DATA ONLY: see scripts/synthetic_corpus/manifest.py. BASELINE:
+this seeds the placeholder `chunks` table (alembic/versions/0005_baseline_chunks.py)
 
 Usage (against the docker-compose db, migrated to head):
     DATABASE_URL=postgresql+asyncpg://vitalai:vitalai@localhost:5432/vitalai \\

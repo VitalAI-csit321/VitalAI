@@ -162,7 +162,7 @@ async def test_reroute_changes_the_message_queue(client, db_session, operator_he
 
 
 async def test_reroute_to_urgent_escalates_the_message(client, db_session, operator_headers):
-    # Intake escalates an urgent message on arrival (D9); a re-route there must too.
+    # Intake escalates an urgent message on arrival; a re-route there must too.
     item, task = await _item(db_session, kind=TaskType.ROUTING_REVIEW)
     response = await _post(client, item, "reroute", operator_headers, category="urgent_emergency")
     assert response.status_code == 200
@@ -177,7 +177,7 @@ async def test_reroute_to_urgent_escalates_the_message(client, db_session, opera
 
 
 async def test_reroute_to_complaint_opens_a_complaint_item(client, db_session, operator_headers):
-    # Intake opens a complaint item (D10); a re-route there must too.
+    # Intake opens a complaint item; a re-route there must too.
     item, task = await _item(db_session, kind=TaskType.ROUTING_REVIEW)
     response = await _post(
         client, item, "reroute", operator_headers, category="complaint_escalation"

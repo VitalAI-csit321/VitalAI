@@ -5,12 +5,11 @@ fabricated for exercising vector retrieval end to end — none of it is real
 patient data. Ids are fixed (not random) so tests can query "as" a specific
 synthetic patient and assert on exact chunk counts.
 
-BASELINE, reconcile with Matthew's ingestion schema: doc_type and
-access_scope values below are placeholder vocabulary, not a ratified list.
-Two entries (ALICE_MENTAL_HEALTH, ALICE_BILLING) are deliberately named so
+The doc_type and access_scope values below are test vocabulary, not the
+real mapping in app/rag/doc_scopes.py. Two entries (ALICE_MENTAL_HEALTH, ALICE_BILLING) are deliberately named so
 that doc_type and access_scope disagree with what the name would suggest —
 this exists to prove the security filter keys on access_scope, never on
-doc_type. See docs/FR-RAG-01_handoff.md.
+doc_type.
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Approval interrupt (build spec §3): the create_approval / await_approval split.
+"""Approval interrupt: the create_approval / await_approval split.
 
 interrupt() re-runs its node from the top on resume. If the approval row were
 written in the same node as interrupt(), every resume would mint a second

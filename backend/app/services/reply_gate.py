@@ -15,7 +15,7 @@ Deliberately skipped: RFC 3834 Auto-Submitted / List-Unsubscribe / Precedence
 header checks. Standards-correct but need internetMessageHeaders threaded
 through Graph $select -> EmailIngestRequest -> here. Sender patterns plus the
 LLM cover the observed cases.
-# ponytail: sender-substring + LLM only, add header checks if spam volume grows
+# Limitation: sender-substring + LLM only, add header checks if spam volume grows
 """
 
 from __future__ import annotations

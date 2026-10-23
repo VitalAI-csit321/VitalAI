@@ -16,7 +16,7 @@ class AppointmentCreate(BaseModel):
     case_id: UUID
     time_slot: datetime
     # gt=0 mirrors the DB CHECK. Validating at both layers is deliberate:
-    # this is a trust boundary (F4, F5).
+    # this is a trust boundary.
     duration_minutes: int = Field(default=30, gt=0, le=480)
     appointment_type: AppointmentType = AppointmentType.OTHER
     location: str | None = Field(default=None, max_length=255)

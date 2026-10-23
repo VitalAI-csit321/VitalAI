@@ -100,7 +100,7 @@ async def _choice_items(db) -> list[HumanReviewTask]:
     )
 
 
-# The attach rule (E4)
+# The attach rule
 
 
 async def test_first_clinical_message_opens_a_case_titled_from_the_subject(
@@ -328,7 +328,7 @@ async def test_create_refuses_a_provisional_patient(db_session, patient, admin_u
         )
 
 
-# Move (E4: a wrong attach is fixed by Move)
+# Move (a wrong attach is fixed by Move)
 
 
 async def test_move_a_contact_to_another_case_of_the_same_patient(db_session, patient, admin_user):

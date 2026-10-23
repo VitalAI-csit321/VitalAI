@@ -1,7 +1,6 @@
 """Output-side restricted-terms guardrail (FR-GOV-03).
 
-Scoped to patient-facing email drafts ONLY (see
-docs/superpowers/specs/2026-07-27-email-governance-pipeline-design.md) --
+Scoped to patient-facing email drafts ONLY --
 never wraps /rag/query, which is clinician-facing and legitimately needs to
 say "diagnosis"/"prescription"/"treatment plan". Same fail-safe shape as
 app.llm.guardrail's input guardrail: on a match, no draft is used, a
@@ -9,7 +8,7 @@ governance.output_blocked AuditEvent is written (matched term only, never
 the full draft), and OutputBlockedError is raised so the caller routes to
 human review instead of sending.
 
-Term list is Ariana's actual restricted-terms table. Known gap, not built
+Term list is the project's restricted-terms table. Known gap, not built
 here: the table's "Sensitive Data: references to other patients" row isn't
 literal-term-matchable -- it needs real cross-referencing, not substring
 matching. Flagged, not silently dropped.
@@ -76,7 +75,7 @@ RESTRICTED_TERMS: tuple[str, ...] = (
 )
 
 
-# Amin's call (2026-10-11): the clinic's own documents say "call 000 in an
+# Deliberate choice: the clinic's own documents say "call 000 in an
 # emergency", so a word match on "emergency" threw away correct replies to
 # "what do I do after hours?". These are the clinic stating its own facts, not
 # the model judging a patient's condition. Every other term still applies to

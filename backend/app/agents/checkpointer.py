@@ -32,7 +32,7 @@ def open_checkpointer() -> AbstractAsyncContextManager[AsyncPostgresSaver]:
     releases it when it reaches END or pauses at interrupt(), so nothing is
     held open while a human decides.
     """
-    # ponytail: a connection per run, fine while graph runs are serialised
-    # (P3's Semaphore(1)). Move to a shared psycopg_pool.AsyncConnectionPool
+    # Limitation: a connection per run, fine while graph runs are serialised
+    # (the draft Semaphore(1)). Move to a shared psycopg_pool.AsyncConnectionPool
     # opened in lifespan, with the same three kwargs, if runs go concurrent.
     return AsyncPostgresSaver.from_conn_string(conninfo(settings.database_url))

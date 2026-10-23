@@ -1,4 +1,4 @@
-"""Give every registered patient without an active doctor one (M4 spec, E6).
+"""Give every registered patient without an active doctor one.
 
 New patients get a doctor when staff create or promote them
 (assignment_service.ensure_doctor). This is the one-off catch-up for the

@@ -42,12 +42,10 @@ _search_vector_computed = Computed("to_tsvector('english', content)", persisted=
 
 
 class Chunk(Base):
-    """BASELINE, reconcile with ingestion schema.
-
-    Every column shape here (patient_id as a bare UUID, doc_type/access_scope
-    as unconstrained text, source_document_id with no documents table) is a
-    placeholder to unblock vector retrieval on synthetic data — none of it is
-    ratified. See docs/FR-RAG-01_handoff.md.
+    """One retrievable piece of a document. docs/retrieval_contract.md lists
+    what ingestion must fill in; app/rag/doc_scopes.py maps doc_type to
+    access_scope. source_document_id is a soft reference to clinical_documents
+    (no foreign key), since corpus documents have no row there.
 
     patient_id is nullable: NULL means an org-wide chunk (clinic policy,
     routing rules, guardrails, ...) visible in every patient's retrieval

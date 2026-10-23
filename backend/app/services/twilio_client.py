@@ -1,5 +1,5 @@
 """Twilio: request signatures, and the one recording per voicemail that is
-downloaded then deleted (voicemail spec §11, privacy APP 8)."""
+downloaded then deleted (privacy APP 8)."""
 
 from __future__ import annotations
 

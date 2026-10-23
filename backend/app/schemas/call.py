@@ -11,7 +11,7 @@ from app.services.task_routing_gate import TaskRoutingOutcome
 
 
 class CallCreate(BaseModel):
-    """A logged call is its own contact (M4). Give the patient (optional,
+    """A logged call is its own contact. Give the patient (optional,
     a call can be from anyone) and, optionally, the case it belongs to. The
     older case_id form files the call under an existing contact instead."""
 

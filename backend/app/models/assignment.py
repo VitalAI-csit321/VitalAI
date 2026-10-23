@@ -8,7 +8,7 @@ from app.models.base import Base, utcnow
 
 
 class DoctorPatientAssignment(Base):
-    """A doctor's care-relationship scope over a patient (RBAC report §6).
+    """A doctor's care-relationship scope over a patient.
 
     Create/delete only, never edited in place, no updated_at.
     """

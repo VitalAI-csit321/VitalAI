@@ -1,6 +1,6 @@
-"""Onboarding a sender nobody can identify (build spec §9.0).
+"""Onboarding a sender nobody can identify.
 
-Runs only for NO_MATCH plus an onboarding intent (§8.2). Creates a provisional
+Runs only for NO_MATCH plus an onboarding intent. Creates a provisional
 patient, records the consent their email implies (PENDING, never CAPTURED),
 and drafts a reply asking only for the identity and contact details still
 missing. Never for health or financial details: email is not a secure channel,

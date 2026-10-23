@@ -35,7 +35,7 @@ class IntakeCase(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         default=IntakeStatus.RECEIVED,
     )
     # The case (episode of care) this contact belongs to. NULL for anything
-    # that is not a known patient's clinical message (spec E2).
+    # that is not a known patient's clinical message.
     episode_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("episodes.id", ondelete="SET NULL"), nullable=True, index=True
     )

@@ -172,7 +172,7 @@ async def test_day_view_reports_totals_and_providers(client, admin_headers, book
 async def _book_clinic_morning(client, admin_headers, doctor, case) -> dict:
     """09:00 Sydney on 2026-09-01, inside clinic hours. booked_appointment's
     09:00Z is 19:00 Sydney, which only looked like a 9am slot while clinic
-    hours were read as UTC hours (build spec 10.0)."""
+    hours were read as UTC hours."""
     response = await client.post(
         "/api/v1/appointments",
         headers=admin_headers,
@@ -275,7 +275,7 @@ async def test_patch_updates_mutable_fields(client, admin_headers, booked_appoin
 
 
 async def test_patch_rejects_zero_duration(client, admin_headers, booked_appointment):
-    """F4: rejected at the schema layer with 422, never reaching the DB."""
+    """Rejected at the schema layer with 422, never reaching the DB."""
     response = await client.patch(
         f"/api/v1/appointments/{booked_appointment['id']}",
         headers=admin_headers,
@@ -285,7 +285,7 @@ async def test_patch_rejects_zero_duration(client, admin_headers, booked_appoint
 
 
 async def test_patch_rejects_negative_duration(client, admin_headers, booked_appointment):
-    """F5: would raise DataError, not IntegrityError, if it reached the DB."""
+    """Would raise DataError, not IntegrityError, if it reached the DB."""
     response = await client.patch(
         f"/api/v1/appointments/{booked_appointment['id']}",
         headers=admin_headers,
@@ -336,7 +336,7 @@ async def test_repeat_series_collision_leaves_no_partial_series(
     When DB constraint (Postgres EXCLUDE) detects a collision during flush,
     IntegrityError is caught and the entire series transaction rolls back.
 
-    C1: forced onto real Postgres (pg_client/pg_session) unconditionally, so
+    Forced onto real Postgres (pg_client/pg_session) unconditionally, so
     this always exercises migration 0026's EXCLUDE USING gist constraint
     regardless of what DATABASE_URL the rest of the suite runs under. That
     constraint has no SQLite equivalent, so the old SQLite branch (series
@@ -416,7 +416,7 @@ async def test_cancel_accepts_a_reason(client, admin_headers, booked_appointment
 async def test_patch_status_pending_to_confirmed_succeeds(
     client: AsyncClient, admin_headers: dict, doctor_user: User, patient: Patient
 ):
-    """C2: status is no longer silently dropped -- the Edit page's own
+    """Status is no longer silently dropped -- the Edit page's own
     pending<->confirmed transition must actually apply.
     """
     case_id = await _create_case(client, admin_headers, patient)
@@ -444,7 +444,7 @@ async def test_patch_status_pending_to_confirmed_succeeds(
 
 
 async def test_patch_rejects_terminal_status_transition(client, admin_headers, booked_appointment):
-    """C2: PATCH still cannot bounce status straight to a terminal state --
+    """PATCH still cannot bounce status straight to a terminal state --
     that must go through the dedicated /complete or /cancel endpoint -- but
     now it's a clear 409 instead of a silent no-op.
     """
@@ -461,7 +461,7 @@ async def test_patch_rejects_terminal_status_transition(client, admin_headers, b
 async def test_patch_reassigns_to_valid_doctor(
     client: AsyncClient, admin_headers: dict, booked_appointment, db_session: AsyncSession
 ):
-    """C2: a valid doctor_id on PATCH is validated and applied, not dropped."""
+    """A valid doctor_id on PATCH is validated and applied, not dropped."""
     second_doctor = await _second_doctor(db_session, "patch-reassign-target@example.com")
 
     response = await client.patch(
@@ -488,7 +488,7 @@ async def test_patch_reassign_denied_for_doctor_actor(
 
 
 async def test_patch_rejects_unknown_doctor_id(client, admin_headers, booked_appointment):
-    """C2: an unknown doctor_id on PATCH is now validated, mirroring POST."""
+    """An unknown doctor_id on PATCH is now validated, mirroring POST."""
     response = await client.patch(
         f"/api/v1/appointments/{booked_appointment['id']}",
         headers=admin_headers,

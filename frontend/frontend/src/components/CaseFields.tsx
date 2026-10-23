@@ -9,7 +9,7 @@ import type { Doctor, Message, Patient } from "../api/types";
 const FIELD = "w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm outline-none focus:border-brand";
 const LABEL = "mb-1.5 block text-sm font-medium text-slate-700";
 
-// A patient's open cases plus "New case…" (M4). The value is a case id,
+// A patient's open cases plus "New case…". The value is a case id,
 // NEW_CASE (with newTitle), or "" when optional and nothing is chosen.
 export function CasePicker({
   patientId, value, onChange, newTitle, onNewTitle, optional = false, optionalLabel = "No case",
@@ -113,7 +113,7 @@ export function PatientSearch({
   );
 }
 
-// The inbox's case chip (M4): the case a message is in, and Change. A message
+// The inbox's case chip: the case a message is in, and Change. A message
 // with no confirmed patient (a voicemail, an unknown sender) asks staff to
 // confirm who it is from before listing that patient's cases.
 export function CaseChip({ message, onChanged }: { message: Message; onChanged: () => void }) {

@@ -27,7 +27,7 @@ router = APIRouter(prefix="/patients", tags=["patients"])
 
 
 async def _out(db: AsyncSession, patient: Patient) -> PatientOut:
-    """One patient, with who their doctor is (E6)."""
+    """One patient, with who their doctor is."""
     doctor = await booking_service.doctor_for_patient(db, patient.id)
     return PatientOut.model_validate(patient).model_copy(
         update={

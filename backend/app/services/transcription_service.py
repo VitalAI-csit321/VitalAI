@@ -1,4 +1,4 @@
-"""Local speech-to-text for call logging (faster-whisper, CPU, Phase 1 MVP).
+"""Local speech-to-text for call logging (faster-whisper, CPU, MVP).
 
 Lazy-loaded module-level singleton — same pattern as
 NomicEmbedProvider._get_model() in app/rag/embeddings.py. No live telephony

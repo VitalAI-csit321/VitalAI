@@ -96,7 +96,7 @@ async def test_check_output_records_audit_event_on_block(db_session, front_desk_
     ids=["000-direction", "emergency-department", "emergency-contact", "medicare-item-name"],
 )
 async def test_check_output_allows_the_clinics_own_safe_wording(db_session, front_desk_user, draft):
-    """Amin's call (2026-10-11): the word match threw away correct replies to
+    """Deliberate choice: the word match threw away correct replies to
     "what do I do after hours?" because the clinic's own documents say "call
     000 in an emergency". The 000 direction, the emergency department, an
     emergency contact and the Medicare item's name are not the AI judging a

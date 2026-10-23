@@ -1,4 +1,4 @@
-"""Who sent this message (build spec §8). The LLM extracts, code decides.
+"""Who sent this message. The LLM extracts, code decides.
 
 Attaching a stranger's request to a real patient record discloses PHI and has
 no recovery path, so the matcher never guesses: anything short of exactly one
@@ -40,7 +40,7 @@ class IdentityOutcome(enum.StrEnum):
     NO_MATCH = "no_match"
 
 
-# §8.2. The intents where who the sender is changes what happens next.
+# The intents where who the sender is changes what happens next.
 PATIENT_SPECIFIC = frozenset(
     {
         TaskCategory.NEW_PATIENT_ONBOARDING,
@@ -51,7 +51,7 @@ PATIENT_SPECIFIC = frozenset(
         TaskCategory.REFERRAL_REQUEST,
     }
 )
-# The only intents a stranger (NO_MATCH) may be onboarded from (§9).
+# The only intents a stranger (NO_MATCH) may be onboarded from.
 ONBOARDING_INTENTS = frozenset(
     {TaskCategory.NEW_PATIENT_ONBOARDING, TaskCategory.APPOINTMENT_REQUEST}
 )
@@ -115,7 +115,7 @@ def _past_date(value: object) -> date | None:
         # sender wrote, and a patient here writes 15/10/1989. Dropping that
         # silently cost the DOB on otherwise perfect emails, and without a DOB
         # there is no full match, so every one of them held for staff.
-        # ponytail: day-first, the same assumption the frontend's date fields
+        # Limitation: day-first, the same assumption the frontend's date fields
         # make; 05/10/1989 reads as 5 October, not 10 May.
         match = re.fullmatch(r"(\d{1,2})[/-](\d{1,2})[/-](\d{4})", text)
         if match is None:
@@ -191,7 +191,7 @@ def _email(value: str | None) -> str | None:
 
 
 def _phone(value: str | None) -> str | None:
-    # ponytail: AU-centric, the last 9 digits ignore a 0 or +61 prefix. Swap in
+    # Limitation: AU-centric, the last 9 digits ignore a 0 or +61 prefix. Swap in
     # a real phone-number library if numbers go international.
     digits = re.sub(r"\D", "", value or "")
     return digits[-9:] if len(digits) >= 9 else None
@@ -223,7 +223,7 @@ async def resolve_patient(
             return IdentityResult(IdentityOutcome.MATCHED, by_mrn)
     # Purged rows are anonymised and never candidates; provisional ones are,
     # so a new patient's follow-up email finds their record, not a duplicate.
-    # ponytail: a full scan of live patients, fine at clinic scale; move the
+    # Limitation: a full scan of live patients, fine at clinic scale; move the
     # normalisation into indexed columns if the table reaches tens of thousands.
     patients = (
         (await db.execute(select(Patient).where(Patient.purged_at.is_(None)))).scalars().all()
@@ -250,7 +250,7 @@ async def resolve_patient(
     if len(full) == 1:
         return IdentityResult(IdentityOutcome.MATCHED, full[0])
     if full or partial:
-        # ponytail: the first ten; staff pick "None of these" past that.
+        # Limitation: the first ten; staff pick "None of these" past that.
         return IdentityResult(
             IdentityOutcome.AMBIGUOUS, candidates=tuple(str(p.id) for p in (full + partial)[:10])
         )
@@ -347,7 +347,7 @@ async def hold_for_staff(
 
 
 async def match_phone_dob(db: AsyncSession, phone: str | None, dob: date | None) -> Patient | None:
-    """The voicemail rule (voicemail spec §8): caller ID and keypad DOB match
+    """The voicemail rule: caller ID and keypad DOB match
     exactly one live patient, or nobody. A name is never used: speech-to-text
     mangles names, and staff confirm the name on the callback anyway."""
     digits = _phone(phone)

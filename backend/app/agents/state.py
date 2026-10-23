@@ -24,8 +24,7 @@ class CaseState(TypedDict, total=False):
     # A key is absent until a node sets it. `| None` marks the keys some
     # node really writes None to; the rest only ever hold a value.
     case_id: str | None
-    # Not in the spec's field list, but §3's approval payload needs it and
-    # the approved-reply executor reads draft_sent off this Task.
+    # The approval payload needs it and the approved-reply executor reads draft_sent off this Task.
     task_id: str
     channel: str
     source_id: str
@@ -46,7 +45,7 @@ class CaseState(TypedDict, total=False):
     # Voicemail only: "created" or "existing" provisional record for an
     # unknown caller, None when nobody was onboarded.
     voicemail_onboarding: str | None
-    # What the sender said about themselves (§8.3), for onboarding. JSON-safe:
+    # What the sender said about themselves, for onboarding. JSON-safe:
     # dob as an ISO string.
     identity_fields: dict | None
     # AMBIGUOUS only: the patients staff may choose between (patient ids).
@@ -84,14 +83,14 @@ class CaseState(TypedDict, total=False):
     # for a provisional patient's first reply. The critic reads it too.
     branch: str | None
     requested_fields: list[str]
-    # §10: ISO instants, UTC-aware, rendered in clinic local time by the
+    # Booking: ISO instants, UTC-aware, rendered in clinic local time by the
     # template. The doctor is the one the patient is actually assigned to.
     proposed_slots: list[str]
     booking_doctor_name: str
-    # §11: explicit captured consent, which an implied inbound-contact record
+    # Records: explicit captured consent, which an implied inbound-contact record
     # is not.
     records_consent: bool | None
-    # §12: which of the two prescription acknowledgements applies. Decided by
+    # Which of the two prescription acknowledgements applies. Decided by
     # the medication history, which the draft itself never sees.
     prescription_review_due: bool | None
 

@@ -14,6 +14,11 @@ npm run dev               # http://localhost:5173
 `dist/`. The backend must allow the frontend origin via its `CORS_ORIGINS` env
 (preconfigured for `http://localhost:5173`).
 
+`VITE_DEMO_MODE=true` in `.env` skips the login and fills the calendar and
+doctor list with sample data (`src/data/demoData.ts`), for previewing the UI
+without a backend. Every other page still calls the API. Never set it in a
+deployment.
+
 ## Screens
 
 All routes are defined in `src/App.tsx`. The app is built for desktop screens.
@@ -42,11 +47,11 @@ types, so changing the backend means changing adapter bodies, not components.
 ## Wired to real endpoints
 
 - Auth: login (`/auth/login`, OAuth2 form flow), current user (`/auth/me`),
-  password change and reset, user management (`/auth/users`,
+  password reset by email, user management (`/auth/users`,
   elevate/department/active/grants; inviting a user calls `/auth/register` with
   the admin's token)
-- Dashboard: count tiles and Pending Reviews list, aggregated from `/intake`,
-  `/audit`, and `/human-review`
+- Dashboard: count tiles, Pending Reviews list and appointment charts, aggregated
+  from `/cases`, `/human-review`, `/tasks` and `/appointments`
 - Patients (`/patients`), Cases (`/cases`) and Intake (`/intake`)
 - Patient registration form (`/public/registration/{token}`), no sign-in
 - Consent (`/consent/*`)

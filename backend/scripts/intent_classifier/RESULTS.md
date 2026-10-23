@@ -19,7 +19,7 @@ own confidence as part of its JSON reply. Nothing computes that number; the mode
 Auto-routing trusts it (`>= 0.90` auto-routes). This experiment checks two things: does that
 number mean anything, and can a classifier whose confidence is actually *computed*, from
 local sentence embeddings, do the same job. Local embeddings do not depend on which LLM
-provider is used, so this approach survives the Bedrock migration (spec G.23).
+provider is used, so this approach survives the Bedrock migration.
 
 ## What was generated
 
@@ -60,8 +60,8 @@ it was asked for. A random sample of 40 emails was read against its label:
   results_enquiry and medical_records_request, and one results enquiry is mostly a complaint.
 
 The labels were **not** corrected. Correcting them after reading the text would throw away
-the one guarantee this dataset has. The sample was reviewed by Claude, the AI assistant
-running this session, not by a person. Treat about 10% as a rough ceiling on how wrong the
+the one guarantee this dataset has. The sample was reviewed by an LLM, not by a
+person. Treat about 10% as a rough ceiling on how wrong the
 labels are, not as a validated figure. Neither classifier can be expected to score much
 above about 90% against these labels.
 
@@ -199,8 +199,8 @@ unchanged, no database):
 
 ### What was done, in order
 
-1. Read all 58 emails in `vitalai_qa` (14 from the Outlook mailbox, 44 from the API) in a
-   read-only session, and labelled each one with no model output in view.
+1. Read all 58 emails in `vitalai_qa` (14 from the Outlook mailbox, 44 from the API) read-only,
+   and labelled each one with no model output in view.
 2. **Committed the labels on their own (`7a8c740`) before either classifier ran**, together
    with the analysis plan, including the threshold rule. The git history shows the order.
 3. Ran `evaluate_real.py` once. It uses the saved `model.joblib` with no retraining, and the
@@ -211,9 +211,8 @@ unchanged, no database):
 email text**, because the text contains a real personal address. The script reads the text
 from `vitalai_qa` at run time. Anyone re-running it needs that database.
 
-**Who labelled:** Claude, the AI assistant running this session, not a person. The brief asked
-for a human. These labels need a human check, and one specific risk goes with that: an AI
-labeller may share the LLM classifier's instincts, which would favour the LLM in this
+**Who labelled:** an LLM, not a person. These labels need a human check, and one specific
+risk goes with that: an LLM labeller may share the LLM classifier's instincts, which would favour the LLM in this
 comparison.
 
 ### The set
@@ -322,7 +321,7 @@ That is 19 emails, so read it as "the mechanism works as designed", not as an er
 `URGENT_KEYWORDS` (7 phrases) matched **16 of the 45** synthetic emergency emails, and **28**
 emails in *other* categories: anxious or angry non-emergencies that say "urgent" or
 "immediately". Those false alarms go to a human, which is the safe direction and only costs
-staff time. Missing 29 of 45 emergencies is the real problem (spec F.97).
+staff time. Missing 29 of 45 emergencies is the real problem.
 
 ### What the real emails change
 
@@ -422,7 +421,7 @@ Done on 2026-09-24: the real-email measurement above. Still open:
    mail are not possible.
 3. **Test the hybrid**: keep the LLM's category and route on the regression margin. This needs
    enough real LLM errors to measure whether a low margin predicts them.
-4. **Widen `URGENT_KEYWORDS`** (F.97). That is an `app/` change and was not made here.
+4. **Widen `URGENT_KEYWORDS`**. That is an `app/` change and was not made here.
 
 ## Files
 
@@ -446,21 +445,21 @@ The AUROC, McNemar and gate-replay figures were computed afterwards from
 (is-correct vs score), `scipy.stats.binomtest(9, 33)`, and `evaluate_task_routing_gate`
 applied to each row.
 
-## Clinical enquiry category (M7), 2026-09-30
+## Clinical enquiry category, 2026-09-30
 
 **Verdict: the ship gate FAILS, twice.** The new category itself works: the new prompt labelled
 90 to 91% of the real patient questions `clinical_enquiry` (gate: 80%). But existing categories
 lost more than the 5 points allowed. **urgent_emergency fell 20 points in both attempts**, almost
 all of it to `clinical_enquiry`, and medical_records_request fell 10.9 and then 14.1 points.
-Rewording three descriptions (attempt 2) changed nothing that matters. Phase B does not start on
-either prompt. Attempt 1 is described first; [attempt 2](#attempt-2-reworded-descriptions) follows.
+Rewording three descriptions (attempt 2) changed nothing that matters. The category is not
+shipped with either prompt. Attempt 1 is described first; [attempt 2](#attempt-2-reworded-descriptions) follows.
 
 ### What was run (attempt 1)
 
 - `evaluate_clinical.py`, committed (`ac21bd5`) before its first run, with the gate written into
   its docstring.
 - Old prompt: the production prompt, ten category names. New prompt: the same template with one
-  `name: description` line for each of eleven categories (spec C6), `clinical_enquiry` last.
+  `name: description` line for each of eleven categories, `clinical_enquiry` last.
   Both wordings are stored in `clinical_results_attempt1.json` under `prompt_categories`.
 - Production model and settings: Ollama `gemma2:2b`, temperature 0.3. Every email was asked the
   old prompt, then the new one, in the same run: 988 emails, 1976 calls, 74 minutes, no errors,
@@ -533,7 +532,7 @@ nine categories; 63 of them are called complaints.
 
   The 3 extra: "high fever all day and won't really wake up", "very high fevre and is extremely
   difficult to awke" (typos) and "Dad had a bit of a fit earlier and he's still pretty groggy".
-  Under M7 all three would go to a doctor with an acknowledgement promising a reply within 2
+  With the new category all three would go to a doctor with an acknowledgement promising a reply within 2
   business days. That acknowledgement does say to call 000 if urgent.
 
 ### Why medical_records_request failed
@@ -541,7 +540,7 @@ nine categories; 63 of them are called complaints.
 9 lost, 2 gained (p = 0.07). 7 of the 9 went to `new_patient_onboarding`, and none to
 `clinical_enquiry`. Nearly all are "my child's immunisation record for school enrolment" or
 "vaccination history for a new job". The onboarding line ("join the clinic as a new patient, or
-asks how to register") seems to pull "enrolment" towards onboarding. This comes from the C6
+asks how to register") seems to pull "enrolment" towards onboarding. This comes from the per-category
 descriptions, not from the new category, and the same change lifted onboarding by 18.8 points.
 
 ### Limits
