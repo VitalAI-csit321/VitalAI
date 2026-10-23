@@ -1,4 +1,4 @@
-"""The email reply pipeline as a graph (build spec §4).
+"""The email reply pipeline as a graph.
 
 Node tests call one node with a hand-built state and check the partial update
 it returns; none depends on another node. The end-to-end tests go through the
@@ -117,7 +117,7 @@ async def test_consent_without_a_record_reads_none_and_does_not_block(
         ("urgent_emergency", "auto_routed", "urgent_notice"),
         ("complaint_escalation", "auto_routed", "human_review"),
         ("general_administrative", "human_review", "human_review"),
-        # Placeholder edges until §9-§12 build these agents.
+        # Placeholder edges until these agents are built.
         ("appointment_request", "auto_routed", "booking"),
         ("medical_records_request", "auto_routed", "records"),
         ("prescription_renewal", "auto_routed", "prescription"),
@@ -323,7 +323,7 @@ async def test_dispatch_records_a_failed_delivery_on_the_task(detached_sessionma
 async def test_a_node_that_raises_leaves_a_visible_task_and_an_audit_event(
     db_session, agent_saver, llm, monkeypatch
 ):
-    """§4.1: a background run swallows exceptions, so the failure path is the
+    """A background run swallows exceptions, so the failure path is the
     only thing that stops a case vanishing."""
     email, task = await seed_email(db_session)
     monkeypatch.setattr(
@@ -355,7 +355,7 @@ def _gate(outcome: str):
 async def test_flag_on_email_pauses_then_approve_sends_once_and_reaches_end(
     client, front_desk_headers, admin_headers, db_session, agent_saver, llm, outlook, monkeypatch
 ):
-    """Gate (b), (f) and (i). An ungrounded draft fails the auto-send predicate,
+    """An ungrounded draft fails the auto-send predicate,
     so the run pauses carrying the draft; the case has no consent record and
     that must not matter."""
     monkeypatch.setattr(settings, "agentic_pipeline_enabled", True)
@@ -394,7 +394,7 @@ async def test_flag_on_email_pauses_then_approve_sends_once_and_reaches_end(
 async def test_flag_on_and_off_make_the_same_auto_send_decision(
     client, front_desk_headers, db_session, agent_saver, llm, outlook, monkeypatch, should_send
 ):
-    """Gate (c) and (d): same input, both paths, same decision, and an
+    """Same input, both paths, same decision, and an
     auto-send actually delivers exactly once on either path."""
     if should_send:
         monkeypatch.setattr(
@@ -426,7 +426,6 @@ async def test_flag_on_and_off_make_the_same_auto_send_decision(
 async def test_urgent_category_without_keyword_is_never_drafted(
     client, front_desk_headers, db_session, agent_saver, llm, monkeypatch, flag
 ):
-    """Gate (e)."""
     monkeypatch.setattr(settings, "agentic_pipeline_enabled", flag)
     llm.category = "urgent_emergency"
     drafted = []
@@ -461,7 +460,7 @@ async def test_urgent_category_without_keyword_is_never_drafted(
 async def test_failed_auto_send_on_the_graph_falls_back_to_a_paused_approval(
     client, front_desk_headers, db_session, agent_saver, llm, outlook, monkeypatch
 ):
-    """Gate (d), graph side: the draft reaches the human queue with the reason."""
+    """Graph path: the draft reaches the human queue with the reason."""
     monkeypatch.setattr(settings, "agentic_pipeline_enabled", True)
     monkeypatch.setattr(
         "app.services.email_service._generate_org_grounded_reply",
@@ -501,7 +500,7 @@ async def test_failed_approved_send_still_resumes_the_thread_to_end(
     failure,
     status,
 ):
-    """Gate (g), spec §4.1a. The route raises, so BackgroundTasks never run;
+    """The route raises, so BackgroundTasks never run;
     the resume has to be scheduled some other way or the thread sits paused
     behind an APPROVED row that cannot be re-approved."""
     monkeypatch.setattr(settings, "agentic_pipeline_enabled", True)
@@ -548,10 +547,10 @@ async def test_failed_approved_send_still_resumes_the_thread_to_end(
 @pytest.mark.parametrize(
     ("intent", "expected"),
     [
-        # §9: a provisional patient cannot reach Booking or Records at all.
+        # A provisional patient cannot reach Booking or Records at all.
         ("appointment_request", "human_review"),
         ("medical_records_request", "human_review"),
-        # §12.3 refuses provisional patients outright too, so prescription
+        # The prescription branch refuses provisional patients outright too, so prescription
         # joined _NOT_FOR_PROVISIONAL when its branch landed. This case
         # expected "prescription" while the intent was still a placeholder
         # edge into reply_gate and no prescription node existed.

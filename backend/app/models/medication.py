@@ -1,4 +1,4 @@
-"""Medications a patient is on (build spec §12.1).
+"""Medications a patient is on.
 
 There was no medication model before this: prescriptions existed only as RAG
 text chunks, which cannot answer "when was this last reviewed" without a

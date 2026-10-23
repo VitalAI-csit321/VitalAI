@@ -1,4 +1,4 @@
-"""Retrieval retry (build spec §7): one reformulation, graph only, floor 0.44.
+"""Retrieval retry: one reformulation, graph only, floor 0.44.
 
 A draft grounded only on the second attempt is HIGH risk and must never
 auto-send. Flag off, nothing here runs: no reformulation, no extra LLM call.

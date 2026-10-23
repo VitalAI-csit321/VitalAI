@@ -1,6 +1,5 @@
-"""Response shape matches CSIT321_Capstone-frontend's api/types.ts::Message
-field-for-field, so wiring the frontend later is a drop-in replacement of
-listMessages()'s placeholder body, per that file's own comment.
+"""Inbox response shapes. The frontend adapter in
+frontend/frontend/src/api/misc.ts maps these to its domain types.
 """
 
 from typing import Annotated
@@ -30,12 +29,12 @@ class InboxMessageOut(BaseModel):
     handoverContext: str | None = None  # noqa: N815
     callId: str | None = None  # noqa: N815
     hasAudio: bool = False  # noqa: N815
-    # Server-decided (review queue spec section 7): the UI never infers approve rights.
+    # Server-decided: the UI never infers approve rights.
     canApprove: bool = False  # noqa: N815
     reviewItemId: str | None = None  # noqa: N815
-    # Write reply (D14): an email nothing was sent on and no draft awaits approval.
+    # Write reply: an email nothing was sent on and no draft awaits approval.
     canWriteReply: bool = False  # noqa: N815
-    # The case chip (M4): the confirmed patient, and the case the message is in.
+    # The case chip: the confirmed patient, and the case the message is in.
     patientId: str | None = None  # noqa: N815
     episodeId: str | None = None  # noqa: N815
     episodeTitle: str | None = None  # noqa: N815

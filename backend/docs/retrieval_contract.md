@@ -1,44 +1,50 @@
-# FR-RAG-01 retrieval contract
+# Retrieval contract (FR-RAG-01)
 
-`app/rag/retrieval.py::retrieve()` reads from whatever table backs the
-`Chunk` model (`app/models/chunk.py`). Today that's the BASELINE table from
-`alembic/versions/0005_baseline_chunks.py` (see
-`docs/FR-RAG-01_handoff.md` for the reconciliation list). Whatever
-replaces it — Matthew's ingestion schema included — must satisfy this
-contract, or `retrieve()` needs to change, not just the table.
+`app/rag/retrieval.py::retrieve()` reads the `chunks` table (`app/models/chunk.py`).
+Anything that writes chunks (`scripts/ingest_corpus.py`, `scripts/ingest_org_profile.py`,
+and clinical document upload through `app/services/clinical_document_service.py`) must
+satisfy this contract, or `retrieve()` needs to change, not just the table.
 
-## The six fields
+## The fields
 
 | Field | Type | Meaning | Used for |
 |---|---|---|---|
-| `patient_id` | UUID | The patient this chunk's content is about. | Security filter: `_security_filter` requires an exact match against `RetrievalContext.patient_id`. Every chunk must have exactly one owning patient — no shared/global chunks, no null. |
-| `access_scope` | text | The governance tier that decides who may read this chunk, independent of what kind of document it is. | Security filter: `_security_filter` requires membership in `RetrievalContext.allowed_scopes`. This must never be derivable from `doc_type` — the two are separate axes on purpose (see divergence note below). |
-| `doc_type` | text | What kind of document this chunk came from (clinical note, lab result, referral, billing, etc). | Optional exact-match filter in `retrieve(doc_type=...)`. Never used for security — a "billing"-labeled chunk and a "clinical_note"-labeled chunk can carry the same `access_scope`, or different ones; the label tells you nothing about who may read it. |
-| `source_document_id` | UUID | Identifies the parent document a chunk was split from. | Provenance: returned on every `RetrievedChunk` so callers can cite/link back to the source document and group chunks that came from the same document. |
-| `chunk_index` | int | This chunk's position within its source document (0-based). | Provenance/ordering: lets a caller reconstruct document order or deduplicate overlapping chunks from the same document. |
-| `embedding` | vector(512) | The dense embedding of `content`, produced by `app.rag.embeddings.get_embedding_provider()`. | Similarity search: `retrieve()` ranks by `cosine_distance` against the query embedding. Must be exactly 512-dimensional — `retrieve()` asserts the *query* embedding's length and fails loud on mismatch, but a corpus embedded with a different provider/dimension will silently produce nonsense rankings instead of an error, since pgvector enforces `vector(512)` at insert time but says nothing about whether the vector actually came from the same model. |
+| `patient_id` | UUID, nullable | The patient this chunk's content is about. NULL marks an org-wide chunk (clinic policy, routing rules, guardrails) that applies to every patient. | Security filter: `_security_filter` matches `patient_id = RetrievalContext.patient_id OR patient_id IS NULL`. |
+| `access_scope` | text | The governance tier that decides who may read this chunk: `general`, `restricted` or `sensitive`. | Security filter: `_security_filter` requires membership in `RetrievalContext.allowed_scopes`. |
+| `doc_type` | text | What kind of document this chunk came from (`consultation_note`, `pathology_report`, `consent_record`, ...). | Optional exact-match filter in `retrieve(doc_type=...)`. Never used for security. |
+| `source_document_id` | UUID | The parent document a chunk was split from. | Provenance: returned on every `RetrievedChunk` so callers can cite the source and group chunks from the same document. |
+| `citation_tag` | text, nullable | A short source label: the first 8 characters of the patient id plus the `doc_type` (`org_<doc_type>` for org-wide chunks). | Provenance. |
+| `chunk_index` | int | This chunk's position within its source document (0-based). | Ordering and de-duplication. |
+| `embedding` | vector(512) | The dense embedding of `content`, from `app.rag.embeddings.get_embedding_provider()` (local `nomic-embed-text`, truncated to 512 dimensions). | Vector search and the score. Must be exactly 512-dimensional. |
+| `search_vector` | tsvector, computed | `to_tsvector('english', content)`, filled in by Postgres (migration `0023`). | Full-text half of hybrid search. Writers never set it. |
 
-`content` (text) is the seventh field carried through to `RetrievedChunk` — it's not part of the security or ranking contract, just the payload being ranked and returned.
+`content` (text) is the payload being ranked and returned.
 
-## Non-negotiable invariant
+## Ranking
 
-`access_scope` and `doc_type` must remain independently governed. A
-corpus generator is free to correlate them in practice (most `lab_result`
-chunks might reasonably end up `restricted`), but the schema and the ingestion
-pipeline must allow — and this repo's synthetic fixture deliberately
-exercises — a chunk whose `doc_type` name would suggest one scope while its
-actual `access_scope` says otherwise (see `ALICE_MENTAL_HEALTH_DOC` and
-`ALICE_BILLING_DOC` in `scripts/synthetic_corpus/manifest.py`, and
-`tests/test_rag_retrieval.py::test_divergence_filters_on_access_scope_not_doc_type`).
-If a future ingestion schema collapses these into one column or makes one
-derivable from the other, `_security_filter` breaks silently for exactly the
-case this test exists to catch.
+The default strategy is `hybrid`: a vector query (cosine distance) and a Postgres full-text
+query run separately, both through `_security_filter`, and their ranked lists are fused
+with Reciprocal Rank Fusion. Fusion decides which chunks make the top k and their order.
+`RetrievedChunk.score` is always the cosine similarity, never the fused score, so the
+sufficiency gate (`app/rag/gating.py`, `sufficiency_floor` 0.44) keeps the meaning it was
+calibrated against. `strategy="vector"` runs the vector query alone.
+
+## Invariant: access_scope is not doc_type
+
+Both ingestion paths derive `access_scope` from `doc_type` through one mapping,
+`app/rag/doc_scopes.py`, and an unknown `doc_type` fails closed to `restricted`. The
+schema still keeps them as separate columns, and the security filter reads only
+`access_scope`. The synthetic test fixture deliberately stores chunks whose `doc_type`
+suggests one scope while `access_scope` says another (`ALICE_MENTAL_HEALTH_DOC` and
+`ALICE_BILLING_DOC` in `scripts/synthetic_corpus/manifest.py`), and
+`tests/test_rag_retrieval.py::test_divergence_filters_on_access_scope_not_doc_type`
+proves the filter follows `access_scope`. Collapsing the two columns would break that
+test, which is the point of it.
 
 ## What `retrieve()` does not check
 
-- That `embedding` was produced by the *current* embedding provider/model
-  version. If ingestion re-embeds with a different model without bumping
-  something (a version column doesn't exist yet), rankings degrade silently
-  rather than erroring.
-- That `source_document_id` actually exists anywhere (no `documents` table to
-  reference yet — see handoff doc, reconciliation item 5).
+- That `embedding` came from the current embedding model. There is no model version
+  column, so re-embedding with a different model degrades rankings silently instead of
+  failing. `retrieve()` does check the query embedding's length.
+- That `source_document_id` exists. It is a soft reference to `clinical_documents` with
+  no foreign key, because chunks from the synthetic corpus have no row there.

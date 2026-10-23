@@ -27,9 +27,12 @@ placeholder value in place once you have a real one.
 python -c "import secrets; print(secrets.token_urlsafe())"
 ```
 
+Create the tables before the API starts, since it reads its settings table on startup:
+
 ```bash
-docker compose up --build
-docker compose exec api alembic upgrade head
+docker compose build
+docker compose run --rm api alembic upgrade head
+docker compose up
 ```
 
 API runs at `http://localhost:8000`. Interactive docs at `http://localhost:8000/docs`.
@@ -205,7 +208,7 @@ backend/
 ├── requirements.lock          pinned versions, what the image and CI install
 ├── .env.example               development settings template
 ├── .env.prod.example          deployment settings template
-├── alembic/versions/          migrations, 0001 to 0040
+├── alembic/versions/          migrations, 0001 to 0041
 ├── app/
 │   ├── main.py                FastAPI app, router registration, background jobs
 │   ├── config.py              every setting, read from the environment
@@ -224,7 +227,7 @@ backend/
 ├── scripts/                   create_admin, deploy.sh, run_tests_clean.sh, demo data
 │                              seeding and ingestion, outlook_login
 ├── tests/                     the pytest suite
-└── docs/                      retrieval_contract.md, FR-RAG-01_handoff.md
+└── docs/                      retrieval_contract.md
 ```
 
 The background jobs started in `main.py` all run inside the API process: the Outlook
@@ -501,11 +504,6 @@ missed.
 `ConsentStatus.NOT_REQUIRED` is defined in the enum but nothing in the codebase sets a
 record to that status. Before anything does, the consent guard in triage needs an
 explicit branch and a test.
-
-The development compose file pulls MinIO from `quay.io/minio/minio`, which now refuses
-anonymous pulls. A machine that does not already have that image cannot start the
-development stack as written. CI and `docker-compose.prod.yml` use
-`cgr.dev/chainguard/minio`.
 
 ## Constraints
 

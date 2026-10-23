@@ -281,7 +281,7 @@ async def change_own_password(
 
 async def _send_reset_link(email: str, link: str) -> None:
     if not settings.outlook_enabled:
-        # ponytail: no mail transport in dev, so the link goes to the server log.
+        # Limitation: no mail transport in dev, so the link goes to the server log.
         # Enable the Outlook connector to deliver it for real.
         logger.warning("Outlook disabled; password reset link for %s: %s", email, link)
         return

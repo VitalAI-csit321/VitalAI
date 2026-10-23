@@ -1,4 +1,4 @@
-"""Critic loop (build spec §6): deterministic rules, at most two regenerations."""
+"""Critic loop: deterministic rules, at most two regenerations."""
 
 from unittest.mock import AsyncMock
 from uuid import UUID
@@ -202,7 +202,7 @@ async def test_flag_off_staff_edit_and_approve_sends_their_text(
     assert task.draft_text == edited
 
 
-# --- §5.1: a critic-corrected draft always reaches a human ------------------------
+# --- a critic-corrected draft always reaches a human ------------------------------
 
 AUTO = TaskRoutingGateResult(outcome=TaskRoutingOutcome.AUTO_ROUTED, override_reason=None)
 

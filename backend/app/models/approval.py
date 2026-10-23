@@ -1,6 +1,5 @@
 """ApprovalRequest: HITL governance gate (FR-GOV-01).
 
-See docs/superpowers/specs/2026-07-24-fr-gov-01-approval-gate-design.md.
 Separate from HumanReviewTask (app/models/human_review.py), which is a
 claim/work-queue concept; this is a binary approve/reject decision.
 """

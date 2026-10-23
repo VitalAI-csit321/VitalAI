@@ -29,6 +29,5 @@ def downgrade() -> None:
     # Postgres cannot drop an enum value (no ALTER TYPE ... DROP VALUE), so
     # 'doctor' cannot be cleanly removed without recreating the type from
     # scratch. This reverses the rename only and leaves 'doctor' declared,
-    # matching the RBAC report's own stance that removing enum values is
-    # "the disproportionate operation."
+    # since removing an enum value is the disproportionate operation.
     op.execute("ALTER TYPE user_role RENAME VALUE 'operator' TO 'ops_manager'")

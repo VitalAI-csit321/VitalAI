@@ -97,7 +97,7 @@ async def _active_doctor(db: AsyncSession, doctor_id: UUID | None) -> User | Non
 
 
 async def ensure_doctor(db: AsyncSession, patient: Patient, actor: User) -> UUID | None:
-    """M4 spec E6: a registered patient with no active doctor gets one now,
+    """A registered patient with no active doctor gets one now,
     their preference while that doctor is active, else the least-loaded
     active doctor. Returns the doctor assigned, None when nothing changed
     (already has one, provisional or purged, or no active doctor exists).
@@ -137,7 +137,7 @@ async def ensure_doctor(db: AsyncSession, patient: Patient, actor: User) -> UUID
 
 
 async def change_doctor(db: AsyncSession, patient: Patient, doctor_id: UUID, actor: User) -> None:
-    """Staff change who the patient's doctor is (E6: changeable). The new
+    """Staff change who the patient's doctor is. The new
     doctor is assigned and the previous one (booking_service.doctor_for_patient,
     the longest-standing) loses the assignment, so the new one is the answer
     from now on. Other assignments (e.g. a case doctor) stay. Commits."""

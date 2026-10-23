@@ -17,7 +17,7 @@ class ConsentStateError(Exception):
     """Raised when a consent state transition is illegal."""
 
 
-# Consent implied by someone emailing the clinic first (build spec §9.0). It is
+# Consent implied by someone emailing the clinic first. It is
 # recorded PENDING, never CAPTURED: CAPTURED is the only status the consent
 # gate accepts, so an implied record must never satisfy it.
 IMPLIED_INBOUND_CONTACT = "implied_inbound_contact"
@@ -60,7 +60,7 @@ async def create_consent_record(
     form_snapshot: dict | None = None,
 ) -> ConsentRecord:
     contact = await db.get(IntakeCase, case_id)
-    # Filed in the case (episode) its contact is in (M4).
+    # Filed in the case (episode) its contact is in.
     episode = await db.get(Episode, contact.episode_id) if contact and contact.episode_id else None
     record = ConsentRecord(
         case_id=case_id,

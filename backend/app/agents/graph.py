@@ -87,7 +87,7 @@ async def create_approval(state: CaseState, runtime: Runtime[Context]) -> dict:
         request = await approval_service.create_approval_request(
             db,
             # The existing approved-reply executor handles this action type,
-            # including P1's draft_sent guard, so approval dispatches exactly
+            # including its draft_sent guard, so approval dispatches exactly
             # what the human approved.
             action_type="email.draft_reply",
             payload={
@@ -142,7 +142,7 @@ async def await_approval(state: CaseState) -> dict:
     return update
 
 
-# --- routing (§4.3) -----------------------------------------------------------
+# --- routing -------------------------------------------------------------------
 
 # No agent, ever: an emergency or a complaint must never receive a generated
 # draft. "Human review" is the Task ingest_email already created, so the graph
@@ -150,9 +150,9 @@ async def await_approval(state: CaseState) -> dict:
 # (task_routing_gate.py); this is the second, independent check.
 _HUMAN_ONLY = frozenset({TaskCategory.URGENT_EMERGENCY, TaskCategory.COMPLAINT_ESCALATION})
 
-# PLACEHOLDER EDGES. These agents arrive in §9-§12. Until each one lands its
-# intent takes the existing draft path, exactly as the flag-off pipeline does,
-# so the two stay in parity. Replace the entry in _PATHS when its agent exists.
+# Intent to agent. An intent whose agent has no node of its own takes the
+# existing draft path, exactly as the flag-off pipeline does, so the two stay
+# in parity.
 _AGENT_FOR_INTENT = {
     TaskCategory.APPOINTMENT_REQUEST: "booking",
     TaskCategory.MEDICAL_RECORDS_REQUEST: "records",
@@ -160,13 +160,11 @@ _AGENT_FOR_INTENT = {
     TaskCategory.NEW_PATIENT_ONBOARDING: "onboarding",
 }
 
-# §9: a provisional (not yet verified) patient must not reach these at all.
+# A provisional (not yet verified) patient must not reach these at all.
 # Checked here, before any agent runs, not left to each agent to remember.
-# Nothing creates provisional patients until onboarding (§9) lands, so this
-# cannot diverge from the flag-off path yet.
 _NOT_FOR_PROVISIONAL = frozenset({"booking", "records", "prescription"})
 
-# The agents that have a node of their own (§10, §11). They are reached only
+# The agents that have a node of their own. They are reached only
 # from route_identity, after the sender is known: identity runs after the reply
 # gate, so route_intent's entries for them are still placeholders into it.
 # Every other name in _AGENT_FOR_INTENT keeps the ordinary draft path.
@@ -206,7 +204,7 @@ def route_intent(state: CaseState) -> str:
 
 
 def route_after_consent(state: CaseState) -> str:
-    """Voicemail never drafts (spec D6): urgent ones already have their
+    """Voicemail never drafts: urgent ones already have their
     script; the rest go to caller matching. Email is route_intent, unchanged."""
     if state.get("channel") == "voicemail":
         return END if state.get("urgent") else "voicemail_identity"
@@ -249,7 +247,7 @@ def after_own_appointment(state: CaseState) -> str:
 
 
 def route_identity(state: CaseState) -> str:
-    """§8.2, after the reply gate: intent x identity outcome x provisional.
+    """After the reply gate: intent x identity outcome x provisional.
 
     Only patient-specific intents are blocked; a general question drafts
     whatever the outcome. The provisional check is re-applied because
@@ -341,7 +339,7 @@ def auto_send_or_approve(state: CaseState) -> str:
     return "auto_send" if eligible else "create_approval"
 
 
-# At most two regenerations, so three drafts in all (Appendix F.5). Enforced
+# At most two regenerations, so three drafts in all. Enforced
 # here, by the edge, not by the model deciding it has done enough.
 MAX_REGENERATIONS = 2
 
@@ -354,7 +352,7 @@ def after_critic(state: CaseState) -> str:
     return "escalate"
 
 
-# --- failure path (§4.1) ------------------------------------------------------
+# --- failure path --------------------------------------------------------------
 
 Node = Callable[..., Awaitable[dict]]
 
@@ -700,7 +698,7 @@ async def rerun_after_review(review_id: UUID) -> None:
 
 
 async def start_voicemail(task_id: UUID, call_id: UUID, *, urgent: bool) -> None:
-    """Run the graph for one processed voicemail (voicemail spec §8)."""
+    """Run the graph for one processed voicemail."""
     tid = thread_id("voicemail", str(call_id))
     try:
         await run(

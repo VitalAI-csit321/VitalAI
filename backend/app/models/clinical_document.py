@@ -13,8 +13,8 @@ class ClinicalDocType(enum.StrEnum):
 
     Was clinical-only (consultation/pathology_report/prescription) on the
     reasoning that registration_form and appointment_history are general
-    documents and don't belong in an UPLOAD_CLINICAL-gated vocabulary
-    (Amin, 2026-07-24). Widened 2026-09-18 (Amin) so the whole synthetic
+    documents and don't belong in an UPLOAD_CLINICAL-gated vocabulary.
+    Widened later so the whole synthetic
     corpus can be stored as real PDF documents behind a patient's record
     instead of as bare chunks -- see scripts/ingest_corpus_documents.py.
     Sensitivity is not this enum's job: access_scope comes from
@@ -36,11 +36,11 @@ class ClinicalDocType(enum.StrEnum):
 
 
 class ClinicalDocument(Base, UUIDPrimaryKeyMixin, TimestampMixin):
-    """Report section 8 steps 3-4: the stored file plus its extracted text.
+    """A clinical upload: the stored file plus its extracted text.
 
     source_document_id on Chunk (app/models/chunk.py) is a soft reference to
-    this table's id, not a DB-enforced FK - see the Phase 5 design doc for
-    why (the offline synthetic-corpus chunks have no corresponding row here).
+    this table's id, not a DB-enforced FK, because the offline synthetic-corpus chunks have no
+    corresponding row here.
     """
 
     __tablename__ = "clinical_documents"

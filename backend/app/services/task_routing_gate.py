@@ -2,8 +2,7 @@
 3-tier shape from app.rag.gating. Pure function of a category + confidence
 score, no DB, no LLM call. Two hard overrides bypass the threshold logic
 entirely: an urgent-content match (triage_service.is_urgent: red-flag
-symptoms plus non-negated urgency words) and the Complaint/Escalation category, both per
-docs/superpowers/specs/2026-07-20-ai-task-routing-design.md section 12, plus
+symptoms plus non-negated urgency words) and the Complaint/Escalation category, plus
 the Urgent/Emergency category (a third, so a classifier-labelled emergency
 never depends on the sender having used a keyword).
 

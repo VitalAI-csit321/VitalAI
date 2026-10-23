@@ -1,12 +1,10 @@
 """Category -> target role resolver (FR-TRIAGE-01 / FR-GOV-02).
 
-Canonical mapping from the 10-category taxonomy
-(docs/superpowers/specs/2026-07-20-ai-task-routing-design.md section 12) to
+Canonical mapping from the 10-category taxonomy to
 the role whose queue a task lands in. Same shape as
 app/services/routing_rules.py::decide(): a pure function, no DB, no I/O.
-Categories map directly to a role per the locked table; no permission-walk
-algorithm, per section 12's explicit supersession of the earlier design's
-section 5.
+Categories map directly to a role per the table below; no permission-walk
+algorithm.
 """
 
 from app.models.task import TaskCategory
@@ -25,7 +23,7 @@ _CATEGORY_TO_ROLE: dict[TaskCategory, UserRole] = {
     TaskCategory.URGENT_EMERGENCY: UserRole.OPERATOR,
 }
 
-# Clinical categories (M4, spec E3): a known patient's message in one of these
+# Clinical categories: a known patient's message in one of these
 # starts or joins a case (episode_service.attach_contact). Deliberately not
 # email_service._clinical_categories(), which is configurable and answers a
 # different question (which replies never auto-send).

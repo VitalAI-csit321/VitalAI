@@ -1,4 +1,4 @@
-"""The /cases API (M4 spec sections 5 and 6) and the case data other screens read."""
+"""The /cases API and the case data other screens read."""
 
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4

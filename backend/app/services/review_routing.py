@@ -1,4 +1,4 @@
-"""Review Queue items the system opens itself (review queue spec, 2026-09-29).
+"""Review Queue items the system opens itself.
 
 Every hook that holds work for a person calls open_item: a held draft, a
 low-confidence or disputed routing, an unconfirmed sender, a stopped or
@@ -32,7 +32,7 @@ _PRIORITY = {
     InboxPriority.LOW: TaskPriority.LOW,
 }
 
-# Kinds owned by whoever owns the message itself (spec section 5).
+# Kinds owned by whoever owns the message itself.
 _FOLLOWS_MESSAGE = frozenset(
     {TaskType.DRAFT_APPROVAL, TaskType.AGENT_HANDOVER, TaskType.PRESCRIPTION_REQUEST}
 )
@@ -61,8 +61,8 @@ async def owner_for(
     if kind == TaskType.PRESCRIPTION_REQUEST and inbox_task.assigned_to is not None:
         return UserRole.DOCTOR, inbox_task.assigned_to  # the prescriber
     case = await db.get(IntakeCase, inbox_task.case_id)
-    # The case's doctor, else the patient's (M4). Doctor work for a patient
-    # without one (the unidentified, or registered before M4) is the operator's.
+    # The case's doctor, else the patient's. Doctor work for a patient
+    # without one (the unidentified, or registered before cases existed) is the operator's.
     doctor = await booking_service.doctor_for_contact(db, case) if case is not None else None
     return (UserRole.DOCTOR, doctor[0]) if doctor else (UserRole.OPERATOR, None)
 
@@ -137,7 +137,7 @@ async def open_item(
 async def close_for_approval(
     db: AsyncSession, approval_id: UUID, *, actor: User, approved: bool, notes: str | None
 ) -> None:
-    """Approve or reject, from either screen, closes the linked item (D2)."""
+    """Approve or reject, from either screen, closes the linked item."""
     item = (
         await db.execute(
             select(HumanReviewTask).where(

@@ -34,9 +34,9 @@ class Settings(BaseSettings):
     llm_model: str = "gemma2:9b"
     ollama_base_url: str = "http://ollama:11434"
 
-    # Call transcription (Phase 1 MVP — local STT, no Twilio yet)
+    # Call transcription: local speech-to-text (faster-whisper)
     whisper_model: str = "base"
-    # Voicemail transcript quality gate (voicemail spec §9). Provisional: set
+    # Voicemail transcript quality gate. Provisional: set
     # from faster-whisper's usual ranges, to be calibrated on at least 15 real
     # voicemails before anyone trusts them.
     voicemail_min_avg_logprob: float = -1.0
@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     minio_bucket: str = "clinical-documents"
 
     # Embeddings
-    embedding_provider: str = "nomic"  # nomic (dev) | bedrock (prod)
+    embedding_provider: str = "nomic"  # only nomic is implemented (app/rag/embeddings.py)
     embedding_model: str = "nomic-embed-text"
 
     # RAG gating (FR-RAG-02)
@@ -88,7 +88,7 @@ class Settings(BaseSettings):
     intent_check_enabled: bool = False
     intent_check_margin_threshold: float = 0.0427
 
-    # Review Queue "Over SLA": open longer than this many hours (review queue spec D7).
+    # Review Queue "Over SLA": open longer than this many hours.
     review_sla_hours_high: int = 4
     review_sla_hours_default: int = 24
     # A case this long without activity (and no future appointment) gets a
@@ -106,7 +106,7 @@ class Settings(BaseSettings):
     clinic_timezone: str = "Australia/Sydney"
     # Public holidays the clinic closes on, as a python-holidays subdivision
     # code for Australia. Read-only like clinic_timezone: both describe where
-    # the clinic is. ponytail: public holidays only; add a closed-dates list if
+    # the clinic is. Limitation: public holidays only; add a closed-dates list if
     # the clinic wants ad-hoc closures.
     clinic_holiday_region: str = "NSW"
     # Used when a booking does not specify a duration explicitly.
@@ -128,10 +128,10 @@ class Settings(BaseSettings):
     outlook_token_cache_path: str = ".outlook_token_cache.json"
     outlook_poll_interval_seconds: int = 60
     # How long an unclaimed provisional patient record is kept before it is
-    # anonymised in place (build spec 9.1), and how often the sweep runs.
+    # anonymised in place, and how often the sweep runs.
     provisional_patient_ttl_days: int = 90
     provisional_purge_interval_seconds: int = 86400
-    # Appointment reminders (build spec §16). Its own flag, deliberately not
+    # Appointment reminders. Its own flag, deliberately not
     # agentic_pipeline_enabled: reminders are not part of the agent graph, and
     # a job that emails real patients must not start because someone pulled
     # the branch. Every 15 minutes rather than daily, because "24 hours
@@ -144,7 +144,7 @@ class Settings(BaseSettings):
     appointment_reminders_enabled: bool = False
     appointment_reminder_interval_seconds: int = 900
     # How long a medication can go unreviewed before a repeat request needs a
-    # review first (spec §12.3). Not in SETTINGS_REGISTRY: it is a clinical
+    # review first. Not in SETTINGS_REGISTRY: it is a clinical
     # policy value, not a runtime switch for an admin to nudge.
     medication_review_interval_days: int = 180
     outlook_max_messages_per_poll: int = 25

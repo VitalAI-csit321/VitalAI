@@ -1,5 +1,5 @@
-"""Where a contact joins a case (M4 spec section 5, "Where attach_contact runs"),
-and what appointments and consents inherit from their contact."""
+"""Where a contact joins a case (the paths where attach_contact runs), and
+what appointments and consents inherit from their contact."""
 
 import json
 from datetime import UTC, datetime, timedelta

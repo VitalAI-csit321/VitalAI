@@ -38,4 +38,4 @@ def downgrade() -> None:
     op.drop_index("ix_human_review_tasks_target_role", table_name="human_review_tasks")
     op.drop_column("human_review_tasks", "target_role")
     # Postgres cannot drop an enum value; 'routing_review' stays declared,
-    # matching the RBAC report's additive-only convention (see 0008_rbac_roles).
+    # matching the additive-only enum convention (see 0008_rbac_roles).

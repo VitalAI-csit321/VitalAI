@@ -4,7 +4,7 @@ Fit once, on a fixed stratified split. Nothing here is tuned against the test se
 Offline only: no database, no guardrail, nothing wired into the app.
 
     cd backend
-    ../../CSIT321_Capstone/backend/.venv/bin/python -m scripts.intent_classifier.evaluate
+    .venv/bin/python -m scripts.intent_classifier.evaluate
 """
 
 from __future__ import annotations

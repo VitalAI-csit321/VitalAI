@@ -10,15 +10,15 @@ same two service calls the HTTP upload path uses -- upload_document() then
 ingest_document() -- so demo data and real user uploads travel one pipeline:
 PDF in object storage, ClinicalDocument row, extracted text, chunks, embeddings,
 and audit events for both steps. Use this instead of ingest_corpus.py for demo
-patients; ingest_corpus.py remains for the org-wide profile corpus, which has
-no patient to hang a document off.
+patients. The org-wide profile corpus, which has no patient to hang a
+document off, goes through ingest_org_profile.py.
 
 Re-running a patient deletes their chunks and document rows first, so it is
 idempotent in the database. It does not delete the old objects from storage
 (object_storage has no delete), so repeated runs leave orphaned PDFs in the
 dev MinIO bucket.
-# ponytail: orphaned objects on re-run; add object_storage.delete_object if the
-# dev bucket ever grows enough to matter.
+Limitation: orphaned objects on re-run; add object_storage.delete_object if the
+dev bucket ever grows enough to matter.
 
 Usage (against the docker-compose db + minio, migrated to head):
     DATABASE_URL=postgresql+asyncpg://vitalai:vitalai@localhost:5432/vitalai \

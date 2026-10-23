@@ -68,7 +68,7 @@ async def _grant_agent_clinical_access(session: AsyncSession) -> None:
     """Give the agent actor VIEW_CLINICAL, attributed to the seeded admin.
 
     The prescription branch reads medication history, and medication_service
-    refuses without this permission (spec G.17). get_or_create_agent_actor
+    refuses without this permission. get_or_create_agent_actor
     grants it once when it creates the account; this covers an agent actor
     that already existed before that, which it never re-grants (a revoke in
     the UI must stay revoked).

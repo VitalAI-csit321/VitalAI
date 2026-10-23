@@ -1,4 +1,4 @@
-"""Email reply pipeline nodes (build spec §4).
+"""Email reply pipeline nodes.
 
 Each node is an adapter: read state, call the email_service function that
 draft_reply calls for the same step, return a partial update. Business rules
@@ -109,7 +109,7 @@ async def load(state: CaseState, runtime: Runtime[Context]) -> dict:
 
 
 async def _load_voicemail(state: CaseState, runtime: Runtime[Context]) -> dict:
-    """The voicemail loader (spec §8): the Call row process() finished."""
+    """The voicemail loader: the Call row process() finished."""
     async with runtime.context.session_factory() as db:
         task = await db.get(Task, UUID(state["task_id"]))
         call = await db.get(Call, UUID(state["source_id"]))
@@ -125,7 +125,7 @@ async def _load_voicemail(state: CaseState, runtime: Runtime[Context]) -> dict:
 
 async def consent(state: CaseState, runtime: Runtime[Context]) -> dict:
     """Read-only. Email cases usually have no consent record at all, and that
-    must never block a reply (Appendix F.2): this records, it does not gate."""
+    must never block a reply: this records, it does not gate."""
     case_id = _case_id(state)
     if case_id is None:
         return {"consent_status": "none"}
@@ -147,7 +147,7 @@ async def urgent_notice(state: CaseState, runtime: Runtime[Context]) -> dict:
             email
         ):
             return {}
-        # ponytail: no sent-once guard, since a held email runs the graph once
+        # Limitation: no sent-once guard, since a held email runs the graph once
         # (rerun_after_review skips urgent). Add one if that ever changes.
         await email_service.deliver_reply(
             db,
@@ -180,7 +180,7 @@ async def reply_gate(state: CaseState, runtime: Runtime[Context]) -> dict:
 
 
 async def identity(state: CaseState, runtime: Runtime[Context]) -> dict:
-    """Who sent this (§8). Recorded for every case; route_identity decides
+    """Who sent this. Recorded for every case; route_identity decides
     whether the outcome blocks. A general intent makes no LLM call."""
     async with runtime.context.session_factory() as db:
         _, email, actor = await _rows(db, state, runtime)
@@ -224,7 +224,7 @@ async def identity(state: CaseState, runtime: Runtime[Context]) -> dict:
 
 
 async def onboarding(state: CaseState, runtime: Runtime[Context]) -> dict:
-    """A stranger asking to join or to book (§9.0): create the provisional
+    """A stranger asking to join or to book: create the provisional
     patient and record their implied consent, once. The reply itself is
     drafted by the draft node, so a critic redraft does not repeat this."""
     fields = state.get("identity_fields") or {}
@@ -259,7 +259,7 @@ async def onboarding(state: CaseState, runtime: Runtime[Context]) -> dict:
 
 
 async def booking(state: CaseState, runtime: Runtime[Context]) -> dict:
-    """§10: the patient's own doctor, and the next free times in their diary.
+    """Booking: the patient's own doctor, and the next free times in their diary.
 
     Proposes and stops. Nothing here books: book_appointment keeps exactly one
     caller in the app and it is not this one. Either half missing is a hold for
@@ -269,7 +269,7 @@ async def booking(state: CaseState, runtime: Runtime[Context]) -> dict:
         actor = await _actor(db, runtime)
         assigned = await booking_service.doctor_for_patient(db, UUID(state["patient_id"]))
         if assigned is None:
-            # Assigning a doctor is the operator's job (ASSIGN_PATIENTS); spec section 10.
+            # Assigning a doctor is the operator's job (ASSIGN_PATIENTS).
             await task_service.hold_for_staff(
                 db, state["task_id"], booking_service.NO_DOCTOR_REASON, owner=UserRole.OPERATOR
             )
@@ -287,7 +287,7 @@ async def booking(state: CaseState, runtime: Runtime[Context]) -> dict:
 
 
 async def records(state: CaseState, runtime: Runtime[Context]) -> dict:
-    """§11: consent decides which acknowledgement is drafted, and nothing else.
+    """Records: consent decides which acknowledgement is drafted, and nothing else.
 
     No retrieval: no clinical content of any kind reaches a generated email.
     """
@@ -297,7 +297,7 @@ async def records(state: CaseState, runtime: Runtime[Context]) -> dict:
 
 
 async def prescription(state: CaseState, runtime: Runtime[Context]) -> dict:
-    """§12: read the history, raise an internal request, acknowledge.
+    """Prescription: read the history, raise an internal request, acknowledge.
 
     Returns `branch`, which is what makes reply_risk_tier see this as an
     always-human branch. A node that forgot it would let a prescription reply
@@ -861,7 +861,7 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
         update = {"draft_text": text, "grounded": False}
     elif branch == booking_service.BRANCH:
         # A template, no model call. What time the clinic told a patient to
-        # turn up is not something a model gets to decide (§10.3).
+        # turn up is not something a model gets to decide.
         update = {
             "draft_text": booking_service.draft_booking_reply(
                 name=state.get("patient_name"),
@@ -871,7 +871,7 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
             "grounded": False,
         }
     elif branch == prescription_service.BRANCH:
-        # A template too (§12.3/G.16): the draft names no medicine, because
+        # A template too: the draft names no medicine, because
         # RESTRICTED_TERMS would block one and the patient would get nothing.
         update = {
             "draft_text": prescription_service.draft_prescription_reply(
@@ -881,7 +881,7 @@ async def draft(state: CaseState, runtime: Runtime[Context]) -> dict:
             "grounded": False,
         }
     elif branch == records_service.BRANCH:
-        # A template too (§11): there is nothing to generate, only an
+        # A template too: there is nothing to generate, only an
         # acknowledgement to state, and no record content to state it from.
         update = {
             "draft_text": records_service.draft_records_reply(
@@ -959,7 +959,7 @@ async def guardrail(state: CaseState, runtime: Runtime[Context]) -> dict:
 
 
 async def risk(state: CaseState) -> dict:
-    """§5.1: HIGH sends the draft to approval whatever the auto-send predicate says."""
+    """HIGH sends the draft to approval whatever the auto-send predicate says."""
     grounded_on_retry = bool(state.get("reformulated_query") and state.get("retrieval_sufficient"))
     return {
         "risk_tier": email_service.reply_risk_tier(
@@ -1064,7 +1064,7 @@ async def voicemail_identity(state: CaseState, runtime: Runtime[Context]) -> dic
 
 async def voicemail_onboarding(state: CaseState, runtime: Runtime[Context]) -> dict:
     """An unknown caller asking to book or join: the provisional patient email
-    onboarding (§9.0) would create. The name comes from the transcript, the
+    onboarding would create. The name comes from the transcript, the
     phone from caller ID and the DOB from the keypad only: spoken digits are
     the least reliable part of a transcript. Nothing here replies; the
     callback script tells staff to finish the registration."""

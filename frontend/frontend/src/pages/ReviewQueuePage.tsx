@@ -11,7 +11,7 @@ type Tab = "all" | "mine" | "high" | "sla";
 
 const PRIORITY_DOT: Record<string, string> = { high: "bg-slate-900", medium: "bg-slate-400", low: "bg-slate-300" };
 
-// D7: over SLA means still open past its due_at.
+// Over SLA means still open past its due_at.
 const overSla = (t: RawReviewTask) => isOpen(t) && !!t.due_at && new Date(t.due_at) < new Date();
 
 function statusBadge(t: RawReviewTask) {

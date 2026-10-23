@@ -17,7 +17,7 @@ export function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardSummary | null>(null);
-  // New case (M4): pick the patient, then what it is about and who looks after it.
+  // New case: pick the patient, then what it is about and who looks after it.
   const [newCase, setNewCase] = useState<{ patient: Patient | null; title: string; doctorId: string } | null>(null);
   const [newCaseError, setNewCaseError] = useState<string | null>(null);
 

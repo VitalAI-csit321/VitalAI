@@ -1,4 +1,4 @@
-"""Retrieval retry (build spec §7): one reformulated second attempt, graph only.
+"""Retrieval retry: one reformulated second attempt, graph only.
 
 Both draft generators (email_service._generate_org_grounded_reply and
 rag.answer.answer_question) retrieve through retrieve_gated. Without a

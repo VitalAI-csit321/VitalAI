@@ -47,6 +47,4 @@ jobs:
 
       - name: Type check and build
         # "build" is `tsc -b && vite build`, so this covers type checking too.
-        # Verified that tsc -b still reports errors despite the committed
-        # tsconfig.tsbuildinfo, so no --force is needed here.
         run: npm run build

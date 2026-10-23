@@ -256,7 +256,7 @@ async def test_get_approval_returns_the_request(db_session: AsyncSession):
 
 
 async def test_approve_blocks_concurrent_decision_until_first_releases_lock():
-    """Deterministic proof of approve()'s with_for_update fix (F3).
+    """Deterministic proof of approve()'s with_for_update fix.
 
     Without a row lock, approve()'s db.get() -> status check -> mutate -> commit
     is a classic lost-update race: a second approve() call that reads the row
@@ -336,7 +336,7 @@ async def test_approve_blocks_concurrent_decision_until_first_releases_lock():
 
 
 async def test_approve_detects_already_decided_despite_stale_pre_read():
-    """Regression, Task 4 fix round 1 CRITICAL 1.
+    """Regression test.
 
     app/routes/approvals.py's _check_may_decide does a plain db.get() to see
     whether the approval exists, before the row-level ownership check runs -

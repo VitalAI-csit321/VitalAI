@@ -1,9 +1,9 @@
-"""M7 ship gate (spec C7): today's classifier prompt against the C6 prompt, same run, same emails.
+"""Ship gate for clinical_enquiry: today's classifier prompt against the new one, same emails.
 
 - old: the production prompt exactly as content_classifier builds it (ten category names).
 - new: the same template, but the category list is one `name: description` line for each of
-  eleven categories, clinical_enquiry last (spec section 3). DESCRIPTIONS below is the wording
-  that ships; Phase B moves it next to TaskCategory unchanged, in this order.
+  eleven categories, clinical_enquiry last. DESCRIPTIONS below is the wording
+  that ships; it moves next to TaskCategory unchanged, in this order.
 
 Both prompts go to the production model through app.llm.get_llm() with production settings
 (LLM_PROVIDER, model, temperature), so the same script re-runs on Haiku 4.5 (Bedrock) by config.

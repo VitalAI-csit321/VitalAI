@@ -4,7 +4,7 @@ Run against a real Postgres+pgvector database via the `seeded_chunks` /
 `pg_session` fixtures in conftest.py. SQLite cannot exercise cosine_distance,
 HNSW, or the SET LOCAL GUCs this module depends on.
 
-BASELINE, reconcile with Matthew's ingestion schema: the corpus these tests
+Baseline: the corpus these tests
 run against (scripts/synthetic_corpus/) is synthetic, and the chunks table it
 seeds is the placeholder schema from alembic/versions/0005_baseline_chunks.py.
 """
@@ -145,7 +145,7 @@ async def test_score_descending_and_self_match_ranks_first(seeded_chunks: AsyncS
     # Query and document embeddings use different prefixes (search_query:
     # vs search_document:), so even an exact self-match never scores a
     # perfect 1.0. Still expect a strong match, well above the sufficiency
-    # floor (0.50).
+    # floor (0.44).
     assert results[0].score > 0.85
 
 

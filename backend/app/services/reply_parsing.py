@@ -11,7 +11,7 @@ outlook_client.strip_html collapses a body onto one line.
 
 import re
 
-# ponytail: the common English quote headers only (Gmail, Apple Mail, Outlook,
+# Limitation: the common English quote headers only (Gmail, Apple Mail, Outlook,
 # forwarded chains). A client that quotes some other way keeps its history,
 # and the extraction prompt still labels our last message as ours; add the
 # marker here when a real one turns up.

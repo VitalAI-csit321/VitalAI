@@ -1,5 +1,5 @@
 """Shared LLM content classifier (FR-EMAIL-01), reused unchanged by the call
-pipeline (Task 3) so both channels feed evaluate_task_routing_gate() with the
+pipeline so both channels feed evaluate_task_routing_gate() with the
 same TaskCategory vocabulary. One classifier, one prompt, one JSON contract.
 
 Routes every call through guarded_invoke() rather than llm.ainvoke() directly:

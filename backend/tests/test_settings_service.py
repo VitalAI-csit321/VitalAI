@@ -8,7 +8,7 @@ from app.services.settings_service import SettingsValidationError
 @pytest.fixture(autouse=True)
 def _restore_settings_singleton():
     """set_settings() mutates the process-wide `settings` singleton by design
-    (see settings_service's ponytail note); without this, a write here leaks
+    (see the Limitation note in settings_service); without this, a write here leaks
     into every test that runs afterward in the same pytest session."""
     snapshot = {key: getattr(settings, key) for key in settings_service.SETTINGS_REGISTRY}
     yield

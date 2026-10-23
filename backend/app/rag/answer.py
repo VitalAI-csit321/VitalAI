@@ -29,9 +29,9 @@ NOT_ENOUGH_INFO_ANSWER = "I don't have enough information in this patient's reco
 
 # Chunks scoring more than this below the top chunk are left out of the LLM
 # context, not out of the retrieved set. 0.15 matches this corpus's documented
-# score spread (see RAG_RETRIEVAL_TECHNICAL.md), so the margin adapts to the
-# query instead of using a fixed absolute cutoff. Sufficiency and confidence are
-# still computed on the full retrieved set in evaluate_retrieval(); this only
+# score spread (see rag_knowledge.md), so the margin adapts to the query
+# instead of using a fixed absolute cutoff. Sufficiency is still judged on the
+# full retrieved set in evaluate_retrieval(); this only
 # trims what the model reads.
 CONTEXT_SCORE_MARGIN = 0.15
 

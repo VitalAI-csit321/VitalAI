@@ -101,8 +101,7 @@ async def test_can_read_clinical_granted_operator_is_unscoped(db_session: AsyncS
     await db_session.commit()
     # The already-loaded `operator` object's permission_grants (selectin,
     # loaded empty on first fetch) won't see the grant just added above
-    # without expiring it first, the same stale-identity-map shape flagged
-    # during Phase 1 (see project memory).
+    # without expiring it first (a stale identity map).
     await db_session.refresh(operator, attribute_names=["permission_grants"])
     patient = await _patient(db_session)
 

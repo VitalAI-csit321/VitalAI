@@ -97,7 +97,7 @@ async def test_same_message_is_not_ingested_twice(db_session, front_desk_user, g
 
 @pytest.mark.asyncio
 async def test_mark_as_read_failure_does_not_undo_the_ingest(db_session, front_desk_user, graph):
-    """Matthew's original try/except, preserved: the email is already committed
+    """The original try/except, preserved: the email is already committed
     and dedupe covers the next cycle, so a failed mark is tolerable."""
     graph["messages"] = [_graph_message()]
     graph["mark_fails"] = True

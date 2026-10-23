@@ -7,7 +7,7 @@
 # The repo is bind-mounted into the api container, so a code change needs only
 # a restart; the image is rebuilt only when what it installs changes. The
 # frontend is built on the laptop and copied to frontend/frontend/dist (see
-# the expo deployment plan); nothing here builds it, but nothing starts
+# Deployment in the root README); nothing here builds it, but nothing starts
 # without it.
 set -euo pipefail
 

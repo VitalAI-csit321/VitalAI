@@ -1,4 +1,4 @@
-"""Acknowledging a request for a copy of a patient's records (build spec §11).
+"""Acknowledging a request for a copy of a patient's records.
 
 The agent never puts clinical content in an email. It acknowledges the
 request, says what happens next, and hands the case to a human; consent only
@@ -27,7 +27,7 @@ _SIGN_OFF = "Kind regards,\nThe clinic team"
 async def has_explicit_consent(db: AsyncSession, patient_id: UUID | None) -> bool:
     """Whether this PATIENT has given consent a person actually signed.
 
-    Asked about the patient, not the case (spec G.11). ingest_email opens a new
+    Asked about the patient, not the case. ingest_email opens a new
     case for every message and the Outlook connector passes no case_id, so a
     real records email always lands on a case with no consent record: the
     case-level question could never be answered yes in production, and patients
@@ -36,7 +36,7 @@ async def has_explicit_consent(db: AsyncSession, patient_id: UUID | None) -> boo
     The same rule patient_service.promote_patient applies: any CAPTURED record
     whose type is not the implied one. Deliberately not
     triage_service._assert_consent, which raises when there is no record at
-    all: that is an outcome here, not an error (Appendix F.2).
+    all: that is an outcome here, not an error.
 
     An implied record is the clinic noting that someone emailed in. It is
     nobody's authority to release their file, whichever case it sits on.

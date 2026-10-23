@@ -4,7 +4,7 @@ chunks.patient_id was NOT NULL with no escape hatch for non-patient content
 (clinic policy, routing rules, guardrails, ...). NULL patient_id now means
 "applies to every patient context" -- _security_filter in app/rag/retrieval.py
 matches patient_id == ctx.patient_id OR patient_id IS NULL, still gated by
-access_scope. See docs/FR-RAG-01_handoff.md and the org-profile corpus at
+access_scope. See app/rag/doc_scopes.py and the org-profile corpus at
 "Organization Profile Review/" for the doc_type -> access_scope mapping this
 unblocks.
 

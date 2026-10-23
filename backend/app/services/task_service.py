@@ -223,7 +223,7 @@ async def mark_escalated(
 ) -> bool:
     """ESCALATED + URGENT, audited, never committed. False (and no event) when
     it already is. Shared by escalate_task and the ingest paths, which must not
-    commit mid-ingest or check the ingesting actor's queue (review queue spec D9).
+    commit mid-ingest or check the ingesting actor's queue.
     """
     if task.status == TaskItemStatus.ESCALATED:
         return False
@@ -273,10 +273,10 @@ async def apply_gate(
     in_conversation: bool = False,
 ) -> None:
     """What a HUMAN_REVIEW routing outcome opens, the same for email, logged
-    calls and voicemail (review queue spec section 6). Flushes, never commits.
+    calls and voicemail. Flushes, never commits.
 
-    Urgent: escalated now, as operator work whatever the category (D9), no
-    review item. Complaint: an operator item (D10). Low confidence, or the
+    Urgent: escalated now, as operator work whatever the category, no
+    review item. Complaint: an operator item. Low confidence, or the
     intent check disputing the model: an item to check the category, except
     for a reply the open conversation handles (graph.route_intent lets those
     through too).
@@ -418,8 +418,8 @@ async def hold_for_staff(
     owner: UserRole | None = None,
     assigned_to: UUID | None = None,
 ) -> None:
-    """No draft: say why on the message, and put it in its owner's Review Queue
-    (review queue spec F1). review_kind None for an automatic message, which
+    """No draft: say why on the message, and put it in its owner's Review Queue.
+    review_kind None for an automatic message, which
     only the inbox shows. One hold, one item: identity holds pass their own kind."""
     task = await db.get(Task, UUID(str(task_id)))
     if task is not None:

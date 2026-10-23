@@ -9,7 +9,7 @@ already reads its value at call time through `settings.X`. That keeps all five
 existing read sites (task_routing_gate, rag.gating, auth.security,
 appointment_service, email_service) byte-for-byte unchanged.
 
-# ponytail: process-local cache; a second uvicorn worker would not see another
+# Limitation: process-local cache; a second uvicorn worker would not see another
 # worker's write until restart. Add pub/sub invalidation if we ever run >1.
 """
 
@@ -191,7 +191,7 @@ def bedrock_model_name(model_id: str) -> str:
     foundation model. Both lookups need IAM read rights
     (bedrock:GetInferenceProfile, bedrock:GetFoundationModel) on top of invoke.
     """
-    # ponytail: cached for the life of the process, a failure included, so a
+    # Limitation: cached for the life of the process, a failure included, so a
     # missing permission costs one round trip, not one per page load. A restart
     # (every deploy does one) retries.
     import boto3

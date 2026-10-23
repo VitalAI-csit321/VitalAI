@@ -14,6 +14,19 @@ to a user, it displays the record as written. It does not interpret or summarize
 All data in this repository is synthetic. `SYNTHETIC_ONLY=true` is the default, and the
 application refuses to start with `APP_ENV=production` while it is set.
 
+## Team
+
+CSIT321 capstone project.
+
+| Member ID | Name |
+|---|---|
+| 8738798 | Afra Nawar Anchal |
+| 8915805 | Ahnaf Jubayer Islam |
+| 8668863 | Ariana Nozari |
+| 8439394 | Kartik Kartik |
+| 8132574 | Matthew Trueman |
+| 8782957 | Md Aminul Islam Rupom |
+
 ## What the system does
 
 - **Patient intake and consent.** Front desk staff register patients, open intake cases,
@@ -150,7 +163,7 @@ new work there.
     ├── requirements.txt           dependency ranges used in development
     ├── requirements.lock          pinned versions, what the image and CI install
     ├── pyproject.toml             ruff and mypy configuration
-    ├── alembic/versions/          database migrations, 0001 to 0040
+    ├── alembic/versions/          database migrations, 0001 to 0041
     │
     ├── app/
     │   ├── main.py                FastAPI app, router registration, background jobs
@@ -269,11 +282,13 @@ placeholder in place.
 python -c "import secrets; print(secrets.token_urlsafe())"
 ```
 
-Start everything with Docker Compose:
+Build the image, create the database tables, then start everything. The tables must
+exist before the API starts, since it reads its settings table on startup:
 
 ```bash
-docker compose up --build
-docker compose exec api alembic upgrade head
+docker compose build
+docker compose run --rm api alembic upgrade head
+docker compose up
 ```
 
 The API is now running at `http://localhost:8000`. Interactive API docs are at
@@ -439,10 +454,6 @@ mypy app
   missing something urgent.
 - Email and call classification into a category uses a confidence threshold. Anything
   below it goes to the Review Queue instead of being routed automatically.
-- The development compose file pulls MinIO from `quay.io/minio/minio`, which now refuses
-  anonymous pulls. A machine that does not already have that image cannot start the
-  development stack as written. CI and the deployment stack use
-  `cgr.dev/chainguard/minio`.
 - Embeddings always run locally with `nomic-embed-text`. `EMBEDDING_PROVIDER=bedrock` is
   not implemented.
 - This system is for administrative record keeping. It gives no diagnosis or treatment

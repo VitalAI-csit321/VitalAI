@@ -1,7 +1,7 @@
 """Microsoft Graph mail client for the inbound connector.
 
-Ported from Matthew's Inbox_Handling/Outlook_Reader.py and Email_Parser.py.
-Endpoints, OData query parameters and JSON field paths are his; the transport
+Ported from an earlier standalone prototype's reader and parser scripts.
+Endpoints, OData query parameters and JSON field paths are unchanged; the transport
 is rewritten on httpx because this codebase is async throughout and a blocking
 requests call inside a FastAPI worker stalls the event loop.
 
@@ -140,7 +140,7 @@ def _auth_headers(access_token: str) -> dict[str, str]:
 async def get_unread_emails(access_token: str, top: int | None = None) -> list[dict[str, Any]]:
     """Fetch unread inbox messages, newest first.
 
-    Query parameters are Matthew's, with two additions: $top (his version had
+    Query parameters are the prototype's, with two additions: $top (its version had
     no page cap, which is unsafe for something that runs on a timer) and
     toRecipients in $select, which the pipeline needs for Email.recipient.
     """

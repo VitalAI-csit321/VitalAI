@@ -6,7 +6,7 @@ Adds, per email: a subject line (production classifies "Subject: ...\\n\\nbody")
 Scenarios drawn up because of a real-mail failure are tagged `informed_by_real_test=True`.
 
     cd backend
-    ../../CSIT321_Capstone/backend/.venv/bin/python -m scripts.intent_classifier.generate_v2
+    .venv/bin/python -m scripts.intent_classifier.generate_v2
 """
 
 from __future__ import annotations

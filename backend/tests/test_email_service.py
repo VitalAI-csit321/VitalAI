@@ -551,7 +551,7 @@ async def test_ungrounded_draft_never_auto_sends_even_at_high_confidence(
 async def test_clinical_category_never_auto_sends_even_when_worthy_and_grounded(
     db_session, front_desk_user, patient, monkeypatch
 ):
-    """Amin's explicit call: prescription/results/referral replies never
+    """Deliberate choice: prescription/results/referral replies never
     auto-send regardless of confidence, worthiness, or grounding."""
     from app.models.case import IntakeCase, IntakeStatus
 
@@ -599,7 +599,7 @@ async def test_clinical_category_never_auto_sends_even_when_worthy_and_grounded(
 async def test_a_clinical_draft_never_retrieves_a_restricted_chunk(
     db_session, front_desk_user, patient, monkeypatch
 ):
-    """Gate (e), spec G.1. referral_request and medical_records_request route to
+    """referral_request and medical_records_request route to
     OPERATOR, and admins see every queue; neither role holds VIEW_CLINICAL by
     default. Restricted consultation notes, pathology, prescriptions, care plans
     and discharge summaries must therefore not reach an email draft, and through
@@ -649,7 +649,7 @@ async def test_a_clinical_draft_never_retrieves_a_restricted_chunk(
 async def test_an_injection_in_the_subject_is_blocked_before_any_draft(
     db_session, front_desk_user, monkeypatch
 ):
-    """Gate (f), spec G.2. The classifier read payload.body only, so an
+    """The classifier read payload.body only, so an
     injection in the SUBJECT went unseen: the reply gate caught it but only set
     UNCERTAIN, and UNCERTAIN still drafts. The classifier now sees both, so a
     blocked classification fails safe to 0.0, which always routes to a human."""
@@ -684,7 +684,7 @@ async def test_an_injection_in_the_subject_is_blocked_before_any_draft(
 async def test_a_blocked_draft_holds_the_email_for_staff_with_no_draft(
     db_session, front_desk_user, monkeypatch
 ):
-    """Gate (f), spec G.2. _generate_plain_reply called llm.ainvoke directly,
+    """_generate_plain_reply called llm.ainvoke directly,
     bypassing the choke point every live call is supposed to use. A block must
     hold the email with a reason and no draft, and must not crash ingest."""
     from tests.agent_fakes import FakeLLM, seed_email
@@ -760,7 +760,7 @@ _AUTO_SEND_CONTROL = {
         (False, {}, False),
         (True, {"verdict": ReplyWorthiness.UNCERTAIN}, False),
         (True, {"gate_outcome": TaskRoutingOutcome.HUMAN_REVIEW}, False),
-        # 0.70 to 0.90 routing confidence. Amin's call (2026-10-11): a reply
+        # 0.70 to 0.90 routing confidence. Deliberate choice: a reply
         # grounded in the clinic documents may go out without full confidence
         # in which queue the email belongs to.
         (True, {"gate_outcome": TaskRoutingOutcome.AUTO_ROUTED_FLAGGED}, True),

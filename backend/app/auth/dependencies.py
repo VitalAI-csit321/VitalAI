@@ -62,8 +62,7 @@ async def _deny(
     left to propagate, so a real denial always surfaces as a clean 403, never
     as a 500 that looks like a server error instead of an access decision.
     Flood risk (repeated probing growing the append-only audit_events table)
-    is a separate, deliberately deferred concern, see
-    docs/superpowers/specs/2026-07-25-governance-follow-ups-design.md section 3.
+    is a separate, deliberately deferred concern.
     """
     try:
         await record_event(
@@ -107,7 +106,7 @@ def require_permission(permission: str):
 
     This is the primary route gate for the RBAC model. require_roles() above
     is kept only for app/routes/llm.py, which is infra diagnostics outside
-    the RBAC report's permission taxonomy.
+    the RBAC permission taxonomy.
 
     A denial writes a `governance.access_denied` AuditEvent and commits it
     directly, since app.database.get_db() rolls back the session on the

@@ -100,14 +100,14 @@ async def test_confirming_the_second_suggestion_conflicts(pg_appointment_fixture
 
 
 async def test_zero_duration_is_rejected_by_the_check_constraint(pg_appointment_fixture):
-    """F4: a zero-length range overlaps nothing and would bypass the constraint."""
+    """A zero-length range overlaps nothing and would bypass the constraint."""
     session, doctor_id, case_id = pg_appointment_fixture
     with pytest.raises(IntegrityError):
         await _add(session, doctor_id, case_id, _BASE, 0, AppointmentStatus.CONFIRMED, "APT-GGG001")
 
 
 async def test_negative_duration_is_rejected(pg_appointment_fixture):
-    """F5: raises DataError, not IntegrityError, without the CHECK."""
+    """Raises DataError, not IntegrityError, without the CHECK."""
     session, doctor_id, case_id = pg_appointment_fixture
     with pytest.raises((IntegrityError, DBAPIError)):
         await _add(

@@ -1,6 +1,6 @@
 """Background poll loop for the Outlook connector.
 
-Matthew's original ran once from __main__ and exited. This runs the same
+The original prototype ran once from __main__ and exited. This runs the same
 sequence on a timer inside the app's lifespan, which means it needs two things
 a one-shot script did not: an audit actor (every recorded event in this
 codebase attributes to a real User row) and a failure policy that keeps the

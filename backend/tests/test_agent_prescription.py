@@ -1,8 +1,8 @@
-"""The prescription branch (build spec §12, as narrowed by G.16).
+"""The prescription branch.
 
 Two things are being defended here and they are different. The agent MAY
 read clinical data, through a permission a human granted it and can revoke.
-The agent may NOT put clinical data in an email. §12 is the only branch where
+The agent may NOT put clinical data in an email. This is the only branch where
 both halves are live at once.
 
 The service-layer permission check matters because the agent path has no
@@ -341,7 +341,7 @@ async def test_a_stale_review_changes_which_message_the_patient_gets(
 async def test_a_provisional_patient_is_refused_outright(
     db_session, agent_saver, guards, admin_user, doctor_user
 ):
-    """§12.3. The branch never runs, so no clinical read happens either."""
+    """A provisional patient is refused. The branch never runs, so no clinical read happens either."""
     _, sends, mails = guards
     patient = await _patient(db_session, is_provisional=True)
     case = await _linked_case(db_session, patient)
@@ -361,7 +361,7 @@ async def test_the_node_fails_safe_when_the_grant_is_missing(
 ):
     """No grant, so medication_service raises inside the node. _guarded must
     catch it, note the failure on the Task and end the run rather than
-    drafting something or dying silently (F.43)."""
+    drafting something or dying silently."""
     _, sends, mails = guards
     patient = await _patient(db_session)
     case = await _linked_case(db_session, patient)

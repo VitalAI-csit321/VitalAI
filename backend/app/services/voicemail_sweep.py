@@ -1,4 +1,4 @@
-"""The voicemail sweep (voicemail spec §10): audio retention, calls that never
+"""The voicemail sweep: audio retention, calls that never
 got an end-of-call callback, and voicemails a restart left unprocessed.
 Same shape as provisional_purge: one failed cycle never kills the loop."""
 

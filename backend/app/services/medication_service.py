@@ -1,4 +1,4 @@
-"""Medication history, and the clinical access rule that guards it (§12.2).
+"""Medication history, and the clinical access rule that guards it.
 
 **The permission check is in this module on purpose, not on a route.**
 `require_permission()` is a FastAPI dependency, so it only runs for requests
@@ -12,7 +12,7 @@ The precedent is `inbox_service._visible_tasks`, which checks VIEW_ALL_QUEUES
 inside the service for the same reason.
 
 VIEW_CLINICAL belongs to DOCTOR by role. The agent actor is an OPERATOR and
-holds it only through an explicit, revocable grant (spec G.17), so revoking
+holds it only through an explicit, revocable grant, so revoking
 that grant in the UI genuinely turns this off.
 """
 

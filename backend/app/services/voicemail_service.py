@@ -1,4 +1,4 @@
-"""The voicemail channel (docs/superpowers/specs/2026-09-26-voicemail-channel-design.md).
+"""The voicemail channel.
 
 A caller answers a keypad menu and leaves a message; staff get a callback
 task. Nothing here ever sends anything to the caller.
@@ -48,7 +48,7 @@ INTAKE_NAME = "Voicemail intake"
 WITHHELD = "withheld"
 # Twilio's older placeholders for a hidden caller ID. They are digit strings,
 # so they would pass as real numbers; newer calls send words ("anonymous").
-# ponytail: confirm against Twilio's docs when wiring the live number.
+# Limitation: confirm against Twilio's docs when wiring the live number.
 _LEGACY_WITHHELD = frozenset({"+266696687", "+7378742833", "+2562533", "+8656696", "+86282452253"})
 
 INTENT_DIGITS = {"1": "appointment", "2": "results", "3": "prescription", "4": "other"}
@@ -190,7 +190,7 @@ PRESSED_NINE = "caller pressed 9"
 async def ensure_task(db: AsyncSession, call: Call) -> Task:
     """The call's one Task, created before any slow step so a failure lands
     on a Task that links to the call (and its audio). A caller who pressed 9
-    is URGENT from this moment: no later failure can lose that (D9, D11)."""
+    is URGENT from this moment: no later failure can lose that."""
     result = await db.execute(select(Task).where(Task.call_id == call.id))
     task = result.scalars().first()
     if task is None:
@@ -208,7 +208,7 @@ async def ensure_task(db: AsyncSession, call: Call) -> Task:
         )
         db.add(task)
         if call.urgent_pressed:
-            # D9: escalated from the moment the caller pressed 9, so a hang-up
+            # Escalated from the moment the caller pressed 9, so a hang-up
             # or a failed transcription cannot leave it in "Submitted".
             await db.flush()
             await task_service.mark_escalated(
@@ -342,7 +342,7 @@ async def process(call_id: UUID) -> None:
             if call.audio_key is None and call.twilio_recording_sid:
                 # The audio never arrived (Twilio or the network): back to
                 # `received` so the sweep retries the download. Staff see why.
-                # ponytail: no retry cap; add one if a recording ever fails for good.
+                # Limitation: no retry cap; add one if a recording ever fails for good.
                 call.status = CallStatus.RECEIVED
                 number = "" if call.phone_number == WITHHELD else f" Call {call.phone_number}"
                 task.handover_context = (
@@ -425,7 +425,7 @@ def callback_script(call: Call, state: Mapping) -> str:
 
 
 async def handle_call_ended(db: AsyncSession, call: Call, actor: User) -> Task | None:
-    """The call ended with no recording coming (spec §4 step 5). Pressed 9
+    """The call ended with no recording coming. Pressed 9
     first: an URGENT callback task. Otherwise nothing to act on."""
     if call.status not in (CallStatus.IN_PROGRESS, CallStatus.RECORDING):
         return None

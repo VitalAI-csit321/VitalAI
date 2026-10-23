@@ -1,7 +1,7 @@
-"""Deterministic draft critic (build spec §6).
+"""Deterministic draft critic.
 
-Rules, not an LLM verdict: a restriction does not live in a prompt (§0 rule
-5), and every extra model call is up to 90s behind a Semaphore(1). The
+Rules, not an LLM verdict: a restriction does not live in a prompt, and
+every extra model call is up to 90s behind a Semaphore(1). The
 regeneration is the model call; the judgement is code. Add a rule only with a
 named policy behind it.
 
@@ -13,7 +13,7 @@ import re
 
 # Prescription policy: staff may not tell a patient a medication is suitable
 # for them; that is a clinician's call.
-# ponytail: a phrase list, a naive heuristic. It catches the obvious wording
+# Limitation: a phrase list, a naive heuristic. It catches the obvious wording
 # and nothing paraphrased. Upgrade path is a trained classifier behind the
 # same critique() signature, once a real policy corpus exists.
 _SUITABILITY_PHRASES = (
@@ -36,9 +36,9 @@ SUITABILITY_REASON = (
     "clinician can decide that; say the request has been passed to the clinical "
     "team instead."
 )
-# Onboarding policy (spec §9.0): email is not a secure channel, so a reply to
+# Onboarding policy: email is not a secure channel, so a reply to
 # someone we cannot yet identify must not invite health or financial details.
-# ponytail: a term list, like the one above. It is deliberately broad, since a
+# Limitation: a term list, like the one above. It is deliberately broad, since a
 # false reject only costs a redraft, while a false pass invites a patient to
 # email their Medicare number.
 _SENSITIVE_TERMS = (
@@ -64,7 +64,7 @@ SENSITIVE_REQUEST_REASON = (
 )
 EMPTY_REASON = "The draft is empty."
 
-# Template artefacts (spec F.92, F.99): measured on 32 real drafts, 26 held a
+# Template artefacts: measured on 32 real drafts, 26 held a
 # "[Patient Name]"-style placeholder and 19 held one inside a sentence.
 # "Sincerely,\n[Your Name]\nClinic Administrator" is what the model writes when it
 # has no name to sign with: a line that is only a placeholder is dropped at

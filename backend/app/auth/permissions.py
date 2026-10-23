@@ -1,7 +1,7 @@
 """Permission model for VitalAI RBAC.
 
-See 'VitalAI RBAC Report - Audit Trail.md' (repo root) for the authoritative
-spec. Route handlers gate on permissions via require_permission()
+ROLE_PERMISSIONS below is the source of truth for which role can do what.
+Route handlers gate on permissions via require_permission()
 (app/auth/dependencies.py), never on UserRole directly. The sole documented
 exception is app/routes/llm.py, infra/ops diagnostics outside this taxonomy.
 """
@@ -25,14 +25,14 @@ READ_AUDIT = "read_audit"
 REGISTER_PATIENT = "register_patient"
 VIEW_ALL_QUEUES = "view_all_queues"
 DELETE_MESSAGES = "delete_messages"
-# Every staff role, doctors included (voicemail spec D4, a clinic decision).
+# Every staff role, doctors included (a clinic decision).
 PLAY_VOICEMAIL = "play_voicemail"
 
 ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
     UserRole.FRONT_DESK: {
         PLAY_VOICEMAIL,
         VIEW_QUEUE,
-        # Own items only: the approve route checks the review item (review queue spec D5).
+        # Own items only: the approve route checks the review item.
         APPROVE_ACTION,
         CAPTURE_CONSENT,
         VIEW_RECORDS_GENERAL,
@@ -75,7 +75,7 @@ ROLE_PERMISSIONS: dict[UserRole, set[str]] = {
     UserRole.DOCTOR: {
         PLAY_VOICEMAIL,
         VIEW_CLINICAL,
-        # Own items only: the approve route checks the review item (review queue spec D5).
+        # Own items only: the approve route checks the review item.
         APPROVE_ACTION,
         VIEW_RECORDS_GENERAL,
         MANAGE_OWN_CALENDAR,

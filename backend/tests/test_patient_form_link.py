@@ -643,7 +643,7 @@ async def test_the_public_endpoints_are_rate_limited(client):
 @pytest.fixture(autouse=True)
 def followups(monkeypatch, detached_sessionmaker):
     """send_followup opens its own session, as it does in production. Autouse:
-    every successful submit in this file, Task 3's tests included, schedules it."""
+    every successful submit in this file schedules it."""
     monkeypatch.setattr(patient_form_service, "AsyncSessionLocal", detached_sessionmaker)
 
 
@@ -964,7 +964,7 @@ async def test_the_clinic_consent_can_be_left_part_done_and_unsigned(
     ]
 
 
-# The preferred doctor on the form (M4 spec, E6)
+# The preferred doctor on the form
 
 
 async def _gone_doctor(db):
@@ -1016,7 +1016,7 @@ async def test_a_preferred_doctor_on_the_form_waits_for_registration(
     patient = await db_session.get(Patient, conversation.patient_id)
     await db_session.refresh(patient)
     assert patient.is_provisional and patient.preferred_doctor_id == doctor_user.id
-    # Provisional: no doctor until staff register them (E6).
+    # Provisional: no doctor until staff register them.
     rows = await db_session.scalars(
         select(DoctorPatientAssignment).where(DoctorPatientAssignment.patient_id == patient.id)
     )

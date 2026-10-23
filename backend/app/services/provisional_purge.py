@@ -1,9 +1,9 @@
-"""Anonymise provisional patients nobody claimed (build spec §9.1).
+"""Anonymise provisional patients nobody claimed.
 
 Never a DELETE. No foreign key referencing patients.id declares an ondelete,
 so a delete raises, and rows named in audit details must stay where the hash
 chain expects them. The patient record is anonymised in place; the
-originating Email and IntakeCase are kept, by Amin's decision, so the
+originating Email and IntakeCase are kept, by deliberate choice, so the
 accurate wording is "the provisional patient record is anonymised after 90
 days", not "no personal data is retained". A purged patient's upcoming
 appointments are cancelled, and the patient is emailed first, while the

@@ -75,7 +75,7 @@ async def upload_document(
     if not extracted_text:
         raise EmptyExtractionError(
             "No extractable text found in this PDF. Image-only PDFs are not supported "
-            "yet (OCR is future work, RBAC report section 14)."
+            "(there is no OCR)."
         )
 
     document_id = uuid4()

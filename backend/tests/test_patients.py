@@ -58,7 +58,7 @@ async def test_list_patients_allowed_for_doctor(
 
 
 async def _another_doctor(db) -> User:
-    """Since M4 every patient staff create gets a doctor (E6), so "not this
+    """Every patient staff create gets a doctor, so "not this
     doctor's patient" means someone else's."""
     other = User(
         email="other.doctor@example.com",

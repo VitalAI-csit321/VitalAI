@@ -50,7 +50,7 @@ async def start_sign_in(
 ):
     if not settings.outlook_enabled:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email isn't enabled on this installation")
-    # ponytail: the redirect URI is built from the request's own host, which is
+    # Limitation: the redirect URI is built from the request's own host, which is
     # right when the browser reaches the API directly. Behind a proxy that
     # rewrites the host, add a configured public base URL.
     redirect_uri = str(request.url_for("outlook_callback"))

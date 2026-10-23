@@ -1,4 +1,4 @@
-"""Graph core (build spec §2): state, per-node sessions, checkpointer, flag."""
+"""Graph core: state, per-node sessions, checkpointer, flag."""
 
 import asyncio
 import os

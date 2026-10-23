@@ -23,12 +23,12 @@ email-validator>=2.0.0
 # runtime HTTP client for Graph calls, since the app is async throughout.
 msal>=1.28.0
 
-# LLM abstraction (Phase 0 — providers swap via env)
+# LLM abstraction (providers swap via env)
 langchain>=0.2.0
 langchain-community>=0.2.0
 langchain-aws>=0.1.0
 
-# Call transcription (Phase 1 MVP, local STT)
+# Call transcription (local STT)
 faster-whisper>=1.0.0
 # Public holidays for the voicemail line's opening hours.
 holidays>=0.60
@@ -39,7 +39,7 @@ twilio>=9.0
 # Rate limiting
 slowapi>=0.1.9
 
-# Phase 3 — orchestration, RAG, observability
+# Orchestration, RAG, observability
 langgraph>=1.2.1
 langgraph-checkpoint-postgres>=3.0.0
 langchain-postgres>=0.0.6
@@ -53,16 +53,16 @@ sentence-transformers>=3.0.0,<6.0.0
 transformers>=4.0.0,<5.10.0
 einops>=0.7.0  # required by nomic-embed-text-v1's remote modeling code
 
-# Matthew's ingestion pipeline (Loader/Cleaner/Chunker), pinned to what CI's
+# Ingestion pipeline (Loader/Cleaner/Chunker), pinned to what CI's
 # ruff drift already burned once (see requirements.lock note); floors only,
 # same class of risk as ruff until this repo installs from the lock file.
 ray>=2.56.0
 pypdf>=6.14.2
 
-# Object storage (MinIO/S3), Phase 5 clinical upload
+# Object storage (MinIO/S3), clinical upload
 boto3>=1.43.0
 
-# Test fixtures (Phase 5, generate real PDFs for extraction tests)
+# Test fixtures (generate real PDFs for extraction tests)
 reportlab>=4.0.0
 Pillow>=10.0.0
 

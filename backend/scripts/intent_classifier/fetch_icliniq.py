@@ -1,8 +1,8 @@
-"""A TEST set of real patient-written health questions for the clinical_enquiry category (M7).
+"""A TEST set of real patient-written health questions for the clinical_enquiry category.
 
 Used only to measure whether the production classifier recognises real clinical enquiries
-(M7 ship gate C7: at least 80% recall). Never used as training data. It measures whatever
-model the classifier runs on, so it stays valid after the move to Claude Haiku 4.5.
+(the ship gate: at least 80% recall). Never used as training data. It measures whatever
+model the classifier runs on, so it stays valid after the move to Amazon Bedrock.
 
 Source: the chatdoctor_icliniq config of the Hugging Face bundle
 Malikeh1375/medical-question-answering-datasets, pinned to REVISION below. The bundle is
@@ -13,7 +13,7 @@ gitignored file (icliniq_testset.jsonl). Only this script is committed.
 Filter, fixed before any classifier has been run on the data:
 - body 60 to 1200 characters after trimming;
 - not urgent by the project's own is_urgent(): a red-flag message is urgent_emergency, not a
-  clinical enquiry, under the M7 definition;
+  clinical enquiry;
 - not obviously another category (repeat/refill, referral, appointment/booking, certificate,
   results not yet received);
 - deduplicated on lowercased text.
@@ -25,7 +25,7 @@ Paged through the datasets-server JSON API (100 rows a page, a pause between pag
 retries on HTTP 429): the bundle is Parquet, and reading Parquet would add pyarrow.
 
     cd backend
-    ../../CSIT321_Capstone/backend/.venv/bin/python -m scripts.intent_classifier.fetch_icliniq
+    .venv/bin/python -m scripts.intent_classifier.fetch_icliniq
 """
 
 from __future__ import annotations

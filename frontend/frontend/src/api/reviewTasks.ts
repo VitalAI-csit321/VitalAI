@@ -36,7 +36,7 @@ export interface RawReviewTask {
   created_by?: string | null; assigned_to_name?: string | null;
   owner_label?: string | null; channel?: string | null; due_at?: string | null;
   candidates?: { id: string; name: string; dob: string }[] | null;
-  // Cases (M4): the case a case_close item is about, the cases a case_choice offers.
+  // Cases: the case a case_close item is about, the cases a case_choice offers.
   case_title?: string | null;
   case_candidates?: { id: string; title: string; last_activity_at: string }[] | null;
 }

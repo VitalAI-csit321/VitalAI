@@ -1,4 +1,4 @@
-"""Onboarding, provisional-patient restrictions and promotion (build spec §9.0-9.0b).
+"""Onboarding, provisional-patient restrictions and promotion.
 
 Implied consent is PENDING, never CAPTURED: CAPTURED is the only status the
 consent gate accepts, so recording it would let any stranger's email through.
@@ -36,7 +36,7 @@ from tests.agent_fakes import FakeLLM
 @pytest.fixture(autouse=True)
 def _conversation_flow_off(monkeypatch):
     """These tests pin the routing that email_booking_conversation_enabled
-    replaces (onboarding, the §10 proposal, a silent staff hold). The flag-on
+    replaces (onboarding, the booking proposal, a silent staff hold). The flag-on
     versions are in tests/test_email_conversation.py."""
     monkeypatch.setattr(settings, "email_booking_conversation_enabled", False)
 
@@ -301,7 +301,7 @@ def test_an_onboarding_draft_asking_only_for_a_phone_passes():
 async def test_new_patient_email_is_onboarded_and_paused_for_approval(
     client, front_desk_headers, db_session, monkeypatch
 ):
-    """Gate (g). Unknown sender, new, gives a name and DOB, wants a booking."""
+    """Unknown sender, new, gives a name and DOB, wants a booking."""
     monkeypatch.setattr(settings, "agentic_pipeline_enabled", True)
     monkeypatch.setattr(settings, "outlook_enabled", True)
     monkeypatch.setattr("app.services.outlook_auth.get_access_token", AsyncMock(return_value="t"))

@@ -21,7 +21,7 @@ class TaskType(enum.StrEnum):
     AGENT_FAILURE = "agent_failure"
     AGENT_HANDOVER = "agent_handover"
     COMPLAINT_REVIEW = "complaint_review"
-    # Cases (M4, episode_service): which open case a message belongs to, and
+    # Cases (episode_service): which open case a message belongs to, and
     # whether a quiet case can close. CASE_CLOSE is about a case, not a
     # message, so it has episode_id and no case_id.
     CASE_CHOICE = "case_choice"

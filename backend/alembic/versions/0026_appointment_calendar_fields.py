@@ -21,8 +21,8 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     bind = op.get_bind()
 
-    # Status remap first: the frontend's "pending" IS the RBAC report's
-    # "suggested". RENAME VALUE is transactional and preserves existing rows.
+    # Status remap first: the frontend's "pending" IS the old
+    # "suggested" status. RENAME VALUE is transactional and preserves existing rows.
     bind.exec_driver_sql("ALTER TYPE appointment_status RENAME VALUE 'suggested' TO 'pending'")
     # ADD VALUE cannot be used in the same transaction that added it (Postgres
     # raises UnsafeNewEnumValueUsageError) and this migration's pre-flight

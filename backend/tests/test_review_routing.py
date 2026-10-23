@@ -124,7 +124,7 @@ async def test_a_rerun_gets_the_open_item_back(db_session):
     assert len(await events(db_session, "review.opened")) == 1
 
 
-# --- Task 3: held drafts link to their approval (D1, D2) ---------------------
+# --- held drafts link to their approval ----------------------------------------
 
 
 async def _items(db, **where) -> list[HumanReviewTask]:

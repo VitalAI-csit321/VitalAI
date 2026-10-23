@@ -167,7 +167,7 @@ export function InboxPage() {
   const filtered = tab === "urgent" ? messages.filter((m) => m.priority === "urgent") : messages;
   const unread = messages.filter((m) => m.unread).length;
   const urgent = messages.filter((m) => m.priority === "urgent").length;
-  // Server-decided, per message (review queue spec section 7): a doctor may
+  // Server-decided, per message: a doctor may
   // approve their own clinical drafts, an operator may not, and the UI never
   // infers this from role alone.
   const canApprove = selected?.canApprove ?? false;
@@ -216,7 +216,7 @@ export function InboxPage() {
     }
   }
 
-  // Write reply (D14). Updated from the response rather than a list refresh,
+  // Write reply. Updated from the response rather than a list refresh,
   // so a message opened through its review item stays on screen, now sent.
   async function handleWriteReply() {
     if (!selected) return;

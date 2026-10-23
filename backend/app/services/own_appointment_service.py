@@ -2,17 +2,17 @@
 
 Reached from graph.route_identity when the reply gate reads the email as being
 about an appointment the sender already has. Before this, "when is my
-appointment?" was a booking request because its category said appointment
-(2026-10-11 test run). Moving one is the booking conversation's job; this
+appointment?" was a booking request because its category said appointment.
+Moving one is the booking conversation's job; this
 module only finds which appointment is meant.
 
-Amin's calls (2026-10-11): the sender is taken to be the patient only when the
+Deliberate choices: the sender is taken to be the patient only when the
 email comes from the address on exactly one patient record, and the agent
 cancels by itself when one appointment can be meant and it is more than
 MIN_NOTICE away. Everything else is the front desk's.
 
 A From address can be forged, so that match proves little by itself. Two rules
-follow (security review of the first version, same day). Nothing here is sent
+follow (from a security review of the first version). Nothing here is sent
 as a reply, which would follow a forged email's Reply-To: it goes as a new
 email to the address on the record. And a cancel or move is not carried out
 on the email that asks: that email earns a one-time code, sent to the same
@@ -101,7 +101,7 @@ def target(
     they have ("anything on Thursday instead?" was read as "my Thursday
     appointment"), so only a patient with one appointment has an answer.
 
-    ponytail: weekday names and "the 14th" only, matched as words. "Next
+    Limitation: weekday names and "the 14th" only, matched as words. "Next
     week's one" or "the one with Dr Osei" is None, so it is asked about; give
     the reply gate a date field if that turns out to be common.
     """

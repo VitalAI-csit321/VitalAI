@@ -325,7 +325,7 @@ async def test_consent_by_case_allowed_for_assigned_doctor(
     doctor_user: User,
     patient: Patient,
 ):
-    """DOCTOR has VIEW_RECORDS_GENERAL, scoped to assigned patients (RBAC report §6)."""
+    """DOCTOR has VIEW_RECORDS_GENERAL, scoped to assigned patients."""
     case_id = await _create_case(client, admin_headers, patient)
     await client.post("/api/v1/consent", json={"case_id": case_id}, headers=admin_headers)
     await client.post(
@@ -361,8 +361,8 @@ async def test_consent_by_case_allowed_for_operator_without_assignment(
 async def test_consent_by_case_denied_for_doctor_on_unlinked_legacy_case(
     client: AsyncClient, doctor_headers: dict, db_session: AsyncSession
 ):
-    """A pre-Phase-2 case with no patient_id can't be checked against a
-    doctor's assignment set, so it fails closed (RBAC report §6/§7)."""
+    """An older case with no patient_id can't be checked against a
+    doctor's assignment set, so it fails closed."""
     case = IntakeCase(
         patient_id=None,
         patient_name="Legacy Free-Text Patient",

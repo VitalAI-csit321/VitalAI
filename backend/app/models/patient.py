@@ -24,8 +24,8 @@ class Gender(enum.StrEnum):
 # patient_service.is_profile_complete). Adding a field here retroactively
 # regresses every currently-ACTIVE patient to PENDING on their next edit,
 # since completeness is recomputed from this full list, not versioned.
-# ponytail: acceptable today (all-or-nothing completeness was an explicit
-# decision) — add migration versioning only if this list actually changes.
+# Limitation: acceptable today (all-or-nothing completeness was an explicit
+# decision); add migration versioning only if this list actually changes.
 PROFILE_FIELDS: tuple[str, ...] = (
     "address",
     "indigenous_status",

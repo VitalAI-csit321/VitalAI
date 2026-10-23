@@ -1,4 +1,4 @@
-"""The close nudge (M4 spec, E5): a quiet case is put to its doctor to close.
+"""The close nudge: a quiet case is put to its doctor to close.
 
 Hourly, idempotent, always on. Not tied to appointment_reminders_enabled: it
 emails nobody, it only opens Review Queue items. A case qualifies when it is
@@ -85,7 +85,7 @@ async def nudge_due(db: AsyncSession, actor: User) -> list[HumanReviewTask]:
             },
         )
         opened.append(item)
-    # ponytail: one commit for the sweep; a clash with a second app instance
+    # Limitation: one commit for the sweep; a clash with a second app instance
     # (uq_human_review_open_per_episode) fails this cycle and the next hour
     # retries. Per-case savepoints if the app ever runs several instances.
     await db.commit()

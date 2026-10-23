@@ -43,11 +43,11 @@ class FakeLLM:
         self.confidence = confidence
         self.replies = list(replies or [DRAFT])
         self.worthy = worthy
-        # The retrieval retry's rewrite (spec §7). Empty by default, which the
+        # The retrieval retry's rewrite. Empty by default, which the
         # retry treats as "no rewrite", so a test that is not about the retry
         # sees exactly the retrieval calls it saw before the retry existed.
         self.reformulation = reformulation
-        # Identity extraction's answer (spec §8.3): a dict is sent as JSON, a
+        # Identity extraction's answer: a dict is sent as JSON, a
         # str as-is. None falls through to the classifier JSON, which is
         # exactly the "unparseable, no fields" case.
         self.identity = identity

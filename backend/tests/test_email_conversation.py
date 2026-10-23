@@ -1121,13 +1121,13 @@ async def test_the_verification_email_goes_once_per_case_and_never_to_a_machine(
     assert sends == []
 
 
-async def _registered(db, *, email="kartik@example.com") -> Patient:
+async def _registered(db, *, email="liam@example.com") -> Patient:
     patient = Patient(
-        mrn="MRN-KARTIK01",
-        name="Kartik Sangwan",
+        mrn="MRN-LIAM01",
+        name="Liam Fletcher",
         dob=date(2009, 3, 23),
         email=email,
-        phone="0470 979 616",
+        phone="0491 570 156",
         status=PatientStatus.ACTIVE,
     )
     db.add(patient)
@@ -1153,13 +1153,13 @@ async def test_a_staff_link_carries_on_with_the_original_booking_request(
     # partial match, so they are asked to verify and staff see the item.
     patient = await _registered(db_session)
     day = _weekday_ahead()
-    llm.identity = {"name": "Kartik Sangwan", "dob": None, "phone": None}
+    llm.identity = {"name": "Liam Fletcher", "dob": None, "phone": None}
     email1, task1 = await _mail(
         db_session,
         admin_user,
-        f"Can I book an appointment on {day:%A}? Thanks, Kartik Sangwan",
+        f"Can I book an appointment on {day:%A}? Thanks, Liam Fletcher",
         message_id="<k1@example.com>",
-        sender="kartik.work@example.com",
+        sender="liam.work@example.com",
     )
     ((_, verification),) = sends
     assert "verify your profile" in verification
@@ -1174,7 +1174,7 @@ async def test_a_staff_link_carries_on_with_the_original_booking_request(
     # Without waiting for the patient: the times for the day they first asked for.
     assert len(sends) == 2
     offer = sends[1][1]
-    assert offer.startswith("Hi Kartik,")
+    assert offer.startswith("Hi Liam,")
     assert "These times are available" in offer or "nearest available times" in offer
     conversation = await _conversation(db_session, email1.case_id)
     assert conversation.patient_id == patient.id
@@ -1186,13 +1186,13 @@ async def test_a_reply_after_a_staff_link_is_not_a_failed_verification(
     db_session, agent_saver, admin_user, doctor_user, llm, sends
 ):
     patient = await _registered(db_session)
-    llm.identity = {"name": "Kartik Sangwan", "dob": None, "phone": None}
+    llm.identity = {"name": "Liam Fletcher", "dob": None, "phone": None}
     email1, task1 = await _mail(
         db_session,
         admin_user,
-        "I need an appointment. Kartik Sangwan",
+        "I need an appointment. Liam Fletcher",
         message_id="<k2@example.com>",
-        sender="kartik.work@example.com",
+        sender="liam.work@example.com",
     )
     item = await _identity_item(db_session, task1)
     from app.services import human_review_service
@@ -1207,7 +1207,7 @@ async def test_a_reply_after_a_staff_link_is_not_a_failed_verification(
         "I am a current patient.",
         message_id="<k3@example.com>",
         references="<k2@example.com>",
-        sender="kartik.work@example.com",
+        sender="liam.work@example.com",
     )
 
     assert task2.handover_context != email_conversation_service.STAFF_REASONS["verification_failed"]
@@ -1223,12 +1223,12 @@ async def test_the_inbox_shows_each_reply_not_the_first_email(
     from app.services import inbox_service
 
     await _registered(db_session, email=SENDER)
-    llm.identity = {"name": "Kartik Sangwan", "dob": None, "phone": None}
+    llm.identity = {"name": "Liam Fletcher", "dob": None, "phone": None}
     llm.booking = [{"intent": "unclear", "confidence": 0.3}]
     email1, task1 = await _mail(
         db_session,
         admin_user,
-        "Can I get an appointment? Kartik Sangwan",
+        "Can I get an appointment? Liam Fletcher",
         message_id="<i1@example.com>",
     )
     email2, task2 = await _mail(
@@ -1251,29 +1251,29 @@ async def test_the_inbox_shows_each_reply_not_the_first_email(
 async def test_a_verified_booking_offers_the_day_the_first_email_asked_for(
     db_session, agent_saver, admin_user, doctor_user, llm, sends
 ):
-    """Amin's live run, 2026-10-06: the request for a day was in the first
+    """Found in a live run: the request for a day was in the first
     email, the details in the reply, and the clinic asked for the day again.
     The reply also came from Gmail's main address, not the +alias the first
     email used, which opened a second case and a second verification."""
     patient = await _registered(db_session, email="alex.hill@example.com")
     day = _weekday_ahead(10)
-    llm.identity = {"name": "Kartik Sangwan", "dob": None, "phone": None}
+    llm.identity = {"name": "Liam Fletcher", "dob": None, "phone": None}
     email1, _ = await _mail(
         db_session,
         admin_user,
         f"Could I get a booking on {day.day} {day:%B}? Can you let me know the slots? "
-        "Kartik Sangwan",
+        "Liam Fletcher",
         message_id="<h1@example.com>",
-        sender="amin+kartik@example.com",
+        sender="liam.fletcher+clinic@example.com",
     )
     ((_, verification),) = sends
     assert "verify your profile" in verification
 
     llm.booking = [
         {
-            "name": "Kartik Sangwan",
+            "name": "Liam Fletcher",
             "dob": "2009-03-23",
-            "phone": "0470979616",
+            "phone": "0491570156",
             "preferred_day": day.isoformat(),
             "intent": "unclear",
             "confidence": 0.9,
@@ -1282,10 +1282,10 @@ async def test_a_verified_booking_offers_the_day_the_first_email_asked_for(
     email2, _ = await _mail(
         db_session,
         admin_user,
-        "Kartik Sangwan 23/03/2009 0470979616",
+        "Liam Fletcher 23/03/2009 0491570156",
         message_id="<h2@example.com>",
         references="<h1@example.com>",
-        sender="amin@example.com",
+        sender="liam.fletcher@example.com",
     )
 
     assert email2.case_id == email1.case_id
@@ -1299,9 +1299,9 @@ async def test_a_verified_booking_offers_the_day_the_first_email_asked_for(
 
 def test_a_reply_links_across_plus_aliases_of_one_mailbox_only():
     who = email_conversation_service._mailbox
-    assert who("Amin+Alexander.Hill@Gmail.com") == who("amin@gmail.com")
-    assert who("amin@gmail.com") != who("amina@gmail.com")
-    assert who("amin+x@gmail.com") != who("amin@outlook.com")
+    assert who("Maggie+Alexander.Hill@Gmail.com") == who("maggie@gmail.com")
+    assert who("maggie@gmail.com") != who("maggiec@gmail.com")
+    assert who("maggie+x@gmail.com") != who("maggie@outlook.com")
 
 
 async def test_a_day_asked_as_a_question_mid_conversation_is_offered_times(
@@ -1694,7 +1694,7 @@ async def test_a_patient_asking_when_their_appointment_is_gets_it_at_the_address
 async def test_a_cancellation_is_only_carried_out_once_the_code_comes_back(
     db_session, agent_saver, admin_user, doctor_user, llm, sends, mails
 ):
-    """Amin's calls (2026-10-11): the agent cancels by itself when one
+    """Deliberate choices: the agent cancels by itself when one
     appointment can be meant and it is more than a day away, and, after the
     security review of that, only once the patient has returned the code sent
     to the address on their record."""
@@ -2119,7 +2119,7 @@ async def test_a_first_visit_patient_can_move_the_appointment_they_just_booked(
         "Hi, sorry for the trouble but is it possible to change the appointment time?",
         message_id="<t4@example.com>",
         references=references,
-        sender_name="Md Aminul Islam Rupom",
+        sender_name="Liam Fletcher",
     )
 
     assert sends[replies:] == []  # no verification request

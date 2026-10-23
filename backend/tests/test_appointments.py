@@ -160,7 +160,7 @@ async def test_book_appointment_non_doctor_target_returns_422(
 async def test_book_appointment_duplicate_slot_returns_409(
     pg_client: AsyncClient, pg_admin_headers: dict, pg_doctor_user: User, pg_patient: Patient
 ):
-    """C1: forced onto real Postgres (pg_client/pg_session) so this always
+    """Forced onto real Postgres (pg_client/pg_session) so this always
     exercises migration 0026's EXCLUDE USING gist constraint, regardless of
     what DATABASE_URL the rest of the suite runs under. On the default
     SQLite backend there is no equivalent constraint, so this would silently

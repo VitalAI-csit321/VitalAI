@@ -1,6 +1,6 @@
 """Pull unread Outlook mail into the existing email pipeline.
 
-The per-message sequence is Matthew's, from Inbox_Handling's main.py
+The per-message sequence comes from an earlier standalone prototype's
 process_email(): authenticate, fetch unread, then for each message parse it,
 classify/route it, and mark it read, never letting a mark-as-read failure
 abort the run. What changes is that each step delegates to this codebase's
@@ -49,7 +49,7 @@ _failed_attempts: dict[str, int] = {}
 # so a bare create_task can be garbage-collected mid-flight.
 _drafting: set[asyncio.Task] = set()
 
-# ponytail: one slot, because gemma2:9b is CPU-bound on this box and
+# Limitation: one slot, because gemma2:9b is CPU-bound on this box and
 # serialises anyway. Raise it if drafting stops being the bottleneck.
 # outlook_max_messages_per_poll is 25 on a 60s interval, so unbounded
 # create_task would put 25 concurrent model runs on one CPU. With the
@@ -122,7 +122,7 @@ async def _process_one(
     # system, and draft_reply_detached handles its own errors.
     schedule_draft(task.id, email.id, actor.id, gate, confidence)
 
-    # Matthew's original guard, kept: a failed mark-as-read must not undo an
+    # The prototype's guard, kept: a failed mark-as-read must not undo an
     # ingest that already committed. The dedupe check above means the message
     # is skipped next cycle regardless, so the mailbox is merely untidy, not
     # reprocessed.

@@ -20,7 +20,7 @@ _MRN_GENERATION_ATTEMPTS = 5
 
 class ProvisionalPatientError(Exception):
     """The patient is provisional: created from an inbound message, not yet
-    verified by staff. Not bookable, and no clinical records (spec §9.0a)."""
+    verified by staff. Not bookable, and no clinical records."""
 
 
 class PromotionRefusedError(Exception):
@@ -212,7 +212,7 @@ async def create_provisional_patient(
     actor: User,
     commit: bool = True,
 ) -> Patient:
-    """A patient known only from an inbound message (spec §9.0), linked to its
+    """A patient known only from an inbound message, linked to its
     case. PENDING and provisional until a human promotes them."""
     patient = Patient(
         mrn=await _generate_unique_mrn(db),
@@ -320,7 +320,7 @@ async def list_patients(
         filters.append(Patient.status == status)
 
     # Doctor scoping applies to the status-counts summary too (unlike search/status,
-    # which the counts intentionally ignore, per Phase 2): a doctor must never see
+    # which the counts intentionally ignore): a doctor must never see
     # a breakdown that includes patients they can't open via the list below it.
     scope_filter = (
         Patient.id.in_(assigned_patient_ids_subquery(doctor_id)) if doctor_id is not None else None

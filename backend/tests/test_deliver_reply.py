@@ -1,4 +1,4 @@
-"""One send path for every outbound reply (build spec §4, Appendix F.12/F.14).
+"""One send path for every outbound reply.
 
 Auto-send used to persist draft_sent=True and stop, so an "auto-sent" reply
 was recorded and shown as sent but never left the system. Both the approvals
@@ -133,13 +133,12 @@ def _callers_of(function: str) -> list[str]:
 
 def test_outlook_send_reply_has_exactly_one_caller_in_app():
     """Every outbound reply goes through deliver_reply. A second caller would
-    be a send path without P1's draft_sent guard."""
+    be a send path without the draft_sent guard."""
     assert _callers_of("send_reply") == ["services/email_service.py"]
 
 
 def test_outlook_send_mail_has_exactly_one_caller_in_app():
-    """Every new outbound message goes through deliver_new_message (spec
-    §16.1). This one matters more than send_reply's: appointment reminders
+    """Every new outbound message goes through deliver_new_message. This one matters more than send_reply's: appointment reminders
     are the only feature that mails a patient with nobody approving it, so a
     second caller would be an unapproved send path with no audit event and no
     idempotency guard behind it."""

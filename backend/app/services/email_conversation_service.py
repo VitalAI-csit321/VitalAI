@@ -320,7 +320,7 @@ def named_weekday(day: date | None, text: str, *, today: date) -> date | None:
     """The model resolves "next Wednesday" badly (today, or even yesterday, in
     every black-box sample). When the patient named exactly one weekday and
     the model's day is not that weekday, take the next one after today.
-    ponytail: full day names only; add "wed"/"tues" if real mail uses them."""
+    Limitation: full day names only; add "wed"/"tues" if real mail uses them."""
     if day is None:
         return None
     named = [i for i, name in enumerate(_WEEKDAYS) if re.search(rf"\b{name}\b", text.casefold())]
@@ -494,7 +494,7 @@ def urgent_notice_text() -> str:
     """To the sender of an email held as urgent. Fixed, so no model words it,
     and it names nobody and judges nothing: the urgent scan also fires on
     "please change my emergency contact", and this reads sensibly there too.
-    Amin's wording (2026-10-11)."""
+    The wording is a deliberate choice."""
     return (
         "Hello,\n\n"
         "We have received your email and our team will contact you as soon as they can.\n\n"
@@ -1119,7 +1119,7 @@ async def _conversation(db: AsyncSession, conversation_id: str | UUID) -> EmailC
 async def book_choice(
     db: AsyncSession, *, conversation_id: str | UUID, choice: dict, actor: User
 ) -> Turn:
-    """Turn 3's booking, with nobody approving it (Amin's call, 2026-09-24).
+    """Turn 3's booking, with nobody approving it (a deliberate choice).
 
     Re-checked here, not trusted from the turn that read the reply: the
     patient's record must be bookable (patient_service.assert_bookable) and

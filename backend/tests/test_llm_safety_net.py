@@ -1,4 +1,4 @@
-"""The conftest safety net against real model calls from tests (spec G.3).
+"""The conftest safety net against real model calls from tests.
 
 Five modules import get_llm under their own name (rag/answer.py, routes/llm.py,
 call_service.py, email_service.py, inbox_service.py), so patching one of them

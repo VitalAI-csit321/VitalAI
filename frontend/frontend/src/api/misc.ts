@@ -47,7 +47,7 @@ export async function getDashboard(user: CurrentUser | null): Promise<DashboardS
   const canViewQueue = user?.role !== "doctor";
   const [casesRes, pendingRes, inProgressRes, reviewEscalatedRes, boardRes, reviewListRes, weeklyRes, todayRes] =
     await Promise.allSettled([
-      // Open cases (episodes of care, M4); every role reads them, a doctor only their own.
+      // Open cases (episodes of care); every role reads them, a doctor only their own.
       apiGet<{items:unknown[];total:number}>("/api/v1/cases", {limit:1, status:"open"}),
       apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"pending"}),
       apiGet<{total:number}>("/api/v1/human-review", {limit:1, status:"in_progress"}),
@@ -55,7 +55,7 @@ export async function getDashboard(user: CurrentUser | null): Promise<DashboardS
       // The Escalations board's own source (task routing), a different model
       // from human-review approvals and their own "escalated" status.
       canViewQueue ? getTaskBoard() : Promise.reject(),
-      // ponytail: the 50 most recent items; "oldest waiting" is exact only
+      // Limitation: the 50 most recent items; "oldest waiting" is exact only
       // while fewer than 50 are open. Add a server-side oldest if queues grow.
       apiGet<{items: ReviewRow[]; total: number}>("/api/v1/human-review", {limit:50}),
       getWeeklyAppointmentCounts(),
@@ -137,7 +137,7 @@ export async function approveDraft(
   });
 }
 
-// Write reply (D14): sends the person's own text; answers with the updated message.
+// Write reply: sends the person's own text; answers with the updated message.
 export async function sendManualReply(taskId: string, text: string): Promise<Message> {
   return apiPost<Message>(`/api/v1/inbox/${taskId}/reply`, { text });
 }

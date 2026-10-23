@@ -4,7 +4,7 @@ This corpus is the demo grounding data for VitalAI. It describes a fictional cli
 
 ## Canonical vocabulary (do not diverge)
 
-These are not proposals. Every token below is the literal Postgres enum value or ratified constant in the real codebase, checked against source on 2026-08-17. Diverging from these breaks ingestion or grounds the assistant on facts that don't exist.
+These are not proposals. Every token below is an enum member or constant in the codebase. The enums are listed by their Python member names; the database stores the lowercase values (`front_desk`, `appointment_request`, `pending`, ...). Diverging from these breaks ingestion or grounds the assistant on facts that don't exist.
 
 **System roles** (`app/models/user.py::UserRole`):
 
@@ -28,7 +28,7 @@ These are not proposals. Every token below is the literal Postgres enum value or
 
 There is no "unclear" consent state. A request that can't establish consent stays `PENDING`.
 
-**Chunk access scopes** (`app/models/chunk.py`, ratified in `scripts/ingest_corpus.py::DOC_TYPE_TO_SCOPE`):
+**Chunk access scopes** (`app/models/chunk.py`, mapped from doc_type in `app/rag/doc_scopes.py::DOC_TYPE_TO_SCOPE`):
 
 - `general`
 - `restricted`
@@ -42,16 +42,16 @@ Earlier drafts of this corpus used `public`/`internal`/`restricted` and a three-
 
 Resolved by making `chunks.patient_id` nullable (`alembic/versions/0022_chunks_org_wide.py`): a `NULL` patient_id means "applies to every patient's retrieval context." `_security_filter` now matches `patient_id == ctx.patient_id OR patient_id IS NULL`, still gated by `access_scope` exactly as before — no security-filter logic was bypassed, just widened by one clause. Ingested by `scripts/ingest_org_profile.py`, a standalone script (not `ingest_corpus.py`, which assumes a UUID-named patient folder that this flat 6-file corpus doesn't have).
 
-**access_scope reachability is not symmetric with the patient corpus.** The two real callers of `retrieve()` today are:
+**access_scope reachability is not symmetric with the patient corpus.** The callers of retrieval (all through `app/rag/retry.py::retrieve_gated`) are:
 
 - `/rag/query` (`app/routes/rag.py`): `allowed_scopes` comes from `app.auth.scoping.allowed_scopes(actor)`, which is `{"general"}` plus `{"restricted"}` if the actor holds `VIEW_CLINICAL`. It never grants `"sensitive"`.
-- `email_service.draft_reply` (patient-facing drafted email replies): hardcodes `allowed_scopes=["general", "restricted"]`. Also never includes `"sensitive"`.
+- The drafted email replies in `app/services/email_service.py`: both draft paths request `allowed_scopes=["general"]` only, so a patient-facing draft never grounds on clinical or internal content.
 
-Because `restricted` is the same tier real clinical patient data uses (consultation notes, prescriptions — content a drafted reply legitimately needs to reference), tagging the internal-only org docs `restricted` would make them reachable by both of the above, including the patient-facing draft path, with no existing guardrail term list covering staff usernames or internal routing text. So the four internal-grounding docs are tagged `sensitive` instead — a scope neither current caller ever requests, deliberately inert until a future system-level caller (see `scripts/demo_rag.py::FULL_CTX`, which already requests `["general", "restricted", "sensitive"]`) opts in explicitly. This keeps the clinical-data scope (`restricted`) and the internal-operations scope (`sensitive`) as two separate mechanisms, not one shared tier.
+`restricted` is the tier real clinical patient data uses (consultation notes, prescriptions), so tagging the internal-only org docs `restricted` would expose them to every `VIEW_CLINICAL` query, with no guardrail term list covering staff usernames or internal routing text. The four internal-grounding docs are tagged `sensitive` instead, a scope no current caller requests. They stay inert until a system-level caller opts in explicitly. This keeps the clinical-data scope (`restricted`) and the internal-operations scope (`sensitive`) as two separate mechanisms, not one shared tier.
 
 ## Ingestion metadata
 
-Each source document carries a `doc_type` and an `access_scope`. `doc_type` comes from the leading `<!-- doc_type: X -->` comment in each file. `access_scope` is **not** read from the file — `DOC_TYPE_TO_SCOPE` in `scripts/ingest_corpus.py` is the single source of truth for every doc_type in the system, patient and org-wide alike, so ingest and query can never drift apart. The table below reflects that mapping as of this revision; if it ever changes, the code is authoritative, not this table.
+Each source document carries a `doc_type` and an `access_scope`. `doc_type` comes from the leading `<!-- doc_type: X | access_scope: Y -->` comment in each file. `access_scope` is **not** read from the file — `DOC_TYPE_TO_SCOPE` in `app/rag/doc_scopes.py` is the single source of truth for every doc_type in the system, patient and org-wide alike, so ingest and query can never drift apart. The table below reflects that mapping as of this revision; if it ever changes, the code is authoritative, not this table.
 
 | File | doc_type | access_scope | Reachable by draft_reply / \`/rag/query\` today? |
 | --- | --- | --- | --- |
@@ -80,7 +80,7 @@ If any of these change, update every file. They are referenced in more than one 
 
 ## What this corpus describes vs. what the schema stores today
 
-Clinic Identity and Policies & FAQ describe appointment types/lengths, doctor weekly schedules, and registration fields (address, Medicare/IRN/DVA, insurance, emergency contact) as clinic policy. The registration fields are not invented: the real 5-step patient intake wizard (`PatientOnboardingPage.tsx`, frontend `master` branch) collects exactly this shape — name, DOB, gender, address, indigenous status, language, phone, email, emergency contact, medical history, insurance, Medicare, concession card. The gap is downstream of that: `createPatientFromOnboarding` (`api/cases.ts`) only actually sends `{name, dob, gender}` to `/api/v1/patients`, and the real `Patient` model only persists `mrn, name, dob, gender, status`. So the wizard collects this data today and the backend silently drops the rest before it's ever stored — a known frontend-backend persistence gap, not a fabricated process. The real `Appointment` model separately has no type/length/recurring-schedule/`get_availability()` — that part of Clinic Identity and Policies & FAQ genuinely is ahead of any UI or schema, tracked as the in-progress booking/calendar work.
+Clinic Identity and Policies & FAQ describe appointment types and lengths and the registration fields (address, Medicare/IRN/DVA, insurance, emergency contact) as clinic policy. Both are backed by the system: the patient onboarding wizard (`frontend/frontend/src/pages/PatientOnboardingPage.tsx`) and the emailed registration form send these fields, the `Patient` model stores them (migration `0028`), and the `Appointment` model carries `appointment_type`, `duration_minutes` and `series_id`, with free times served by `GET /api/v1/appointments/availability`. Per-doctor weekly timetables are not held anywhere, which is why the corpus no longer states them.
 
 ## Decision log for this revision
 
@@ -106,9 +106,6 @@ Clinic Identity and Policies & FAQ describe appointment types/lengths, doctor we
 14. Added to the patient-facing documents: who can attend, international students and OSHC, test results, medical certificates, walk-ins, what to bring, travel vaccinations, sexual health, emailing a doctor, and the after-hours advice line.
 15. Phone number changed to the clinic's Twilio voicemail line, so the number quoted to patients is one the system answers.
 
-## Open items (unchanged, still open)
+## Open items
 
 - Fee values are placeholders.
-- Whether the demo surfaces per-user grants (`VIEW_CLINICAL`) at all in the presentation path, or stays documented but unused.
-- Booking (appointment types/lengths/availability) has no backing UI or schema yet — in-progress work, tracked separately.
-- Registration fields (address/Medicare/insurance/emergency contact) are already collected by the real intake wizard but dropped before reaching the backend (`Patient` only persists `mrn, name, dob, gender, status`) — a frontend-backend persistence gap, tracked separately, not by this corpus.

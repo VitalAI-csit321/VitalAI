@@ -1,4 +1,4 @@
-"""The fake voicemail intake (voicemail spec §6): the same fields a Twilio call
+"""The fake voicemail intake: the same fields a Twilio call
 ends with, from an uploaded file. Kept permanently as the demo and test path."""
 
 from fastapi import (
