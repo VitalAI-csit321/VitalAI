@@ -1,6 +1,6 @@
 # VitalAI backend test inventory
 
-Collected tests per file at `main` `df4ac05` (2,188 tests in 136 files; all passed in CI run `39125686640`).
+Collected tests per file (2,188 tests in 136 files; all passed in CI run `39944661796`).
 
 | Test file | Level | Collected tests |
 |---|---|---|

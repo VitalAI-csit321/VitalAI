@@ -1,6 +1,6 @@
 # VitalAI backend function reference
 
-Every public function in the backend at `main` `df4ac05`, by module. Purposes come from the code's docstrings; purposes for functions without a docstring were written from their code.
+Every public function in the backend, by module. Purposes come from the code's docstrings; purposes for functions without a docstring were written from their code.
 
 ## 1. Agents
 
@@ -129,7 +129,7 @@ Every public function in the backend at `main` `df4ac05`, by module. Purposes co
 | `unassign_patient` | doctor_id, patient_id, actor | Removes a doctor's assignment to a patient and logs it, returning whether one existed. |
 | `list_assignments` | doctor_id | Lists the patient assignments held by a given doctor. |
 | `ensure_doctor` | patient, actor | A registered patient with no active doctor gets one now, their preference while that doctor is active, else the least-loaded active doctor. |
-| `change_doctor` | patient, doctor_id, actor | Staff change who the patient's doctor is (E6: changeable). |
+| `change_doctor` | patient, doctor_id, actor | Staff change who the patient's doctor is. |
 
 **`app/services/audit_service.py`**
 
@@ -147,7 +147,7 @@ Every public function in the backend at `main` `df4ac05`, by module. Purposes co
 | Function | Arguments | Purpose |
 |---|---|---|
 | `doctor_for_patient` | patient_id | The patient's longest-standing active doctor, or None if they have none. |
-| `doctor_for_episode` | episode | Who does a case's doctor work (M4): its doctor while they are active and still assigned to the patient, else the patient's doctor. inbox_service._scoped applies the same rule in SQL. |
+| `doctor_for_episode` | episode | Who does a case's doctor work: its doctor while they are active and still assigned to the patient, else the patient's doctor. inbox_service._scoped applies the same rule in SQL. |
 | `doctor_for_contact` | contact | Who does the doctor work on this message: its case's (doctor_for_episode), or the patient's when it is in no case. |
 | `find_slots` | actor, doctor_id, from_date, count, horizon_days | The next `count` free slots, scanning clinic-local days from tomorrow. |
 | `format_slot` | instant | "Tuesday 1 September at 8:00am", in clinic local time. |
@@ -250,7 +250,7 @@ Every public function in the backend at `main` `df4ac05`, by module. Purposes co
 | `handle_turn` | llm, conversation, email, actor, first_turn, known | Read the reply, update the record, decide. Audits the raw extraction and the decision. Commits. |
 | `hand_back` | case_id, text | A person replied by hand to a conversation handed to staff: they have answered what the agent could not, so the agent takes the patient's next reply, with the person's words as the clinic's last message. |
 | `record_sent` | conversation_id, text, next_stage, offer, verification, form_link | After a reply really went out: what the patient was shown is now what the next turn is checked against. Never before, so a reply that failed to send can never become "a time we offered". |
-| `book_choice` | conversation_id, choice, actor | Turn 3's booking, with nobody approving it (Amin's call, 2026-09-24). |
+| `book_choice` | conversation_id, choice, actor | Turn 3's booking, with nobody approving it (a deliberate choice). |
 
 **`app/services/email_service.py`**: Email ingestion pipeline (FR-EMAIL-01/02).
 
@@ -285,7 +285,7 @@ Every public function in the backend at `main` `df4ac05`, by module. Purposes co
 | `get` | episode_id | Returns the episode with the given id or raises an error if missing. |
 | `create` | patient_id, title, actor, doctor_id, contact | A new open case. The doctor defaults to the patient's own (NULL only when they have none); a named doctor also gets an assignment. |
 | `suggest` | contact, candidates, actor | The model's pick among the open cases, by number. Anything else (junk, a number off the list, a failed or blocked call) falls back to the most recently active case, which candidates lists first. |
-| `attach_contact` | contact, actor, category | The E4 rule. Returns the case the contact is now in, or None. |
+| `attach_contact` | contact, actor, category | The attach rule. Returns the case the contact is now in, or None. |
 | `close` | episode, note, actor | Closes a case with a required outcome note, completing its open review items and auditing the closure. |
 | `reopen` | episode, actor | Reopens a closed episode, clearing its closure details and recording an audit event. |
 | `rename` | episode, title, actor | Renames a case episode after validating the title and records the change in the audit log. |
@@ -321,7 +321,7 @@ Every public function in the backend at `main` `df4ac05`, by module. Purposes co
 | `reject_task` | task_id, actor, notes | Dismisses a non-draft review task, saving any notes and recording an audit event. |
 | `escalate_task` | task_id, actor, notes | Escalates a review task to the next role up, updating its inbox item and audit log. |
 | `reroute` | task_id, actor, category | Changes a reviewed message's category and target role, escalating or opening complaint reviews as needed. |
-| `link_patient` | task_id, actor, patient_id | F2: links the case and closes the item. The route then re-runs the agent on the linked email (agent_graph.rerun_after_review). |
+| `link_patient` | task_id, actor, patient_id | Links the case and closes the item. The route then re-runs the agent on the linked email (agent_graph.rerun_after_review). |
 | `reassign` | task_id, actor, doctor_id | A held draft to a doctor: how the operator moves clinical text it may not approve. |
 | `choose_case` | task_id, actor, episode_id | "Which case does this belong to?": one of the offered cases, or a new one. |
 | `answer_case_close` | task_id, actor, close, note | "Close this case?": Close (with the outcome note) or Keep open, which asks again after case_close_nudge_days of quiet. |
@@ -495,14 +495,6 @@ Every public function in the backend at `main` `df4ac05`, by module. Purposes co
 | `purge_due` | actor | Anonymise every provisional patient past the TTL. Returns their ids. |
 | `purge_once` | none | Purges provisional patients whose claim period has expired and logs how many were removed. |
 | `run_purge` | none | Sweep until cancelled. One bad cycle must not kill the loop: nothing restarts it short of an app restart (same policy as the Outlook poller). |
-
-**`app/services/rag_service.py`**
-
-| Function | Arguments | Purpose |
-|---|---|---|
-| `embed_text` | text | Return embedding vector for text using the configured provider. |
-| `store_document` | case_id, text | Placeholder for storing a case document for retrieval, which is not yet implemented. |
-| `retrieve_context` | query, k | Placeholder for retrieving RAG context that is not yet implemented. |
 
 **`app/services/records_service.py`**: Acknowledging a request for a copy of a patient's records.
 
@@ -1026,12 +1018,6 @@ Every public function in the backend at `main` `df4ac05`, by module. Purposes co
 |---|---|---|
 | `list_indexed_documents` | ctx | The documents this actor can actually get answers out of for this patient. |
 | `retrieve` | query, ctx, k, doc_type, strategy | Embed `query` and return the top-k chunks visible to `ctx`. |
-
-**`app/rag/retriever.py`**: pgvector retrieval interface.
-
-| Function | Arguments | Purpose |
-|---|---|---|
-| `query_similar` | embedding, top_k, min_score | Return top-k chunks whose cosine similarity exceeds min_score. |
 
 **`app/rag/retry.py`**: Retrieval retry: one reformulated second attempt, graph only.
 
