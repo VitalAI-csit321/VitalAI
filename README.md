@@ -443,6 +443,9 @@ mypy app
   function, by module.
 - [docs/test_inventory.md](docs/test_inventory.md): the test files and how many tests
   each holds.
+- [docs/api_reference.md](docs/api_reference.md): every route with its access check.
+- [docs/data_dictionary.md](docs/data_dictionary.md): every table and column, the enum
+  types, and the database objects outside the models.
 - `rag_knowledge.md`: how the retrieval and question answering pipeline works, and where
   its data comes from.
 - `backend/docs/retrieval_contract.md`: what the retrieval layer promises its callers.
