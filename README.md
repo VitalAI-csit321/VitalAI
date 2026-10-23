@@ -439,6 +439,10 @@ mypy app
 - [backend/README.md](backend/README.md): backend setup, tests, environment variables,
   and the complete API endpoint table.
 - [frontend/frontend/README.md](frontend/frontend/README.md): frontend structure.
+- [docs/function_reference.md](docs/function_reference.md): every public backend
+  function, by module.
+- [docs/test_inventory.md](docs/test_inventory.md): the test files and how many tests
+  each holds.
 - `rag_knowledge.md`: how the retrieval and question answering pipeline works, and where
   its data comes from.
 - `backend/docs/retrieval_contract.md`: what the retrieval layer promises its callers.
