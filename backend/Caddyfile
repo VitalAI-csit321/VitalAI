@@ -14,3 +14,7 @@
 		file_server
 	}
 }
+
+# Extra sites kept on the box only, such as the marketing page and the public
+# demo (backend/caddy-extra, not in git). No files there is fine.
+import /etc/caddy/extra/*.caddy

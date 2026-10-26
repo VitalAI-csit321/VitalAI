@@ -41,6 +41,9 @@ Thumbs.db
 build/
 dist/
 
+# Box-only Caddy sites (see the import at the end of Caddyfile)
+caddy-extra/
+
 # Logs & local DB
 *.log
 *.sqlite3
